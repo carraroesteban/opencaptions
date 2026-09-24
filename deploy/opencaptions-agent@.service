@@ -1,0 +1,23 @@
+# systemd template: one agent per stage PC.  Install:
+#   sudo cp deploy/opencaptions-agent@.service /etc/systemd/system/
+#   sudo systemctl edit opencaptions-agent@sala-a   # set OC_SERVER / INGEST_TOKEN / DEVICE if needed
+#   sudo systemctl enable --now opencaptions-agent@sala-a
+#   journalctl -u opencaptions-agent@sala-a -f
+[Unit]
+Description=OpenCaptions stage agent (%i)
+After=network-online.target sound.target
+Wants=network-online.target
+
+[Service]
+Environment=OC_SERVER=wss://subs.example.com
+Environment=INGEST_TOKEN=change-me
+# ALSA device of the sound card (see: node scripts/agent.js --list-devices). Use hw:… so no desktop session is needed.
+Environment=DEVICE=hw:1,0
+ExecStart=/usr/bin/node /opt/opencaptions/scripts/agent.js --stage %i --device ${DEVICE} --quiet
+Restart=always
+RestartSec=3
+DynamicUser=yes
+SupplementaryGroups=audio
+
+[Install]
+WantedBy=multi-user.target

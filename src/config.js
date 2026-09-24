@@ -24,7 +24,8 @@ const event = readJson(eventPath);
 
 const env = process.env;
 const DEFAULT_TARGETS = event.defaultTargets || ['es', 'en'];
-const engine = flag('mock') ? 'mock' : (env.ENGINE || (env.GEMINI_API_KEY ? 'gemini' : 'mock'));
+const vertex = /^(1|true)$/i.test(env.GOOGLE_GENAI_USE_VERTEXAI || '');
+const engine = flag('mock') ? 'mock' : (env.ENGINE || (env.GEMINI_API_KEY || vertex ? 'gemini' : 'mock'));
 
 export const config = {
   port: Number(env.PORT || 8080),
@@ -32,6 +33,14 @@ export const config = {
   publicUrl: (env.PUBLIC_URL || event.publicUrl || '').replace(/\/$/, ''),
   engine,
   geminiApiKey: env.GEMINI_API_KEY || '',
+  // Enterprise: use Vertex AI in your own Google Cloud project instead of an API key.
+  vertex,
+  gcpProject: env.GOOGLE_CLOUD_PROJECT || '',
+  gcpLocation: env.GOOGLE_CLOUD_LOCATION || 'us-central1',
+  // Data governance: keep transcripts on disk at all (false = captions are only streamed, never stored)
+  storeTranscripts: !/^(0|false|no)$/i.test(env.STORE_TRANSCRIPTS || 'true'),
+  // Delete stored transcripts older than N days (0 = keep forever).
+  retentionDays: Number(env.RETENTION_DAYS || 0),
   model: env.GEMINI_MODEL || event.model || 'gemini-3.5-live-translate-preview',
   ingestToken: env.INGEST_TOKEN || '',
   adminToken: env.ADMIN_TOKEN || '',

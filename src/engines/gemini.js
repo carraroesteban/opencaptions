@@ -3,11 +3,12 @@
 // lifetime (GoAway), reconnect with backoff, and audio buffering while reconnecting
 // so no speech is lost.
 import { EventEmitter } from 'node:events';
-import { GoogleGenAI, Modality } from '@google/genai';
+import { Modality } from '@google/genai';
+import { createClient } from '../genai.js';
 import { config } from '../config.js';
 
 let ai = null;
-const client = () => (ai ??= new GoogleGenAI({ apiKey: config.geminiApiKey }));
+const client = () => (ai ??= createClient());
 
 const LEVELS = ['full', 'minimal', 'bare'];
 const MAX_BUFFER_CHUNKS = 120; // 12 s of 100 ms chunks

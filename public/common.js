@@ -2,7 +2,8 @@
 export const qs = new URLSearchParams(location.search);
 
 const browserLang = (navigator.language || 'es').slice(0, 2).toLowerCase();
-export const UI = qs.get('ui') || (['es', 'pt'].includes(browserLang) ? (browserLang === 'pt' ? 'pt' : 'es') : 'en');
+const savedUi = (() => { try { return JSON.parse(localStorage.getItem('oc.ui')); } catch { return null; } })();
+export const UI = qs.get('ui') || savedUi || (['es', 'pt'].includes(browserLang) ? (browserLang === 'pt' ? 'pt' : 'es') : 'en');
 
 const T = {
   es: {
@@ -36,6 +37,9 @@ export const store = {
   get(k, d) { try { const v = localStorage.getItem(`oc.${k}`); return v == null ? d : JSON.parse(v); } catch { return d; } },
   set(k, v) { try { localStorage.setItem(`oc.${k}`, JSON.stringify(v)); } catch { /* private mode */ } },
 };
+
+// Theme: follows the OS (prefers-color-scheme) unless the viewer picked one.
+(() => { const th = store.get('theme', null); if (th) document.documentElement.dataset.theme = th; })();
 
 export async function getEvent() {
   const r = await fetch('/api/event');
@@ -144,4 +148,82 @@ export async function wakeLock() {
     });
     return lock;
   } catch { return null; }
+}
+
+// ---------- caption styling (shared by overlay.html, screen.html and style.html) ----------
+export const FONTS = {
+  system: { label: 'Sistema', css: "system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif" },
+  inter: { label: 'Inter', google: 'Inter' },
+  atkinson: { label: 'Atkinson Hyperlegible (máxima legibilidad)', google: 'Atkinson Hyperlegible' },
+  lexend: { label: 'Lexend', google: 'Lexend' },
+  roboto: { label: 'Roboto', google: 'Roboto' },
+  opensans: { label: 'Open Sans', google: 'Open Sans' },
+  montserrat: { label: 'Montserrat', google: 'Montserrat' },
+  mono: { label: 'Monoespaciada', css: "ui-monospace, 'SF Mono', Menlo, Consolas, monospace" },
+};
+
+/** "#fff" | "fff" | "ffffff80" | "transparent" → CSS color, optionally overriding alpha (0..1). */
+export function toColor(v, alpha) {
+  if (!v) return null;
+  v = String(v).trim();
+  if (v === 'transparent') return v;
+  const hex = v.replace(/^#/, '');
+  if (!/^[0-9a-f]{3,8}$/i.test(hex)) return v; // named colors, rgb(), …
+  const full = hex.length <= 4 ? hex.split('').map((c) => c + c).join('') : hex;
+  const [r, g, b] = [0, 2, 4].map((i) => parseInt(full.slice(i, i + 2), 16));
+  const a = alpha ?? (full.length === 8 ? parseInt(full.slice(6, 8), 16) / 255 : 1);
+  return `rgba(${r}, ${g}, ${b}, ${a})`;
+}
+
+export function loadFont(key) {
+  const f = FONTS[key] || FONTS.system;
+  if (f.google && !document.querySelector(`link[data-font="${key}"]`)) {
+    const l = document.createElement('link');
+    l.rel = 'stylesheet';
+    l.dataset.font = key;
+    l.href = `https://fonts.googleapis.com/css2?family=${f.google.replace(/ /g, '+')}:wght@400;500;600;700;800&display=swap`;
+    document.head.append(l);
+  }
+  return f.css || `'${f.google}', system-ui, sans-serif`;
+}
+
+/**
+ * Apply caption style params (from the URL) as CSS variables on :root.
+ * font, weight, color (text), box (box color), alpha (box opacity 0-100), style (box|outline|shadow|none),
+ * upper (1), align (center|left), accent (label color).
+ */
+export function applyCaptionStyle(p, d = {}) {
+  const get = (k) => p.get(k) ?? d[k];
+  const root = document.documentElement.style;
+  root.setProperty('--cap-font', loadFont(get('font') || 'inter'));
+  root.setProperty('--cap-weight', get('weight') || 600);
+  root.setProperty('--cap-color', toColor(get('color') || 'ffffff'));
+  const alpha = get('alpha') != null ? Number(get('alpha')) / 100 : undefined;
+  root.setProperty('--cap-box', toColor(get('box') || '000000', alpha ?? 0.78));
+  root.setProperty('--cap-transform', get('upper') === '1' ? 'uppercase' : 'none');
+  root.setProperty('--cap-align', get('align') || 'center');
+  if (get('accent')) root.setProperty('--accent', toColor(get('accent')));
+  const style = get('style') || 'box';
+  const edge = toColor(get('edge') || '000000');
+  root.setProperty('--cap-shadow', style === 'outline'
+    ? `0 0 3px ${edge}, 0 0 3px ${edge}, 2px 2px 2px ${edge}, -2px -2px 2px ${edge}, 2px -2px 2px ${edge}, -2px 2px 2px ${edge}`
+    : style === 'shadow' ? `0 3px 10px ${edge}, 0 1px 2px ${edge}` : 'none');
+  root.setProperty('--cap-box-on', style === 'box' ? '1' : '0');
+  return style;
+}
+
+/** Fake caption stream for style previews (no server needed). */
+export function previewStream(onText, lang = 'es') {
+  const lines = {
+    es: ['Bienvenidos a Nerdearla, hoy vamos a hablar de observabilidad en Kubernetes.', 'Lo primero que necesitás son buenas métricas, logs y trazas con OpenTelemetry.', 'Cuando suena el pager a las tres de la mañana, el contexto lo es todo.'],
+    en: ['Welcome to Nerdearla, today we are going to talk about observability in Kubernetes.', 'The first thing you need is good metrics, logs and traces with OpenTelemetry.', 'When the pager goes off at three in the morning, context is everything.'],
+  }[lang] || [];
+  let s = 0, w = 0, done = '';
+  return setInterval(() => {
+    const words = lines[s % lines.length].split(' ');
+    w++;
+    const cur = words.slice(0, w).join(' ');
+    onText(`${done} ${cur}`.trim());
+    if (w >= words.length) { done = cur; w = 0; s++; }
+  }, 380);
 }

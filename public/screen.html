@@ -6,13 +6,17 @@
   <title>Pantalla · Subtítulos</title>
   <link rel="stylesheet" href="/style.css" />
   <style>
-    /* Projector / stage screen. Params: ?stage=main&langs=es,orig&qr=1&ui=es */
-    html, body { background: #000; color: #fff; height: 100%; overflow: hidden; cursor: none; }
+    /* Projector / stage screen. Params: ?stage=main&langs=es,orig&qr=1&ui=es&size=6.4&lines=3
+       Style: &font=… &weight=… &color=ffffff &bg=000000 &accent=8b5cf6 &upper=1 &align=left|center &style=none|shadow|outline
+       Design it visually at /style.html */
+    html, body { background: var(--screen-bg, #000); color: #fff; height: 100%; overflow: hidden; cursor: none; }
+    .band { font-family: var(--cap-font); text-transform: var(--cap-transform); text-align: var(--cap-align); text-shadow: var(--cap-shadow); }
+    .band.main .clip { color: var(--cap-color); font-weight: var(--cap-weight); }
     .wrap { position: fixed; inset: 0; display: grid; grid-template-rows: auto 1fr auto; padding: 3vh 4vw; gap: 2vh; }
     .head { display: flex; justify-content: space-between; align-items: baseline; color: #9a9ab0; font-size: 2.2vh; }
     .head b { color: #fff; }
     .bands { display: grid; align-content: end; gap: 3vh; }
-    .band { font-weight: 600; line-height: 1.22; transition: opacity 1s; }
+    .band { line-height: 1.22; transition: opacity 1s; }
     .band .clip { display: flex; flex-direction: column; justify-content: flex-end; overflow: hidden; }
     .band.main .clip { font-size: var(--main, 6.4vh); height: calc(var(--main, 6.4vh) * 1.22 * var(--lines, 3)); }
     .band.sub .clip { font-size: 3.6vh; height: calc(3.6vh * 1.22 * 2); color: #b8b8c8; font-weight: 500; }
@@ -37,13 +41,16 @@
     </div>
   </div>
   <script type="module">
-    import { qs, t, esc, wsUrl, Socket, CaptionState, getEvent, langLabel } from '/common.js';
+    import { qs, t, esc, wsUrl, Socket, CaptionState, getEvent, langLabel, applyCaptionStyle, previewStream, toColor } from '/common.js';
     const $ = (id) => document.getElementById(id);
     const stageId = qs.get('stage') || 'main';
     const ev = await getEvent();
     const want = (qs.get('langs') || 'es,orig').split(',');
     if (qs.get('lines')) document.documentElement.style.setProperty('--lines', qs.get('lines'));
     if (qs.get('size')) document.documentElement.style.setProperty('--main', qs.get('size') + 'vh');
+    applyCaptionStyle(qs, { style: 'none', align: 'left' });
+    if (qs.get('bg')) document.documentElement.style.setProperty('--screen-bg', toColor(qs.get('bg')));
+    if (qs.get('clock') === '0') $('clock').classList.add('hidden');
     $('powered').textContent = t('poweredBy');
     $('follow').textContent = t('followOnPhone');
     const viewUrl = `${ev.publicUrl}/s/${stageId}`;
@@ -53,7 +60,16 @@
 
     let hello, bands = [];
     const states = {};
-    new Socket(() => wsUrl('/ws/view', { stage: stageId, langs: want.join(',') }), {
+    if (qs.get('preview') === '1') {
+      // Style preview: fake captions, no server needed.
+      bands = ['es', 'orig'];
+      $('stage').textContent = 'Escenario Principal';
+      $('bands').innerHTML = `<div class="band main" id="b-es"><div class="lbl">Español</div><div class="clip"><div class="txt"></div></div></div><div class="band sub" id="b-orig"><div class="lbl">Original</div><div class="clip"><div class="txt"></div></div></div>`;
+      states.es = { updatedAt: Date.now(), tail: () => '' };
+      states.orig = { updatedAt: Date.now(), tail: () => '' };
+      previewStream((x) => { states.es.updatedAt = Date.now(); document.querySelector('#b-es .txt').textContent = x.slice(-260); }, 'es');
+      previewStream((x) => { states.orig.updatedAt = Date.now(); document.querySelector('#b-orig .txt').textContent = x.slice(-200); }, 'en');
+    } else new Socket(() => wsUrl('/ws/view', { stage: stageId, langs: want.join(',') }), {
       message(m) {
         if (m.type === 'hello') {
           hello = m;

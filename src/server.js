@@ -12,9 +12,10 @@ import { Glossary } from './glossary.js';
 import { Stage } from './stage.js';
 import { Store, toSRT, toVTT, toTXT } from './store.js';
 import { PullSource } from './pull.js';
+import { systemStats } from './system.js';
 
 const glossary = new Glossary();
-const store = new Store(config.dataDir);
+const store = new Store(config.dataDir, { enabled: config.storeTranscripts, retentionDays: config.retentionDays });
 const stages = new Map();
 const pulls = new Map();
 const admins = new Set();
@@ -93,7 +94,10 @@ const getStage = (req, res, next) => {
 };
 const publicUrl = (req) => config.publicUrl || `${req.protocol}://${req.get('host')}`;
 
-app.get('/healthz', (req, res) => res.json({ ok: true, stages: stages.size, engine: config.engine }));
+app.get('/healthz', (req, res) => {
+  const sys = systemStats();
+  res.json({ ok: true, stages: stages.size, engine: config.engine, cpuPct: sys.cpuPct, rssMB: sys.rssMB, loopLagP99Ms: sys.loopLagMs.p99 });
+});
 
 app.get('/api/event', (req, res) => {
   res.json({
@@ -227,6 +231,8 @@ app.get('/metrics', (req, res) => {
       lines.push(`opencaptions_session_reconnects_total{${l},lang="${e.target}"} ${e.reconnects}`);
     }
   }
+  const sys = systemStats();
+  lines.push(`opencaptions_process_cpu_percent ${sys.cpuPct}`, `opencaptions_process_rss_bytes ${sys.rssMB * 1048576}`, `opencaptions_event_loop_lag_p99_ms ${sys.loopLagMs.p99}`, `opencaptions_host_memory_used_percent ${sys.sysMemPct}`, `opencaptions_host_load1 ${sys.load1}`);
   res.type('text/plain').send(lines.join('\n') + '\n');
 });
 
@@ -241,6 +247,7 @@ function snapshot() {
     model: config.engine === 'gemini' ? config.model : 'mock',
     event: config.event.name,
     uptimeSec: Math.round(process.uptime()),
+    system: systemStats(),
     totals: {
       stages: list.length,
       live: list.filter((s) => s.engines.length && !s.gated).length,

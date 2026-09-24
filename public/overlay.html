@@ -6,54 +6,67 @@
   <style>
     /*
       Broadcast overlay for vMix (Web Browser input) / OBS (Browser Source), 1920×1080.
-      Params: ?stage=main&lang=es&lines=2&size=46&pos=bottom&style=box|outline&bg=transparent&width=78&hide=6&font=Inter
+      Layout:  ?stage=main&lang=es&lines=2&size=46&pos=bottom|top|middle&width=78&margin=64&hide=6&bg=transparent
+      Style:   &font=inter|atkinson|lexend|roboto|opensans|montserrat|mono|system &weight=600 &color=ffffff
+               &style=box|outline|shadow|none &box=000000 &alpha=78 &edge=000000 &upper=1 &align=center|left
+      Design it visually at /style.html
     */
     html, body { margin: 0; height: 100%; background: var(--bg, transparent); overflow: hidden; }
     .wrap { position: fixed; left: 0; right: 0; display: flex; justify-content: center; padding: 0 4vw; }
     .wrap.bottom { bottom: var(--margin, 64px); }
     .wrap.top { top: var(--margin, 64px); }
+    .wrap.middle { top: 50%; transform: translateY(-50%); }
     .box {
-      max-width: var(--width, 78%); font-family: var(--font, 'Inter', system-ui, sans-serif); font-weight: 600;
-      font-size: var(--size, 46px); line-height: 1.25; color: #fff; text-align: center; transition: opacity .6s;
+      max-width: var(--width, 78%); font-family: var(--cap-font); font-weight: var(--cap-weight);
+      font-size: var(--size, 46px); line-height: 1.25; color: var(--cap-color); text-align: var(--cap-align);
+      text-transform: var(--cap-transform); text-shadow: var(--cap-shadow); transition: opacity .6s;
+      background: rgba(0, 0, 0, 0); padding: .22em .65em; border-radius: .22em;
     }
+    .box.boxed { background: var(--cap-box); }
     .clip { display: flex; flex-direction: column; justify-content: flex-end; overflow: hidden; max-height: calc(var(--size, 46px) * 1.25 * var(--lines, 2)); }
-    .box.box-style { background: rgba(0, 0, 0, .78); padding: .25em .7em; border-radius: .25em; }
-    .box.outline-style { text-shadow: 0 0 4px #000, 0 0 4px #000, 2px 2px 2px #000, -2px -2px 2px #000, 2px -2px 2px #000, -2px 2px 2px #000; }
     .box.idle { opacity: 0; }
   </style>
 </head>
 <body>
   <div class="wrap" id="wrap"><div class="box idle" id="box"><div class="clip"><div id="txt"></div></div></div></div>
   <script type="module">
-    import { qs, wsUrl, Socket, CaptionState } from '/common.js';
+    import { qs, wsUrl, Socket, CaptionState, applyCaptionStyle, previewStream, toColor } from '/common.js';
     const root = document.documentElement.style;
     const p = (k, d) => qs.get(k) ?? d;
     root.setProperty('--size', p('size', 46) + 'px');
     root.setProperty('--lines', p('lines', 2));
     root.setProperty('--width', p('width', 78) + '%');
     root.setProperty('--margin', p('margin', 64) + 'px');
-    root.setProperty('--bg', p('bg', 'transparent'));
-    if (qs.get('font')) root.setProperty('--font', qs.get('font'));
+    root.setProperty('--bg', toColor(p('bg', 'transparent')));
+    const style = applyCaptionStyle(qs);
     const box = document.getElementById('box');
+    box.classList.toggle('boxed', style === 'box');
     document.getElementById('wrap').className = 'wrap ' + p('pos', 'bottom');
-    box.classList.add(p('style', 'box') + '-style');
 
     const lang = p('lang', 'es');
     const hideMs = Number(p('hide', 6)) * 1000;
-    let ch = null;
-    const st = new CaptionState();
-    new Socket(() => wsUrl('/ws/view', { stage: p('stage', 'main'), langs: lang }), {
-      message(m) {
-        if (m.type === 'hello') { ch = m.map[lang]; st.load(m.history[ch] || [], m.partial[ch]); st.updatedAt = 0; }
-        else if (m.type === 'caption' && m.channel === ch) { st.apply(m); draw(); }
-        else if (m.type === 'talk') { st.clear(); draw(); }
-      },
-    });
-    function draw() {
-      document.getElementById('txt').textContent = st.tail(Number(p('chars', 150)));
-      box.classList.remove('idle');
+    const chars = Number(p('chars', 150));
+    const txt = document.getElementById('txt');
+
+    if (qs.get('preview') === '1') {
+      // Style preview: fake streaming captions, no server connection.
+      previewStream((t) => { txt.textContent = t.slice(-chars); box.classList.remove('idle'); }, lang === 'en' ? 'en' : 'es');
+    } else {
+      let ch = null;
+      const st = new CaptionState();
+      new Socket(() => wsUrl('/ws/view', { stage: p('stage', 'main'), langs: lang }), {
+        message(m) {
+          if (m.type === 'hello') { ch = m.map[lang]; st.load(m.history[ch] || [], m.partial[ch]); st.updatedAt = 0; }
+          else if (m.type === 'caption' && m.channel === ch) { st.apply(m); draw(); }
+          else if (m.type === 'talk') { st.clear(); draw(); }
+        },
+      });
+      function draw() {
+        txt.textContent = st.tail(chars);
+        box.classList.remove('idle');
+      }
+      setInterval(() => box.classList.toggle('idle', Date.now() - st.updatedAt > hideMs || !st.tail(10)), 500);
     }
-    setInterval(() => box.classList.toggle('idle', Date.now() - st.updatedAt > hideMs || !st.tail(10)), 500);
   </script>
 </body>
 </html>

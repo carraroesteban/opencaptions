@@ -5,9 +5,31 @@ import path from 'node:path';
 const safe = (s) => String(s).replace(/[^a-zA-Z0-9_-]/g, '_');
 
 export class Store {
-  constructor(dir) {
+  constructor(dir, { enabled = true, retentionDays = 0 } = {}) {
     this.dir = path.join(dir, 'transcripts');
+    this.enabled = enabled;
+    this.retentionDays = retentionDays;
     fs.mkdirSync(this.dir, { recursive: true });
+    if (retentionDays > 0) {
+      this.purge();
+      setInterval(() => this.purge(), 6 * 3600 * 1000).unref();
+    }
+  }
+
+  /** Delete talks older than the retention period. */
+  purge() {
+    const cutoff = Date.now() - this.retentionDays * 86400000;
+    let n = 0;
+    for (const stage of fs.existsSync(this.dir) ? fs.readdirSync(this.dir) : []) {
+      const sd = path.join(this.dir, stage);
+      for (const talk of fs.readdirSync(sd)) {
+        const td = path.join(sd, talk);
+        try {
+          if (fs.statSync(td).mtimeMs < cutoff) { fs.rmSync(td, { recursive: true, force: true }); n++; }
+        } catch { /* ignore */ }
+      }
+    }
+    if (n) console.log(`[store] retention: deleted ${n} talk(s) older than ${this.retentionDays} days`);
   }
 
   #talkDir(stage, talk) {
@@ -15,12 +37,14 @@ export class Store {
   }
 
   openTalk(stage, talk, languages) {
+    if (!this.enabled) return;
     const d = this.#talkDir(stage, talk.id);
     fs.mkdirSync(d, { recursive: true });
     fs.writeFileSync(path.join(d, 'meta.json'), JSON.stringify({ stage, ...talk, languages }, null, 2));
   }
 
   append(stage, talkId, seg) {
+    if (!this.enabled) return;
     try {
       fs.appendFileSync(path.join(this.#talkDir(stage, talkId), 'captions.jsonl'), JSON.stringify(seg) + '\n');
     } catch (e) {

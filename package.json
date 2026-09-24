@@ -9,7 +9,9 @@
     "check": "node scripts/check-gemini.js",
     "feed": "node scripts/feed.js",
     "loadtest": "node scripts/loadtest.js",
-    "test": "node --test test/*.test.js"
+    "test": "node --test test/*.test.js",
+    "agent": "node scripts/agent.js",
+    "multi": "node scripts/multi-youtube.js"
   },
   "license": "MIT",
   "dependencies": {

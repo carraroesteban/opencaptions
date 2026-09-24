@@ -58,12 +58,14 @@
       <p class="muted hint" style="margin:0">Una vez iniciado no requiere operador: si hay silencio por un rato se pausa el envío (sin costo) y retoma solo cuando alguien habla. Si se corta la red, reconecta y reenvía lo que quedó en buffer.</p>
     </section>
 
-    <section class="card preview" id="preview"></section>
+    <section class="card preview" id="preview" data-no-i18n></section>
 
     <section class="card links row" id="links"></section>
   </main>
   <script type="module">
     import { qs, esc, store, wsUrl, Socket, getEvent, langLabel } from '/common.js';
+    import { localize, prefsControls, tr } from '/i18n.js';
+    document.getElementById('conn').before(prefsControls());
     const $ = (id) => document.getElementById(id);
     const ev = await getEvent();
     $('stage').innerHTML = ev.stages.map((s) => `<option value="${s.id}">${esc(s.name)} (${s.id})</option>`).join('');
@@ -150,7 +152,7 @@
         $('go').classList.remove('primary');
         $('go').classList.add('danger');
       } catch (e) {
-        alertBox(e.message);
+        alertBox(tr(e.message));
         stop();
       }
     }
@@ -209,6 +211,7 @@
         <a href="/admin.html" target="_blank">📊 Panel de producción</a>`;
     }
     if ($('auto').checked || qs.get('autostart') === '1') start();
+    localize();
   </script>
 </body>
 </html>

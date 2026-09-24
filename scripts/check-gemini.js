@@ -12,7 +12,7 @@ const input = arg('input', 'samples/talk-en.wav');
 const target = arg('target', 'es');
 const seconds = Number(arg('seconds', 25));
 
-if (!config.geminiApiKey) {
+if (!config.geminiApiKey && !config.vertex) {
   console.error('✗ GEMINI_API_KEY is not set. Create one (free) at https://aistudio.google.com/apikey and put it in .env');
   process.exit(1);
 }

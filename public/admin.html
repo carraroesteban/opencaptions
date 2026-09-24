@@ -46,17 +46,22 @@
       <div class="kpi">Espectadores<b id="k-viewers">–</b></div>
       <div class="kpi">Costo estimado<b id="k-cost">–</b></div>
       <div class="kpi">Uptime<b id="k-up">–</b></div>
+      <div class="kpi" title="CPU del proceso (100 % = 1 núcleo) · carga del host">CPU<b id="k-cpu">–</b></div>
+      <div class="kpi" title="Memoria del proceso (RSS) · % RAM del host">Memoria<b id="k-mem">–</b></div>
+      <div class="kpi" title="Retraso del event loop (p99). > 50 ms afecta el tiempo real">Event loop<b id="k-lag">–</b></div>
     </div>
     <div class="row">
       <button id="add">+ Sala</button>
       <button id="gloss">Glosario</button>
+      <a href="/style.html" target="_blank"><button>🎨 Estilo</button></a>
+      <a href="/demo.html?mode=mic" target="_blank"><button>🎙 Prueba de sonido</button></a>
     </div>
   </header>
   <main>
     <div class="grid" id="grid"></div>
     <section class="card">
       <div class="row" style="justify-content:space-between;margin-bottom:8px"><b>Eventos</b><select id="logfilter"><option value="">Todas las salas</option></select></div>
-      <div id="logs"></div>
+      <div id="logs" data-no-i18n></div>
     </section>
   </main>
 
@@ -94,6 +99,8 @@
 
   <script type="module">
     import { qs, esc, store, wsUrl, Socket, langLabel } from '/common.js';
+    import { localize, prefsControls, tr } from '/i18n.js';
+    document.querySelector('header > .row:last-child').append(prefsControls());
     const $ = (id) => document.getElementById(id);
     let token = qs.get('token') || store.get('admin.token', '');
     let ev = await (await fetch('/api/event')).json();
@@ -106,11 +113,11 @@
       const r = await fetch(url, { method, headers: { 'content-type': 'application/json', 'x-admin-token': token }, body: body ? JSON.stringify(body) : undefined });
       if (r.status === 401) { askToken(); throw new Error('token'); }
       const j = await r.json();
-      if (!r.ok) { alert(j.error || r.statusText); throw new Error(j.error); }
+      if (!r.ok) { alert(tr(j.error || r.statusText)); throw new Error(j.error); }
       return j;
     };
     function askToken() {
-      const t = prompt('ADMIN_TOKEN del servidor:');
+      const t = prompt(tr('ADMIN_TOKEN del servidor:'));
       if (t != null) { token = t; store.set('admin.token', t); location.reload(); }
     }
 
@@ -146,6 +153,16 @@
       $('k-viewers').textContent = s.totals.viewers;
       $('k-cost').textContent = `US$ ${s.totals.costUsd.toFixed(2)}`;
       $('k-up').textContent = fmtDur(s.uptimeSec);
+      if (s.system) {
+        const y = s.system;
+        $('k-cpu').textContent = `${y.cpuPct}%`;
+        $('k-cpu').style.color = y.cpuPct > 80 ? 'var(--bad)' : y.cpuPct > 50 ? 'var(--warn)' : '';
+        $('k-cpu').parentElement.title = `CPU ${y.cpuPct}% (1 core = 100%) · load ${y.load1} / ${y.cores} cores`;
+        $('k-mem').textContent = `${y.rssMB} MB`;
+        $('k-mem').parentElement.title = `RSS ${y.rssMB} MB · heap ${y.heapMB} MB · host RAM ${y.sysMemPct}% of ${y.sysMemGB} GB`;
+        $('k-lag').textContent = `${y.loopLagMs.p99} ms`;
+        $('k-lag').style.color = y.loopLagMs.p99 > 100 ? 'var(--bad)' : y.loopLagMs.p99 > 50 ? 'var(--warn)' : '';
+      }
       const grid = $('grid');
       const ids = new Set(s.stages.map((x) => x.id));
       for (const el of [...grid.children]) if (!ids.has(el.dataset.id)) el.remove();
@@ -162,7 +179,7 @@
             <div class="sub" data-f="ingest"></div>
             <div class="row" data-f="engines"></div>
             <div class="metrics" data-f="metrics"></div>
-            <div class="preview" data-f="preview"></div>
+            <div class="preview" data-f="preview" data-no-i18n></div>
             <div class="row" data-f="alerts"></div>
             <div class="actions">
               <button data-a="links">🔗 Links / QR</button>
@@ -215,7 +232,7 @@
       const st = last.stages.find((x) => x.id === id);
       const a = b.dataset.a;
       if (a === 'talk') {
-        const title = prompt('Título de la nueva charla (opcional). La transcripción actual queda guardada.', '');
+        const title = prompt(tr('Título de la nueva charla (opcional). La transcripción actual queda guardada.'), '');
         if (title != null) await api('POST', `/api/stages/${id}/talk`, { title });
       } else if (a === 'restart') await api('POST', `/api/stages/${id}/restart`);
       else if (a === 'edit') openEdit(st);
@@ -279,7 +296,7 @@
       ev = await (await fetch('/api/event')).json();
     });
     $('edit-del').onclick = async () => {
-      if (!confirm(`¿Eliminar la sala ${editing.name}? (las transcripciones guardadas se conservan)`)) return;
+      if (!confirm(tr(`¿Eliminar la sala ${editing.name}? (las transcripciones guardadas se conservan)`))) return;
       await api('DELETE', `/api/stages/${editing.id}`);
       $('dlg-edit').close();
     };
@@ -290,8 +307,9 @@
     };
     $('dlg-gloss').addEventListener('close', async () => {
       if ($('dlg-gloss').returnValue !== 'ok') return;
-      try { await api('PUT', '/api/glossary', JSON.parse($('gloss-text').value)); } catch (e) { alert('JSON inválido: ' + e.message); }
+      try { await api('PUT', '/api/glossary', JSON.parse($('gloss-text').value)); } catch (e) { alert(tr('JSON inválido: ') + e.message); }
     });
+    localize();
   </script>
 </body>
 </html>

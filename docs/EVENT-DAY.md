@@ -44,14 +44,32 @@ Objetivo: **cero operadores dedicados durante las charlas**. Una persona de prod
    - `/demo.html?v=<charla de YouTube>` → comparar voz vs. subtítulos con una charla real.
 7. **Imprimir los QR** de cada sala: panel → *🔗 Links / QR* → *Descargar QR (SVG)*.
 
-## T‑2 h: armar cada sala (mini PC)
+## T‑2 h: armar cada sala
+
+Hay tres formas de llevar el audio de cada sala al server; elegí una por sala:
+
+| Opción | Cuándo | Hardware por sala |
+|---|---|---|
+| **A. Pull del stream** (recomendada si vMix/OBS ya emite) | La consola ya entra a vMix/OBS | **Ninguno**: en el panel → ⚙︎ de la sala → *Pull de audio* `srt://…` / `rtmp://…` / `https://…m3u8` |
+| **B. Agente nativo** (recomendada con mini PC) | Audio por cable a una PC | Mini PC con Linux/macOS/Windows, **sin navegador**: `scripts/agent.js` como servicio del sistema |
+| C. Página de ingesta en Chrome | Setup rápido / de emergencia | Cualquier PC con Chrome |
+
+**B. Agente nativo** (sin navegador, arranca solo, reconecta solo):
+```bash
+node scripts/agent.js --list-devices                       # ver entradas de audio
+node scripts/agent.js --stage sala-a --device 1 --server wss://<server> --token <INGEST_TOKEN>
+```
+Como servicio: Linux → `deploy/opencaptions-agent@.service` (systemd, uno por sala); macOS → `deploy/com.opencaptions.agent.plist` (launchd); Windows → `nssm install OpenCaptionsAgent node scripts\agent.js --stage sala-a --device "Nombre de la placa"`. Cada 5 s imprime vúmetro, estado de la sesión y latencia (`journalctl -u opencaptions-agent@sala-a -f`). Opciones: `--channel left|right` si la consola manda cosas distintas por cada canal, `--gain 1.5`.
+
+**C. Página de ingesta en Chrome:**
 
 1. Conectar la salida de la consola (3.5 mm / placa USB) a la mini PC.
 2. Abrir en Chrome: `https://<server>/ingest.html?stage=<sala>&token=<INGEST_TOKEN>`
    - Elegir **Entrada** (la placa), **Canal** (mono / L / R según venga la consola), tildar **Auto‑iniciar**.
    - Para kiosco: `chrome --kiosk --autoplay-policy=no-user-gesture-required --use-fake-ui-for-media-stream "https://<server>/ingest.html?stage=<sala>&autostart=1"` (arranca solo tras un reinicio y acepta el permiso de micrófono).
-3. Segunda salida de video → `https://<server>/screen.html?stage=<sala>` en pantalla completa (reemplaza la ventana del SaaS actual). Opciones: `&langs=es,orig`, `&size=7` (alto de letra en % de pantalla), `&qr=0`.
-4. **Stream (vMix)**: input *Web Browser* 1920×1080 con `https://<server>/overlay.html?stage=<sala>&lang=es` como overlay del programa. En OBS: *Browser Source* con la misma URL. Un overlay por idioma/stream. Con chroma: `&bg=%2300ff00&style=outline`.
+3. **Estilo de los subtítulos**: diseñarlo una vez en `https://<server>/style.html` (tipografía, colores, caja/contorno, posición, líneas, mayúsculas, presets) y copiar las URLs generadas para overlay y proyector.
+4. Segunda salida de video → `https://<server>/screen.html?stage=<sala>` (o la URL del editor de estilo) en pantalla completa (reemplaza la ventana del SaaS actual). Opciones: `&langs=es,orig`, `&size=7` (alto de letra en % de pantalla), `&qr=0`.
+5. **Stream (vMix)**: input *Web Browser* 1920×1080 con `https://<server>/overlay.html?stage=<sala>&lang=es` como overlay del programa. En OBS: *Browser Source* con la misma URL. Un overlay por idioma/stream. Con chroma: `&bg=%2300ff00&style=outline`.
 
 ## T‑60 min: prueba de sonido (por sala)
 
@@ -117,4 +135,6 @@ Opcional: panel → *＋ Nueva charla* con el título (queda en el nombre de los
 | Producción | `/admin.html` |
 | Prueba de sonido / demo en vivo | `/demo.html?mode=mic&stage=<sala>` |
 | Demo con video de YouTube | `/demo.html?v=<url>` |
+| Editor de estilo de subtítulos | `/style.html` |
+| Agente nativo (sin navegador) | `node scripts/agent.js --stage <sala> --device <n>` |
 | Métricas Prometheus | `/metrics` |

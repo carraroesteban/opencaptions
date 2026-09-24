@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- macOS: starts the stage agent at login and keeps it running.
+     1. Edit the stage / device / server / token below (device index from `node scripts/agent.js --list-devices`).
+     2. cp deploy/com.opencaptions.agent.plist ~/Library/LaunchAgents/ && launchctl load ~/Library/LaunchAgents/com.opencaptions.agent.plist
+     3. The first time, macOS asks for microphone permission for "node". Logs: /tmp/opencaptions-agent.log -->
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key><string>com.opencaptions.agent</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/usr/local/bin/node</string>
+    <string>/Users/YOU/opencaptions/scripts/agent.js</string>
+    <string>--stage</string><string>sala-a</string>
+    <string>--device</string><string>0</string>
+    <string>--server</string><string>wss://subs.example.com</string>
+    <string>--token</string><string>change-me</string>
+    <string>--quiet</string>
+  </array>
+  <key>RunAtLoad</key><true/>
+  <key>KeepAlive</key><true/>
+  <key>StandardOutPath</key><string>/tmp/opencaptions-agent.log</string>
+  <key>StandardErrorPath</key><string>/tmp/opencaptions-agent.log</string>
+</dict>
+</plist>

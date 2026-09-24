@@ -67,7 +67,6 @@
     let hello = null;
     const states = {};
     const player = new PcmPlayer();
-    document.documentElement.dataset.theme = store.get('theme', 'dark');
 
     $('empty').textContent = t('connecting');
     $('tolive').textContent = '↓ ' + t('backToLive');
@@ -191,7 +190,7 @@
     $('bigger').onclick = () => setSize(2);
     $('dual').setAttribute('aria-pressed', dual);
     $('dual').onclick = () => { dual = !dual; store.set('dual', dual); $('dual').setAttribute('aria-pressed', dual); sock.reconnect(); };
-    $('theme').onclick = () => { const th = document.documentElement.dataset.theme === 'light' ? 'dark' : 'light'; document.documentElement.dataset.theme = th; store.set('theme', th); };
+    $('theme').onclick = () => { const cur = document.documentElement.dataset.theme || (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark'); const th = cur === 'light' ? 'dark' : 'light'; document.documentElement.dataset.theme = th; store.set('theme', th); };
     async function toggleListen() {
       listening = !listening;
       $('listen').setAttribute('aria-pressed', listening);

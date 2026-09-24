@@ -57,10 +57,10 @@
   <main>
     <section>
       <div class="stagewrap"><div id="player"></div><div class="micidle mic-only" id="micidle">🎙 Elegí el micrófono, tocá ▶ Start y hablá en español o inglés.</div>
-        <div class="ov"><div class="box idle" id="ovbox"><div class="clip"><div id="ovtxt"></div></div></div></div>
+        <div class="ov"><div class="box idle" id="ovbox"><div class="clip"><div id="ovtxt" data-no-i18n></div></div></div></div>
       </div>
       <div class="meter mic-only" style="margin-top:10px;height:10px"><i id="miclvl"></i></div>
-      <div class="orig"><b id="origlbl">Original</b><span id="origtxt">…</span></div>
+      <div class="orig"><b id="origlbl">Original</b><span id="origtxt" data-no-i18n>…</span></div>
       <p class="muted hint mic-only">Prueba de sonido / demo en vivo: el audio del micrófono va al server igual que desde la mini PC del escenario. Ideal para chequear cada sala antes de abrir puertas.</p>
       <p class="muted hint yt-only">Play/pausa/adelantar el video mueve también el audio que procesa el server (≈1 s de diferencia al arrancar). La demora que ves entre la voz y el subtítulo es la latencia real del sistema.</p>
     </section>
@@ -74,13 +74,16 @@
         </div>
         <div class="row" id="alerts" style="margin-top:8px"></div>
       </div>
-      <div class="card"><b>Transcripción (<span id="tlang"></span>)</b><div id="transcript" style="margin-top:8px"></div>
+      <div class="card"><b>Transcripción (<span id="tlang"></span>)</b><div id="transcript" style="margin-top:8px" data-no-i18n></div>
         <div class="row hint" style="margin-top:8px"><a id="dl-srt" href="#">⬇ SRT</a><a id="dl-txt" href="#">⬇ TXT</a><a href="/admin.html" target="_blank">📊 Producción</a></div>
       </div>
     </aside>
   </main>
   <script type="module">
     import { qs, esc, store, wsUrl, Socket, CaptionState, getEvent, langLabel } from '/common.js';
+    import { localize, prefsControls, tr } from '/i18n.js';
+    document.querySelector('header').append(prefsControls());
+    localize();
     const $ = (id) => document.getElementById(id);
     const ev = await getEvent();
     const token = store.get('admin.token', '');
@@ -149,7 +152,7 @@
         setState('en vivo', 'bad');
       } catch (e) {
         setState('error', 'bad');
-        alert('No se pudo iniciar: ' + e.message);
+        alert(tr('No se pudo iniciar: ') + tr(e.message));
       } finally {
         setTimeout(() => (busy = false), 1500);
       }
@@ -199,7 +202,7 @@
     listMics();
     async function micStart() {
       if (mic) return;
-      if (!window.isSecureContext) return alert('El micrófono requiere localhost o HTTPS.');
+      if (!window.isSecureContext) return alert(tr('El micrófono requiere localhost o HTTPS.'));
       try {
         const ctx = new AudioContext();
         await ctx.audioWorklet.addModule('/pcm-worklet.js');
@@ -231,7 +234,7 @@
         $('micidle').classList.add('hidden');
         setState('en vivo 🎙', 'bad');
       } catch (e) {
-        alert('No se pudo abrir el micrófono: ' + e.message);
+        alert(tr('No se pudo abrir el micrófono: ') + e.message);
       }
     }
     function micStop(reset = true) {

@@ -22,7 +22,7 @@
     <div class="brand" style="font-size:14px">open<span>captions</span></div>
     <h1 id="event">…</h1>
     <p class="muted" id="subtitle"></p>
-    <div class="stages" id="stages"></div>
+    <div class="stages" id="stages" data-no-i18n></div>
     <footer class="muted row" style="justify-content:space-between">
       <span id="powered"></span>
       <a href="/admin.html" id="prod"></a>
@@ -30,6 +30,8 @@
   </main>
   <script type="module">
     import { getEvent, t, esc, langLabel } from '/common.js';
+    import { prefsControls } from '/i18n.js';
+    document.querySelector('footer').append(prefsControls());
     document.getElementById('subtitle').textContent = t('chooseStage');
     document.getElementById('powered').textContent = t('poweredBy');
     document.getElementById('prod').textContent = t('production');

@@ -8,11 +8,11 @@
 // Rate limits: a process-wide limiter (MT_RPM, 0 = unlimited) plus adaptive back-off on 429/quota errors.
 // Partial (provisional) requests are the first thing sacrificed; final sentences are retried and never
 // replaced by text in the wrong language.
-import { GoogleGenAI } from '@google/genai';
+import { createClient } from './genai.js';
 import { config } from './config.js';
 
 let ai = null;
-const client = () => (ai ??= new GoogleGenAI({ apiKey: config.geminiApiKey }));
+const client = () => (ai ??= createClient());
 /** Test hook: inject a fake client. */
 export const _setClient = (c) => { ai = c; };
 

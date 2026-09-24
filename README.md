@@ -15,12 +15,14 @@ Built for the [Nerdearla 2026 Vibeathon](https://nerdearla.devpost.com/) on top 
 
 ## What it does
 
-- **Live audio in** from any source: the stage mini-PC's audio input *in a browser tab* (zero new hardware), a browser tab/screen share (e.g. a YouTube stream), an audio file, or a server-side pull of any SRT / RTMP / HLS / HTTP stream via ffmpeg.
+- **Live audio in** from any source: a **headless stage agent** (`scripts/agent.js`, runs as a systemd/launchd/Windows service, no browser) capturing the sound card, a **server-side pull** of the SRT / RTMP / HLS stream vMix/OBS already produce (no hardware per room), a browser page on the stage PC (quick setup), a tab/screen share, or an audio file.
 - **Real-time captions** in the original language **and translations** (EN→ES, ES→EN, PT, and any of Gemini's 70+ languages), with one Live session per room plus fast sentence-level text translation with live provisional updates (so N languages don't multiply cost or lag). Source language is auto-detected (or pinned per room).
 - **Many rooms in parallel**: one Node process runs N stages × M languages; tested with 10 simultaneous stages / 20 model sessions on a laptop.
 - **Audience view**: mobile web page (via QR) to pick room + language, adjustable font, light/dark, auto-scroll with "back to live", dual view (translation + original), transcript download, and **🎧 listen mode: the translated *voice* streamed to your phone** (Gemini already generates it — we just don't throw it away).
 - **Stage screen**: full-screen, high-contrast captions for the projector, translation + original, with a QR to follow on the phone.
-- **Broadcast overlay** for **vMix** (*Web Browser* input) and **OBS** (*Browser Source*): transparent background (or chroma green), configurable size/lines/position — burns captions into the stream so virtual attendees get live translation too.
+- **Broadcast overlay** for **vMix** (*Web Browser* input) and **OBS** (*Browser Source*): transparent background (or chroma green) — burns captions into the stream so virtual attendees get live translation too.
+- **Visual caption style editor** (`/style.html`): font (incl. Atkinson Hyperlegible), weight, size, colors, box/outline/shadow, opacity, position, lines, uppercase, presets — live preview at 1920×1080, outputs the URL for vMix/OBS or the projector.
+- **Enterprise-ready options**: Google Cloud **Vertex AI** backend (ISO 27001/SOC 2-covered, regional), no audio ever stored, `STORE_TRANSCRIPTS=false` / `RETENTION_DAYS`, token-protected ingest & admin, TLS. See [docs/SECURITY.md](docs/SECURITY.md).
 - **Production dashboard**: per-room status, live audio meter, model session health, reconnections, latency (speech→caption and speech→translation), viewers, audio minutes, **estimated cost**, alerts (*no audio*, *mic muted?*, *high latency*, *reconnecting*) and an event log. Add/edit rooms, set talk titles, start a new talk, restart sessions — all without restarting the server.
 - **Technical glossary**: vocabulary biasing sent to the speech recognizer + deterministic post-fixes (e.g. *"cubernetes" → Kubernetes*, *"de guardia" → on-call*) that hot-reload while the event runs.
 - **Transcript export** per talk in **SRT / VTT / TXT / JSON**, persisted to disk as it happens.
@@ -56,6 +58,7 @@ Open:
 | `http://localhost:8080/ingest.html` | Stage ingest (mic / tab / file / bundled samples) |
 | `http://localhost:8080/screen.html?stage=main` | Projector screen |
 | `http://localhost:8080/overlay.html?stage=main&lang=es` | vMix / OBS overlay |
+| `http://localhost:8080/style.html` | **Caption style editor** for overlay & projector |
 | `http://localhost:8080/demo.html?mode=mic` | **Live microphone demo / sound check**: speak and see original + translation big on screen, with level meter and latency |
 | `http://localhost:8080/demo.html?v=<youtube-url>` | **Play-along demo**: plays a YouTube talk in the browser while the server captions the same audio in real time (needs `yt-dlp`) — compare speech vs captions, record demos |
 
@@ -118,7 +121,7 @@ Measured continuously per room and shown on the dashboard: *speech onset → fir
 Today, at Nerdearla, each stage's sound desk goes via a 3.5 mm cable into a mini PC, where a browser captures the input and shows the captions on the stage screens. OpenCaptions keeps exactly that setup:
 
 1. **Server**: run it once for the whole event (a small VM is enough): `docker compose up -d` with your `.env`. Put it behind **HTTPS** — required, because browsers only allow microphone capture on `localhost` or `https://` (Cloudflare Tunnel, Caddy, or built-in TLS with `HTTPS_CERT`/`HTTPS_KEY`) — and set `PUBLIC_URL`, `INGEST_TOKEN`, `ADMIN_TOKEN`.
-2. **Each stage mini PC**: open `https://<server>/ingest.html?stage=<id>&token=<INGEST_TOKEN>`, choose the audio input, tick *Auto-iniciar*, click **Start**. Open *"Abrir pantalla para proyector"* on the second screen (it replaces today's SaaS window). For unattended kiosks launch Chrome with `--autoplay-policy=no-user-gesture-required --use-fake-ui-for-media-stream` and the `?autostart=1` URL.
+2. **Audio per room** — pick one: **(a)** set the room's *pull* to the SRT/RTMP/HLS stream vMix/OBS already outputs (no hardware); **(b)** run the **headless agent** on the stage PC as a service: `node scripts/agent.js --stage <id> --device <n> --server wss://<server> --token <INGEST_TOKEN>` (see `deploy/` for systemd/launchd); or **(c)** open `https://<server>/ingest.html?stage=<id>&token=<INGEST_TOKEN>` in Chrome, choose the audio input, tick *Auto-iniciar*, click **Start**. Open *"Abrir pantalla para proyector"* on the second screen (it replaces today's SaaS window). For unattended kiosks launch Chrome with `--autoplay-policy=no-user-gesture-required --use-fake-ui-for-media-stream` and the `?autostart=1` URL.
 3. **Audience**: print the per-room QR from *Dashboard → Links / QR* (it points to `/s/<room>`); it is also shown on the projector.
 4. **Streaming (vMix)**: add a *Web Browser* input with `https://<server>/overlay.html?stage=<id>&lang=es` at 1920×1080 and put it as an overlay on the program output (OBS: *Browser Source*, same URL). Different stream per language → different overlay URL. Use `&bg=%2300ff00` if you prefer chroma key.
 5. **Production team**: keep `/admin.html` open. Everything is visible at a glance; there is nothing to click during a talk. Use *＋ Nueva charla* to title talks (for nicer transcript files) — optional, talks are split automatically after breaks.
@@ -130,6 +133,7 @@ Alternatively, if the program audio already exists as a stream (vMix SRT output,
 
 - **Per room cost is linear and predictable**: one model session per target language. Rooms are independent; there's no shared state between them.
 - **One process handles many rooms**: the server only relays ~32 KB/s of audio per room and fans out small JSON messages to viewers. Load test: `npm run loadtest -- --stages 10 --input samples/talk-en.wav` (10 rooms, 20 sessions: ~90 MB RSS).
+- **Real-talk latency test**: `npm run multi -- --rooms 15 --minutes 5` opens 15 rooms, feeds each one a different Nerdearla 2025 talk from YouTube (server-side yt-dlp, real time), prints live p50/p90 latency per room and writes a JSON report to `data/latency-*.json`. `--playlist <url>` or `--file urls.txt` to choose the videos, `--list` for a dry run, `--cleanup` to delete the rooms afterwards.
 - **More rooms than one process/API project can handle**: shard by room — run N instances with `STAGES=...` (and if needed a different `GEMINI_API_KEY`/project each, to spread Live API concurrency quotas) behind a reverse proxy that routes `/ws/*?stage=X` and `/s/X`. Captions are per-room, so no pub/sub is needed.
 - **Viewers**: each viewer is one lightweight WebSocket receiving small JSON messages. For very large audiences, put a WebSocket fan-out gateway in front — the viewer protocol is tiny (see below).
 - **Check your quotas**: Live API concurrent sessions depend on your Gemini tier; see AI Studio → rate limits.
@@ -189,10 +193,14 @@ src/glossary.js        vocabulary + hot-reloaded replacements
 src/store.js           per-talk JSONL + SRT/VTT/TXT export
 src/pull.js            ffmpeg pull ingest
 public/                audience, screen, overlay, ingest and admin pages (vanilla JS, no build)
-scripts/               feed, loadtest, check-gemini, fetch-samples
+scripts/               feed, loadtest, multi-youtube, agent, check-gemini, fetch-samples
 ```
 
 Engines implement a tiny interface (`start`, `sendAudio`, `endAudio`, `stop`, events `input`/`output`/`audio`), so a fully local engine (e.g. Gemma / Whisper-based) can be plugged in for events without internet.
+
+## Security & compliance
+
+Self-hosted, no audio stored, optional transcript storage with retention, and a Vertex AI backend for organizations that need ISO 27001 / SOC 2-covered processing. Details and recommended enterprise deployment: **[docs/SECURITY.md](docs/SECURITY.md)**.
 
 ## Known limitations
 

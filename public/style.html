@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Estilo de subtítulos · OpenCaptions</title>
+  <link rel="stylesheet" href="/style.css" />
+  <style>
+    body { min-height: 100vh; }
+    header { display: flex; gap: 12px; align-items: center; padding: 12px 18px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+    main { display: grid; grid-template-columns: 340px minmax(0, 1fr); gap: 16px; padding: 16px 18px; }
+    @media (max-width: 1000px) { main { grid-template-columns: 1fr; } }
+    .controls { display: grid; gap: 12px; align-content: start; }
+    .controls .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .controls input[type=color] { width: 100%; height: 36px; padding: 2px; }
+    .controls input[type=range] { width: 100%; }
+    .presets { display: flex; gap: 6px; flex-wrap: wrap; }
+    .presets button { font-size: 13px; padding: 6px 10px; }
+    .stagebox { position: relative; width: 100%; aspect-ratio: 16 / 9; border-radius: 12px; overflow: hidden; border: 1px solid var(--line); }
+    .stagebox .bgimg { position: absolute; inset: 0; background:
+      radial-gradient(ellipse at 30% 30%, #3b4a6b 0%, transparent 60%), radial-gradient(ellipse at 75% 60%, #6b3b5a 0%, transparent 55%),
+      linear-gradient(135deg, #1c2233, #2b1f33); }
+    .stagebox .bgimg::after { content: 'Programa (cámara / slides)'; position: absolute; left: 3%; top: 4%; color: #ffffff55; font: 600 14px var(--font); }
+    .stagebox iframe { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; border: 0; transform-origin: 0 0; background: transparent; color-scheme: normal; /* same scheme as the embedded page → transparent */ }
+    .out { display: flex; gap: 6px; } .out input { flex: 1; font-family: var(--mono); font-size: 12px; }
+    .val { float: right; color: var(--fg); font-variant-numeric: tabular-nums; }
+    .only-overlay, .only-screen { display: contents; }
+    body.t-screen .only-overlay, body.t-overlay .only-screen { display: none; }
+  </style>
+</head>
+<body class="t-overlay">
+  <header>
+    <div class="brand" style="font-size:14px">open<span>captions</span> · estilo de subtítulos</div>
+    <div class="row" role="group">
+      <button class="pill" data-target="overlay" aria-pressed="true">🎬 Overlay vMix / OBS</button>
+      <button class="pill" data-target="screen" aria-pressed="false">🖥️ Pantalla / proyector</button>
+    </div>
+    <span class="muted" style="font-size:13px">Diseñá el estilo, copiá la URL y pegala en vMix (Web Browser input), OBS (Browser Source) o el navegador del proyector.</span>
+  </header>
+  <main>
+    <section class="card controls">
+      <div><b>Presets</b><div class="presets" id="presets" style="margin-top:6px"></div></div>
+      <div class="grid2">
+        <label class="field">Sala<select id="stage"></select></label>
+        <label class="field">Idioma<select id="lang"></select></label>
+      </div>
+      <label class="field">Tipografía<select id="font"></select></label>
+      <div class="grid2">
+        <label class="field">Tamaño <span class="val" id="v-size"></span><input type="range" id="size" /></label>
+        <label class="field">Peso <span class="val" id="v-weight"></span><input type="range" id="weight" min="400" max="800" step="100" /></label>
+      </div>
+      <div class="grid2">
+        <label class="field">Líneas <span class="val" id="v-lines"></span><input type="range" id="lines" min="1" max="4" /></label>
+        <label class="field">Alineación<select id="align"><option value="center">Centro</option><option value="left">Izquierda</option></select></label>
+      </div>
+      <div class="grid2">
+        <label class="field">Color del texto<input type="color" id="color" /></label>
+        <label class="field">Estilo<select id="style"><option value="box">Caja</option><option value="outline">Contorno</option><option value="shadow">Sombra</option><option value="none">Sin efecto</option></select></label>
+      </div>
+      <div class="only-overlay"><div class="grid2">
+        <label class="field">Color caja / contorno<input type="color" id="box" /></label>
+        <label class="field">Opacidad caja <span class="val" id="v-alpha"></span><input type="range" id="alpha" min="0" max="100" /></label>
+      </div></div>
+      <label class="row muted"><input type="checkbox" id="upper" /> MAYÚSCULAS</label>
+      <div class="only-overlay">
+        <div class="grid2">
+          <label class="field">Posición<select id="pos"><option value="bottom">Abajo</option><option value="middle">Centro</option><option value="top">Arriba</option></select></label>
+          <label class="field">Ancho máx. <span class="val" id="v-width"></span><input type="range" id="width" min="40" max="95" /></label>
+        </div>
+        <label class="field">Fondo de la página<select id="bgmode"><option value="transparent">Transparente (alpha)</option><option value="00ff00">Verde chroma</option><option value="000000">Negro</option></select></label>
+      </div>
+      <div class="only-screen">
+        <div class="grid2">
+          <label class="field">Fondo<input type="color" id="sbg" /></label>
+          <label class="field">Color de acento<input type="color" id="accent" /></label>
+        </div>
+        <label class="row muted"><input type="checkbox" id="orig" checked /> Mostrar también el original</label>
+        <label class="row muted"><input type="checkbox" id="qr" checked /> Mostrar QR</label>
+      </div>
+      <p class="muted" style="font-size:12px;margin:0">Accesibilidad: máximo 2 líneas, alto contraste (texto claro sobre caja oscura ≥ 70 %) y tipografías legibles como Atkinson Hyperlegible.</p>
+    </section>
+    <section style="display:grid;gap:12px;align-content:start">
+      <div class="stagebox" id="stagebox"><div class="bgimg" id="bgimg"></div><iframe id="frame" title="preview"></iframe></div>
+      <div class="card" style="display:grid;gap:8px">
+        <b>URL para usar en el evento</b>
+        <div class="out"><input id="url" readonly /><button id="copy">Copiar</button><a id="open" target="_blank"><button>Abrir</button></a></div>
+        <span class="muted" style="font-size:12px" id="hint"></span>
+      </div>
+    </section>
+  </main>
+  <script type="module">
+    import { esc, store, getEvent, FONTS, langLabel } from '/common.js';
+    import { localize, prefsControls, tr } from '/i18n.js';
+    document.querySelector('header').append(prefsControls());
+    const $ = (id) => document.getElementById(id);
+    const ev = await getEvent();
+    let target = store.get('style.target', 'overlay');
+
+    const DEFAULTS = {
+      overlay: { font: 'inter', size: 46, weight: 600, lines: 2, align: 'center', color: '#ffffff', style: 'box', box: '#000000', alpha: 78, upper: false, pos: 'bottom', width: 78, bgmode: 'transparent' },
+      screen: { font: 'inter', size: 6.4, weight: 600, lines: 3, align: 'left', color: '#ffffff', style: 'none', box: '#000000', alpha: 0, upper: false, sbg: '#000000', accent: ev.accent || '#8b5cf6', orig: true, qr: true },
+    };
+    const PRESETS = {
+      'Nerdearla': { font: 'lexend', weight: 700, color: '#ffffff', style: 'box', box: '#1a1033', alpha: 85, accent: '#8b5cf6', sbg: '#0b0716' },
+      'TV clásico': { font: 'roboto', weight: 500, color: '#ffffff', style: 'box', box: '#000000', alpha: 80, upper: false, align: 'center' },
+      'Alto contraste': { font: 'atkinson', weight: 700, color: '#ffe600', style: 'box', box: '#000000', alpha: 100, sbg: '#000000' },
+      'Minimal': { font: 'inter', weight: 700, color: '#ffffff', style: 'outline', box: '#000000', alpha: 0 },
+      'Lower third': { font: 'montserrat', weight: 800, color: '#ffffff', style: 'box', box: '#8b5cf6', alpha: 92, align: 'left', upper: true, lines: 1 },
+    };
+
+    $('stage').innerHTML = ev.stages.map((s) => `<option value="${s.id}">${esc(s.name)}</option>`).join('');
+    $('font').innerHTML = Object.entries(FONTS).map(([k, f]) => `<option value="${k}">${esc(f.label)}</option>`).join('');
+    $('presets').innerHTML = Object.keys(PRESETS).map((n) => `<button data-preset="${esc(n)}">${esc(n)}</button>`).join('');
+    function fillLangs() {
+      const st = ev.stages.find((s) => s.id === $('stage').value) || ev.stages[0];
+      const langs = (st?.languages || ['orig', 'es', 'en']).filter((l) => l !== 'orig');
+      $('lang').innerHTML = [...langs, 'orig'].map((l) => `<option value="${l}">${esc(langLabel(l, ev.languages))}</option>`).join('');
+    }
+    fillLangs();
+
+    const ids = ['font', 'size', 'weight', 'lines', 'align', 'color', 'style', 'box', 'alpha', 'upper', 'pos', 'width', 'bgmode', 'sbg', 'accent', 'orig', 'qr'];
+    const read = () => Object.fromEntries(ids.map((k) => [k, $(k).type === 'checkbox' ? $(k).checked : $(k).value]));
+    function write(v) { for (const [k, x] of Object.entries(v)) if ($(k)) { if ($(k).type === 'checkbox') $(k).checked = !!x; else $(k).value = x; } }
+    function setTarget(t) {
+      target = t;
+      store.set('style.target', t);
+      document.body.className = 't-' + t;
+      document.querySelectorAll('[data-target]').forEach((b) => b.setAttribute('aria-pressed', b.dataset.target === t));
+      const size = $('size');
+      if (t === 'overlay') { size.min = 24; size.max = 90; size.step = 1; } else { size.min = 3; size.max = 12; size.step = 0.2; }
+      write({ ...DEFAULTS[t], ...store.get(`style.${t}`, {}) });
+      update();
+    }
+
+    const hex = (c) => c.replace('#', '');
+    function params(v, preview) {
+      const d = DEFAULTS[target];
+      const p = new URLSearchParams();
+      p.set('stage', $('stage').value);
+      if (target === 'overlay') p.set('lang', $('lang').value);
+      else p.set('langs', v.orig && $('lang').value !== 'orig' ? `${$('lang').value},orig` : $('lang').value);
+      const add = (k, val, def) => { if (String(val) !== String(def)) p.set(k, val); };
+      add('font', v.font, 'inter'); add('size', v.size, d.size); add('weight', v.weight, 600); add('lines', v.lines, d.lines);
+      add('align', v.align, target === 'overlay' ? 'center' : 'left');
+      add('color', hex(v.color), 'ffffff'); add('style', v.style, target === 'overlay' ? 'box' : 'none');
+      add('box', hex(v.box), '000000'); add('alpha', v.alpha, 78); if (v.upper) p.set('upper', '1');
+      if (target === 'overlay') {
+        add('pos', v.pos, 'bottom'); add('width', v.width, 78);
+        if (v.bgmode !== 'transparent') p.set('bg', v.bgmode);
+      } else {
+        add('bg', hex(v.sbg), '000000'); add('accent', hex(v.accent), hex(ev.accent || '#8b5cf6'));
+        if (!v.qr) p.set('qr', '0');
+      }
+      if (preview) p.set('preview', '1');
+      return p;
+    }
+
+    let t;
+    function update() {
+      const v = read();
+      store.set(`style.${target}`, v);
+      $('v-size').textContent = target === 'overlay' ? `${v.size}px` : `${v.size}vh`;
+      $('v-weight').textContent = v.weight; $('v-lines').textContent = v.lines; $('v-alpha').textContent = v.alpha + '%'; $('v-width').textContent = v.width + '%';
+      const page = target === 'overlay' ? 'overlay.html' : 'screen.html';
+      const url = `${ev.publicUrl}/${page}?${params(v, false)}`;
+      $('url').value = url; $('open').href = url;
+      $('hint').textContent = target === 'overlay'
+        ? 'vMix: Add Input → Web Browser → 1920×1080 → pegá la URL. OBS: Fuente → Navegador → 1920×1080.'
+        : 'Abrila en el navegador de la mini PC conectada al proyector, en pantalla completa (F11).';
+      $('bgimg').style.display = target === 'overlay' && v.bgmode === 'transparent' ? '' : 'none';
+      clearTimeout(t);
+      t = setTimeout(() => { $('frame').src = `/${page}?${params(v, true)}`; }, 250);
+    }
+    function fit() { $('frame').style.transform = `scale(${$('stagebox').clientWidth / 1920})`; }
+    new ResizeObserver(fit).observe($('stagebox'));
+
+    document.querySelector('.controls').addEventListener('input', update);
+    $('stage').onchange = () => { fillLangs(); update(); };
+    $('presets').onclick = (e) => { const b = e.target.closest('[data-preset]'); if (!b) return; write({ ...DEFAULTS[target], ...PRESETS[b.dataset.preset] }); update(); };
+    document.querySelectorAll('[data-target]').forEach((b) => (b.onclick = () => setTarget(b.dataset.target)));
+    $('copy').onclick = () => { navigator.clipboard.writeText($('url').value); $('copy').textContent = tr('✓ Copiada'); setTimeout(() => ($('copy').textContent = tr('Copiar')), 1500); };
+    setTarget(target);
+    fit();
+    localize();
+  </script>
+</body>
+</html>
