@@ -26,6 +26,7 @@
       <span class="chip" id="conn">desconectado</span>
     </div>
 
+    <div id="securewarn" class="card hidden" style="border-color:var(--bad)">⚠ Esta página no está en un contexto seguro: el navegador <b>no va a dejar usar el micrófono</b>. Abrila por <b>HTTPS</b> o en <b>localhost</b> (ver docs/EVENT-DAY.md → HTTPS).</div>
     <section class="card" style="display:grid;gap:14px">
       <div class="grid">
         <label class="field">Escenario<select id="stage"></select></label>
@@ -90,6 +91,7 @@
     $('auto').onchange = () => store.set('ingest.auto', $('auto').checked);
     $('gain').oninput = () => { store.set('ingest.gain', +$('gain').value); node?.port.postMessage({ gain: +$('gain').value }); };
     showFields();
+    if (!window.isSecureContext) document.getElementById('securewarn').classList.remove('hidden');
 
     async function listDevices() {
       try {

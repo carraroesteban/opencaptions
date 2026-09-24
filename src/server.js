@@ -1,5 +1,7 @@
 // OpenCaptions server: HTTP API + static UIs + WebSockets for ingest, viewers and the production dashboard.
 import http from 'node:http';
+import https from 'node:https';
+import { execFile } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import express from 'express';
@@ -42,9 +44,27 @@ function removeStage(id) {
   stages.delete(id);
 }
 
-function startPull(st, url, loop) {
+function startPull(st, url, loop, opts = {}) {
   stopPull(st.id);
-  pulls.set(st.id, new PullSource(st, url, { loop }));
+  pulls.set(st.id, new PullSource(st, url, { loop, ...opts }));
+}
+
+/** Resolve a YouTube (or any yt-dlp supported) page URL to a direct audio URL. */
+const mediaCache = new Map(); // page URL → { media, at } (direct URLs stay valid for hours)
+function resolveMedia(url) {
+  const hit = mediaCache.get(url);
+  if (hit && Date.now() - hit.at < 30 * 60 * 1000) return Promise.resolve(hit.media);
+  return new Promise((resolve, reject) => {
+    execFile('yt-dlp', ['-f', 'bestaudio/best', '-g', '--no-playlist', url], { timeout: 30000 }, (err, stdout, stderr) => {
+      if (err) {
+        if (err.code === 'ENOENT') return reject(new Error('yt-dlp is not installed (macOS: brew install yt-dlp · pip install yt-dlp)'));
+        return reject(new Error((stderr || err.message).trim().split('\n').pop()));
+      }
+      const media = stdout.trim().split('\n')[0];
+      mediaCache.set(url, { media, at: Date.now() });
+      resolve(media);
+    });
+  });
 }
 
 function stopPull(id) {
@@ -129,6 +149,34 @@ app.post('/api/stages/:id/talk', admin, getStage, (req, res) => {
   res.json(req.stage.status());
 });
 
+// Demo / testing: the server pulls a YouTube video's audio in real time from `start` seconds, while the
+// demo page plays the same video in the browser — so you can compare speech and captions side by side.
+app.post('/api/stages/:id/youtube', admin, getStage, async (req, res) => {
+  const url = String(req.body?.url || '');
+  const start = Math.max(0, Number(req.body?.start || 0));
+  if (!/^https?:\/\//.test(url)) return res.status(400).json({ error: 'url required' });
+  try {
+    startPull(req.stage, url, false, { via: 'ytdlp', start, realtime: true, once: true, label: `YouTube ${url.replace(/^https?:\/\/(www\.)?/, '').slice(0, 40)} @${start}s` });
+    // Answer only once audio is actually flowing, so the demo page starts the video in sync.
+    const pull = pulls.get(req.stage.id);
+    await Promise.race([pull.firstData, new Promise((_, rej) => setTimeout(() => rej(new Error('no audio after 25 s (yt-dlp too slow or blocked?)')), 25000))]);
+    res.json({ ok: true, start });
+  } catch (e) {
+    stopPull(req.stage.id);
+    req.stage.log('error', `youtube: ${e.message}`);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.delete('/api/stages/:id/pull', admin, getStage, (req, res) => {
+  stopPull(req.stage.id);
+  res.json({ ok: true });
+});
+app.post('/api/stages/:id/pull/stop', admin, getStage, (req, res) => { // sendBeacon-friendly
+  stopPull(req.stage.id);
+  res.json({ ok: true });
+});
+
 app.post('/api/stages/:id/restart', admin, getStage, (req, res) => {
   req.stage.restartEngines();
   res.json({ ok: true });
@@ -205,7 +253,12 @@ function snapshot() {
 }
 
 // ---------------- websockets ----------------
-const server = http.createServer(app);
+// HTTPS is required for microphone capture from other machines (browsers only allow getUserMedia on
+// localhost or https). Set HTTPS_CERT / HTTPS_KEY (e.g. from `mkcert`) or put a TLS proxy in front.
+const tls = process.env.HTTPS_CERT && process.env.HTTPS_KEY
+  ? { cert: fs.readFileSync(process.env.HTTPS_CERT), key: fs.readFileSync(process.env.HTTPS_KEY) }
+  : null;
+const server = tls ? https.createServer(tls, app) : http.createServer(app);
 const wss = new WebSocketServer({ noServer: true, perMessageDeflate: false });
 
 server.on('upgrade', (req, socket, head) => {
@@ -319,13 +372,14 @@ function broadcastAdmin(obj) {
 setInterval(() => broadcastAdmin({ type: 'status', ...snapshot() }), 1000);
 
 server.listen(config.port, config.host, () => {
-  const base = config.publicUrl || `http://localhost:${config.port}`;
+  const base = config.publicUrl || `${tls ? 'https' : 'http'}://localhost:${config.port}`;
   console.log(`\n  OpenCaptions · ${config.event.name}`);
   console.log(`  engine: ${config.engine}${config.engine === 'gemini' ? ` (${config.model})` : ' (no GEMINI_API_KEY → simulated captions)'}`);
   console.log(`  stages: ${[...stages.keys()].join(', ')}`);
   console.log(`\n  Audience     ${base}/`);
   console.log(`  Production   ${base}/admin.html`);
-  console.log(`  Stage ingest ${base}/ingest.html\n`);
+  console.log(`  Stage ingest ${base}/ingest.html`);
+  console.log(`  Live demo    ${base}/demo.html?mode=mic\n`);
 });
 
 for (const sig of ['SIGINT', 'SIGTERM']) {

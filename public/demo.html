@@ -1,0 +1,315 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Demo · OpenCaptions</title>
+  <link rel="stylesheet" href="/style.css" />
+  <style>
+    /* Play-along demo: the browser plays a YouTube talk while the server transcribes/translates the same
+       audio in real time → compare speech and captions side by side (and record the demo video). */
+    body { min-height: 100vh; }
+    header { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; padding: 12px 18px; border-bottom: 1px solid var(--line); }
+    header input[type=text] { flex: 1 1 320px; }
+    header input[type=number] { width: 80px; }
+    main { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 16px; padding: 16px 18px; }
+    @media (max-width: 1000px) { main { grid-template-columns: 1fr; } }
+    .stagewrap { position: relative; width: 100%; aspect-ratio: 16 / 9; background: #000; border-radius: 12px; overflow: hidden; }
+    #player, .stagewrap iframe { position: absolute; inset: 0; width: 100%; height: 100%; }
+    .ov { position: absolute; left: 0; right: 0; bottom: 6%; display: flex; justify-content: center; pointer-events: none; padding: 0 5%; }
+    .ov .box { max-width: 88%; background: rgba(0,0,0,.78); color: #fff; font-weight: 600; text-align: center; border-radius: .25em;
+      padding: .2em .6em; font-size: clamp(16px, 2.6vw, 34px); line-height: 1.25; transition: opacity .5s; }
+    .ov .clip { display: flex; flex-direction: column; justify-content: flex-end; overflow: hidden; max-height: calc(1.25em * 2); }
+    .ov .box.idle { opacity: 0; }
+    .orig { margin-top: 10px; background: var(--bg2); border: 1px solid var(--line); border-radius: 12px; padding: 10px 14px; min-height: 3.4em; color: var(--fg2); font-size: 17px; }
+    .orig b { color: var(--accent); font-size: 11px; letter-spacing: .1em; text-transform: uppercase; margin-right: 6px; }
+    aside { display: grid; gap: 12px; align-content: start; }
+    .stats { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .stats div { background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; font-size: 11px; color: var(--fg2); }
+    .stats b { display: block; font-size: 20px; color: var(--fg); font-variant-numeric: tabular-nums; }
+    #transcript { max-height: 46vh; overflow: auto; font-size: 15px; line-height: 1.45; }
+    #transcript p { margin: 0 0 .5em; }
+    #transcript p.partial { color: var(--accent); }
+    .hint { font-size: 12px; }
+    body.mic .yt-only, body:not(.mic) .mic-only { display: none !important; }
+    body.mic #player { display: none; }
+    body.mic .ov { bottom: 50%; transform: translateY(50%); }
+    body.mic .ov .box { background: transparent; font-size: clamp(20px, 3.6vw, 52px); }
+    body.mic .ov .clip { max-height: calc(1.25em * 3); }
+    .micidle { position: absolute; inset: 0; display: grid; place-items: center; color: #777; font-size: clamp(16px, 2vw, 24px); text-align: center; padding: 20px; }
+    #securewarn { background: color-mix(in srgb, var(--bad) 18%, transparent); border: 1px solid var(--bad); border-radius: 10px; padding: 8px 12px; margin: 10px 18px 0; font-size: 14px; }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="brand" style="font-size:14px">open<span>captions</span> · demo</div>
+    <select id="mode"><option value="youtube">▶ Video de YouTube</option><option value="mic">🎙 Micrófono en vivo</option></select>
+    <input type="text" id="url" class="yt-only" placeholder="URL de YouTube (ej: https://www.youtube.com/watch?v=…)" />
+    <label class="row muted hint mic-only" style="flex:1 1 260px">Micrófono <select id="mic" style="flex:1"><option value="">(predeterminado)</option></select></label>
+    <label class="row muted hint">Sala <select id="stage"></select></label>
+    <label class="row muted hint">Subtítulos <select id="lang"></select></label>
+    <label class="row muted hint yt-only">Desde (s) <input type="number" id="start" min="0" value="0" /></label>
+    <button id="load" class="yt-only">Cargar</button>
+    <button id="go" class="primary">▶ Start</button>
+    <button id="stop">■ Stop</button>
+  </header>
+  <div id="securewarn" class="hidden">⚠ El micrófono solo funciona en <b>localhost</b> o <b>HTTPS</b>. Abrí esta página como https://… (ver docs/EVENT-DAY.md).</div>
+  <main>
+    <section>
+      <div class="stagewrap"><div id="player"></div><div class="micidle mic-only" id="micidle">🎙 Elegí el micrófono, tocá ▶ Start y hablá en español o inglés.</div>
+        <div class="ov"><div class="box idle" id="ovbox"><div class="clip"><div id="ovtxt"></div></div></div></div>
+      </div>
+      <div class="meter mic-only" style="margin-top:10px;height:10px"><i id="miclvl"></i></div>
+      <div class="orig"><b id="origlbl">Original</b><span id="origtxt">…</span></div>
+      <p class="muted hint mic-only">Prueba de sonido / demo en vivo: el audio del micrófono va al server igual que desde la mini PC del escenario. Ideal para chequear cada sala antes de abrir puertas.</p>
+      <p class="muted hint yt-only">Play/pausa/adelantar el video mueve también el audio que procesa el server (≈1 s de diferencia al arrancar). La demora que ves entre la voz y el subtítulo es la latencia real del sistema.</p>
+    </section>
+    <aside>
+      <div class="card"><div class="row" style="justify-content:space-between"><b>En vivo</b><span class="chip" id="state">detenido</span></div>
+        <div class="stats" style="margin-top:10px">
+          <div>Latencia original<b id="s-asr">—</b></div>
+          <div>Latencia traducción<b id="s-tr">—</b></div>
+          <div>Idioma detectado<b id="s-lang">—</b></div>
+          <div>Costo estimado<b id="s-cost">—</b></div>
+        </div>
+        <div class="row" id="alerts" style="margin-top:8px"></div>
+      </div>
+      <div class="card"><b>Transcripción (<span id="tlang"></span>)</b><div id="transcript" style="margin-top:8px"></div>
+        <div class="row hint" style="margin-top:8px"><a id="dl-srt" href="#">⬇ SRT</a><a id="dl-txt" href="#">⬇ TXT</a><a href="/admin.html" target="_blank">📊 Producción</a></div>
+      </div>
+    </aside>
+  </main>
+  <script type="module">
+    import { qs, esc, store, wsUrl, Socket, CaptionState, getEvent, langLabel } from '/common.js';
+    const $ = (id) => document.getElementById(id);
+    const ev = await getEvent();
+    const token = store.get('admin.token', '');
+    const headers = { 'content-type': 'application/json', 'x-admin-token': token };
+
+    $('stage').innerHTML = ev.stages.map((s) => `<option value="${s.id}">${esc(s.name)}</option>`).join('');
+    $('stage').value = qs.get('stage') || store.get('demo.stage', 'main');
+    $('url').value = qs.get('v') || store.get('demo.url', '');
+    $('start').value = qs.get('t') || 0;
+    let lang = qs.get('lang') || store.get('demo.lang', 'es');
+
+    const videoId = (u) => (u.match(/(?:v=|youtu\.be\/|embed\/|shorts\/|live\/)([\w-]{11})/) || u.match(/^([\w-]{11})$/) || [])[1];
+
+    // ---------- YouTube player ----------
+    let player, ready = false;
+    let ytOk = false;
+    const ytReady = new Promise((res) => {
+      window.onYouTubeIframeAPIReady = () => res(true);
+      const sc = document.createElement('script');
+      sc.src = 'https://www.youtube.com/iframe_api';
+      sc.onerror = () => res(false);
+      document.head.append(sc);
+      setTimeout(() => res(false), 10000);
+    }).then((ok) => {
+      ytOk = ok;
+      if (!ok) document.getElementById('player').innerHTML = '<p style="color:#fff;padding:20px">No se pudo cargar el reproductor de YouTube (¿sin internet o bloqueado?).</p>';
+      else loadVideo();
+    });
+    function loadVideo() {
+      if (!ytOk) return;
+      const id = videoId($('url').value.trim());
+      if (!id) return;
+      store.set('demo.url', $('url').value.trim());
+      const start = Number($('start').value) || 0;
+      if (player) { player.cueVideoById({ videoId: id, startSeconds: start }); return; }
+      player = new YT.Player('player', {
+        videoId: id,
+        playerVars: { start, rel: 0, playsinline: 1, modestbranding: 1, cc_load_policy: 0 },
+        events: { onReady: () => (ready = true), onStateChange },
+      });
+    }
+    $('load').onclick = loadVideo;
+
+    // ---------- keep the server's audio pull in sync with the player ----------
+    let running = false, busy = false, anchor = null; // anchor = { t: video time, at: wall clock }
+    const stageId = () => $('stage').value;
+    async function startAt(t) {
+      if (busy) return;
+      busy = true;
+      t = Math.max(0, Math.floor(t));
+      player.pauseVideo();
+      setState('preparando audio…', 'warn');
+      try {
+        const r = await fetch(`/api/stages/${stageId()}/youtube`, { method: 'POST', headers, body: JSON.stringify({ url: `https://www.youtube.com/watch?v=${videoId($('url').value.trim())}`, start: t }) });
+        const raw = await r.text();
+        let j = {};
+        try { j = JSON.parse(raw); } catch {
+          throw new Error(r.status === 404 ? 'el server no tiene la ruta /youtube: reiniciá `npm start` para cargar la versión nueva.' : `respuesta inesperada del server (${r.status})`);
+        }
+        if (r.status === 401) throw new Error('falta el ADMIN_TOKEN: abrí /admin.html una vez e ingresalo.');
+        if (!r.ok) throw new Error(j.error || r.statusText);
+        player.seekTo(t, true);
+        player.playVideo();
+        anchor = { t, at: Date.now() };
+        running = true;
+        setState('en vivo', 'bad');
+      } catch (e) {
+        setState('error', 'bad');
+        alert('No se pudo iniciar: ' + e.message);
+      } finally {
+        setTimeout(() => (busy = false), 1500);
+      }
+    }
+    async function stopPull() {
+      running = false;
+      anchor = null;
+      setState('detenido', '');
+      await fetch(`/api/stages/${stageId()}/pull`, { method: 'DELETE', headers }).catch(() => {});
+    }
+    function onStateChange(e) {
+      if (busy || mode !== 'youtube') return;
+      if (e.data === YT.PlayerState.PLAYING && !running) startAt(player.getCurrentTime());
+      if ((e.data === YT.PlayerState.PAUSED || e.data === YT.PlayerState.ENDED) && running) stopPull();
+    }
+    // If the user seeks while playing, restart the server pull at the new position.
+    setInterval(() => {
+      if (!running || busy || !player?.getCurrentTime) return;
+      const expected = anchor.t + (Date.now() - anchor.at) / 1000;
+      if (Math.abs(player.getCurrentTime() - expected) > 3) startAt(player.getCurrentTime());
+    }, 1000);
+    // ---------- mode: YouTube play-along or live microphone ----------
+    let mode = qs.get('mode') || store.get('demo.mode', 'youtube');
+    function applyMode() {
+      document.body.classList.toggle('mic', mode === 'mic');
+      $('mode').value = mode;
+      $('securewarn').classList.toggle('hidden', !(mode === 'mic' && !window.isSecureContext));
+    }
+    $('mode').onchange = () => {
+      if (mode === 'mic') micStop(); else { player?.pauseVideo?.(); if (running) stopPull(); }
+      mode = $('mode').value;
+      store.set('demo.mode', mode);
+      applyMode();
+    };
+    applyMode();
+
+    let mic = null;
+    async function listMics() {
+      try {
+        const devs = (await navigator.mediaDevices.enumerateDevices()).filter((d) => d.kind === 'audioinput');
+        const cur = $('mic').value || store.get('demo.mic', '');
+        $('mic').innerHTML = '<option value="">(predeterminado)</option>' + devs.map((d, i) => `<option value="${d.deviceId}">${esc(d.label || 'Entrada ' + (i + 1))}</option>`).join('');
+        if (devs.some((d) => d.deviceId === cur)) $('mic').value = cur;
+      } catch { /* ignore */ }
+    }
+    $('mic').onchange = () => { store.set('demo.mic', $('mic').value); if (mic) { micStop(); micStart(); } };
+    listMics();
+    async function micStart() {
+      if (mic) return;
+      if (!window.isSecureContext) return alert('El micrófono requiere localhost o HTTPS.');
+      try {
+        const ctx = new AudioContext();
+        await ctx.audioWorklet.addModule('/pcm-worklet.js');
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: {
+          deviceId: $('mic').value ? { exact: $('mic').value } : undefined,
+          echoCancellation: false, noiseSuppression: false, autoGainControl: false,
+        } });
+        listMics();
+        const node = new AudioWorkletNode(ctx, 'pcm-capture', { processorOptions: { channel: 'mix', gain: 1 } });
+        ctx.createMediaStreamSource(stream).connect(node);
+        const mute = ctx.createGain(); mute.gain.value = 0; node.connect(mute).connect(ctx.destination);
+        const pending = [];
+        const sock = new Socket(() => wsUrl('/ws/ingest', { stage: stageId(), kind: 'browser', label: 'demo · micrófono', token: store.get('ingest.token', '') }), {
+          open() { while (pending.length && sock.ready) sock.send(pending.shift()); },
+          close(e) {
+            if (e.code === 4001) { alert('El server pide INGEST_TOKEN: cargalo en /ingest.html una vez.'); micStop(); }
+            if (e.code === 4000) { setState('reemplazado por otra ingesta', 'warn'); micStop(false); }
+          },
+        });
+        node.port.onmessage = (ev2) => {
+          const i16 = new Int16Array(ev2.data);
+          let sum = 0;
+          for (let i = 0; i < i16.length; i++) sum += (i16[i] / 32768) ** 2;
+          const db = 20 * Math.log10(Math.sqrt(sum / i16.length) || 1e-6);
+          $('miclvl').style.width = Math.max(0, Math.min(100, ((db + 60) / 60) * 100)) + '%';
+          if (sock.ready) sock.send(ev2.data); else { pending.push(ev2.data); if (pending.length > 100) pending.shift(); }
+        };
+        mic = { ctx, stream, sock };
+        $('micidle').classList.add('hidden');
+        setState('en vivo 🎙', 'bad');
+      } catch (e) {
+        alert('No se pudo abrir el micrófono: ' + e.message);
+      }
+    }
+    function micStop(reset = true) {
+      if (!mic) return;
+      mic.sock.close();
+      mic.stream.getTracks().forEach((t) => t.stop());
+      mic.ctx.close();
+      mic = null;
+      $('miclvl').style.width = '0';
+      if (reset) setState('detenido', '');
+    }
+
+    $('go').onclick = () => {
+      if (mode === 'mic') return micStart();
+      if (!ready) return;
+      if (!running) startAt(player.getCurrentTime() || Number($('start').value) || 0);
+    };
+    $('stop').onclick = () => { if (mode === 'mic') return micStop(); player?.pauseVideo(); stopPull(); };
+    window.addEventListener('beforeunload', () => { if (running) navigator.sendBeacon?.(`/api/stages/${stageId()}/pull/stop`); });
+    function setState(t, cls) { $('state').textContent = t; $('state').className = 'chip ' + cls; }
+
+    // ---------- captions ----------
+    const main = new CaptionState(), orig = new CaptionState();
+    let hello = null, sock = null;
+    function connect() {
+      sock?.close();
+      sock = new Socket(() => wsUrl('/ws/view', { stage: stageId(), langs: `${lang},orig` }), {
+        message(m) {
+          if (m.type === 'hello') {
+            hello = m;
+            $('lang').innerHTML = m.stage.languages.map((l) => `<option value="${l}">${esc(langLabel(l, ev.languages))}</option>`).join('');
+            if (!m.stage.languages.includes(lang)) lang = m.stage.languages.find((l) => l !== 'orig') || 'orig';
+            $('lang').value = lang;
+            $('tlang').textContent = langLabel(lang, ev.languages);
+            main.load(m.history[m.map[lang]] || [], m.partial[m.map[lang]]);
+            orig.load(m.history.orig || [], m.partial.orig);
+            links();
+            draw();
+          } else if (m.type === 'caption') {
+            if (m.channel === hello?.map[lang]) main.apply(m);
+            if (m.channel === 'orig') orig.apply(m);
+            draw();
+          } else if (m.type === 'talk') { main.clear(); orig.clear(); draw(); }
+        },
+      });
+    }
+    function draw() {
+      $('ovtxt').textContent = main.tail(150);
+      $('ovbox').classList.toggle('idle', !main.tail(5));
+      $('origtxt').textContent = orig.tail(200) || '…';
+      const list = [...main.finals.slice(-40), ...(main.partial ? [main.partial] : [])];
+      $('transcript').innerHTML = list.map((s) => `<p class="${s.final ? '' : 'partial'}">${esc(s.text)}</p>`).join('');
+      $('transcript').scrollTop = $('transcript').scrollHeight;
+    }
+    setInterval(() => $('ovbox').classList.toggle('idle', Date.now() - main.updatedAt > 7000), 500);
+    function links() {
+      $('dl-srt').href = `/api/stages/${stageId()}/export.srt?lang=${lang}`;
+      $('dl-txt').href = `/api/stages/${stageId()}/export.txt?lang=${lang}`;
+    }
+    $('lang').onchange = () => { lang = $('lang').value; store.set('demo.lang', lang); connect(); };
+    $('stage').onchange = () => { store.set('demo.stage', stageId()); if (running) stopPull(); connect(); };
+    connect();
+
+    // ---------- live metrics ----------
+    setInterval(async () => {
+      try {
+        const r = await fetch('/api/status', { headers });
+        if (!r.ok) return;
+        const s = (await r.json()).stages.find((x) => x.id === stageId());
+        if (!s) return;
+        const sec = (v) => (v == null ? '—' : (v / 1000).toFixed(1) + ' s');
+        $('s-asr').textContent = sec(s.latency.asr);
+        $('s-tr').textContent = sec(s.latency.tr[lang] ?? null);
+        $('s-lang').textContent = s.detectedLang || (s.source !== 'auto' ? s.source : '—');
+        $('s-cost').textContent = 'US$ ' + s.costUsd.toFixed(3);
+        $('alerts').innerHTML = s.alerts.filter((a) => !['no-ingest', 'no-audio'].includes(a)).map((a) => `<span class="chip warn">${esc(a)}</span>`).join('');
+      } catch { /* ignore */ }
+    }, 2000);
+  </script>
+</body>
+</html>

@@ -56,6 +56,8 @@ Open:
 | `http://localhost:8080/ingest.html` | Stage ingest (mic / tab / file / bundled samples) |
 | `http://localhost:8080/screen.html?stage=main` | Projector screen |
 | `http://localhost:8080/overlay.html?stage=main&lang=es` | vMix / OBS overlay |
+| `http://localhost:8080/demo.html?mode=mic` | **Live microphone demo / sound check**: speak and see original + translation big on screen, with level meter and latency |
+| `http://localhost:8080/demo.html?v=<youtube-url>` | **Play-along demo**: plays a YouTube talk in the browser while the server captions the same audio in real time (needs `yt-dlp`) — compare speech vs captions, record demos |
 
 No API key? `npm run mock` runs everything with simulated captions (great for UI work and load tests).
 
@@ -110,9 +112,12 @@ Measured continuously per room and shown on the dashboard: *speech onset → fir
 
 ## Running it at an event (Nerdearla-style)
 
+> 📋 Full step-by-step runbook (in Spanish, for the production team): **[docs/EVENT-DAY.md](docs/EVENT-DAY.md)** — HTTPS setup, per-room checklist, sound check, what each dashboard alert means, plan B.
+
+
 Today, at Nerdearla, each stage's sound desk goes via a 3.5 mm cable into a mini PC, where a browser captures the input and shows the captions on the stage screens. OpenCaptions keeps exactly that setup:
 
-1. **Server**: run it once for the whole event (a small VM is enough): `docker compose up -d` with your `.env`. Put it behind HTTPS (Caddy/nginx/Cloud Run) and set `PUBLIC_URL`, `INGEST_TOKEN`, `ADMIN_TOKEN`.
+1. **Server**: run it once for the whole event (a small VM is enough): `docker compose up -d` with your `.env`. Put it behind **HTTPS** — required, because browsers only allow microphone capture on `localhost` or `https://` (Cloudflare Tunnel, Caddy, or built-in TLS with `HTTPS_CERT`/`HTTPS_KEY`) — and set `PUBLIC_URL`, `INGEST_TOKEN`, `ADMIN_TOKEN`.
 2. **Each stage mini PC**: open `https://<server>/ingest.html?stage=<id>&token=<INGEST_TOKEN>`, choose the audio input, tick *Auto-iniciar*, click **Start**. Open *"Abrir pantalla para proyector"* on the second screen (it replaces today's SaaS window). For unattended kiosks launch Chrome with `--autoplay-policy=no-user-gesture-required --use-fake-ui-for-media-stream` and the `?autostart=1` URL.
 3. **Audience**: print the per-room QR from *Dashboard → Links / QR* (it points to `/s/<room>`); it is also shown on the projector.
 4. **Streaming (vMix)**: add a *Web Browser* input with `https://<server>/overlay.html?stage=<id>&lang=es` at 1920×1080 and put it as an overlay on the program output (OBS: *Browser Source*, same URL). Different stream per language → different overlay URL. Use `&bg=%2300ff00` if you prefer chroma key.

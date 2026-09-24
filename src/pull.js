@@ -65,8 +65,43 @@ function wavPcm16k(path) {
  * Open any input as a real-time paced PCM stream.
  * @returns {PassThrough & { stopAudio(): void }} emits 'data' (PCM16LE 16 kHz mono), 'end', 'error'
  */
-export function openAudio(input, { realtime = true, loop = false, start = 0 } = {}) {
+/**
+ * Pace a fast PCM source at 1× in Node (100 ms chunks), with backpressure on the source.
+ * Used for inputs that download faster than real time (e.g. yt-dlp), so seeking is instant and exact.
+ */
+function pace(src, out) {
+  const bufs = [];
+  let buffered = 0, ended = false, sent = 0;
+  const t0 = Date.now();
+  src.on('data', (b) => {
+    bufs.push(b);
+    buffered += b.length;
+    if (buffered > 32000 * 30) src.pause(); // keep ≤ 30 s ahead
+  });
+  src.on('end', () => (ended = true));
+  const timer = setInterval(() => {
+    const due = Math.floor((Date.now() - t0) / 100) + 1;
+    while (sent < due && buffered >= CHUNK) {
+      let chunk = Buffer.alloc(0);
+      while (chunk.length < CHUNK) {
+        const need = CHUNK - chunk.length;
+        const head = bufs[0];
+        if (head.length <= need) { chunk = Buffer.concat([chunk, bufs.shift()]); } else { chunk = Buffer.concat([chunk, head.subarray(0, need)]); bufs[0] = head.subarray(need); }
+      }
+      buffered -= CHUNK;
+      out.write(chunk);
+      sent++;
+    }
+    if (sent < due - 20) sent = due - 1; // source stalled (network): don't burst to catch up
+    if (buffered < 32000 * 10) src.resume();
+    if (ended && buffered < CHUNK) { clearInterval(timer); out.end(); }
+  }, 50);
+  return () => clearInterval(timer);
+}
+
+export function openAudio(input, { realtime = true, loop = false, start = 0, via = null } = {}) {
   const out = new PassThrough();
+  if (via === 'ytdlp') return openViaYtDlp(input, out, { start });
   const file = !isUrl(input);
   const path = input.replace(/^file:\/\//, '');
   if (file && !fs.existsSync(path)) {
@@ -116,12 +151,57 @@ export function openAudio(input, { realtime = true, loop = false, start = 0 } = 
   return out;
 }
 
+/**
+ * YouTube & co: yt-dlp downloads (handling YouTube's headers/tokens — a bare media URL given to ffmpeg gets
+ * 403) and pipes to ffmpeg, which decodes + seeks to `start`; Node paces the PCM at real time.
+ */
+function openViaYtDlp(pageUrl, out, { start = 0 }) {
+  const bin = ffmpegBin();
+  if (!bin) { process.nextTick(() => out.destroy(new Error('ffmpeg not found (brew install ffmpeg, or npm install)'))); out.stopAudio = () => {}; return out; }
+  const yt = spawn('yt-dlp', ['-f', 'bestaudio/best', '--no-playlist', '--no-part', '-q', '--no-warnings', '-o', '-', pageUrl], { stdio: ['ignore', 'pipe', 'pipe'] });
+  const ffArgs = ['-hide_banner', '-loglevel', 'error', '-i', 'pipe:0'];
+  if (start) ffArgs.push('-ss', String(start)); // output-side seek: decodes & drops fast, exact
+  ffArgs.push('-vn', '-ac', '1', '-ar', '16000', '-f', 's16le', 'pipe:1');
+  const ff = spawn(bin, ffArgs, { stdio: ['pipe', 'pipe', 'pipe'] });
+  yt.stdout.pipe(ff.stdin);
+  ff.stdin.on('error', () => {}); // EPIPE when stopping
+  let ytErr = '', ffErr = '';
+  yt.stderr.on('data', (b) => { ytErr = (ytErr + b.toString()).slice(-400); });
+  ff.stderr.on('data', (b) => { ffErr = (ffErr + b.toString()).slice(-400); out.emit('log', b.toString().trim()); });
+  yt.on('error', (e) => out.destroy(new Error(e.code === 'ENOENT' ? 'yt-dlp is not installed (macOS: brew install yt-dlp)' : `yt-dlp failed: ${e.message}`)));
+  yt.on('close', (code) => { if (code && !out.destroyed && !stopped) out.destroy(new Error(`yt-dlp exited ${code}: ${ytErr.trim().split('\n').pop()}`)); });
+  ff.on('close', (code) => { if (code && code !== 255 && !out.destroyed && !stopped) out.destroy(new Error(`ffmpeg exited ${code}: ${ffErr.trim()}`)); });
+  let stopped = false;
+  const stopPacer = pace(ff.stdout, out);
+  out.stopAudio = () => {
+    stopped = true;
+    stopPacer();
+    for (const p of [yt, ff]) { try { p.kill('SIGKILL'); } catch { /* ignore */ } }
+    out.end();
+  };
+  return out;
+}
+
 /** Server-side ingest for a stage: pulls a URL/file and restarts it with backoff. */
 export class PullSource {
-  constructor(stage, url, { loop = false } = {}) {
+  /**
+   * @param {object} [o]
+   * @param {boolean} [o.loop]      loop a file
+   * @param {number}  [o.start]     start offset in seconds
+   * @param {boolean} [o.realtime]  pace input at 1× (default: files yes, live streams no)
+   * @param {boolean} [o.once]      don't restart when the input ends (e.g. a YouTube video)
+   * @param {string}  [o.label]     shown on the dashboard instead of the URL
+   */
+  constructor(stage, url, { loop = false, start = 0, realtime, once = false, label, via = null } = {}) {
+    this.via = via;
+    this.firstData = new Promise((res, rej) => { this._resolveFirst = res; this._rejectFirst = rej; });
     this.stage = stage;
     this.url = url;
     this.loop = loop;
+    this.start = start;
+    this.realtime = realtime ?? !isUrl(url);
+    this.once = once;
+    this.label = label || url;
     this.token = Symbol('pull');
     this.stopped = false;
     this.backoff = 1000;
@@ -130,8 +210,10 @@ export class PullSource {
 
   #open() {
     if (this.stopped) return;
-    const src = (this.src = openAudio(this.url, { realtime: !isUrl(this.url), loop: this.loop }));
-    this.stage.attachIngest({ kind: 'pull', label: this.url, token: this.token, detach: () => this.stop() });
+    const src = (this.src = openAudio(this.url, { realtime: this.realtime, loop: this.loop, start: this.start, via: this.via }));
+    src.once('data', () => this._resolveFirst?.());
+    src.once('error', (e) => this._rejectFirst?.(e));
+    this.stage.attachIngest({ kind: 'pull', label: this.label, token: this.token, detach: () => this.stop() });
     src.on('data', (b) => { this.backoff = 1000; this.stage.pushAudio(b); });
     src.on('log', (m) => this.stage.log('warn', `ffmpeg: ${m.slice(0, 200)}`));
     const again = (why) => {
@@ -139,6 +221,7 @@ export class PullSource {
       this.src = null;
       this.stage.detachIngest({ token: this.token });
       if (this.stopped) return;
+      if (this.once && why === 'ended') { this.stage.log('info', 'pull finished'); this.stopped = true; return; }
       this.stage.log('warn', `pull ${why}, retrying in ${this.backoff / 1000}s`);
       this.timer = setTimeout(() => this.#open(), this.backoff);
       this.backoff = Math.min(this.backoff * 2, 30000);
