@@ -98,7 +98,7 @@ flowchart LR
 
 Text translation is rate-limit aware: a server-wide budget (`MT_RPM`), per-request timeouts and back-off on 429s; provisional updates are sacrificed first, and if a language is throttled the room **automatically falls back to Live Translate's own captions** for that language (the primary Live session already produces them), then switches back when quota recovers. Captions never freeze and never show text in the wrong language.
 
-> **Free tier tip:** the free Gemini tier has low per-minute limits for text models. For demos with several rooms set `MT_RPM` to the Flash-Lite limit shown in AI Studio (e.g. `MT_RPM=14`) or `MT_PARTIAL_MS=3000`; for a real event enable billing — text translation of a whole conference costs cents.
+> **Free tier tip:** the free Gemini tier has low per-minute limits for text models. For demos with several rooms set `MT_RPM` to the Flash-Lite limit shown in AI Studio (e.g. `MT_RPM=14`) or `MT_PARTIAL_MS=3000`; for a real event enable billing (paid-tier data is also not used to train Google's models).
 
 In every mode, when the speaker already talks in a caption language (e.g. a Spanish talk, Spanish captions) the transcription is passed through as-is — nothing is translated twice or parroted.
 
@@ -131,14 +131,14 @@ Alternatively, if the program audio already exists as a stream (vMix SRT output,
 
 ### Cost (Gemini 3.5 Live Translate, paid tier, Sept 2026 pricing)
 
-Live Translate is billed on streamed audio: ≈ **US$ 0.037 per session-minute** (input $0.0053/min + output $0.0315/min) → ≈ **US$ 2.2 per session-hour**. Flash-Lite text translation of captions is a rounding error next to that (a few hundred short requests per talk).
+Live Translate is billed on streamed audio: ≈ **US$ 0.037 per session-minute** (input $0.0053/min + output $0.0315/min) → ≈ **US$ 2.2 per session-hour**. Text translation with Flash-Lite ($0.30 / 1M input, $2.50 / 1M output tokens) adds roughly **US$ 0.4–0.6 per talk-hour per language** (mostly the provisional re-translations; raise `MT_PARTIAL_MS` to cut it). The dashboard's cost estimate includes both.
 
 | Scenario (default `text` mode) | Live sessions | ~Cost |
 |---|---|---|
-| One 40-min English talk → Spanish | 1 | US$ 1.5 |
-| **Nerdearla: 30 English talks × 40 min → Spanish** | 1 each | **≈ US$ 45 total** |
-| 10 rooms × 8 h, captions in ES + EN + PT | 10 | ≈ US$ 175 (less with silence gating) |
-| Same, `hybrid` (translated voice in all 3 languages) | 30 | ≈ US$ 530 |
+| One 40-min English talk → Spanish | 1 | ≈ US$ 1.8 |
+| **Nerdearla: 30 English talks × 40 min → Spanish** | 1 each | **≈ US$ 55 total** |
+| 10 rooms × 8 h, captions in ES + EN + PT | 10 | ≈ US$ 250 (less with silence gating) |
+| Same, `hybrid` (translated voice in all 3 languages) | 30 | ≈ US$ 600 |
 
 Silence gating means breaks, setup time and Q&A pauses aren't billed. The dashboard shows the running estimate per room. The free tier is enough to develop and test.
 
@@ -204,7 +204,7 @@ Engines implement a tiny interface (`start`, `sendAudio`, `endAudio`, `stop`, ev
 - **Público**: QR → elige sala e idioma en el celu; puede **escuchar la traducción con auriculares**. **Proyector** con subtítulos grandes + QR. **Overlay para vMix/OBS** para quemar los subtítulos en el stream (traducción en vivo para la audiencia virtual).
 - **Panel de producción**: estado, vúmetro, latencia, reconexiones, espectadores, costo estimado y alertas por sala; alta/edición de salas y glosario en caliente.
 - **Sin operador**: pausa sola en silencio (no se paga), retoma cuando alguien habla, separa charlas automáticamente, se reconecta sola.
-- **Exporta** SRT/VTT/TXT por charla. **Escala** linealmente por sala (≈ US$ 2,2 por hora de sesión); 30 charlas en inglés ≈ US$ 45.
+- **Exporta** SRT/VTT/TXT por charla. **Escala** linealmente por sala (≈ US$ 2,2 por hora de sesión); 30 charlas en inglés ≈ US$ 55.
 
 `npm install && cp .env.example .env && npm start` — ver [Quick start](#quick-start-2-minutes).
 

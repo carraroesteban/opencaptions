@@ -394,7 +394,8 @@ export class Stage extends EventEmitter {
       engines: [...this.engines.values()].map((e) => e.status()),
       viewers: this.viewers,
       audioMinIn: +(this.audioMsIn / 60000).toFixed(1),
-      costUsd: +this.costUsd.toFixed(3),
+      costUsd: +(this.costUsd + Object.values(this.mtQ || {}).reduce((a, q) => a + (q.stats.usd || 0), 0)).toFixed(3),
+      costLiveUsd: +this.costUsd.toFixed(3),
       alerts: [...this.alerts],
       preview: Object.fromEntries(Object.keys(this.tracks).map((ch) => [ch, (this.partial(ch) || this.history(ch, 1)[0] || {}).text || ''])),
     };

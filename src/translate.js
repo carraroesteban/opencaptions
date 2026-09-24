@@ -48,7 +48,10 @@ function withTimeout(promise, ms) {
 
 const isQuota = (e) => e?.status === 429 || /429|RESOURCE_EXHAUSTED|quota|rate/i.test(e?.message || '');
 
-export async function translateText({ text, from, to, context = [], vocabulary = [], partial = false }) {
+// Gemini 3.5 Flash-Lite paid tier (Sept 2026 pricing page): $0.30 / 1M input tokens, $2.50 / 1M output tokens.
+const USD_IN = 0.30 / 1e6, USD_OUT = 2.5 / 1e6;
+
+export async function translateText({ text, from, to, context = [], vocabulary = [], partial = false, stats = null }) {
   if (config.engine === 'mock') return `(${to}) ${text}`;
   const sys = [
     `You translate live conference captions from ${from ? langName(from) : 'the speaker\'s language'} to ${langName(to)}.`,
@@ -65,6 +68,8 @@ export async function translateText({ text, from, to, context = [], vocabulary =
     const cfg = { systemInstruction: sys, temperature: 0.1, maxOutputTokens: 512, abortSignal: AbortSignal.timeout(config.mtTimeoutMs) };
     if (thinking) cfg.thinkingConfig = { thinkingLevel: 'MINIMAL' }; // captions need speed, not reasoning
     const res = await withTimeout(client().models.generateContent({ model: config.textModel, contents: `${ctx}Translate:\n${text}`, config: cfg }), config.mtTimeoutMs + 500);
+    const u = res.usageMetadata || {};
+    if (stats) stats.usd = (stats.usd || 0) + (u.promptTokenCount || 0) * USD_IN + ((u.candidatesTokenCount || 0) + (u.thoughtsTokenCount || 0)) * USD_OUT;
     return (res.text || '').trim().replace(/^["“]|["”]$/g, '');
   };
   try {
@@ -99,7 +104,7 @@ export class SentenceTranslator {
     this.partialInFlight = false;
     this.lastPartialAt = 0;
     this.context = [];
-    this.stats = { requests: 0, errors: 0, quotaErrors: 0, avgMs: null, dropped: 0 };
+    this.stats = { requests: 0, errors: 0, quotaErrors: 0, avgMs: null, dropped: 0, usd: 0 };
   }
 
   /** Rate-limited and a Live fallback exists → the Stage shows Live Translate's own captions meanwhile. */
@@ -158,7 +163,7 @@ export class SentenceTranslator {
       const t0 = Date.now();
       try {
         this.stats.requests++;
-        out = await translateText({ text: item.text, from: item.from, to: this.to, context: this.context, vocabulary: this.vocabulary });
+        out = await translateText({ text: item.text, from: item.from, to: this.to, context: this.context, vocabulary: this.vocabulary, stats: this.stats });
         this.stats.avgMs = this.stats.avgMs == null ? Date.now() - t0 : Math.round(this.stats.avgMs * 0.7 + (Date.now() - t0) * 0.3);
       } catch (e) {
         this.stats.errors++;
@@ -199,7 +204,7 @@ export class SentenceTranslator {
     const id = this.openId;
     try {
       this.stats.requests++;
-      const out = await translateText({ text, from: this.spoken, to: this.to, context: this.context, vocabulary: this.vocabulary, partial: true });
+      const out = await translateText({ text, from: this.spoken, to: this.to, context: this.context, vocabulary: this.vocabulary, partial: true, stats: this.stats });
       if (out && id === this.openId && this.buf.trim().startsWith(text.slice(0, 10))) this.onPartial(out, id);
     } catch (e) {
       this.stats.errors++;
