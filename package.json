@@ -1,0 +1,29 @@
+{
+  "name": "opencaptions",
+  "version": "0.1.0",
+  "description": "Open-source live captions & translation for multi-stage conferences, powered by Gemini Live Translate.",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "mock": "node src/server.js --mock",
+    "check": "node scripts/check-gemini.js",
+    "feed": "node scripts/feed.js",
+    "loadtest": "node scripts/loadtest.js",
+    "test": "node --test test/*.test.js"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "@google/genai": "^2.24.0",
+    "dotenv": "^18.0.3",
+    "express": "^5.2.1",
+    "qrcode": "^1.5.4",
+    "ws": "^8.21.3"
+  },
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "optionalDependencies": {
+    "ffmpeg-static": "^5.3.0"
+  }
+}

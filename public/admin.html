@@ -1,0 +1,297 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Producción · OpenCaptions</title>
+  <link rel="stylesheet" href="/style.css" />
+  <style>
+    body { min-height: 100vh; }
+    header { position: sticky; top: 0; z-index: 5; background: color-mix(in srgb, var(--bg) 92%, transparent); backdrop-filter: blur(8px); border-bottom: 1px solid var(--line); padding: 12px 20px; display: flex; gap: 16px; align-items: center; flex-wrap: wrap; }
+    header h1 { font-size: 18px; margin: 0; }
+    .kpis { display: flex; gap: 18px; flex-wrap: wrap; margin-left: auto; }
+    .kpi { display: grid; font-size: 11px; color: var(--fg2); text-transform: uppercase; letter-spacing: .06em; }
+    .kpi b { font-size: 20px; color: var(--fg); letter-spacing: 0; text-transform: none; font-variant-numeric: tabular-nums; }
+    main { padding: 18px 20px 20px; display: grid; gap: 18px; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); gap: 14px; }
+    .stage { display: grid; gap: 10px; align-content: start; }
+    .stage.alert { border-color: color-mix(in srgb, var(--bad) 60%, var(--line)); }
+    .stage .top { display: flex; gap: 8px; align-items: center; }
+    .stage h3 { margin: 0; font-size: 17px; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .stage .sub { font-size: 13px; color: var(--fg2); }
+    .stage .metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+    .stage .metrics div { background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; font-size: 11px; color: var(--fg2); }
+    .stage .metrics b { display: block; font-size: 15px; color: var(--fg); font-variant-numeric: tabular-nums; }
+    .stage .preview { display: grid; gap: 4px; font-size: 13px; }
+    .stage .preview div { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .stage .preview span.l { display: inline-block; min-width: 38px; font-size: 10px; font-weight: 700; color: var(--accent); text-transform: uppercase; }
+    .stage .actions { display: flex; gap: 6px; flex-wrap: wrap; }
+    .stage .actions button { padding: 5px 10px; font-size: 13px; }
+    #logs { font-family: var(--mono); font-size: 12px; max-height: 260px; overflow: auto; display: grid; gap: 2px; }
+    #logs .warn { color: var(--warn); } #logs .error { color: var(--bad); }
+    .qrrow { display: grid; grid-template-columns: 150px 1fr; gap: 14px; align-items: center; }
+    .qrrow img { width: 150px; background: #fff; border-radius: 8px; }
+    .copy { display: flex; gap: 6px; } .copy input { flex: 1; font-family: var(--mono); font-size: 12px; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; } td, th { padding: 6px 4px; border-bottom: 1px solid var(--line); text-align: left; }
+    .langs-check { display: flex; gap: 10px; flex-wrap: wrap; }
+  </style>
+</head>
+<body>
+  <header>
+    <div><div class="brand" style="font-size:12px">open<span>captions</span></div><h1 id="event">Producción</h1></div>
+    <span class="chip" id="engine"></span>
+    <div class="kpis">
+      <div class="kpi">Salas en vivo<b id="k-live">–</b></div>
+      <div class="kpi">Sesiones IA<b id="k-sessions">–</b></div>
+      <div class="kpi">Espectadores<b id="k-viewers">–</b></div>
+      <div class="kpi">Costo estimado<b id="k-cost">–</b></div>
+      <div class="kpi">Uptime<b id="k-up">–</b></div>
+    </div>
+    <div class="row">
+      <button id="add">+ Sala</button>
+      <button id="gloss">Glosario</button>
+    </div>
+  </header>
+  <main>
+    <div class="grid" id="grid"></div>
+    <section class="card">
+      <div class="row" style="justify-content:space-between;margin-bottom:8px"><b>Eventos</b><select id="logfilter"><option value="">Todas las salas</option></select></div>
+      <div id="logs"></div>
+    </section>
+  </main>
+
+  <dialog id="dlg-edit"><form method="dialog" id="f-edit" style="display:grid;gap:12px">
+    <h3 style="margin:0" id="edit-title">Sala</h3>
+    <div class="row" style="align-items:stretch">
+      <label class="field" style="flex:1">ID<input name="id" required pattern="[a-z0-9_-]+" /></label>
+      <label class="field" style="flex:2">Nombre<input name="name" required /></label>
+    </div>
+    <label class="field">Charla actual (título)<input name="title" placeholder="Ej: Observabilidad en Kubernetes — Ana García" /></label>
+    <label class="field">Idioma de la charla<select name="source"><option value="auto">Detectar automáticamente</option></select></label>
+    <div class="field">Traducir a<div class="langs-check" id="edit-targets"></div></div>
+    <label class="field">Modo de traducción de subtítulos<select name="translation">
+      <option value="">Por defecto del servidor</option>
+      <option value="text">Texto (clause a clause · menor latencia · 1 sesión Live por sala)</option>
+      <option value="live">Live (speech-to-speech de Gemini · 1 sesión por idioma)</option>
+      <option value="hybrid">Híbrido (subtítulos por texto + voz traducida 🎧 en todos los idiomas)</option>
+    </select></label>
+    <label class="field">Pull de audio (opcional): SRT/RTMP/HLS/HTTP o archivo — el server lo toma con ffmpeg<input name="pull" placeholder="srt://0.0.0.0:9001?mode=listener  ·  https://…/stream.m3u8" /></label>
+    <label class="row muted"><input type="checkbox" name="loop" /> Repetir en loop (archivos de prueba)</label>
+    <div class="row" style="justify-content:space-between">
+      <button type="button" class="danger" id="edit-del">Eliminar sala</button>
+      <div class="row"><button value="cancel" formnovalidate>Cancelar</button><button class="primary" value="ok">Guardar</button></div>
+    </div>
+  </form></dialog>
+
+  <dialog id="dlg-links"><div style="display:grid;gap:14px" id="links-body"></div><form method="dialog" style="text-align:right;margin-top:12px"><button>Cerrar</button></form></dialog>
+  <dialog id="dlg-export"><div id="export-body"></div><form method="dialog" style="text-align:right;margin-top:12px"><button>Cerrar</button></form></dialog>
+  <dialog id="dlg-gloss"><form method="dialog" style="display:grid;gap:10px">
+    <h3 style="margin:0">Glosario técnico</h3>
+    <p class="muted" style="margin:0;font-size:13px"><b>vocabulary</b>: términos que se le pasan al reconocimiento de voz. <b>replacements</b>: correcciones que se aplican a todos los subtítulos (se aplican al instante, sin reiniciar).</p>
+    <textarea id="gloss-text" rows="18" style="font-family:var(--mono);font-size:12px"></textarea>
+    <div class="row" style="justify-content:flex-end"><button value="cancel">Cancelar</button><button class="primary" value="ok">Guardar</button></div>
+  </form></dialog>
+
+  <script type="module">
+    import { qs, esc, store, wsUrl, Socket, langLabel } from '/common.js';
+    const $ = (id) => document.getElementById(id);
+    let token = qs.get('token') || store.get('admin.token', '');
+    let ev = await (await fetch('/api/event')).json();
+    document.documentElement.style.setProperty('--accent', ev.accent);
+    $('event').textContent = `${ev.name} · Producción`;
+    let last = null;
+    const logs = [];
+
+    const api = async (method, url, body) => {
+      const r = await fetch(url, { method, headers: { 'content-type': 'application/json', 'x-admin-token': token }, body: body ? JSON.stringify(body) : undefined });
+      if (r.status === 401) { askToken(); throw new Error('token'); }
+      const j = await r.json();
+      if (!r.ok) { alert(j.error || r.statusText); throw new Error(j.error); }
+      return j;
+    };
+    function askToken() {
+      const t = prompt('ADMIN_TOKEN del servidor:');
+      if (t != null) { token = t; store.set('admin.token', t); location.reload(); }
+    }
+
+    new Socket(() => wsUrl('/ws/admin', { token }), {
+      message(m) {
+        if (m.type === 'status') render(m);
+        else if (m.type === 'log') { logs.push(m); if (logs.length > 400) logs.shift(); renderLogs(); }
+        else if (m.type === 'logs') { logs.splice(0, logs.length, ...m.logs); renderLogs(); }
+      },
+      close(e) { if (e.code === 4001) askToken(); },
+    });
+
+    const fmtDur = (s) => { const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60); return h ? `${h}h ${m}m` : `${m}m ${s % 60}s`; };
+    const ago = (t) => { if (!t) return '—'; const s = Math.round((Date.now() - t) / 1000); return s < 60 ? `${s}s` : s < 3600 ? `${Math.floor(s / 60)}m` : `${Math.floor(s / 3600)}h`; };
+    const sec = (ms) => (ms == null ? '—' : (ms / 1000).toFixed(1) + 's');
+    const stateChip = (s) => {
+      if (!s.ingest) return '<span class="chip">SIN INGESTA</span>';
+      if (s.engines.length && !s.gated) return '<span class="chip bad"><span class="dot live"></span> EN VIVO</span>';
+      if (s.engines.length) return '<span class="chip warn">EN PAUSA · silencio</span>';
+      return '<span class="chip">ESPERANDO VOZ</span>';
+    };
+    const engChip = (e) => {
+      const cls = e.state === 'live' ? 'ok' : e.state === 'reconnecting' || e.state === 'resuming' || e.state === 'connecting' ? 'warn' : e.state === 'idle' ? '' : 'bad';
+      return `<span class="chip ${cls}" title="${esc(e.lastError || '')}">${esc(e.target)} · ${esc(e.state)}${e.reconnects ? ` · ↻${e.reconnects}` : ''}${e.level && e.level !== 'full' && e.level !== 'mock' ? ` · cfg:${e.level}` : ''}</span>`;
+    };
+
+    function render(s) {
+      last = s;
+      $('engine').textContent = s.engine === 'gemini' ? `Gemini · ${s.model}` : 'Modo simulado (sin API key)';
+      $('engine').className = 'chip ' + (s.engine === 'gemini' ? 'ok' : 'warn');
+      $('k-live').textContent = `${s.totals.live}/${s.totals.stages}`;
+      $('k-sessions').textContent = s.totals.sessions;
+      $('k-viewers').textContent = s.totals.viewers;
+      $('k-cost').textContent = `US$ ${s.totals.costUsd.toFixed(2)}`;
+      $('k-up').textContent = fmtDur(s.uptimeSec);
+      const grid = $('grid');
+      const ids = new Set(s.stages.map((x) => x.id));
+      for (const el of [...grid.children]) if (!ids.has(el.dataset.id)) el.remove();
+      for (const st of s.stages) {
+        let el = grid.querySelector(`[data-id="${st.id}"]`);
+        if (!el) {
+          el = document.createElement('article');
+          el.className = 'card stage';
+          el.dataset.id = st.id;
+          el.innerHTML = `
+            <div class="top"><h3></h3><span data-f="state"></span></div>
+            <div class="sub" data-f="sub"></div>
+            <div class="meter"><i data-f="lvl"></i><b data-f="pk"></b></div>
+            <div class="sub" data-f="ingest"></div>
+            <div class="row" data-f="engines"></div>
+            <div class="metrics" data-f="metrics"></div>
+            <div class="preview" data-f="preview"></div>
+            <div class="row" data-f="alerts"></div>
+            <div class="actions">
+              <button data-a="links">🔗 Links / QR</button>
+              <button data-a="talk">＋ Nueva charla</button>
+              <button data-a="export">⬇ Transcripciones</button>
+              <button data-a="restart" title="Reconectar sesiones de IA">↻</button>
+              <button data-a="edit">⚙︎</button>
+            </div>`;
+          grid.append(el);
+          if (![...$('logfilter').options].some((o) => o.value === st.id)) $('logfilter').append(new Option(st.name, st.id));
+        }
+        const f = (k) => el.querySelector(`[data-f="${k}"]`);
+        el.querySelector('h3').textContent = st.name;
+        el.classList.toggle('alert', st.alerts.some((a) => a !== 'no-ingest'));
+        f('state').innerHTML = stateChip(st);
+        const tgt = st.targets.filter((x) => x !== st.source).join(', ');
+        f('sub').innerHTML = `<code>${esc(st.id)}</code> · <span class="chip">${esc(st.mode)}</span> · ${esc(st.source === 'auto' ? `auto${st.detectedLang ? ` (${st.detectedLang})` : ''}` : st.source)} → ${esc(tgt || '—')}${st.talk.title ? ` · <b>${esc(st.talk.title)}</b>` : ''}`;
+        const db = 20 * Math.log10(st.level || 1e-6), pct = Math.max(0, Math.min(100, ((db + 60) / 60) * 100));
+        const pk = Math.max(0, Math.min(100, ((20 * Math.log10(st.peak || 1e-6) + 60) / 60) * 100));
+        f('lvl').style.width = pct + '%';
+        f('pk').style.left = pk + '%';
+        f('ingest').textContent = st.ingest ? `🎙 ${st.ingest.kind}${st.ingest.label ? ` · ${st.ingest.label}` : ''} · hace ${ago(st.ingest.since)}${st.pull ? ' · pull configurado' : ''}` : st.pull ? `pull: ${st.pull} (reintentando)` : 'Sin fuente de audio. Abrí /ingest.html en la PC del escenario.';
+        f('engines').innerHTML = st.engines.length ? st.engines.map(engChip).join('') : '<span class="chip">sesiones cerradas (0 costo)</span>';
+        const trs = Object.entries(st.latency.tr).map(([k, v]) => `${k} ${sec(v)}`).join(' · ');
+        f('metrics').innerHTML = `
+          <div>Latencia orig.<b>${sec(st.latency.asr)}</b></div>
+          <div title="${esc(trs)}">Latencia trad.<b>${sec(Math.max(0, ...Object.values(st.latency.tr).filter((v) => v != null)) || null)}</b></div>
+          <div>Público<b>${st.viewers}</b></div>
+          <div>Min · US$<b>${st.audioMinIn} · ${st.costUsd.toFixed(2)}</b></div>`;
+        f('preview').innerHTML = Object.entries(st.preview).map(([ch, txt]) => `<div><span class="l">${esc(ch)}</span> ${esc(txt ? (txt.length > 80 ? '…' + txt.slice(-80) : txt) : '…')}</div>`).join('');
+        f('alerts').innerHTML = st.alerts.filter((a) => a !== 'no-ingest').map((a) => `<span class="chip bad">⚠ ${esc({ 'no-audio': 'no llega audio', 'muted?': '¿mic muteado? (60s sin señal)', reconnecting: 'reconectando IA', 'high-latency': 'latencia alta', 'mt-throttled': 'traducción limitada por cuota → usando Live' }[a] || a)}</span>`).join('');
+      }
+    }
+
+    function renderLogs() {
+      const flt = $('logfilter').value;
+      const box = $('logs');
+      const atEnd = box.scrollHeight - box.scrollTop - box.clientHeight < 30;
+      box.innerHTML = logs.filter((l) => !flt || l.stage === flt).slice(-200).map((l) =>
+        `<div class="${l.level}">${new Date(l.t).toLocaleTimeString()} [${esc(l.stage)}] ${esc(l.msg)}</div>`).join('');
+      if (atEnd) box.scrollTop = box.scrollHeight;
+    }
+    $('logfilter').onchange = renderLogs;
+
+    // ---------- actions ----------
+    $('grid').onclick = async (e) => {
+      const b = e.target.closest('[data-a]');
+      if (!b) return;
+      const id = b.closest('[data-id]').dataset.id;
+      const st = last.stages.find((x) => x.id === id);
+      const a = b.dataset.a;
+      if (a === 'talk') {
+        const title = prompt('Título de la nueva charla (opcional). La transcripción actual queda guardada.', '');
+        if (title != null) await api('POST', `/api/stages/${id}/talk`, { title });
+      } else if (a === 'restart') await api('POST', `/api/stages/${id}/restart`);
+      else if (a === 'edit') openEdit(st);
+      else if (a === 'links') openLinks(st);
+      else if (a === 'export') openExport(st);
+    };
+
+    const origin = () => ev.publicUrl || location.origin;
+    function copyRow(label, url) {
+      return `<label class="field">${esc(label)}<div class="copy"><input readonly value="${esc(url)}" /><button type="button" onclick="navigator.clipboard.writeText('${esc(url)}');this.textContent='✓'">Copiar</button><a href="${esc(url)}" target="_blank"><button type="button">Abrir</button></a></div></label>`;
+    }
+    function openLinks(st) {
+      const o = origin();
+      const aud = `${o}/s/${st.id}`;
+      const others = st.languages.filter((l) => l !== 'orig');
+      $('links-body').innerHTML = `
+        <h3 style="margin:0">${esc(st.name)}</h3>
+        <div class="qrrow"><img src="/api/qr.svg?text=${encodeURIComponent(aud)}" alt="QR" /><div style="display:grid;gap:8px">${copyRow('Público (celular, QR)', aud)}<a href="/api/qr.svg?text=${encodeURIComponent(aud)}" download="qr-${st.id}.svg">Descargar QR (SVG para imprimir)</a></div></div>
+        ${copyRow('Pantalla del escenario / proyector', `${o}/screen.html?stage=${st.id}&langs=es,orig`)}
+        ${others.map((l) => copyRow(`Overlay vMix/OBS — ${langLabel(l, ev.languages)} (1920×1080, fondo transparente)`, `${o}/overlay.html?stage=${st.id}&lang=${l}`)).join('')}
+        ${copyRow('Overlay con fondo verde (chroma key)', `${o}/overlay.html?stage=${st.id}&lang=${others[0] || 'orig'}&bg=%2300ff00&style=outline`)}
+        ${copyRow('Ingesta (abrir en la mini PC del escenario)', `${o}/ingest.html?stage=${st.id}`)}`;
+      $('dlg-links').showModal();
+    }
+
+    async function openExport(st) {
+      const talks = await api('GET', `/api/stages/${st.id}/talks`);
+      const langs = st.languages;
+      $('export-body').innerHTML = `<h3 style="margin-top:0">Transcripciones · ${esc(st.name)}</h3>` + (talks.length ? `<table><tr><th>Charla</th><th>Seg.</th><th>Descargas</th></tr>${talks.map((t) => `
+        <tr><td>${esc(t.title || 'Sin título')}<br><span class="muted">${new Date(t.startedAt).toLocaleString()}</span></td><td>${t.segments}</td>
+        <td>${langs.map((l) => `<div><b>${esc(langLabel(l, ev.languages))}</b>: ${['srt', 'vtt', 'txt'].map((f) => `<a href="/api/stages/${st.id}/export.${f}?lang=${l}&talk=${encodeURIComponent(t.id)}">${f}</a>`).join(' · ')}</div>`).join('')}</td></tr>`).join('')}</table>` : '<p class="muted">Todavía no hay transcripciones.</p>');
+      $('dlg-export').showModal();
+    }
+
+    let editing = null;
+    const fe = $('f-edit');
+    for (const [code, name] of Object.entries(ev.languages)) fe.source.append(new Option(`${name} (${code})`, code));
+    function openEdit(st) {
+      editing = st;
+      $('edit-title').textContent = st ? `Editar ${st.name}` : 'Nueva sala';
+      fe.id.value = st?.id || '';
+      fe.id.disabled = !!st;
+      fe.name.value = st?.name || '';
+      fe.title.value = st?.talk?.title || '';
+      fe.source.value = st?.source || 'auto';
+      fe.pull.value = st?.pull || '';
+      fe.translation.value = st?.translationDef || '';
+      $('edit-targets').innerHTML = Object.entries(ev.languages).map(([c, n]) => `<label class="row"><input type="checkbox" value="${c}" ${(st?.targets || ['es', 'en']).includes(c) ? 'checked' : ''}/> ${esc(n)}</label>`).join('');
+      $('edit-del').classList.toggle('hidden', !st);
+      $('dlg-edit').showModal();
+    }
+    $('add').onclick = () => openEdit(null);
+    $('dlg-edit').addEventListener('close', async () => {
+      if ($('dlg-edit').returnValue !== 'ok') return;
+      const body = {
+        name: fe.name.value, title: fe.title.value, source: fe.source.value, translation: fe.translation.value || undefined, pull: fe.pull.value.trim(), loop: fe.loop.checked,
+        targets: [...$('edit-targets').querySelectorAll('input:checked')].map((i) => i.value),
+      };
+      if (editing) await api('PATCH', `/api/stages/${editing.id}`, body);
+      else await api('POST', '/api/stages', { id: fe.id.value, ...body });
+      ev = await (await fetch('/api/event')).json();
+    });
+    $('edit-del').onclick = async () => {
+      if (!confirm(`¿Eliminar la sala ${editing.name}? (las transcripciones guardadas se conservan)`)) return;
+      await api('DELETE', `/api/stages/${editing.id}`);
+      $('dlg-edit').close();
+    };
+
+    $('gloss').onclick = async () => {
+      $('gloss-text').value = JSON.stringify(await api('GET', '/api/glossary'), null, 2);
+      $('dlg-gloss').showModal();
+    };
+    $('dlg-gloss').addEventListener('close', async () => {
+      if ($('dlg-gloss').returnValue !== 'ok') return;
+      try { await api('PUT', '/api/glossary', JSON.parse($('gloss-text').value)); } catch (e) { alert('JSON inválido: ' + e.message); }
+    });
+  </script>
+</body>
+</html>

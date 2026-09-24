@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Subtítulos en vivo</title>
+  <link rel="stylesheet" href="/style.css" />
+  <style>
+    main { max-width: 760px; margin: 0 auto; padding: 28px 16px 60px; }
+    h1 { font-size: 30px; margin: 0 0 4px; }
+    .stages { display: grid; gap: 12px; margin-top: 24px; }
+    .stage { display: grid; grid-template-columns: 1fr auto; gap: 6px 12px; align-items: center; text-decoration: none; padding: 18px; }
+    .stage:hover { border-color: var(--accent); }
+    .stage h2 { margin: 0; font-size: 20px; }
+    .stage .title { grid-column: 1 / -1; color: var(--fg2); font-size: 15px; }
+    .stage .langs { grid-column: 1 / -1; }
+    footer { margin-top: 40px; font-size: 13px; }
+  </style>
+</head>
+<body>
+  <main>
+    <div class="brand" style="font-size:14px">open<span>captions</span></div>
+    <h1 id="event">…</h1>
+    <p class="muted" id="subtitle"></p>
+    <div class="stages" id="stages"></div>
+    <footer class="muted row" style="justify-content:space-between">
+      <span id="powered"></span>
+      <a href="/admin.html" id="prod"></a>
+    </footer>
+  </main>
+  <script type="module">
+    import { getEvent, t, esc, langLabel } from '/common.js';
+    document.getElementById('subtitle').textContent = t('chooseStage');
+    document.getElementById('powered').textContent = t('poweredBy');
+    document.getElementById('prod').textContent = t('production');
+    async function render() {
+      const ev = await getEvent();
+      document.getElementById('event').textContent = ev.name;
+      document.title = `${ev.name} · Subtítulos`;
+      document.getElementById('stages').innerHTML = ev.stages.map((s) => `
+        <a class="card stage" href="/watch.html?stage=${encodeURIComponent(s.id)}">
+          <h2>${esc(s.name)}</h2>
+          <span class="chip ${s.live ? 'bad' : ''}">${s.live ? `<span class="dot live"></span> ${t('live')}` : t('offline')}</span>
+          ${s.title ? `<div class="title">${esc(s.title)}</div>` : ''}
+          <div class="langs row">${s.languages.map((l) => `<span class="chip">${esc(langLabel(l, ev.languages))}</span>`).join('')}</div>
+        </a>`).join('');
+    }
+    render();
+    setInterval(render, 10000);
+  </script>
+</body>
+</html>

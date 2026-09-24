@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Pantalla · Subtítulos</title>
+  <link rel="stylesheet" href="/style.css" />
+  <style>
+    /* Projector / stage screen. Params: ?stage=main&langs=es,orig&qr=1&ui=es */
+    html, body { background: #000; color: #fff; height: 100%; overflow: hidden; cursor: none; }
+    .wrap { position: fixed; inset: 0; display: grid; grid-template-rows: auto 1fr auto; padding: 3vh 4vw; gap: 2vh; }
+    .head { display: flex; justify-content: space-between; align-items: baseline; color: #9a9ab0; font-size: 2.2vh; }
+    .head b { color: #fff; }
+    .bands { display: grid; align-content: end; gap: 3vh; }
+    .band { font-weight: 600; line-height: 1.22; transition: opacity 1s; }
+    .band .clip { display: flex; flex-direction: column; justify-content: flex-end; overflow: hidden; }
+    .band.main .clip { font-size: var(--main, 6.4vh); height: calc(var(--main, 6.4vh) * 1.22 * var(--lines, 3)); }
+    .band.sub .clip { font-size: 3.6vh; height: calc(3.6vh * 1.22 * 2); color: #b8b8c8; font-weight: 500; }
+    .band .lbl { font-size: 1.6vh; letter-spacing: .14em; text-transform: uppercase; color: var(--accent); margin-bottom: .6vh; font-weight: 700; }
+    .band .partial { color: #fff; }
+    .foot { display: flex; justify-content: space-between; align-items: flex-end; gap: 2vw; }
+    .qr { display: flex; align-items: center; gap: 1.4vw; background: #111; border: 1px solid #222; padding: 1.2vh 1.2vw; border-radius: 1.4vh; }
+    .qr img { width: 14vh; height: 14vh; background: #fff; border-radius: .8vh; padding: .5vh; }
+    .qr div { font-size: 2.1vh; color: #ccc; max-width: 26vw; }
+    .qr b { display: block; color: #fff; font-size: 2.6vh; margin-bottom: .4vh; }
+    .foot-l { font-size: 1.8vh; color: #666; font-weight: 700; } .foot-l i { font-style: normal; font-weight: 400; }
+    .fade { opacity: .25; transition: opacity 1s; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="head"><span><b id="stage"></b> <span id="talk"></span></span><span id="clock"></span></div>
+    <div class="bands" id="bands"></div>
+    <div class="foot">
+      <div class="foot-l">open<span style="color:var(--accent)">captions</span> · <i id="powered"></i></div>
+      <div class="qr" id="qrbox"><img id="qr" alt="QR" /><div><b id="follow"></b><span id="url"></span></div></div>
+    </div>
+  </div>
+  <script type="module">
+    import { qs, t, esc, wsUrl, Socket, CaptionState, getEvent, langLabel } from '/common.js';
+    const $ = (id) => document.getElementById(id);
+    const stageId = qs.get('stage') || 'main';
+    const ev = await getEvent();
+    const want = (qs.get('langs') || 'es,orig').split(',');
+    if (qs.get('lines')) document.documentElement.style.setProperty('--lines', qs.get('lines'));
+    if (qs.get('size')) document.documentElement.style.setProperty('--main', qs.get('size') + 'vh');
+    $('powered').textContent = t('poweredBy');
+    $('follow').textContent = t('followOnPhone');
+    const viewUrl = `${ev.publicUrl}/s/${stageId}`;
+    $('url').textContent = viewUrl.replace(/^https?:\/\//, '');
+    $('qr').src = `/api/qr.svg?text=${encodeURIComponent(viewUrl)}`;
+    if (qs.get('qr') === '0') $('qrbox').classList.add('hidden');
+
+    let hello, bands = [];
+    const states = {};
+    new Socket(() => wsUrl('/ws/view', { stage: stageId, langs: want.join(',') }), {
+      message(m) {
+        if (m.type === 'hello') {
+          hello = m;
+          $('stage').textContent = m.stage.name;
+          $('talk').textContent = m.stage.title ? `· ${m.stage.title}` : '';
+          // Distinct channels in the requested order (e.g. es→orig when the talk is already in Spanish).
+          bands = [...new Set(want.map((l) => m.map[l]))];
+          for (const ch of bands) (states[ch] ??= new CaptionState()).load(m.history[ch], m.partial[ch]);
+          $('bands').innerHTML = bands.map((ch, i) => {
+            const label = want.find((l) => m.map[l] === ch);
+            return `<div class="band ${i ? 'sub' : 'main'}" id="b-${ch}"><div class="lbl">${esc(langLabel(label === 'orig' ? 'orig' : label, ev.languages))}</div><div class="clip"><div class="txt"></div></div></div>`;
+          }).join('');
+          render();
+        } else if (m.type === 'caption') { (states[m.channel] ??= new CaptionState()).apply(m); render(m.channel); }
+        else if (m.type === 'talk') { for (const s of Object.values(states)) s.clear(); $('talk').textContent = m.title ? `· ${m.title}` : ''; render(); }
+      },
+    });
+
+    function render(only) {
+      bands.forEach((ch, i) => {
+        if (only && only !== ch) return;
+        const el = document.querySelector(`#b-${CSS.escape(ch)} .txt`);
+        if (el) el.textContent = states[ch]?.tail(i ? 200 : 260) || '';
+        document.getElementById(`b-${ch}`)?.classList.remove('fade');
+      });
+    }
+    setInterval(() => {
+      for (const ch of bands) {
+        const idle = Date.now() - (states[ch]?.updatedAt || 0) > 12000;
+        document.getElementById(`b-${ch}`)?.classList.toggle('fade', idle);
+      }
+      $('clock').textContent = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    }, 1000);
+  </script>
+</body>
+</html>

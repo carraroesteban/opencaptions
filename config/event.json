@@ -1,0 +1,17 @@
+{
+  "eventName": "Nerdearla 2026",
+  "accent": "#8b5cf6",
+  "publicUrl": "",
+  "model": "gemini-3.5-live-translate-preview",
+  "languages": { "es": "Español", "en": "English", "pt": "Português" },
+  "defaultTargets": ["es", "en"],
+  "glossary": "config/glossary.json",
+  "silenceGateSec": 30,
+  "idleCloseSec": 300,
+  "stages": [
+    { "id": "main",   "name": "Escenario Principal", "source": "auto", "targets": ["es", "en"] },
+    { "id": "sala-a", "name": "Sala A",               "source": "en",   "targets": ["es", "pt"] },
+    { "id": "sala-b", "name": "Sala B",               "source": "es",   "targets": ["en"] },
+    { "id": "sala-c", "name": "Sala C",               "source": "auto", "targets": ["es", "en"] }
+  ]
+}

@@ -1,0 +1,212 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Ingesta de audio · OpenCaptions</title>
+  <link rel="stylesheet" href="/style.css" />
+  <style>
+    main { max-width: 980px; margin: 0 auto; padding: 22px 16px 60px; display: grid; gap: 16px; }
+    h1 { margin: 0; font-size: 22px; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+    .seg { display: flex; gap: 6px; flex-wrap: wrap; }
+    #go { font-size: 18px; padding: 14px 26px; }
+    .big-meter { height: 18px; border-radius: 9px; }
+    .preview { display: grid; gap: 10px; }
+    .preview div { background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; min-height: 2.8em; font-size: 17px; }
+    .preview b { display: block; font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--accent); margin-bottom: 4px; }
+    .links a { font-size: 14px; }
+    .hint { font-size: 13px; }
+  </style>
+</head>
+<body>
+  <main>
+    <div class="row" style="justify-content:space-between">
+      <div><div class="brand" style="font-size:13px">open<span>captions</span></div><h1>Ingesta de audio del escenario</h1></div>
+      <span class="chip" id="conn">desconectado</span>
+    </div>
+
+    <section class="card" style="display:grid;gap:14px">
+      <div class="grid">
+        <label class="field">Escenario<select id="stage"></select></label>
+        <label class="field">Fuente
+          <select id="mode">
+            <option value="mic">Micrófono / placa de audio</option>
+            <option value="tab">Pestaña o pantalla (audio de un stream, YouTube…)</option>
+            <option value="file">Archivo de audio/video</option>
+            <option value="sample">Audio de prueba incluido</option>
+          </select>
+        </label>
+        <label class="field" id="f-device">Entrada<select id="device"><option value="">(default)</option></select></label>
+        <label class="field" id="f-channel">Canal<select id="channel"><option value="mix">Mono (mezcla L+R)</option><option value="left">Solo izquierdo</option><option value="right">Solo derecho</option></select></label>
+        <label class="field hidden" id="f-file">Archivo<input type="file" id="file" accept="audio/*,video/*" /></label>
+        <label class="field hidden" id="f-sample">Audio de prueba<select id="sample"><option value="/samples/talk-en.wav">Charla en inglés (EN → ES)</option><option value="/samples/talk-es.wav">Charla en español (ES → EN)</option></select></label>
+        <label class="field">Ganancia <input type="range" id="gain" min="0.5" max="4" step="0.1" value="1" /></label>
+        <label class="field" id="f-token">Token de ingesta (si el server lo pide)<input id="token" type="password" autocomplete="off" /></label>
+      </div>
+      <div class="row">
+        <button id="go" class="primary">▶ Empezar a transcribir</button>
+        <label class="row muted hint"><input type="checkbox" id="monitor" /> Escuchar localmente (archivo/prueba)</label>
+        <label class="row muted hint"><input type="checkbox" id="auto" /> Auto-iniciar al abrir (mini PC)</label>
+      </div>
+      <div>
+        <div class="row muted hint" style="justify-content:space-between"><span>Nivel de entrada</span><span id="db">–∞ dB</span></div>
+        <div class="meter big-meter"><i id="lvl"></i><b id="pk" style="left:0"></b></div>
+      </div>
+      <div class="row" id="engines"></div>
+      <p class="muted hint" style="margin:0">Una vez iniciado no requiere operador: si hay silencio por un rato se pausa el envío (sin costo) y retoma solo cuando alguien habla. Si se corta la red, reconecta y reenvía lo que quedó en buffer.</p>
+    </section>
+
+    <section class="card preview" id="preview"></section>
+
+    <section class="card links row" id="links"></section>
+  </main>
+  <script type="module">
+    import { qs, esc, store, wsUrl, Socket, getEvent, langLabel } from '/common.js';
+    const $ = (id) => document.getElementById(id);
+    const ev = await getEvent();
+    $('stage').innerHTML = ev.stages.map((s) => `<option value="${s.id}">${esc(s.name)} (${s.id})</option>`).join('');
+    $('stage').value = qs.get('stage') || store.get('ingest.stage', ev.stages[0]?.id);
+    $('mode').value = qs.get('mode') || store.get('ingest.mode', 'mic');
+    $('channel').value = store.get('ingest.channel', 'mix');
+    $('gain').value = store.get('ingest.gain', 1);
+    $('token').value = qs.get('token') || store.get('ingest.token', '');
+    $('auto').checked = store.get('ingest.auto', false);
+
+    let ctx, node, stream, media, sock, running = false;
+    const pending = [];
+
+    function showFields() {
+      const m = $('mode').value;
+      $('f-device').classList.toggle('hidden', m !== 'mic');
+      $('f-file').classList.toggle('hidden', m !== 'file');
+      $('f-sample').classList.toggle('hidden', m !== 'sample');
+      links();
+    }
+    $('mode').onchange = () => { store.set('ingest.mode', $('mode').value); showFields(); };
+    $('stage').onchange = () => { store.set('ingest.stage', $('stage').value); links(); if (running) { stop(); start(); } };
+    $('channel').onchange = () => store.set('ingest.channel', $('channel').value);
+    $('token').onchange = () => store.set('ingest.token', $('token').value);
+    $('auto').onchange = () => store.set('ingest.auto', $('auto').checked);
+    $('gain').oninput = () => { store.set('ingest.gain', +$('gain').value); node?.port.postMessage({ gain: +$('gain').value }); };
+    showFields();
+
+    async function listDevices() {
+      try {
+        const devs = (await navigator.mediaDevices.enumerateDevices()).filter((d) => d.kind === 'audioinput');
+        const saved = store.get('ingest.device', '');
+        $('device').innerHTML = devs.map((d, i) => `<option value="${d.deviceId}">${esc(d.label || `Entrada ${i + 1}`)}</option>`).join('');
+        if (devs.some((d) => d.deviceId === saved)) $('device').value = saved;
+      } catch { /* ignore */ }
+    }
+    $('device').onchange = () => store.set('ingest.device', $('device').value);
+    listDevices();
+
+    async function getSource() {
+      const m = $('mode').value;
+      if (m === 'mic') {
+        stream = await navigator.mediaDevices.getUserMedia({ audio: {
+          deviceId: $('device').value ? { exact: $('device').value } : undefined,
+          // Raw console feed: disable voice-call processing.
+          echoCancellation: false, noiseSuppression: false, autoGainControl: false, channelCount: 2,
+        } });
+        listDevices();
+        return ctx.createMediaStreamSource(stream);
+      }
+      if (m === 'tab') {
+        stream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false }, systemAudio: 'include' });
+        if (!stream.getAudioTracks().length) throw new Error('No se compartió audio: marcá "Compartir audio de la pestaña".');
+        stream.getVideoTracks().forEach((t) => (t.enabled = false));
+        return ctx.createMediaStreamSource(new MediaStream(stream.getAudioTracks()));
+      }
+      media = new Audio();
+      media.crossOrigin = 'anonymous';
+      media.loop = true;
+      media.src = m === 'file' ? URL.createObjectURL($('file').files[0] || (() => { throw new Error('Elegí un archivo'); })()) : $('sample').value;
+      await media.play();
+      const src = ctx.createMediaElementSource(media);
+      if ($('monitor').checked) src.connect(ctx.destination);
+      return src;
+    }
+
+    async function start() {
+      try {
+        ctx = new AudioContext();
+        await ctx.audioWorklet.addModule('/pcm-worklet.js');
+        const src = await getSource();
+        node = new AudioWorkletNode(ctx, 'pcm-capture', { processorOptions: { channel: $('channel').value, gain: +$('gain').value } });
+        src.connect(node);
+        const mute = ctx.createGain(); mute.gain.value = 0; node.connect(mute).connect(ctx.destination); // keeps the graph pulling
+        node.port.onmessage = (e) => onPcm(e.data);
+        sock = new Socket(() => wsUrl('/ws/ingest', { stage: $('stage').value, kind: 'browser', label: `${$('mode').value}${$('mode').value === 'mic' ? ': ' + ($('device').selectedOptions[0]?.text || '') : ''}`, token: $('token').value }), {
+          open() { setConn('conectado', 'ok'); while (pending.length && sock.ready) sock.send(pending.shift()); },
+          close(e) { setConn(e.code === 4001 ? 'token inválido' : e.code === 4000 ? 'reemplazado por otra ingesta' : 'reconectando…', 'bad'); if (e.code === 4000 || e.code === 4001) stop(); },
+          message: onStatus,
+        });
+        running = true;
+        $('go').textContent = '■ Detener';
+        $('go').classList.remove('primary');
+        $('go').classList.add('danger');
+      } catch (e) {
+        alertBox(e.message);
+        stop();
+      }
+    }
+
+    function stop() {
+      running = false;
+      sock?.close(); sock = null;
+      stream?.getTracks().forEach((t) => t.stop()); stream = null;
+      media?.pause(); media = null;
+      ctx?.close(); ctx = null; node = null;
+      pending.length = 0;
+      setConn('desconectado', '');
+      $('go').textContent = '▶ Empezar a transcribir';
+      $('go').classList.add('primary');
+      $('go').classList.remove('danger');
+      $('lvl').style.width = '0';
+    }
+    $('go').onclick = () => (running ? stop() : start());
+
+    let peak = 0;
+    function onPcm(buf) {
+      const i16 = new Int16Array(buf);
+      let sum = 0;
+      for (let i = 0; i < i16.length; i++) sum += (i16[i] / 32768) ** 2;
+      const rms = Math.sqrt(sum / i16.length);
+      const db = 20 * Math.log10(rms || 1e-6);
+      const pct = Math.max(0, Math.min(100, ((db + 60) / 60) * 100));
+      peak = Math.max(peak * 0.97, pct);
+      $('lvl').style.width = pct + '%';
+      $('pk').style.left = peak + '%';
+      $('db').textContent = `${db.toFixed(0)} dB`;
+      if (sock?.ready) sock.send(buf);
+      else { pending.push(buf); if (pending.length > 150) pending.shift(); }
+    }
+
+    function onStatus(m) {
+      if (m.type !== 'status') return;
+      $('engines').innerHTML = [
+        m.gated ? '<span class="chip warn">en pausa (silencio)</span>' : '<span class="chip ok">enviando al modelo</span>',
+        ...m.engines.map((e) => `<span class="chip ${e.state === 'live' ? 'ok' : e.state === 'idle' ? '' : 'warn'}">${esc(e.target)} · ${esc(e.state)}</span>`),
+        m.latency?.asr != null ? `<span class="chip">latencia ${(m.latency.asr / 1000).toFixed(1)}s</span>` : '',
+        ...m.alerts.map((a) => `<span class="chip bad">${esc(a)}</span>`),
+      ].join('');
+      $('preview').innerHTML = Object.entries(m.preview).map(([ch, txt]) => `<div><b>${esc(langLabel(ch, ev.languages))}</b>${esc(txt) || '<span class="muted">…</span>'}</div>`).join('');
+    }
+
+    function setConn(txt, cls) { $('conn').textContent = txt; $('conn').className = 'chip ' + cls; }
+    function alertBox(msg) { const d = document.createElement('div'); d.className = 'toast'; d.textContent = msg; document.body.append(d); setTimeout(() => d.remove(), 5000); }
+
+    function links() {
+      const s = $('stage').value;
+      $('links').innerHTML = `
+        <a href="/screen.html?stage=${s}" target="_blank">🖥️ Abrir pantalla para proyector</a>
+        <a href="/overlay.html?stage=${s}&lang=es" target="_blank">🎬 Overlay para vMix/OBS</a>
+        <a href="/s/${s}" target="_blank">📱 Vista del público</a>
+        <a href="/admin.html" target="_blank">📊 Panel de producción</a>`;
+    }
+    if ($('auto').checked || qs.get('autostart') === '1') start();
+  </script>
+</body>
+</html>

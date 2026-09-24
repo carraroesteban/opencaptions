@@ -1,0 +1,12 @@
+services:
+  opencaptions:
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    ports:
+      - "8080:8080"
+      # SRT listener ports if you configure stages with `pull: "srt://0.0.0.0:900X?mode=listener"`
+      - "9001-9010:9001-9010/udp"
+    volumes:
+      - ./data:/app/data
+      - ./config:/app/config

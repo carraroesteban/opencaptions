@@ -1,0 +1,214 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#0b0b10" />
+  <title>Subtítulos en vivo</title>
+  <link rel="stylesheet" href="/style.css" />
+  <style>
+    body { display: flex; flex-direction: column; height: 100dvh; overflow: hidden; }
+    header { padding: 12px 16px 10px; border-bottom: 1px solid var(--line); background: var(--bg); }
+    header .top { display: flex; align-items: center; gap: 10px; }
+    header h1 { font-size: 17px; margin: 0; flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    header .talk { font-size: 13px; color: var(--fg2); margin: 2px 0 10px 34px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .back { text-decoration: none; font-size: 22px; line-height: 1; width: 24px; }
+    .langs { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; padding-bottom: 2px; }
+    #scroll { flex: 1; overflow-y: auto; padding: 18px 18px 40px; scroll-behavior: smooth; }
+    #text { font-size: var(--size, 24px); line-height: 1.45; max-width: 820px; margin: 0 auto; font-weight: 500; }
+    #text p { margin: 0 0 .55em; }
+    #text p.old { color: var(--fg2); }
+    #text p.partial { color: var(--accent); }
+    #text .empty { color: var(--fg2); font-size: 18px; text-align: center; margin-top: 30vh; }
+    #orig { border-top: 1px solid var(--line); padding: 10px 18px; font-size: 16px; color: var(--fg2); background: var(--bg2); min-height: 3.2em; }
+    #orig b { color: var(--fg); font-size: 11px; letter-spacing: .08em; text-transform: uppercase; margin-right: 6px; }
+    footer { display: flex; gap: 8px; padding: 10px 12px calc(10px + env(safe-area-inset-bottom)); border-top: 1px solid var(--line); background: var(--bg); align-items: center; }
+    footer .spacer { flex: 1; }
+    footer button { padding: 8px 10px; font-size: 15px; }
+    footer { gap: 6px; }
+    @media (max-width: 440px) { #listen .lbl { display: none; } #dual { font-size: 13px; padding: 6px 10px; } }
+    #tolive { position: fixed; bottom: 86px; left: 50%; transform: translateX(-50%); box-shadow: 0 6px 20px rgba(0,0,0,.4); }
+    #listen[aria-pressed='true'] { background: var(--accent); border-color: var(--accent); color: #fff; }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="top">
+      <a class="back" href="/" aria-label="Salas">‹</a>
+      <h1 id="stage">…</h1>
+      <span class="chip" id="status"><span class="dot"></span> <span></span></span>
+    </div>
+    <div class="talk" id="talk"></div>
+    <div class="langs" id="langs" role="group"></div>
+  </header>
+  <div id="scroll" aria-live="polite"><div id="text"><div class="empty" id="empty"></div></div></div>
+  <div id="orig" class="hidden"><b></b><span></span></div>
+  <button id="tolive" class="primary hidden"></button>
+  <footer>
+    <button id="smaller" aria-label="A-">A−</button>
+    <button id="bigger" aria-label="A+">A+</button>
+    <button id="dual" class="pill" aria-pressed="false"></button>
+    <span class="spacer"></span>
+    <button id="listen" class="hidden" aria-pressed="false">🎧</button>
+    <button id="theme" aria-label="theme">◐</button>
+    <a id="dl" download><button>⬇</button></a>
+  </footer>
+  <script type="module">
+    import { qs, t, esc, store, wsUrl, Socket, CaptionState, PcmPlayer, langLabel, wakeLock, getEvent } from '/common.js';
+    const $ = (id) => document.getElementById(id);
+    const stageId = qs.get('stage');
+    if (!stageId) location.href = '/';
+
+    const ev = await getEvent();
+    let lang = qs.get('lang') || store.get(`lang.${stageId}`) || store.get('lang') || null;
+    let dual = store.get('dual', false);
+    let size = store.get('size', 24);
+    let listening = false;
+    let hello = null;
+    const states = {};
+    const player = new PcmPlayer();
+    document.documentElement.dataset.theme = store.get('theme', 'dark');
+
+    $('empty').textContent = t('connecting');
+    $('tolive').textContent = '↓ ' + t('backToLive');
+    $('dual').textContent = t('dual');
+    $('listen').innerHTML = `🎧 <span class="lbl">${t('listen')}</span>`;
+    $('orig').querySelector('b').textContent = t('original');
+    document.documentElement.style.setProperty('--size', size + 'px');
+
+    const channel = () => hello?.map?.[lang] || 'orig';
+    const hasAudio = () => channel() !== 'orig' && (hello?.stage?.audioLangs || []).includes(lang);
+
+    const sock = new Socket(() => wsUrl('/ws/view', {
+      stage: stageId,
+      langs: [lang || 'orig', dual ? 'orig' : null].filter(Boolean).join(','),
+      audio: listening ? lang : '0',
+    }), {
+      message(m) {
+        if (m.type === 'hello') onHello(m);
+        else if (m.type === 'caption') onCaption(m);
+        else if (m.type === 'talk') { for (const s of Object.values(states)) s.clear(); $('talk').textContent = m.title || ''; renderAll(); toast(t('talkChanged')); }
+      },
+      binary(ab) { if (listening) player.push(ab); },
+      close(e) { if (e.code === 4004) location.href = '/'; },
+    });
+
+    function onHello(m) {
+      hello = m;
+      document.title = `${m.stage.name} · ${ev.name}`;
+      $('stage').textContent = m.stage.name;
+      $('talk').textContent = m.stage.title || '';
+      const langs = m.stage.languages;
+      if (!lang || !langs.includes(lang)) {
+        const pref = (navigator.language || 'es').slice(0, 2);
+        const next = langs.includes(pref) ? pref : 'orig';
+        if (next !== lang) { lang = next; return sock.reconnect(); }
+      }
+      $('langs').innerHTML = langs.map((l) => `<button class="pill" data-lang="${l}" aria-pressed="${l === lang}">${esc(l === 'orig' ? t('original') : langLabel(l, ev.languages))}</button>`).join('');
+      for (const [ch, hist] of Object.entries(m.history)) (states[ch] ??= new CaptionState()).load(hist, m.partial[ch]);
+      $('listen').classList.toggle('hidden', !hasAudio());
+      $('orig').classList.toggle('hidden', !dual || channel() === 'orig');
+      $('dl').href = `/api/stages/${stageId}/export.txt?lang=${lang}`;
+      renderAll();
+    }
+
+    function onCaption(seg) {
+      const s = (states[seg.channel] ??= new CaptionState());
+      s.apply(seg);
+      if (seg.channel === channel()) renderMain(seg);
+      if (dual && seg.channel === 'orig' && channel() !== 'orig') renderOrig();
+      pulse();
+    }
+
+    // ---- rendering ----
+    const nearBottom = () => $('scroll').scrollHeight - $('scroll').scrollTop - $('scroll').clientHeight < 120;
+    let follow = true;
+    $('scroll').addEventListener('scroll', () => { follow = nearBottom(); $('tolive').classList.toggle('hidden', follow); });
+    $('tolive').onclick = () => { follow = true; $('scroll').scrollTop = $('scroll').scrollHeight; };
+
+    function renderAll() {
+      const s = states[channel()] || new CaptionState();
+      const box = $('text');
+      box.innerHTML = '';
+      s.finals.forEach((f, i) => box.append(para(f, i < s.finals.length - 6)));
+      if (s.partial) box.append(para(s.partial));
+      if (!s.finals.length && !s.partial) box.innerHTML = `<div class="empty">${esc(t('waiting'))}</div>`;
+      renderOrig();
+      scrollEnd();
+    }
+
+    function para(seg, old = false) {
+      const p = document.createElement('p');
+      p.dataset.id = seg.id;
+      p.textContent = seg.text;
+      if (!seg.final) p.className = 'partial'; else if (old) p.className = 'old';
+      return p;
+    }
+
+    function renderMain(seg) {
+      const box = $('text');
+      box.querySelector('.empty')?.remove();
+      let p = box.querySelector(`p[data-id="${CSS.escape(seg.id)}"]`);
+      if (p) { p.textContent = seg.text; p.className = seg.final ? '' : 'partial'; }
+      else box.append(para(seg));
+      // keep the partial last and dim older paragraphs
+      const ps = box.querySelectorAll('p');
+      ps.forEach((el, i) => { if (!el.classList.contains('partial')) el.classList.toggle('old', i < ps.length - 6); });
+      while (box.children.length > 220) box.firstChild.remove();
+      scrollEnd();
+    }
+
+    function renderOrig() {
+      if (!dual || channel() === 'orig') return;
+      $('orig').querySelector('span').textContent = (states.orig?.tail(150)) || '…';
+    }
+
+    function scrollEnd() { if (follow) requestAnimationFrame(() => { $('scroll').scrollTop = $('scroll').scrollHeight; }); }
+
+    // ---- status ----
+    let last = 0;
+    function pulse() { last = Date.now(); }
+    setInterval(() => {
+      const live = sock.ready && Date.now() - last < 15000;
+      const el = $('status');
+      el.className = 'chip' + (live ? ' bad' : '');
+      el.querySelector('.dot').className = 'dot' + (live ? ' live' : '');
+      el.querySelector('span:last-child').textContent = !sock.ready ? t('connecting') : live ? t('live') : t('paused');
+    }, 1000);
+
+    // ---- controls ----
+    $('langs').onclick = (e) => {
+      const b = e.target.closest('[data-lang]');
+      if (!b || b.dataset.lang === lang) return;
+      lang = b.dataset.lang;
+      store.set(`lang.${stageId}`, lang);
+      store.set('lang', lang);
+      if (listening && lang === 'orig') toggleListen();
+      sock.reconnect();
+    };
+    const setSize = (d) => { size = Math.min(56, Math.max(14, size + d)); store.set('size', size); document.documentElement.style.setProperty('--size', size + 'px'); scrollEnd(); };
+    $('smaller').onclick = () => setSize(-2);
+    $('bigger').onclick = () => setSize(2);
+    $('dual').setAttribute('aria-pressed', dual);
+    $('dual').onclick = () => { dual = !dual; store.set('dual', dual); $('dual').setAttribute('aria-pressed', dual); sock.reconnect(); };
+    $('theme').onclick = () => { const th = document.documentElement.dataset.theme === 'light' ? 'dark' : 'light'; document.documentElement.dataset.theme = th; store.set('theme', th); };
+    async function toggleListen() {
+      listening = !listening;
+      $('listen').setAttribute('aria-pressed', listening);
+      $('listen').innerHTML = `🎧 <span class="lbl">${listening ? t('stopListen') : t('listen')}</span>`;
+      if (listening) { await player.start(); toast(t('listenHint')); } else player.stop();
+      sock.reconnect();
+    }
+    $('listen').onclick = toggleListen;
+
+    function toast(msg) {
+      const d = document.createElement('div');
+      d.className = 'toast';
+      d.textContent = msg;
+      document.body.append(d);
+      setTimeout(() => d.remove(), 2500);
+    }
+    wakeLock();
+  </script>
+</body>
+</html>

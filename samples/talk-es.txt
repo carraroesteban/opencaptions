@@ -1,0 +1,6 @@
+Hola a todos, bienvenidos a Nerdearla. Hoy vamos a hablar de cómo usar modelos de lenguaje en producción sin prenderle fuego al presupuesto.
+Primero, un poco de contexto. El año pasado armamos un asistente para el equipo de soporte, usando RAG con embeddings y una base de datos vectorial.
+Al principio funcionaba bárbaro en la demo, pero en producción la latencia era de ocho segundos y los costos se nos fueron por las nubes.
+Entonces hicimos tres cosas. Cacheamos las respuestas frecuentes, usamos un modelo más chico para clasificar las consultas, y medimos todo con OpenTelemetry.
+La lección más importante es que un modelo open source como Gemma, corriendo local, puede resolver el ochenta por ciento de los casos.
+Muchas gracias, y los espero en el stand de SysArmy para seguir charlando.

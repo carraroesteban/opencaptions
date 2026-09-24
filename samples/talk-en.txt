@@ -1,0 +1,8 @@
+Hi everyone, and welcome to Nerdearla. My name is Alex, and I work as a site reliability engineer.
+Today I want to talk about observability in Kubernetes, and why your on-call rotation should not depend on luck.
+Let's start with a story. It was three in the morning, the pager went off, and our PostgreSQL primary was running out of connections.
+We had dashboards in Grafana, metrics in Prometheus, and logs everywhere, but nobody could answer a simple question: what changed?
+So we decided to instrument every service with OpenTelemetry, and to attach the commit and the pull request to every deployment.
+The result was simple. When something breaks, the trace tells you which service is slow, and the deployment marker tells you why.
+My advice is: start small, measure the things your users feel, like latency and errors, and write runbooks that a tired human can follow.
+Thank you very much, and enjoy the rest of the conference.

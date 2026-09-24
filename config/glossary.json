@@ -1,0 +1,19 @@
+{
+  "_doc": "vocabulary: biases speech recognition (sent to Gemini as customVocabulary). replacements: deterministic fixes applied to every caption (case-insensitive, whole words). Use 'lang' to restrict a rule to one channel ('orig', 'es', 'en', ...).",
+  "vocabulary": [
+    "Nerdearla", "SysArmy", "Kubernetes", "kubectl", "Terraform", "OpenTelemetry", "Prometheus", "Grafana",
+    "PostgreSQL", "MySQL", "Percona", "Gemini", "Gemma", "DeepMind", "LLM", "RAG", "embeddings", "DevOps",
+    "SRE", "on-call", "pull request", "GitHub", "GitLab", "CI/CD", "WebAssembly", "Rust", "TypeScript", "Konex"
+  ],
+  "replacements": [
+    { "from": "nerd earla|nerdear la|nerdiarla|nerd arla|nerdle|nerdel|nerdela|nerdearle|nerd era", "to": "Nerdearla" },
+    { "from": "sys army|cis army|sis army", "to": "SysArmy" },
+    { "from": "cubernetes|kubernete|kuber netes", "to": "Kubernetes" },
+    { "from": "cube control|cube ctl|kube control", "to": "kubectl" },
+    { "from": "postgres q l|postgre sql|post to rescue l|post rescue l|postgres ql|post gress", "to": "PostgreSQL" },
+    { "from": "geminis", "to": "Gemini" },
+    { "from": "solicitud de extracción|solicitud de incorporación", "to": "pull request", "lang": "es" },
+    { "from": "de guardia", "to": "on-call", "lang": "es" },
+    { "from": "incrustaciones", "to": "embeddings", "lang": "es" }
+  ]
+}
