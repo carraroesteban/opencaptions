@@ -9,7 +9,7 @@
     "check": "node scripts/check-gemini.js",
     "feed": "node scripts/feed.js",
     "loadtest": "node scripts/loadtest.js",
-    "test": "node --test test/*.test.js",
+    "test": "node --test",
     "agent": "node scripts/agent.js",
     "multi": "node scripts/multi-youtube.js",
     "setup": "node scripts/setup.js",
