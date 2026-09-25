@@ -33,6 +33,9 @@ export function ffmpegArgs(input, { realtime = false, loop = false, start = 0 } 
   if (file && loop) args.push('-stream_loop', '-1');
   if (/^https?:/i.test(input)) args.push('-reconnect', '1', '-reconnect_streamed', '1', '-reconnect_delay_max', '5');
   if (start) args.push('-ss', String(start));
+  // rtmp://0.0.0.0:1935/live/<key> = act as a tiny RTMP server: OBS / vMix stream straight to OpenCaptions
+  // (Settings → Stream → Custom). The listener waits for the encoder and is restarted when it disconnects.
+  if (/^rtmps?:\/\/(0\.0\.0\.0|\[::\])(:\d+)?\//i.test(input)) args.push('-listen', '1');
   // Network inputs may only use network protocols (no file:, concat:, subfile: tricks via playlists).
   if (!file) args.push('-protocol_whitelist', 'http,https,tcp,tls,crypto,httpproxy,srt,rtmp,rtmps,rtmpt,rtsp,rtsps,udp,rtp');
   args.push('-i', input.replace(/^file:\/\//, ''), '-vn', '-ac', '1', '-ar', '16000', '-f', 's16le', 'pipe:1');

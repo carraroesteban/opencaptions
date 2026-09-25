@@ -85,3 +85,67 @@ test('a destroyed room never opens new model sessions', async () => {
   for (let i = 0; i < 5; i++) st.pushAudio(chunk);
   assert.equal(st.engines.size, 0);
 });
+
+test('bilingual speaker: captions switch cleanly between passthrough and translation', async () => {
+  config.engine = 'mock';
+  const store = { openTalk() {}, append() {} };
+  const glossary = { apply: (t) => t, vocabulary: () => [] };
+  const st = new Stage({ id: 'bi', name: 'bi', source: 'auto', targets: ['es', 'en'], translation: 'text', vocabulary: [], title: '' }, { glossary, store });
+  st.on('log', () => {});
+  const finals = { orig: [], es: [], en: [] };
+  st.on('caption', (s) => { if (s.final) finals[s.channel].push(s.text); });
+  const chunk = Buffer.alloc(3200);
+  for (let i = 0; i < 1600; i++) chunk.writeInt16LE(Math.round(8000 * Math.sin(i / 5)), i * 2);
+  st.pushAudio(chunk); // opens the (mock) session
+  await sleep(50);
+  const eng = st.engines.get('es');
+  let first = true;
+  const say = async (words, lang, end = true) => {
+    for (let i = 0; i < words.length; i++) { eng.emit('input', { text: (first ? '' : ' ') + words[i], finished: end && i === words.length - 1, lang }); first = false; await sleep(5); }
+    if (end) first = true;
+    await sleep(60);
+  };
+  await say('Hola a todos, bienvenidos a la charla de hoy.'.split(' '), 'es');
+  // One English word inside Spanish speech must not flip the tracks.
+  await say(['Usamos', 'mucho'], 'es', false); await say(['Kubernetes'], 'en', false); await say(['en', 'producción', 'todos', 'los', 'días.'], 'es');
+  await say('Now I will switch to English for the live demo part.'.split(' '), 'en');
+  await say('Y ahora volvemos al español para las preguntas.'.split(' '), 'es');
+  await sleep(300);
+  st.destroy();
+  const es = finals.es.join(' | ');
+  const en = finals.en.join(' | ');
+  assert.match(es, /^Hola a todos, bienvenidos a la charla de hoy\./, es);
+  assert.match(es, /Usamos mucho Kubernetes en producción/, `short English word kept in the Spanish passthrough: ${es}`);
+  assert.match(es, /\(es\) Now I will switch to English/, `English speech translated into the Spanish track: ${es}`);
+  assert.match(es, /Y ahora volvemos al español/, es);
+  assert.match(en, /\(en\) Hola a todos/, en);
+  assert.match(en, /Now I will switch to English for the live demo part\./, en);
+  assert.match(en, /\(en\) Y ahora volvemos/, en);
+  for (const f of [...finals.es, ...finals.en]) {
+    assert.ok(!(/^\((es|en)\)/.test(f) && /(Now I will|Hola a todos|Y ahora)/.test(f.replace(/^\((es|en)\) /, '')) && f.includes(') ') && f.split('(').length > 2), `mixed caption: ${f}`);
+  }
+  assert.ok(!finals.en.some((f) => f.startsWith('(en)') && f.includes('Now I will')), `passthrough English not re-translated: ${en}`);
+  assert.ok(!finals.es.some((f) => !f.startsWith('(es)') && f.includes('Now I will')), `English not shown untranslated in the Spanish track: ${es}`);
+});
+
+test('a pinned-language room still translates when the speaker switches language', async () => {
+  config.engine = 'mock';
+  const store = { openTalk() {}, append() {} };
+  const glossary = { apply: (t) => t, vocabulary: () => [] };
+  const st = new Stage({ id: 'pin', name: 'pin', source: 'es', targets: ['en'], translation: 'text', vocabulary: [], title: '' }, { glossary, store });
+  st.on('log', () => {});
+  assert.deepEqual(st.languages, ['orig', 'es', 'en']);
+  assert.equal(st.channelFor('es'), 'es', 'Spanish viewers get their own track, not the raw original');
+  const finals = [];
+  st.on('caption', (s) => { if (s.final && s.channel === 'es') finals.push(s.text); });
+  const chunk = Buffer.alloc(3200);
+  for (let i = 0; i < 1600; i++) chunk.writeInt16LE(Math.round(8000 * Math.sin(i / 5)), i * 2);
+  st.pushAudio(chunk);
+  await sleep(50);
+  const eng = st.engines.get('en');
+  const words = 'And now a question from the audience in English please.'.split(' ');
+  for (let i = 0; i < words.length; i++) { eng.emit('input', { text: (i ? ' ' : '') + words[i], finished: i === words.length - 1, lang: 'en' }); await sleep(5); }
+  await sleep(200);
+  st.destroy();
+  assert.ok(finals.some((f) => f.startsWith('(es) And now a question')), `translated into Spanish: ${finals.join(' | ')}`);
+});

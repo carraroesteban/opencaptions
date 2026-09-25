@@ -61,6 +61,8 @@ test('ffmpeg args: files are paced in real time, streams are not', () => {
   assert.ok(!ffmpegArgs('rtmp://x/live').includes('-reconnect'));
   assert.ok(ffmpegArgs('https://x/stream.m3u8').includes('-protocol_whitelist'));
   assert.ok(!ffmpegArgs('samples/a.wav').includes('-protocol_whitelist'));
+  assert.ok(ffmpegArgs('rtmp://0.0.0.0:1935/live/test').includes('-listen'), 'RTMP listener for OBS/vMix');
+  assert.ok(!ffmpegArgs('rtmp://example.com/live/test').includes('-listen'));
 });
 
 test('audio helpers', () => {

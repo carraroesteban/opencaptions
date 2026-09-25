@@ -1,4 +1,4 @@
-# OpenCaptions 🎙️→📝
+# <img src="public/brand/icon.svg" width="40" height="40" alt="" /> OpenCaptions
 
 **Open-source live captions, translation and "what did I miss?" for multi-room conferences.**
 Built for the [Nerdearla 2026 Vibeathon](https://nerdearla.devpost.com/) on **Gemini 3.5 Live Translate** + **Gemini Flash-Lite**.
@@ -26,14 +26,14 @@ Scan a QR code, pick your language and follow the talk live on your phone. Walke
 | Live audio in | Headless agent on the room PC (sound card via the same 3.5 mm cable), browser page, or the SRT/RTMP/HLS stream vMix/OBS already produce |
 | Transcription in the original language | Gemini 3.5 Live Translate input transcription, language auto-detected or pinned per room, technical glossary |
 | EN → ES translation (ES → EN bonus) | Any direction, any number of languages per room (ES, EN, PT configured), sentence-level translation with live provisional updates |
-| At least two simultaneous sessions | One process runs many rooms; tested with 10 rooms / 20 model sessions and a 10–15 room real-talk latency test (`npm run multi`) |
+| At least two simultaneous sessions | **30 simultaneous rooms** tested with real Nerdearla talks and Gemini on one laptop (server ~20 % CPU, 151 MB RAM) — `npm run multi -- --rooms 30` |
 | OSI license + deployment guide | MIT · [deployment guide](docs/deployment.md) (venue PC or cloud VM, Docker or Node), [runbook](docs/operations/runbook.md), `npm run setup` wizard |
 | Audience view: pick session + language | Phone page via QR (`/s/<room>`), plus transcript library, reading settings and translated voice 🎧 |
 
 | Judging criterion | What we did |
 |---|---|
 | **Quality** | Sentence-level translation with context + glossary (no half-sentence mistranslations), passthrough when speaker and caption language match, hot-reloaded glossary for names and acronyms |
-| **Latency** | ~3 s to original captions, ~4.6–5.7 s to translated captions (measured with real talks); provisional translations while the sentence is spoken; [where the seconds go](docs/latency.md) |
+| **Latency** | ~3 s to original captions (broadcast live subtitling targets 3 s and averages more), ~4.6–5.7 s to translated captions, measured with real talks; our own pipeline adds under 0.2 s — the rest is the speech model; provisional translations while the sentence is spoken; [where the seconds go](docs/latency.md) |
 | **Scalability** | One Live session per room regardless of languages; rooms share nothing, so it shards by room; summaries are cached and shared by all viewers; load test + multi-room latency test included |
 | **Deployment / operation** | `npm run setup`, Docker (hardened) or plain Node, outbound-only networking, secure by default, zero-operator rooms (silence gating, auto-resume, agenda-driven talk titles), dashboard with alerts, cost and CPU/memory, event-day runbook |
 | **Innovation** | ✨ *What did I miss?* and *Ask the talk*: grounded in the transcript, in the viewer's language, with quotes and timestamps; translated voice to your headphones; printable QR kit; transcript library with search |
@@ -46,7 +46,10 @@ Scan a QR code, pick your language and follow the talk live on your phone. Walke
 - **💬 Ask the talk** — "Which tool did she use for tracing?" The answer comes only from what was said, with quotes and timestamps; if it wasn't said, it says so.
 - **📄 Transcript page** — read the whole talk as paragraphs with timestamps, search with highlights, switch language, download TXT / SRT / VTT, print, share a link. Updates live while the talk runs.
 - **📚 Transcript library** — every talk of the event, searchable by title, speaker or room.
+- **Bilingual speakers welcome** — hosts who switch between Spanish and English, Q&A in both languages: every caption language follows the speaker (transcription when they speak it, translation when they don't), and a single foreign word like *Kubernetes* doesn't flip the captions.
 - **🎧 Listen mode** — the translated *voice* streamed to your phone (Gemini already generates it — we just don't throw it away).
+- **⧉ Floating captions** — on a laptop, float the captions in an always-on-top window over the livestream, the slides or a video call.
+- **Installable** — add it to the home screen like an app; shared links show the event name and a preview image.
 
 **For the stage and the stream**
 - **Projector screen** — full-screen, high-contrast captions (translation + original) with a QR to follow on the phone.
@@ -55,7 +58,7 @@ Scan a QR code, pick your language and follow the talk live on your phone. Walke
 
 **For organizers**
 - **`npm run setup`** — a 1-minute wizard: event name, rooms, languages, API key, tokens; then prints exactly what to do next.
-- **Guided dashboard** — a "getting started" checklist, then per-room status, audio meter, session health, latency, viewers, **estimated cost**, CPU/memory/event loop, alerts (*no audio*, *mic muted?*, *high latency*, *reconnecting*, *translation throttled*) and an event log.
+- **Guided dashboard** — a "getting started" checklist, then per-room status, audio meter, session health, latency, viewers, **estimated cost**, CPU/memory/event loop, alerts (*no audio*, *mic muted?*, *high latency*, *reconnecting*, *translation throttled*) and an event log. **📌 Float** keeps every room's status on top of OBS or vMix while you produce.
 - **📅 Agenda** — paste the schedule as CSV; each room names its talk automatically when its slot starts (and waits for a pause if the previous speaker runs late). Titles and speakers show on phones, projector and transcripts.
 - **🖨 QR kit** — printable A4 posters per room, bilingual.
 - **🎬 Subtitle recorded talks** — `npm run subtitle -- talk.mp4 --langs en,es` writes `.srt`/`.vtt` files next to the video, ready for YouTube (our own demo video's subtitles were made this way).
@@ -181,6 +184,7 @@ Alternatively, if the program audio already exists as a stream (vMix SRT output,
 
 - **Per room cost is linear and predictable**: one model session per target language. Rooms are independent; there's no shared state between them.
 - **One process handles many rooms**: the server only relays ~32 KB/s of audio per room and fans out small JSON messages to viewers. Load test: `npm run loadtest -- --stages 10 --input samples/talk-en.wav` (10 rooms, 20 sessions: ~90 MB RSS).
+- **Tested with 30 simultaneous rooms** of real Nerdearla 2025 talks through Gemini: latency p50 1.2 s / p90 2.7 s (original) and 1.8 s / 3.5 s (translation) on the dashboard metric, with the server at ~20 % of one CPU core, 151 MB RAM and 1.5 ms event-loop p99; about US$ 1.2 per minute for all 30 rooms. Details: [docs/latency.md](docs/latency.md).
 - **Real-talk latency test**: `npm run multi -- --rooms 15 --minutes 5` opens 15 rooms, feeds each one a different Nerdearla 2025 talk from YouTube (server-side yt-dlp, real time), prints live p50/p90 latency per room and writes a JSON report to `data/latency-*.json`. `--playlist <url>` or `--file urls.txt` to choose the videos, `--list` for a dry run, `--cleanup` to delete the rooms afterwards.
 - **More rooms than one process/API project can handle**: shard by room — run N instances with `STAGES=...` (and if needed a different `GEMINI_API_KEY`/project each, to spread Live API concurrency quotas) behind a reverse proxy that routes `/ws/*?stage=X` and `/s/X`. Captions are per-room, so no pub/sub is needed.
 - **Viewers**: each viewer is one lightweight WebSocket receiving small JSON messages. For very large audiences, put a WebSocket fan-out gateway in front — the viewer protocol is tiny (see below).
@@ -244,7 +248,10 @@ src/security.js        auth, security headers, rate limits, SSRF checks
 src/assist.js          ✨ what-did-I-miss summaries + ask-the-talk (grounded, cached, rate-limited)
 src/schedule.js        agenda → automatic talk titles
 public/                audience (watch, talk, talks), screen, overlay, ingest, admin, kit, style editor (vanilla JS, no build)
-scripts/               setup, agent, feed, loadtest, multi-youtube, check-gemini, fetch-samples
+public/brand/          logo, app icons, link-preview image
+config/                event.json, glossary.json, schedule example
+scripts/               setup, agent, feed, loadtest, multi-youtube, subtitle, check-gemini, fetch-samples
+test/                  node:test suites (core, security, reliability, features)
 deploy/                systemd / launchd service files
 docs/                  documentation (Diátaxis) + ADRs
 ```

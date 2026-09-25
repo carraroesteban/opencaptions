@@ -54,6 +54,8 @@ input:focus, select:focus, textarea:focus, button:focus-visible { outline: 2px s
 .meter > b { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--fg); opacity: .7; transition: left .3s; }
 .brand { font-weight: 800; letter-spacing: -.02em; }
 .brand span { color: var(--accent); }
+a.brand { color: inherit; text-decoration: none; }
+.brand::before { print-color-adjust: exact; -webkit-print-color-adjust: exact; content: ''; display: inline-block; width: 1.2em; height: 1.2em; margin-right: .35em; vertical-align: -.22em; background: url(/brand/icon.svg) center / contain no-repeat; }
 .hidden { display: none !important; }
 dialog { background: var(--bg2); color: var(--fg); border: 1px solid var(--line); border-radius: var(--radius); padding: 20px; max-width: min(640px, 92vw); width: 100%; }
 dialog::backdrop { background: rgba(0, 0, 0, .6); }

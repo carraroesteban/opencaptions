@@ -23,6 +23,8 @@ services:
       - "${BIND_ADDR:-127.0.0.1}:8080:8080"
       # SRT listener ports, if a stage uses `pull: "srt://0.0.0.0:900X?mode=listener"` (vMix / OBS push).
       # - "9001-9010:9001-9010/udp"
+      # RTMP listener, if a room pulls `rtmp://0.0.0.0:1935/live/<key>` (OBS/vMix "Custom" stream target).
+      # - "1935:1935"
     volumes:
       - ./data:/app/data
       - ./config:/app/config

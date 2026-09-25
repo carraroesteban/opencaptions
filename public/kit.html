@@ -3,6 +3,11 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#0b0b10" />
+  <link rel="icon" href="/favicon.ico" sizes="32x32" />
+  <link rel="icon" href="/brand/icon.svg" type="image/svg+xml" />
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+  <link rel="manifest" href="/manifest.webmanifest" />
   <title>Kit de QR</title>
   <link rel="stylesheet" href="/style.css" />
   <style>
@@ -35,7 +40,7 @@
 </head>
 <body>
   <div class="bar">
-    <div class="brand" style="font-size:13px">open<span>captions</span></div>
+    <a class="brand" href="/admin.html" title="Panel de producción" style="font-size:13px">open<span>captions</span></a>
     <h1>🖨 Kit de QR para las salas</h1>
     <p class="muted" style="margin:0">Un cartel A4 por sala: pegalo en la entrada y junto al escenario. El público escanea, elige idioma y sigue los subtítulos en el celular (y puede pedir un resumen de lo que se perdió).</p>
     <div class="card warn hidden" id="localwarn">⚠ Estos QR apuntan a <b id="lw-url"></b>, que el público no puede abrir. Configurá <code>PUBLIC_URL</code> con la dirección HTTPS del evento y recargá esta página.</div>

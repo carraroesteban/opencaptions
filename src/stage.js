@@ -58,14 +58,17 @@ export class Stage extends EventEmitter {
     //  live   → captions straight from each Live session's speech translation (1 session per language).
     //  hybrid → text captions + 1 Live session per language (translated voice 🎧 in every language).
     this.mode = def.translation || (config.engine === 'mock' && !process.env.TRANSLATION_MODE ? 'live' : config.translationMode);
-    this.transTargets = src ? targets.filter((t) => t !== src) : targets;
-    const liveTargets = this.transTargets.length ? this.transTargets : [src || 'es'];
+    const foreign = src ? targets.filter((t) => t !== src) : targets;
+    // Every caption language is its own track, including the talk's own language: it's a passthrough of the
+    // transcription while the speaker uses it, and a translation when they switch (bilingual hosts, Q&A).
+    this.transTargets = src ? [src, ...foreign] : foreign;
+    const liveTargets = foreign.length ? foreign : [src || 'es'];
     this.sessionTargets = this.mode === 'text' ? liveTargets.slice(0, 1) : liveTargets;
     this.audioLangs = this.sessionTargets.filter((t) => this.transTargets.includes(t));
     // Languages a viewer can pick. 'orig' = whatever is being spoken.
     this.aliases = {};
-    if (src) this.aliases[src] = 'orig';
-    this.languages = ['orig', ...new Set([...(src ? [src] : []), ...this.transTargets])];
+    this.languages = ['orig', ...this.transTargets];
+    this.route = {}; // per caption language: 'pass' (speaker talks it) or 'mt' (translated)
     if (this.tracks) this.#buildTracks();
   }
 
@@ -189,7 +192,7 @@ export class Stage extends EventEmitter {
         if (primary) this.tracks.orig.flush();
         // Only flush a translation track that Live feeds directly; in text mode it belongs to the text
         // translator, and flushing would commit a half-sentence provisional translation (duplicates).
-        const direct = this.mode === 'live' || (this.detectedLang || this.source) === target || this.mtQ?.[target]?.degraded();
+        const direct = this.mode === 'live' || this.route[target] === 'pass' || this.mtQ?.[target]?.degraded();
         if (direct) this.tracks[target]?.flush();
       });
       e.on('state', (s) => { this.log(s === 'live' ? 'info' : 'debug', `${target}: ${s}`); this.emit('engine'); });
@@ -222,14 +225,79 @@ export class Stage extends EventEmitter {
       this.lat.asr = EMA(this.lat.asr, now - this.onset.at);
       this.onset.asr = false;
     }
-    if (lang) this.detectedLang = lang;
-    const spoken = lang || this.source;
-    this.tracks.orig.push(text, { finished, lang: spoken });
+    this.tracks.orig.push(text, { finished, lang: lang || this.curLang || this.source });
+    this.#routeLang(text, finished, lang);
+  }
+
+  /**
+   * The model reports a language per fragment, and a single English word ("Kubernetes") inside a Spanish
+   * sentence must not flip every caption track. Fragments in a new language are held back (from the
+   * translated tracks only; the original track already has them) until ~15 characters confirm the switch,
+   * then routed as a block, so no words land in the wrong language on either side of the switch.
+   */
+  #routeLang(text, finished, lang) {
+    const cur = this.curLang;
+    const flushPending = (as) => {
+      const p = this.pendingLang;
+      this.pendingLang = null;
+      clearTimeout(this.pendingTimer);
+      if (p?.text) this.#route(p.text, false, as);
+    };
+    if (!lang || !cur || lang === cur) {
+      if (this.pendingLang) flushPending(cur); // false alarm: it was the same language after all
+      if (!cur && lang) this.curLang = lang;
+      this.#route(text, finished, this.curLang || this.source);
+      return;
+    }
+    if (this.pendingLang && this.pendingLang.lang !== lang) flushPending(cur);
+    this.pendingLang ??= { lang, text: '' };
+    this.pendingLang.text += text;
+    clearTimeout(this.pendingTimer);
+    if (this.pendingLang.text.trim().length >= 15) {
+      this.log('info', `speaker switched language: ${cur} → ${lang}`);
+      this.curLang = lang;
+      const p = this.pendingLang;
+      this.pendingLang = null;
+      this.#route(p.text, finished, lang);
+    } else if (finished) {
+      flushPending(cur); // a short word at the end of a turn: keep the current language
+    } else {
+      this.pendingTimer = setTimeout(() => flushPending(this.curLang), 1500); // speaker paused
+    }
+  }
+
+  #route(text, finished, spoken) {
+    if (spoken) this.detectedLang = spoken;
     for (const t of this.transTargets) {
+      const want = spoken && t === spoken ? 'pass' : 'mt';
+      if (this.route[t] && this.route[t] !== want) this.#switchRoute(t, want);
+      this.route[t] = want;
       // Same language as the speaker → the caption is the transcription itself.
-      if (spoken && t === spoken) this.#deliver(t, text, finished);
+      if (want === 'pass') this.#deliver(t, text, finished);
     }
     if (this.mode !== 'live') this.#mtFeed(text, finished, spoken);
+  }
+
+  /** The speaker changed language: a caption track goes from passthrough to translation or back. */
+  #switchRoute(t, want) {
+    const track = this.tracks[t];
+    const q = this.mtQ?.[t];
+    if (want === 'mt') {
+      track?.flush(); // commit the passthrough text as spoken
+      return;
+    }
+    // mt → pass: the translation of the last sentence is still on its way. Park its caption so the
+    // passthrough text starts a new one, and let the translation finish into the parked caption.
+    if (q && !q.degraded()) {
+      q.flush();
+      if (q.pending()) {
+        q.detached = track?.detach() || null;
+        clearTimeout(q.detachedTimer);
+        q.detachedTimer = setTimeout(() => { q.detached = null; }, 10000);
+        return;
+      }
+    }
+    track?.flush();
   }
 
   // ---------- text translation (sentence by sentence, with provisional partials) ----------
@@ -240,12 +308,21 @@ export class Stage extends EventEmitter {
     const tracks = this.tracks;
     for (const t of this.transTargets) {
       if (spoken && t === spoken) continue;
-      this.mtQ[t] ??= new SentenceTranslator({
+      if (this.mtQ[t]) { this.mtQ[t].feed(text, { finished, spoken }); continue; }
+      const q = (this.mtQ[t] = new SentenceTranslator({
         from: this.source,
         to: t,
         vocabulary: this.glossary.vocabulary(this.def.vocabulary),
-        onPartial: (out) => { this.#markLatency(t, out); tracks[t]?.replace(out, { lang: t }); },
-        onFinal: (out) => { this.#markLatency(t, out); tracks[t]?.replace(out, { final: true, lang: t }); },
+        onPartial: (out) => {
+          if (q.detached) return; // the speaker switched to this language meanwhile
+          this.#markLatency(t, out);
+          tracks[t]?.replace(out, { lang: t });
+        },
+        onFinal: (out) => {
+          this.#markLatency(t, out);
+          if (q.detached) { tracks[t]?.finishDetached(q.detached, out, t); q.detached = null; clearTimeout(q.detachedTimer); return; }
+          tracks[t]?.replace(out, { final: true, lang: t });
+        },
         onError: (m) => this.log('warn', `translate → ${t}: ${m}`),
         // The primary Live session already translates into this language: use it while text MT is throttled.
         canFallback: () => t === this.sessionTargets[0] && this.engines.get(t)?.state === 'live',
@@ -253,8 +330,8 @@ export class Stage extends EventEmitter {
           tracks[t]?.flush(); // don't mix a half MT sentence with Live output
           this.log(on ? 'warn' : 'info', on ? `${t}: text translation throttled → Live Translate captions` : `${t}: back to text translation`);
         },
-      });
-      this.mtQ[t].feed(text, { finished, spoken });
+      }));
+      q.feed(text, { finished, spoken });
     }
   }
 
@@ -284,7 +361,7 @@ export class Stage extends EventEmitter {
     if (!this.transTargets.includes(target)) return;
     // text/hybrid: Live output only feeds 🎧 audio — unless text translation is throttled (automatic fallback).
     if (this.mode !== 'live' && !this.mtQ?.[target]?.degraded()) return;
-    if ((this.detectedLang || this.source) === target) return; // passthrough handles same-language speech
+    if (this.route[target] === 'pass') return; // passthrough handles same-language speech
     this.#deliver(target, text, finished);
   }
 
@@ -334,6 +411,10 @@ export class Stage extends EventEmitter {
     this.talkSpoken = false;
     this.#buildTracks();
     this.mtQ = {}; // new translators bind to the new tracks; old ones finish into the old talk
+    this.route = {};
+    this.curLang = null; // the next talk may be in another language
+    this.pendingLang = null;
+    clearTimeout(this.pendingTimer);
     this.store.openTalk(this.id, this.talk, this.languages);
     if (announce) {
       this.log('info', `new talk started ${title ? `"${title}"` : ''}`.trim());
@@ -399,7 +480,7 @@ export class Stage extends EventEmitter {
       primary.restart('stall');
     }
     for (const [t, e] of this.engines) {
-      if (this.mode !== 'live' || !this.transTargets.includes(t) || t === (this.detectedLang || this.source)) continue;
+      if (this.mode !== 'live' || !this.transTargets.includes(t) || this.route[t] === 'pass') continue;
       if (e.state === 'live' && (this.speechMsNoOutput[t] || 0) > 30000) {
         this.log('warn', `no ${t} translation for 30s of speech → restarting session`);
         this.speechMsNoOutput[t] = 0;
@@ -472,6 +553,7 @@ export class Stage extends EventEmitter {
 
   destroy() {
     this.destroyed = true;
+    clearTimeout(this.pendingTimer);
     this.emit('removed');
     clearInterval(this.tick);
     this.#stopEngines('removed');

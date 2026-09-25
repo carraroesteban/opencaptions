@@ -43,7 +43,7 @@ Objetivo: **cero operadores dedicados durante las charlas**. Una persona de prod
    - el público, el proyector y el overlay **no** necesitan token.
 3. **Facturación y cuotas**: billing activo en Google AI Studio (el free tier limita traducciones por minuto). Configurá una **alerta de presupuesto**. Revisá en AI Studio → *Rate limits* las sesiones Live concurrentes de tu tier; si hay más salas que el límite, repartí salas entre 2 API keys/proyectos (`STAGES=…` por instancia, ver README → Scaling).
 4. **Salas** en `config/event.json` (o desde el panel → *+ Sala*):
-   - `source`: idioma de la charla si se conoce (`"en"`/`"es"`), si no `"auto"`. Fijarlo es más preciso y más barato.
+   - `source`: `"auto"` si los hosts o speakers cambian de idioma (presentación en español de una charla en inglés, Q&A bilingüe). Fijalo (`"en"`/`"es"`) solo si toda la charla es en un idioma. En los dos casos, si el speaker cambia de idioma cada pista lo sigue: quien lee en español ve español y quien lee en inglés ve inglés.
    - `targets`: idiomas de subtítulos (ej. `["es"]` para charlas en inglés, `["en"]` para charlas en español).
 5. **Glosario** (`config/glossary.json` o panel → *Glosario*): nombres de speakers, sponsors, productos y siglas de la agenda. Se aplica en caliente, sin reiniciar.
 6. **Ensayo general**:

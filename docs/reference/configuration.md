@@ -165,7 +165,7 @@ Each entry in `stages` (and the body of `POST /api/stages` / `PATCH /api/stages/
 |---|---|---|---|
 | `id` | string | — (required) | Lowercased and sanitized to `[a-z0-9_-]` before validation. Must then match `^[a-z0-9][a-z0-9_-]{0,39}$` (1–40 chars) and not be the literal `"undefined"`. Used in URLs, file paths and metric labels. |
 | `name` | string | `id` | Display name. Max 80 characters. |
-| `source` | `"auto"` \| BCP-47 code | `"auto"` | `"auto"` = language auto-detected per utterance. Otherwise must match `^[a-z]{2,3}(-[A-Za-z0-9]{2,8})?$` (e.g. `en`, `es`, `pt-BR`). |
+| `source` | `"auto"` \| BCP-47 code | `"auto"` | `"auto"` = language detected continuously (recommended for bilingual hosts, Q&A and mixed talks). A code (`en`, `es`, `pt-BR`; must match `^[a-z]{2,3}(-[A-Za-z0-9]{2,8})?$`) hints the recognizer when the whole talk is in one language. Either way every caption language is its own track: it shows the transcription while the speaker uses that language and a translation when they switch (a switch is confirmed after ~15 characters, so one foreign word doesn't flip the captions). |
 | `targets` | string[] | `defaultTargets` (used when omitted or empty) | 1–8 entries, each a language code matching the same BCP-47-ish pattern as `source`. |
 | `pull` | string | `""` (no server-side pull; audience/ingest page must push audio) | URL or local path the server pulls audio from via ffmpeg: `srt://`, `rtmp(s)://`, `rtsp(s)://`, `udp://`, `rtp://`, `http(s)://`, or a bare path under `samples/`/`MEDIA_DIR`. Validated with the same SSRF checks as `PULL_ALLOW_PRIVATE` (see above) before being accepted. |
 | `loop` | boolean | `false` | Loop the pulled file/stream when it ends, instead of stopping. |

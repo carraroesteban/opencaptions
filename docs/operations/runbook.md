@@ -28,7 +28,7 @@ A shorter Spanish version for venue crews is in [event-day.es.md](event-day.es.m
 ### Rooms and glossary
 
 - [ ] Create the rooms in `config/event.json` or with **Dashboard → + Room**.
-  - `source`: the talk language if known (`"en"`, `"es"`), otherwise `"auto"`. Pinning it is more accurate and faster.
+  - `source`: `"auto"` for rooms where hosts or speakers switch language (Spanish-speaking hosts introducing an English talk, Q&A in both languages). Pin it (`"en"`, `"es"`) only when the whole talk is in one language. In both cases, when the speaker switches language every caption track follows: Spanish viewers get Spanish, English viewers get English.
   - `targets`: the caption languages, for example `["es"]` for English talks.
 - [ ] Fill the glossary (**Dashboard → Glossary** or `config/glossary.json`) with speaker names, sponsors, products and acronyms from the schedule. Changes apply immediately.
 - [ ] Design the caption style once in `/style.html` and copy the generated overlay and projector URLs.
@@ -47,7 +47,7 @@ Choose one audio path per room:
 
 | Option | When | Per-room hardware |
 |---|---|---|
-| **A. Pull the stream** | The desk already feeds vMix or OBS | None. **Dashboard → ⚙ → Audio pull**: `srt://…`, `rtmp://…` or `https://…m3u8`. An HLS stream on the LAN needs `PULL_ALLOW_PRIVATE=1`. |
+| **A. Pull the stream** | The desk already feeds vMix or OBS | None. **Dashboard → ⚙ → Audio pull**: `rtmp://0.0.0.0:1935/live/<room>` and point OBS/vMix at it (*Stream → Custom → `rtmp://<server>:1935/live`*, key `<room>`), or `srt://…` / `https://…m3u8`. An HLS stream on the LAN needs `PULL_ALLOW_PRIVATE=1`. |
 | **B. Headless agent** (recommended with a PC) | Audio arrives by cable at a PC | Mini PC running `scripts/agent.js` as a service, with no browser |
 | C. Browser ingest page | Quick or emergency setup | Any PC with Chrome |
 
@@ -92,7 +92,9 @@ With someone speaking into the stage microphone, or with a handheld mic on `/dem
 
 ## During talks
 
-There's nothing to press. The system:
+There's nothing to press. If you're also running OBS or vMix, press **📌 Float** on the dashboard (Chrome or Edge): every room's status and alerts stay on top of the production software, and clicking a room jumps to it.
+
+The system:
 
 - stops sending audio to the model after 30 s of silence and resumes with 600 ms of pre-roll, so the first word isn't cut;
 - closes model sessions after 5 minutes without speech and starts a new transcript when speech returns;
@@ -117,7 +119,7 @@ Say it once at the start of each talk (or put it on the break slides): *"Live ca
 | **High latency** | Transcription more than 6 s behind | Normal for a few seconds after a reconnect. If it persists, press ↻ and check the server's network. |
 | **Translation throttled** | Text translation hit a quota limit (429) | Automatic fallback is active. If frequent, raise the tier or set `MT_PARTIAL_MS=3000`. |
 | Misspelled names | Speaker, product or acronym | **Dashboard → Glossary** → add a replacement. It applies instantly. |
-| Wrong language | The talk isn't in the configured language | **Dashboard → ⚙ → Talk language**, or `auto` |
+| Wrong language | The talk isn't in the configured language | **Dashboard → ⚙ → Talk language** → `auto` (switches are handled live) |
 
 ### Plan B
 
@@ -141,7 +143,7 @@ Say it once at the start of each talk (or put it on the break slides): *"Live ca
 
 | For | URL |
 |---|---|
-| Audience (QR) | `/s/<room>` |
+| Audience (QR) | `/s/<room>`. On a laptop, **⧉** floats the captions over any other window. |
 | Room list | `/` |
 | Transcript of the talk in progress | `/talk.html?stage=<room>` |
 | Transcript library | `/talks.html` |

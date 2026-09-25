@@ -14,6 +14,22 @@ Real Gemini sessions, conference talks as input, server on a MacBook in Argentin
 | Translation, `text` mode (speech → first translated words) | about 4.6–5.7 s |
 | Translation, `live` mode (Live Translate's own translation) | Starts close to the original, then **drifts later** on long, fast talks. This is why `text` is the default. |
 
+**30 rooms at once** (`npm run multi -- --rooms 30`, real Gemini, 30 Nerdearla 2025 talks streamed from YouTube in real time, one server on a MacBook Pro, 25 September 2026):
+
+| Metric (dashboard: speech onset → first caption) | p50 | p90 |
+|---|---|---|
+| Original language | 1.2 s | 2.7 s |
+| Translation (`text` mode) | 1.8 s | 3.5 s |
+
+| Resource | Value |
+|---|---|
+| Rooms streaming | 29 of 30 (one video refused by YouTube with HTTP 403) |
+| Languages detected automatically | Spanish 27, English 1, Portuguese 1 |
+| Server process | about 20 % of one CPU core, 151 MB RAM, event-loop lag p99 1.5 ms |
+| Gemini cost | US$ 2.38 for the whole run (about US$ 1.2 per minute for 30 rooms) |
+
+Latency did not degrade with 30 simultaneous rooms. The onset-based metric can read lower than the single-room figures above during continuous speech, because the first caption after a short pause may still belong to the previous sentence; treat about 2–3 s behind the speaker as the realistic figure for the original language.
+
 The dashboard shows these per room as a moving average. Measure your own setup with `npm run multi` (see [Measure it yourself](#measure-it-yourself)).
 
 ## Where the time goes
@@ -34,6 +50,7 @@ flowchart LR
 |---|---|---|
 | Audio capture and 100 ms chunking | 100 ms | Fixed. It's the chunk size the Live API recommends. |
 | Venue → server network | 10–150 ms | Topology and network quality. Wired beats Wi-Fi. |
+| Stream pull instead (OBS/vMix → RTMP/SRT → ffmpeg) | under 0.1 s once running | Measured with an encoder pushing to `rtmp://0.0.0.0:1935/live/<key>`: ffmpeg hands audio to the server as it arrives. The first connection spends up to a few seconds probing the stream, once. |
 | Server processing (relay, silence gate, fan-out) | < 5 ms | The event-loop lag on the dashboard shows it. It stays near zero. |
 | Server → Gemini network | 20–200 ms | Distance to Google's edge |
 | **Speech recognition inside the model** | **2–3 s** | The model. It waits for enough context to commit to words. |
@@ -41,6 +58,12 @@ flowchart LR
 | Server → viewers | 10–150 ms | Viewer network |
 
 The model's recognition time is about 80% of the total. That's why hardware and operating system don't matter here. The server's CPU sits under a few percent per room.
+
+### How 3 seconds compares
+
+Human live captioning isn't instant either. A stenographer or respeaker has to hear a phrase before typing it. Ofcom measured UK live TV subtitles at [5.6 seconds behind speech on average](https://limpingchicken.com/2014/04/30/deaf-news-ofcom-study-reveals-average-5-6-second-delay-in-live-subtitles-nearly-double-recommended-delay/), against a 3-second target. OpenCaptions' original-language captions sit at about that target, and every caption language runs in parallel.
+
+What viewers notice most is not the absolute delay but whether the text moves. Words in progress appear as they're recognized (highlighted, then settled), so the screen never looks frozen while a sentence is spoken.
 
 ## Tuning
 

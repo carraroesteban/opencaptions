@@ -16,6 +16,19 @@ All notable changes to this project are documented in this file. The format foll
 - **`npm run setup`:** a one-minute wizard that writes `.env` and `config/event.json` and prints the next steps.
 - Dashboard **getting-started checklist**, agenda editor, links to the kit and library, live transcript link per room.
 
+### Added — product polish
+
+- **App identity:** icon, favicon, home-screen icon, installable web app manifest (named after the event), and link previews with an image for WhatsApp, Slack and LinkedIn. The logo on every secondary page links back to the dashboard (operator pages) or the room list (audience pages).
+- **⧉ Floating captions** on the audience page (desktop): an always-on-top window over the livestream, the slides or a video call. Chrome and Edge use Document Picture-in-Picture (resizable, follows the reading settings); other browsers fall back to video picture-in-picture.
+- **📌 Floating mini-dashboard** for operators: every room's status, alerts and last line in an always-on-top window over OBS or vMix. Clicking a room jumps to its card.
+
+### Added — bilingual speakers
+
+- Speakers can switch language mid-talk (Spanish hosts introducing an English talk, bilingual Q&A): every caption track follows — transcription when the speaker uses that language, translation when not. A switch is confirmed after ~15 characters, so a single foreign word doesn't flip the captions, and the words around the switch are never routed to the wrong language.
+- Rooms with a pinned language now also give that language its own caption track (it used to be an alias of the original), so English speech in a Spanish room is translated into Spanish.
+- **OBS / vMix can stream straight to a room**: set the room's pull to `rtmp://0.0.0.0:1935/live/<key>` and point the encoder's *Custom* stream target at it; the listener restarts when the encoder disconnects.
+- `npm run multi` fills any number of rooms (e.g. 30) by reusing talks at different offsets when there aren't enough distinct videos.
+
 ### Fixed — event-day reliability (from a pre-launch review)
 
 - A single oversized WebSocket frame or malformed upgrade URL could crash the whole server; sockets now have error handlers and there is a process-level safety net.

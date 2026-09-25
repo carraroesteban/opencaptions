@@ -3,6 +3,11 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#0b0b10" />
+  <link rel="icon" href="/favicon.ico" sizes="32x32" />
+  <link rel="icon" href="/brand/icon.svg" type="image/svg+xml" />
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+  <link rel="manifest" href="/manifest.webmanifest" />
   <title>Producción · OpenCaptions</title>
   <link rel="stylesheet" href="/style.css" />
   <style>
@@ -62,6 +67,7 @@
       <a href="/talks.html" target="_blank"><button>📚 Transcripciones</button></a>
       <a href="/style.html" target="_blank"><button>🎨 Estilo</button></a>
       <a href="/demo.html?mode=mic" target="_blank"><button>🎙 Prueba de sonido</button></a>
+      <button id="float" class="hidden" title="Todas las salas en una ventana siempre visible, encima de OBS o vMix">📌 Flotante</button>
     </div>
   </header>
   <main>
@@ -91,7 +97,7 @@
       <option value="live">Live (speech-to-speech de Gemini · 1 sesión por idioma)</option>
       <option value="hybrid">Híbrido (subtítulos por texto + voz traducida 🎧 en todos los idiomas)</option>
     </select></label>
-    <label class="field">Pull de audio (opcional): SRT/RTMP/HLS/HTTP o archivo — el server lo toma con ffmpeg<input name="pull" placeholder="srt://0.0.0.0:9001?mode=listener  ·  https://…/stream.m3u8" /></label>
+    <label class="field">Pull de audio (opcional): SRT/RTMP/HLS/HTTP o archivo — el server lo toma con ffmpeg<input name="pull" placeholder="rtmp://0.0.0.0:1935/live/sala1 (OBS/vMix → Custom)  ·  srt://0.0.0.0:9001?mode=listener  ·  https://…/stream.m3u8" /></label>
     <label class="row muted"><input type="checkbox" name="loop" /> Repetir en loop (archivos de prueba)</label>
     <div class="row" style="justify-content:space-between">
       <button type="button" class="danger" id="edit-del">Eliminar sala</button>
@@ -259,8 +265,55 @@
           <div>Público<b>${st.viewers}</b></div>
           <div>Min · US$<b>${st.audioMinIn} · ${st.costUsd.toFixed(2)}</b></div>`;
         f('preview').innerHTML = Object.entries(st.preview).map(([ch, txt]) => `<div><span class="l">${esc(ch)}</span> ${esc(txt ? (txt.length > 80 ? '…' + txt.slice(-80) : txt) : '…')}</div>`).join('');
-        f('alerts').innerHTML = st.alerts.filter((a) => a !== 'no-ingest').map((a) => `<span class="chip bad">⚠ ${esc({ 'no-audio': 'no llega audio', 'muted?': '¿mic muteado? (60s sin señal)', reconnecting: 'reconectando IA', 'high-latency': 'latencia alta', 'mt-throttled': 'traducción limitada por cuota → usando Live' }[a] || a)}</span>`).join('');
+        f('alerts').innerHTML = st.alerts.filter((a) => a !== 'no-ingest').map((a) => `<span class="chip bad">⚠ ${esc(alertText(a))}</span>`).join('');
       }
+      renderMini(s);
+    }
+    const alertText = (a) => ({ 'no-audio': 'no llega audio', 'muted?': '¿mic muteado? (60s sin señal)', reconnecting: 'reconectando IA', 'high-latency': 'latencia alta', 'mt-throttled': 'traducción limitada por cuota → usando Live' }[a] || a);
+
+    // ---------- 📌 floating mini-dashboard (Document Picture-in-Picture): every room, always on top of OBS / vMix ----------
+    let mini = null;
+    if ('documentPictureInPicture' in window) $('float').classList.remove('hidden');
+    $('float').onclick = async () => {
+      if (mini) return mini.close();
+      try {
+        mini = await documentPictureInPicture.requestWindow({ width: 380, height: Math.min(640, 70 + (last?.stages.length || 4) * 52) });
+      } catch (e) { mini = null; return alert(e.message); }
+      const d = mini.document, root = document.documentElement;
+      d.documentElement.style.cssText = root.style.cssText;
+      if (root.dataset.theme) d.documentElement.dataset.theme = root.dataset.theme;
+      d.head.append(Object.assign(d.createElement('link'), { rel: 'stylesheet', href: new URL('/style.css', location.href).href }));
+      const css = d.createElement('style');
+      css.textContent = `body{margin:0;padding:8px;font-size:13px;background:var(--bg);color:var(--fg)}
+        .k{display:flex;flex-wrap:wrap;gap:4px 14px;color:var(--fg2);margin:2px 6px 8px}.k b{color:var(--fg)}
+        .r{display:grid;grid-template-columns:12px minmax(0,1fr) auto;gap:2px 8px;align-items:center;padding:6px 8px;border-radius:10px;cursor:pointer}
+        .r:hover{background:var(--bg2)}.r.bad{background:color-mix(in srgb,var(--bad) 20%,transparent)}
+        .d{width:10px;height:10px;border-radius:50%;background:var(--line)}.d.live{background:var(--ok)}.d.pause{background:var(--warn)}.d.bad{background:var(--bad)}
+        .n{font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.v{color:var(--fg2);font-size:12px}
+        .t{grid-column:2/4;color:var(--fg2);font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.r.bad .t{color:var(--fg)}`;
+      d.head.append(css);
+      d.title = `${ev.name} · ${tr('Producción')}`;
+      d.body.innerHTML = '<div class="k" id="k"></div><div id="rows"></div>';
+      d.getElementById('rows').onclick = (e) => {
+        const r = e.target.closest('[data-id]');
+        if (!r) return;
+        window.focus();
+        $('grid').querySelector(`[data-id="${CSS.escape(r.dataset.id)}"]`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      };
+      mini.addEventListener('pagehide', () => { mini = null; });
+      if (last) renderMini(last);
+    };
+    function renderMini(s) {
+      if (!mini) return;
+      const d = mini.document;
+      d.getElementById('k').innerHTML = `<span>${esc(tr('Salas en vivo'))} <b>${s.totals.live}/${s.totals.stages}</b></span><span>${esc(tr('Espectadores'))} <b>${s.totals.viewers}</b></span><span>US$ <b>${s.totals.costUsd.toFixed(2)}</b></span>`;
+      d.getElementById('rows').innerHTML = s.stages.map((st) => {
+        const alerts = st.alerts.filter((a) => a !== 'no-ingest');
+        const dot = alerts.length ? 'bad' : !st.ingest ? '' : st.engines.length && !st.gated ? 'live' : 'pause';
+        const said = st.preview.orig ?? Object.values(st.preview)[0] ?? '';
+        const txt = alerts.length ? '⚠ ' + alerts.map((a) => tr(alertText(a))).join(' · ') : !st.ingest ? tr('SIN INGESTA') : said || '…';
+        return `<div class="r${alerts.length ? ' bad' : ''}" data-id="${esc(st.id)}"><span class="d ${dot}"></span><span class="n">${esc(st.name)}</span><span class="v">👁 ${st.viewers}</span><span class="t">${esc(txt.length > 90 ? '…' + txt.slice(-90) : txt)}</span></div>`;
+      }).join('');
     }
 
     function renderLogs() {

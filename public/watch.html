@@ -4,6 +4,19 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="theme-color" content="#0b0b10" />
+  <link rel="icon" href="/favicon.ico" sizes="32x32" />
+  <link rel="icon" href="/brand/icon.svg" type="image/svg+xml" />
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+  <link rel="manifest" href="/manifest.webmanifest" />
+  <meta name="description" content="Subtítulos y traducción en vivo de cada sala, en tu idioma. Live captions and translation for every room." />
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="OpenCaptions" />
+  <meta property="og:title" content="%EVENT% · Subtítulos en vivo / Live captions" />
+  <meta property="og:description" content="Subtítulos y traducción en vivo de cada sala, en tu idioma. Live captions and translation for every room." />
+  <meta property="og:image" content="/brand/og.png" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta name="twitter:card" content="summary_large_image" />
   <title>Subtítulos en vivo</title>
   <link rel="stylesheet" href="/style.css" />
   <style>
@@ -29,7 +42,8 @@
     #ai { font-weight: 600; }
     #ai { background: color-mix(in srgb, var(--accent) 18%, var(--bg3)); border-color: color-mix(in srgb, var(--accent) 55%, var(--line)); }
     /* Phones: keep "What did I miss?" readable; "show original" moves into the Aa sheet. */
-    @media (max-width: 440px) { #listen .lbl { display: none; } #dual { display: none; } }
+    #ai { white-space: nowrap; }
+    @media (max-width: 440px) { #listen .lbl { display: none; } #dual { display: none; } #pip { display: none; } }
     @media (max-width: 330px) { #ai .lbl { display: none; } }
     footer a.btn { text-decoration: none; }
     #tolive { position: fixed; bottom: 86px; left: 50%; transform: translateX(-50%); box-shadow: 0 6px 20px rgba(0,0,0,.4); }
@@ -55,6 +69,7 @@
     <span class="spacer"></span>
     <button id="ai" aria-haspopup="dialog">✨ <span class="lbl"></span></button>
     <button id="listen" class="hidden" aria-pressed="false">🎧</button>
+    <button id="pip" class="hidden">⧉</button>
     <a id="doc" class="btn"><button tabindex="-1">📄</button></a>
   </footer>
 
@@ -87,6 +102,7 @@
     let hello = null;
     const states = {};
     const player = new PcmPlayer();
+    let pipWin = null, pipVid = null, pipCv = null; // ⧉ floating captions (see below)
 
     $('empty').textContent = t('connecting');
     $('tolive').textContent = '↓ ' + t('backToLive');
@@ -169,6 +185,7 @@
       s.apply(seg);
       if (seg.channel === channel()) renderMain(seg);
       if (dual && seg.channel === 'orig' && channel() !== 'orig') renderOrig();
+      if (seg.channel === channel()) renderPip();
       pulse();
     }
 
@@ -186,6 +203,7 @@
       if (s.partial) box.append(para(s.partial));
       if (!s.finals.length && !s.partial) box.innerHTML = `<div class="empty">${esc(t('waiting'))}</div>`;
       renderOrig();
+      renderPip();
       scrollEnd();
     }
 
@@ -267,6 +285,67 @@
       document.body.append(d);
       setTimeout(() => d.remove(), 2500);
     }
+    // ---- ⧉ floating captions: an always-on-top window over the livestream, the slides or a video call ----
+    // Chrome/Edge desktop: Document Picture-in-Picture (resizable, styled). Elsewhere: a canvas drawn into a PiP video.
+    const canDocPip = 'documentPictureInPicture' in window;
+    const canVidPip = !canDocPip && document.pictureInPictureEnabled && 'captureStream' in HTMLCanvasElement.prototype;
+    $('pip').classList.toggle('hidden', !canDocPip && !canVidPip);
+    $('pip').title = t('floating');
+    $('pip').setAttribute('aria-label', t('floating'));
+    const pipText = () => states[channel()]?.tail(220) || t('waiting');
+    function renderPip() {
+      if (pipWin) pipWin.document.getElementById('t').textContent = pipText();
+      else if (pipCv) drawPip();
+    }
+    function drawPip() {
+      const g = pipCv.getContext('2d'), W = pipCv.width, H = pipCv.height, pad = 24, lh = 46;
+      g.fillStyle = '#000'; g.fillRect(0, 0, W, H);
+      g.fillStyle = '#fff'; g.font = '600 36px system-ui, -apple-system, sans-serif'; g.textBaseline = 'top';
+      const lines = [];
+      let cur = '';
+      for (const w of pipText().split(/\s+/)) {
+        const next = cur ? `${cur} ${w}` : w;
+        if (cur && g.measureText(next).width > W - pad * 2) { lines.push(cur); cur = w; } else cur = next;
+      }
+      if (cur) lines.push(cur);
+      lines.slice(-3).forEach((l, i) => g.fillText(l, pad, pad + i * lh));
+    }
+    async function togglePip() {
+      try {
+        if (pipWin) return pipWin.close();
+        if (document.pictureInPictureElement) return await document.exitPictureInPicture();
+        if (canDocPip) {
+          pipWin = await documentPictureInPicture.requestWindow({ width: 560, height: 170 });
+          const d = pipWin.document, root = document.documentElement;
+          d.documentElement.style.cssText = root.style.cssText; // accent, text size, reading font
+          if (root.dataset.theme) d.documentElement.dataset.theme = root.dataset.theme;
+          for (const l of document.querySelectorAll('link[rel="stylesheet"]')) d.head.append(Object.assign(d.createElement('link'), { rel: 'stylesheet', href: l.href }));
+          const css = d.createElement('style');
+          css.textContent = 'body{margin:0;height:100vh;overflow:hidden;display:flex;align-items:flex-end;background:var(--bg);color:var(--fg)}'
+            + '#t{padding:10px 16px;font:600 clamp(16px,13vh,48px)/1.35 var(--read-font,var(--font))}';
+          d.head.append(css);
+          d.title = document.title;
+          d.body.innerHTML = '<div id="t" aria-live="polite"></div>';
+          pipWin.addEventListener('pagehide', () => { pipWin = null; $('pip').setAttribute('aria-pressed', 'false'); });
+          $('pip').setAttribute('aria-pressed', 'true');
+          renderPip();
+        } else {
+          pipCv = Object.assign(document.createElement('canvas'), { width: 960, height: 186 });
+          drawPip();
+          pipVid ??= Object.assign(document.createElement('video'), { muted: true, playsInline: true });
+          pipVid.srcObject = pipCv.captureStream();
+          await pipVid.play();
+          await pipVid.requestPictureInPicture();
+          pipVid.addEventListener('leavepictureinpicture', () => { pipCv = null; pipVid.srcObject = null; }, { once: true });
+        }
+      } catch (e) {
+        console.warn('floating captions', e);
+        pipWin = null; pipCv = null;
+        toast(t('error'));
+      }
+    }
+    $('pip').onclick = togglePip;
+
     wakeLock();
   </script>
 </body>

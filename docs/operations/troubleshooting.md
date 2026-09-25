@@ -49,7 +49,7 @@ Find the symptom, then follow the steps in order. Server logs are printed to the
 | Captions arrive late (more than 6 s) | Reconnect in progress, a poor audio feed or network jitter | See [Latency](../latency.md#tuning). Press ↻ if it persists. |
 | Translation lags the original by a lot | Long sentences without punctuation, or throttling | Lower `MT_PARTIAL_MS`. Check for the "translation throttled" alert. |
 | Wrong words for names or acronyms | Unknown vocabulary | Add them to the glossary vocabulary and replacements |
-| Captions in the wrong language | Wrong `source` pinned, or auto-detection confused by a bilingual talk | Set the room's language, or `auto` |
+| Captions in the wrong language | Wrong `source` pinned | Set the room's language to `auto`: speakers can switch languages mid-talk and every caption track follows (the dashboard log shows `speaker switched language: es → en`) |
 | Phone shows "reconnecting" | Weak venue Wi-Fi | It recovers automatically. Captions need very little bandwidth. |
 
 ## Audience assistant and agenda

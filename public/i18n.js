@@ -86,7 +86,7 @@ const DICTS = {
     'Abrila en el navegador de la mini PC conectada al proyector, en pantalla completa (F11).': 'Open it full-screen (F11) in the browser of the PC connected to the projector.',
     'Programa (cámara / slides)': 'Program (camera / slides)',
     '📅 Agenda': '📅 Agenda',
-    '🖨 Kit de QR': '🖨 QR kit',
+    '🖨 Kit de QR': '🖨 QR kit', '📌 Flotante': '📌 Float', 'Todas las salas en una ventana siempre visible, encima de OBS o vMix': 'Every room in an always-on-top window, over OBS or vMix',
     '📚 Transcripciones': '📚 Transcripts',
     '🚀 Primeros pasos': '🚀 Getting started',
     'Ocultar': 'Hide',

@@ -57,6 +57,25 @@ export class CaptionTrack extends EventEmitter {
     if (final) this.cur = null;
   }
 
+  /** Take the caption in progress out of the track (it will be finished later with finishDetached). */
+  detach() {
+    clearTimeout(this.timer);
+    this.timer = null;
+    const c = this.cur;
+    this.cur = null;
+    return c;
+  }
+
+  /** Finalize a detached caption (same id, so viewers replace the provisional text in place). */
+  finishDetached(c, text, lang = null) {
+    text = (text || '').trim();
+    if (!c || !text) return;
+    const saved = this.cur;
+    this.cur = { ...c, raw: text, end: Math.max(c.end, this.clock()), lang: lang || c.lang };
+    this.#emit(true);
+    this.cur = saved;
+  }
+
   push(text, { finished = false, lang = null } = {}) {
     if (text) this.interimText = '';
     if (text) {

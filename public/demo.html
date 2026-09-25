@@ -3,6 +3,11 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#0b0b10" />
+  <link rel="icon" href="/favicon.ico" sizes="32x32" />
+  <link rel="icon" href="/brand/icon.svg" type="image/svg+xml" />
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+  <link rel="manifest" href="/manifest.webmanifest" />
   <title>Demo · OpenCaptions</title>
   <link rel="stylesheet" href="/style.css" />
   <style>
@@ -42,7 +47,7 @@
 </head>
 <body>
   <header>
-    <div class="brand" style="font-size:14px">open<span>captions</span> · demo</div>
+    <a class="brand" href="/admin.html" title="Panel de producción" style="font-size:14px">open<span>captions</span> · demo</a>
     <select id="mode"><option value="youtube">▶ Video de YouTube</option><option value="mic">🎙 Micrófono en vivo</option></select>
     <input type="text" id="url" class="yt-only" placeholder="URL de YouTube (ej: https://www.youtube.com/watch?v=…)" />
     <label class="row muted hint mic-only" style="flex:1 1 260px">Micrófono <select id="mic" style="flex:1"><option value="">(predeterminado)</option></select></label>

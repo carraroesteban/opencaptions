@@ -348,6 +348,45 @@ app.get('/metrics', admin, (req, res) => { // Prometheus: send `Authorization: B
 });
 
 app.get('/s/:id', (req, res) => res.redirect(`/watch.html?stage=${encodeURIComponent(req.params.id)}`));
+
+// Installable web app: "Add to home screen" on phones, its own window on desktops.
+app.get('/manifest.webmanifest', (req, res) => {
+  const name = config.event.name || 'OpenCaptions';
+  res.type('application/manifest+json').send(JSON.stringify({
+    name: `${name} · Live captions`,
+    short_name: name.length <= 12 ? name : 'Captions',
+    description: 'Live captions and translation for every room.',
+    start_url: '/',
+    scope: '/',
+    display: 'standalone',
+    background_color: '#0b0b10',
+    theme_color: '#0b0b10',
+    icons: [
+      { src: '/brand/icon.svg', sizes: 'any', type: 'image/svg+xml' },
+      { src: '/brand/icon-192.png', sizes: '192x192', type: 'image/png' },
+      { src: '/brand/icon-512.png', sizes: '512x512', type: 'image/png' },
+      { src: '/brand/maskable-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
+    ],
+  }));
+});
+
+// Audience pages: link previews (WhatsApp, Slack, LinkedIn) need the event name and an absolute image URL.
+const htmlEsc = (s) => String(s).replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
+const pageCache = new Map();
+app.get(['/', '/index', '/index.html', '/watch', '/watch.html', '/talk', '/talk.html', '/talks', '/talks.html'], (req, res, next) => {
+  const origin = publicUrl(req);
+  if (!/^https?:\/\/[a-z0-9.\-:[\]]+$/i.test(origin)) return next(); // odd Host header: serve the file untouched
+  const name = req.path === '/' ? 'index.html' : req.path.slice(1).replace(/(\.html)?$/, '.html');
+  const file = path.join(ROOT, 'public', name);
+  try {
+    const { mtimeMs } = fs.statSync(file);
+    let hit = pageCache.get(file);
+    if (!hit || hit.mtimeMs !== mtimeMs) pageCache.set(file, (hit = { mtimeMs, html: fs.readFileSync(file, 'utf8') }));
+    res.type('html').send(hit.html
+      .replaceAll('content="/brand/', `content="${origin}/brand/`)
+      .replaceAll('%EVENT%', htmlEsc(config.event.name || 'OpenCaptions')));
+  } catch { next(); }
+});
 app.use(express.static(path.join(ROOT, 'public'), { extensions: ['html'] }));
 app.use('/samples', express.static(path.join(ROOT, 'samples')));
 app.use('/api', (req, res) => res.status(404).json({ error: 'not found' }));

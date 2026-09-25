@@ -54,6 +54,7 @@ Ten rooms need roughly 3 Mbps up. Any venue connection handles that, but share i
 | Inbound | 80/tcp | Anywhere | Let's Encrypt HTTP challenge and redirect |
 | Inbound | 22/tcp | Your IP only | SSH, or use IAP/OS Login instead |
 | Inbound | 900x/udp | The encoder's IP only | Only if you pull SRT in listener mode |
+| Inbound | 1935/tcp | The encoder's IP only | Only if OBS/vMix push RTMP to a room (`rtmp://0.0.0.0:1935/live/<key>`) |
 | Outbound | 443 | Anywhere | Gemini, package updates |
 
 Don't expose port 8080 publicly. Keep the app behind the proxy (`BIND_ADDR=127.0.0.1`).

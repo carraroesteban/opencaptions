@@ -34,7 +34,7 @@ then persisted in `data/secrets.json`). **The admin token also works for ingest.
 
 | Endpoint group | Who can call it |
 |---|---|
-| `GET /healthz`, `GET /api/event`, `GET /api/glossary`, `GET /api/schedule`, `GET /api/qr.svg`, `GET /s/:id`, static pages | Public — no auth |
+| `GET /healthz`, `GET /api/event`, `GET /api/glossary`, `GET /api/schedule`, `GET /api/qr.svg`, `GET /s/:id`, `GET /manifest.webmanifest`, static pages | Public — no auth |
 | `GET /api/talks`, `GET /api/stages/:id/talks`, `GET /api/stages/:id/talks/:talk`, `GET /api/stages/:id/export.:fmt` | Depends on `PUBLIC_TRANSCRIPTS` — see [Transcripts & exports](#transcripts--exports) |
 | `GET /api/stages/:id/summary`, `POST /api/stages/:id/ask` | Depends on `PUBLIC_TRANSCRIPTS` — see [Audience AI](#audience-ai-summaries--ask) |
 | `GET /api/status`, `POST/PATCH/DELETE /api/stages*`, `PUT /api/glossary`, `PUT /api/schedule`, `GET /metrics` | Admin token |
@@ -471,6 +471,7 @@ curl -X PUT http://localhost:8080/api/glossary \
 |---|---|---|
 | `GET /api/qr.svg` | Public | `?text=` (≤ 500 chars, default = the server's public URL). Returns an SVG QR code, `Cache-Control: public, max-age=3600`. |
 | `GET /s/:id` | Public | Short link → `302` redirect to `/watch.html?stage=:id` (what the printed/QR-coded audience link points to). |
+| `GET /manifest.webmanifest` | Public | Web app manifest named after the event (install to home screen). Audience pages (`/`, `/watch.html`, `/talk.html`, `/talks.html`) are served with the event name and absolute `og:image` URLs filled in for link previews; the base is `PUBLIC_URL`, or the request's host when that looks like a plain hostname. |
 | static files | Public | `public/` is served at `/` (extensionless, e.g. `/watch` ≡ `/watch.html`); `samples/` is served at `/samples/` (bundled demo WAV files). |
 | `/api/*` (unmatched) | — | `404 {"error":"not found"}`. |
 
@@ -760,7 +761,7 @@ page also accepts a global `?ui=es|en|pt` to force the UI language (persisted in
 | Page | Purpose | Query parameters |
 |---|---|---|
 | `/` (`index.html`) | Audience homepage — pick a room. | — |
-| `/watch.html` | Audience caption view (phone-optimized), the `/s/:id` short-link target. A ✨ sheet answers "what did I miss?" and questions about the talk ([Audience AI](#audience-ai-summaries--ask)); an Aa sheet holds text size/font/line-spacing/theme; a 📄 link opens the full transcript on `/talk.html`. No download control here — that lives on `/talk.html`. | `stage` (required), `lang` |
+| `/watch.html` | Audience caption view (phone-optimized), the `/s/:id` short-link target. A ✨ sheet answers "what did I miss?" and questions about the talk ([Audience AI](#audience-ai-summaries--ask)); an Aa sheet holds text size/font/line-spacing/theme; a 📄 link opens the full transcript on `/talk.html`; ⧉ floats the captions in an always-on-top window (desktop). No download control here — that lives on `/talk.html`. | `stage` (required), `lang` |
 | `/talk.html` | Full transcript reader for one talk: search, per-paragraph timestamps (click to jump), a ⬇ download menu (TXT/SRT/VTT), live-follows the talk in progress, and the same ✨ summary/ask panel as `/watch.html`. | `stage` (required), `talk` (a saved talk id, or omit/`current` for the room's current talk), `lang` |
 | `/talks.html` | Public library of talks across every room ([`GET /api/talks`](#transcripts--exports)), searchable/filterable by room, links into `/talk.html`. | — |
 | `/ingest.html` | Browser-based audio ingest for a stage PC (mic / tab-share / file / bundled sample). | `stage`, `mode` (`mic`\|`tab`\|`file`\|`sample`), `autostart=1` |

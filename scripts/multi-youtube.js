@@ -26,7 +26,7 @@ const YEAR = String(a.year || '2025');
 const MIN_DUR = Number(a['min-duration'] || 900); // talks, not shorts/clips
 const http = String(a.server || process.env.OC_SERVER || 'http://localhost:8080').replace(/\/$/, '');
 const headers = { 'content-type': 'application/json', 'x-admin-token': a['admin-token'] || process.env.ADMIN_TOKEN || '' };
-const CONCURRENCY = Number(a.concurrency || 3);
+const CONCURRENCY = Number(a.concurrency || Math.min(6, Math.max(3, Math.ceil(N / 5))));
 
 const c = { dim: (s) => `\x1b[2m${s}\x1b[0m`, red: (s) => `\x1b[31m${s}\x1b[0m`, green: (s) => `\x1b[32m${s}\x1b[0m`, yellow: (s) => `\x1b[33m${s}\x1b[0m`, bold: (s) => `\x1b[1m${s}\x1b[0m` };
 
@@ -151,6 +151,15 @@ console.log(c.bold(`Looking for ${a.file || a.playlist || `"${QUERY}"`} videos�
 let videos;
 try { videos = await discover(); } catch (e) { console.error(c.red(`✗ ${e.message}`)); process.exit(1); }
 if (!videos.length) { console.error(c.red('✗ no videos found. Try --playlist <url> or --file urls.txt')); process.exit(1); }
+if (videos.length < N && !a['no-repeat']) {
+  // Not enough distinct talks for a big stress test: reuse them from different points (every 10 min in).
+  const base = videos.slice();
+  for (let i = videos.length; i < N; i++) {
+    const v = base[i % base.length];
+    videos.push({ ...v, offset: Math.floor(i / base.length) * 600, title: `${v.title} (+${Math.floor(i / base.length) * 10} min)` });
+  }
+  console.log(c.yellow(`Only ${base.length} distinct video(s) found: reusing them at different offsets to fill ${N} rooms (--no-repeat to disable).`));
+}
 videos = videos.slice(0, N);
 console.log(`Using ${videos.length} video(s):`);
 videos.forEach((v, i) => console.log(`  ${String(i + 1).padStart(2)}. ${v.title}${v.duration ? c.dim(` (${Math.round(v.duration / 60)} min)`) : ''}  ${c.dim(v.id)}`));
@@ -160,7 +169,7 @@ const perMin = videos.length * 0.0368;
 console.log(c.yellow(`\n≈ $${perMin.toFixed(2)}/min in Gemini Live + ~$0.01/min per room in text translation${MINUTES ? ` → ≈ $${(perMin * MINUTES * 1.25).toFixed(2)} for ${MINUTES} min` : ''}. Starting in 5 s (Ctrl+C to abort)…`));
 await new Promise((r) => setTimeout(r, 5000));
 
-const rooms = videos.map((v, i) => ({ id: `${PREFIX}-${String(i + 1).padStart(2, '0')}`, video: v, url: v.url && /watch|youtu\.be/.test(v.url) ? v.url : `https://www.youtube.com/watch?v=${v.id}` }));
+const rooms = videos.map((v, i) => ({ id: `${PREFIX}-${String(i + 1).padStart(2, '0')}`, video: v, start: START + (v.offset || 0), url: v.url && /watch|youtu\.be/.test(v.url) ? v.url : `https://www.youtube.com/watch?v=${v.id}` }));
 let t0 = Date.now();
 let stopping = false;
 
@@ -172,7 +181,7 @@ await pool(rooms, CONCURRENCY, async (r) => {
     catch (e) { if (!/exist/i.test(e.message)) throw e; }
     await api('POST', `/api/stages/${r.id}/talk`, { title: r.video.title.slice(0, 120) });
     process.stdout.write(`▶ ${r.id} ${cut(r.video.title, 60)} … `);
-    await api('POST', `/api/stages/${r.id}/youtube`, { url: r.url, start: START });
+    await api('POST', `/api/stages/${r.id}/youtube`, { url: r.url, start: r.start });
     console.log(c.green('audio flowing'));
   } catch (e) {
     r.error = e.message;
