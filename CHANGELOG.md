@@ -20,6 +20,11 @@ All notable changes to this project are documented in this file. The format foll
 
 - **App identity:** icon, favicon, home-screen icon, installable web app manifest (named after the event), and link previews with an image for WhatsApp, Slack and LinkedIn. The logo on every secondary page links back to the dashboard (operator pages) or the room list (audience pages).
 - **⧉ Floating captions** on the audience page (desktop): an always-on-top window over the livestream, the slides or a video call. Chrome and Edge use Document Picture-in-Picture (resizable, follows the reading settings); other browsers fall back to video picture-in-picture.
+- **README** rewritten in the style of well-known self-hosted projects (logo, badges, one hero image, quick start without an API key, install options, supported-platforms table, cost, documentation map) with a new, consistent screenshot set in `docs/images/`.
+- **Setup wizard:** numbered questions, a check that the API key looks like a Gemini key, this computer's LAN address (instead of `localhost`) in the links for other devices, and a one-line sample feed to try it without audio hardware.
+- **Agenda from Swapcard / Sessionize / Sheets:** paste the export straight from Excel or Google Sheets. Columns are recognized by their header (English or Spanish), rooms by name ("Sala A - Planta baja" → `sala-a`), dates in `DD/MM/YYYY`, US, ISO or `HH:MM` form, and rows for rooms without captions are skipped and reported instead of failing the import.
+- **The agenda is context for the AI:** the current and next talk's title and speaker names go into the recognizer's vocabulary and the translator's glossary, so names are spelled right and not translated.
+- **Bilingual stream overlay:** `overlay.html?…&also=en` (or `orig`) adds a smaller second line in another language, for streams watched in more than one language; also in the style editor (*Second line*). It never repeats the same words twice.
 - **📌 Floating mini-dashboard** for operators: every room's status, alerts and last line in an always-on-top window over OBS or vMix. Clicking a room jumps to its card.
 
 ### Added — bilingual speakers

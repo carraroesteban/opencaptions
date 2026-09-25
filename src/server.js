@@ -309,9 +309,13 @@ app.post('/api/stages/:id/ask', getStage, async (req, res) => {
 app.get('/api/schedule', (req, res) => res.json(schedule.entries.map((e) => ({ ...e, startIso: new Date(e.start).toISOString() }))));
 app.put('/api/schedule', admin, (req, res) => {
   try {
-    const entries = schedule.set(typeof req.body?.csv === 'string' ? req.body.csv : req.body?.entries ?? req.body);
+    const csv = typeof req.body?.csv === 'string' ? req.body.csv : null;
+    // Pasted text is matched to the rooms that exist (by id or name); rows for other rooms are skipped.
+    const rooms = csv != null ? [...stages.values()].map((s) => ({ id: s.id, name: s.def.name })) : undefined;
+    const entries = schedule.set(csv ?? req.body?.entries ?? req.body, { rooms });
     const unknown = [...new Set(entries.map((e) => e.stage))].filter((id) => !stages.has(id));
-    res.json({ ok: true, count: entries.length, unknownRooms: unknown });
+    const skipped = entries.skipped || [];
+    res.json({ ok: true, count: entries.length, unknownRooms: unknown, skipped: { count: skipped.length, rooms: [...new Set(skipped.map((x) => x.room))].slice(0, 20) } });
   } catch (e) { res.status(400).json({ error: e.message }); }
 });
 

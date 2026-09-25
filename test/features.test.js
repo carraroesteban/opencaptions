@@ -86,3 +86,29 @@ test('agenda: current and next slot per room', () => {
   assert.equal(sch.slot('main', t0 - 1).current, null);
   assert.equal(sch.slot('sala', t0 + 5 * 3600_000).current, null, 'stale slot at end of day');
 });
+
+test('agenda: a Swapcard export pasted from Excel (header, tabs, multi-line cells, room names)', () => {
+  const now = new Date(2026, 8, 25, 9, 0);
+  const tsv = [
+    'Title\tDescription\tStart date and time\tEnd date and time\tLocation\tSpeakers',
+    'Keynote de apertura\t"Bienvenida, agenda\ny más"\t25/09/2026 10:00\t25/09/2026 10:30\tEscenario Principal\tAna Pérez, John Doe',
+    'Rust para gente de Go\tx\t2026-09-25 11:30:00\t\tSala A - Planta baja\tLuis',
+    'Workshop K8s\ty\t25/09/2026 12:00\t\tLab 3\tZoe',
+    'Coffee break\t\t25/09/2026 12:30\t\t\t',
+  ].join('\n');
+  const rooms = [{ id: 'main', name: 'Escenario Principal' }, { id: 'sala-a', name: 'Sala A' }, { id: 'sala-b', name: 'Sala B' }];
+  const e = parseSchedule(tsv, now, { rooms });
+  assert.deepEqual(e.map((x) => [x.stage, x.title, x.speaker]), [['main', 'Keynote de apertura', 'Ana Pérez, John Doe'], ['sala-a', 'Rust para gente de Go', 'Luis']]);
+  assert.equal(new Date(e[0].start).getHours(), 10);
+  assert.deepEqual(e.skipped.map((s) => s.room), ['Lab 3', '—'], 'rooms without captions are skipped, not fatal');
+});
+
+test('agenda: date formats', () => {
+  const now = new Date(2026, 8, 25, 9, 0);
+  const at = (csv) => new Date(parseSchedule(csv, now)[0].start);
+  assert.equal(at('Date;Time;Room;Talk\n2026-09-26;2:30 PM;main;X').getHours(), 14);
+  assert.equal(at('title,begins at,place\nX,09/26/2026 10:15,main').getDate(), 26, 'US order when the day cannot come first');
+  assert.equal(at('title,begins at,place\nX,26/09/2026 10:15,main').getMonth(), 8);
+  assert.equal(at('title,begins at,place\nX,2026-09-25T13:30:00.000Z,main').toISOString(), '2026-09-25T13:30:00.000Z');
+  assert.equal(at('main,10:00,"Keynote, apertura",Org').getHours(), 10, 'plain CSV without header still works');
+});

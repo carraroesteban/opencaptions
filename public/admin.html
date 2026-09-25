@@ -109,7 +109,8 @@
   <dialog id="dlg-export"><div id="export-body"></div><form method="dialog" style="text-align:right;margin-top:12px"><button>Cerrar</button></form></dialog>
   <dialog id="dlg-agenda"><form method="dialog" style="display:grid;gap:10px">
     <h3 style="margin:0">📅 Agenda del evento</h3>
-    <p class="muted" style="margin:0;font-size:13px">Pegá la agenda (CSV: <code>sala,hora,título,speaker</code> — una charla por línea, la hora como <code>14:30</code> para hoy o <code>2026-09-26 14:30</code>). Cada sala toma el título solo cuando empieza su charla, y si el speaker anterior se pasa de tiempo espera una pausa para no cortarlo.</p>
+    <p class="muted" style="margin:0;font-size:13px"><b>Desde Swapcard, Sessionize o una planilla:</b> exportá las sesiones a Excel o Google Sheets, seleccioná todo (con la fila de títulos), copiá y pegá acá. Se reconocen las columnas (título, inicio, sala/ubicación, speakers) y las salas por su nombre; las filas de salas sin subtítulos se ignoran.<br>O a mano, una charla por línea: <code>sala,hora,título,speaker</code> (hora <code>14:30</code> = hoy).</p>
+    <p class="muted" style="margin:0;font-size:13px">Para qué sirve: cada sala nombra sola sus charlas (pantallas, transcripciones y descargas) sin cortar a un speaker que se pasa de tiempo, y los nombres de speakers y títulos ayudan a la IA a escribirlos bien.</p>
     <textarea id="agenda-text" rows="14" style="font-family:var(--mono);font-size:12px" placeholder="main,10:00,Keynote de apertura,Organización&#10;sala-a,10:30,Observabilidad en Kubernetes,Ana Pérez"></textarea>
     <div id="agenda-msg" class="muted" style="font-size:13px"></div>
     <div class="row" style="justify-content:flex-end"><button value="cancel">Cancelar</button><button class="primary" value="ok" id="agenda-save">Guardar</button></div>
@@ -419,8 +420,9 @@
       try {
         const r = await api('PUT', '/api/schedule', { csv: $('agenda-text').value });
         await refreshSchedule();
-        $('agenda-msg').textContent = `✓ ${r.count} charla(s) guardadas${r.unknownRooms.length ? ` · ⚠ salas desconocidas: ${r.unknownRooms.join(', ')}` : ''}`;
-        if (!r.unknownRooms.length) setTimeout(() => $('dlg-agenda').close(), 900);
+        const sk = r.skipped?.count ? ` · ${r.skipped.count} fila(s) de otras salas ignoradas (${r.skipped.rooms.join(', ')})` : '';
+        $('agenda-msg').textContent = `✓ ${r.count} charla(s) guardadas${sk}${r.unknownRooms.length ? ` · ⚠ salas desconocidas: ${r.unknownRooms.join(', ')}` : ''}`;
+        if (!r.unknownRooms.length && !sk) setTimeout(() => $('dlg-agenda').close(), 900);
       } catch { /* api() already showed the error */ }
     };
 

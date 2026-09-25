@@ -32,7 +32,7 @@ A shorter Spanish version for venue crews is in [event-day.es.md](event-day.es.m
   - `targets`: the caption languages, for example `["es"]` for English talks.
 - [ ] Fill the glossary (**Dashboard → Glossary** or `config/glossary.json`) with speaker names, sponsors, products and acronyms from the schedule. Changes apply immediately.
 - [ ] Design the caption style once in `/style.html` and copy the generated overlay and projector URLs.
-- [ ] Paste the agenda in **Dashboard → 📅 Agenda** (CSV `room,time,title,speaker`, see `config/schedule.example.csv`). Talks then get their title and speaker automatically; a room waits for a pause before switching, so a speaker who runs late is never cut.
+- [ ] Paste the agenda in **Dashboard → 📅 Agenda**. From Swapcard or Sessionize: export the sessions to Excel or Google Sheets, select everything including the header row, copy and paste. Columns are found by their header, rooms by their name, and rows for rooms without captions are skipped. By hand: CSV `room,time,title,speaker` (see `config/schedule.example.csv`). Talks then get their title and speaker automatically, and speaker names and titles are passed to the recognizer and the translator so they're spelled right; a room waits for a pause before switching, so a speaker who runs late is never cut.
 - [ ] Print the QR posters: **Dashboard → 🖨 QR kit** (`/kit.html`), one bilingual A4 poster per room. Check the warning at the top: the QR must point to the public HTTPS address, not `localhost`.
 - [ ] Decide what the audience can read afterwards: `publicTranscripts` in `config/event.json` (`all` = every talk in the library, `current` = only the talk in progress).
 
@@ -76,7 +76,7 @@ Install it as a service so it survives reboots ([Deployment](../deployment.md#ru
 **Displays:**
 
 - Projector: `https://<server>/screen.html?stage=<room>` full screen, or the URL from the style editor.
-- vMix: a *Web Browser* input at 1920×1080 with `https://<server>/overlay.html?stage=<room>&lang=es`, used as an overlay on the program output. OBS: *Browser Source* with the same URL. Use one overlay per language or stream.
+- vMix: a *Web Browser* input at 1920×1080 with `https://<server>/overlay.html?stage=<room>&lang=es`, used as an overlay on the program output. OBS: *Browser Source* with the same URL. Use one overlay per language or stream. For a mixed-language audience add `&also=en` (or `&also=orig`): a smaller second line in that language under the main one. It hides itself while both lines would show the same words.
 
 ## Sixty minutes before: sound check (per room)
 

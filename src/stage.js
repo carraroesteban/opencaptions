@@ -168,7 +168,7 @@ export class Stage extends EventEmitter {
     if (this.engines.size || this.destroyed) return;
     if (this.idleClosed && this.talkSegments > 0) this.#newTalk('', true);
     this.idleClosed = false;
-    const glossaryVocab = this.glossary.vocabulary(this.def.vocabulary);
+    const glossaryVocab = this.#vocabulary();
     this.sessionTargets.forEach((target, i) => {
       const primary = i === 0;
       const opts = {
@@ -312,7 +312,7 @@ export class Stage extends EventEmitter {
       const q = (this.mtQ[t] = new SentenceTranslator({
         from: this.source,
         to: t,
-        vocabulary: this.glossary.vocabulary(this.def.vocabulary),
+        vocabulary: this.#vocabulary(),
         onPartial: (out) => {
           if (q.detached) return; // the speaker switched to this language meanwhile
           this.#markLatency(t, out);
@@ -419,6 +419,7 @@ export class Stage extends EventEmitter {
     if (announce) {
       this.log('info', `new talk started ${title ? `"${title}"` : ''}`.trim());
       this.emit('talk');
+      this.#refreshVocabulary();
     }
   }
 
@@ -427,7 +428,27 @@ export class Stage extends EventEmitter {
     if (speaker !== undefined) this.talk.speaker = speaker;
     this.store.openTalk(this.id, this.talk, this.languages);
     this.emit('title'); // same talk, new name: viewers keep their captions
+    this.#refreshVocabulary();
     if (manual) this.#markScheduleHandled();
+  }
+
+  /**
+   * Glossary + room vocabulary + names from the agenda: the current and next talk's title and speakers.
+   * The host introduces the next speaker before their slot, so their name is included too. Helps the
+   * recognizer spell names and keeps the translator from translating them.
+   */
+  #vocabulary() {
+    const terms = [];
+    for (const t of [this.talk, this.nextTalk]) {
+      if (!t) continue;
+      if (t.title) terms.push(t.title.slice(0, 100));
+      for (const n of String(t.speaker || '').split(/\s*(?:[,;&/]|\s+(?:y|and|e)\s+)\s*/)) if (n.length > 1 && n.length <= 60) terms.push(n);
+    }
+    return this.glossary.vocabulary([...(this.def.vocabulary || []), ...terms]);
+  }
+  #refreshVocabulary() {
+    const v = this.#vocabulary();
+    for (const q of Object.values(this.mtQ || {})) q.vocabulary = v; // live sessions pick it up at their next (re)connect
   }
 
   // ---------- agenda (src/schedule.js) ----------

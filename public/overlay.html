@@ -12,6 +12,7 @@
     /*
       Broadcast overlay for vMix (Web Browser input) / OBS (Browser Source), 1920×1080.
       Layout:  ?stage=main&lang=es&lines=2&size=46&pos=bottom|top|middle&width=78&margin=64&hide=6&bg=transparent
+      Bilingual: &also=en (or orig) adds a smaller second line in another language for mixed-language streams
       Style:   &font=inter|atkinson|lexend|roboto|opensans|montserrat|mono|system &weight=600 &color=ffffff
                &style=box|outline|shadow|none &box=000000 &alpha=78 &edge=000000 &upper=1 &align=center|left
       Design it visually at /style.html
@@ -30,10 +31,13 @@
     .box.boxed { background: var(--cap-box); }
     .clip { display: flex; flex-direction: column; justify-content: flex-end; overflow: hidden; max-height: calc(var(--size, 46px) * 1.25 * var(--lines, 2)); }
     .box.idle { opacity: 0; }
+    .clip2 { display: none; flex-direction: column; justify-content: flex-end; overflow: hidden; font-size: .64em; opacity: .88; margin-top: .3em; max-height: calc(var(--size, 46px) * .64 * 1.25 * 2); }
+    .box.bi .clip2 { display: flex; }
+    .clip2 div:empty { display: none; }
   </style>
 </head>
 <body>
-  <div class="wrap" id="wrap"><div class="box idle" id="box"><div class="clip"><div id="txt"></div></div></div></div>
+  <div class="wrap" id="wrap"><div class="box idle" id="box"><div class="clip"><div id="txt"></div></div><div class="clip2"><div id="txt2"></div></div></div></div>
   <script type="module">
     import { qs, wsUrl, Socket, CaptionState, applyCaptionStyle, previewStream, toColor } from '/common.js';
     const root = document.documentElement.style;
@@ -52,25 +56,38 @@
     const hideMs = Number(p('hide', 6)) * 1000;
     const chars = Number(p('chars', 150));
     const txt = document.getElementById('txt');
+    const txt2 = document.getElementById('txt2');
+    const also = p('also', '') !== lang ? p('also', '') : '';
+    box.classList.toggle('bi', !!also);
+    // Don't print the same words twice (e.g. the speaker is using the second line's language right now).
+    const norm = (s) => s.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim().slice(-40);
+    const second = (a, b) => (b && norm(a) !== norm(b) ? b : '');
 
     if (qs.get('preview') === '1') {
       // Style preview: fake streaming captions, no server connection.
       previewStream((t) => { txt.textContent = t.slice(-chars); box.classList.remove('idle'); }, lang === 'en' ? 'en' : 'es');
+      if (also) previewStream((t) => { txt2.textContent = t.slice(-chars); }, lang === 'en' ? 'es' : 'en');
     } else {
-      let ch = null, talkId = null;
-      const st = new CaptionState();
-      new Socket(() => wsUrl('/ws/view', { stage: p('stage', 'main'), langs: lang }), {
+      let ch = null, ch2 = null, talkId = null;
+      const st = new CaptionState(), st2 = new CaptionState();
+      new Socket(() => wsUrl('/ws/view', { stage: p('stage', 'main'), langs: [lang, also].filter(Boolean).join(',') }), {
         message(m) {
-          if (m.type === 'hello') { ch = m.map[lang]; talkId = m.talk; st.load(m.history[ch] || [], m.partial[ch]); st.updatedAt = 0; }
+          if (m.type === 'hello') {
+            ch = m.map[lang]; talkId = m.talk; st.load(m.history[ch] || [], m.partial[ch]); st.updatedAt = 0;
+            if (also) { ch2 = m.map[also] ?? also; st2.load(m.history[ch2] || [], m.partial[ch2]); st2.updatedAt = 0; }
+          }
           else if (m.type === 'caption' && m.channel === ch) { st.apply(m); draw(); }
-          else if (m.type === 'talk' && m.talk !== talkId) { talkId = m.talk; st.clear(); draw(); }
+          else if (m.type === 'caption' && ch2 && m.channel === ch2) { st2.apply(m); draw(); }
+          else if (m.type === 'talk' && m.talk !== talkId) { talkId = m.talk; st.clear(); st2.clear(); draw(); }
         },
       });
       function draw() {
-        txt.textContent = st.tail(chars);
+        const main = st.tail(chars);
+        txt.textContent = main;
+        if (also) txt2.textContent = second(main, st2.tail(chars));
         box.classList.remove('idle');
       }
-      setInterval(() => box.classList.toggle('idle', Date.now() - st.updatedAt > hideMs || !st.tail(10)), 500);
+      setInterval(() => box.classList.toggle('idle', Date.now() - Math.max(st.updatedAt, also ? st2.updatedAt : 0) > hideMs || !(st.tail(10) || (also && st2.tail(10)))), 500);
     }
   </script>
 </body>

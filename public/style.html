@@ -72,6 +72,7 @@
           <label class="field">Posición<select id="pos"><option value="bottom">Abajo</option><option value="middle">Centro</option><option value="top">Arriba</option></select></label>
           <label class="field">Ancho máx. <span class="val" id="v-width"></span><input type="range" id="width" min="40" max="95" /></label>
         </div>
+        <label class="field">Segunda línea (bilingüe)<select id="also"></select></label>
         <label class="field">Fondo de la página<select id="bgmode"><option value="transparent">Transparente (alpha)</option><option value="00ff00">Verde chroma</option><option value="000000">Negro</option></select></label>
       </div>
       <div class="only-screen">
@@ -102,7 +103,7 @@
     let target = store.get('style.target', 'overlay');
 
     const DEFAULTS = {
-      overlay: { font: 'inter', size: 46, weight: 600, lines: 2, align: 'center', color: '#ffffff', style: 'box', box: '#000000', alpha: 78, upper: false, pos: 'bottom', width: 78, bgmode: 'transparent' },
+      overlay: { font: 'inter', size: 46, weight: 600, lines: 2, align: 'center', color: '#ffffff', style: 'box', box: '#000000', alpha: 78, upper: false, pos: 'bottom', width: 78, bgmode: 'transparent', also: '' },
       screen: { font: 'inter', size: 6.4, weight: 600, lines: 3, align: 'left', color: '#ffffff', style: 'none', box: '#000000', alpha: 0, upper: false, sbg: '#000000', accent: ev.accent || '#8b5cf6', orig: true, qr: true },
     };
     const PRESETS = {
@@ -120,10 +121,11 @@
       const st = ev.stages.find((s) => s.id === $('stage').value) || ev.stages[0];
       const langs = (st?.languages || ['orig', 'es', 'en']).filter((l) => l !== 'orig');
       $('lang').innerHTML = [...langs, 'orig'].map((l) => `<option value="${l}">${esc(langLabel(l, ev.languages))}</option>`).join('');
+      $('also').innerHTML = `<option value="">${esc(tr('Ninguna'))}</option>` + [...langs, 'orig'].map((l) => `<option value="${l}">${esc(langLabel(l, ev.languages))}</option>`).join('');
     }
     fillLangs();
 
-    const ids = ['font', 'size', 'weight', 'lines', 'align', 'color', 'style', 'box', 'alpha', 'upper', 'pos', 'width', 'bgmode', 'sbg', 'accent', 'orig', 'qr'];
+    const ids = ['font', 'size', 'weight', 'lines', 'align', 'color', 'style', 'box', 'alpha', 'upper', 'pos', 'width', 'bgmode', 'also', 'sbg', 'accent', 'orig', 'qr'];
     const read = () => Object.fromEntries(ids.map((k) => [k, $(k).type === 'checkbox' ? $(k).checked : $(k).value]));
     function write(v) { for (const [k, x] of Object.entries(v)) if ($(k)) { if ($(k).type === 'checkbox') $(k).checked = !!x; else $(k).value = x; } }
     function setTarget(t) {
@@ -152,6 +154,7 @@
       if (target === 'overlay') {
         add('pos', v.pos, 'bottom'); add('width', v.width, 78);
         if (v.bgmode !== 'transparent') p.set('bg', v.bgmode);
+        if (v.also && v.also !== $('lang').value) p.set('also', v.also);
       } else {
         add('bg', hex(v.sbg), '000000'); add('accent', hex(v.accent), hex(ev.accent || '#8b5cf6'));
         if (!v.qr) p.set('qr', '0');
