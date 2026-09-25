@@ -59,6 +59,8 @@ test('ffmpeg args: files are paced in real time, streams are not', () => {
   assert.ok(!ffmpegArgs('srt://0.0.0.0:9000?mode=listener').includes('-re'));
   assert.ok(ffmpegArgs('https://x/stream.m3u8').includes('-reconnect'));
   assert.ok(!ffmpegArgs('rtmp://x/live').includes('-reconnect'));
+  assert.ok(ffmpegArgs('https://x/stream.m3u8').includes('-protocol_whitelist'));
+  assert.ok(!ffmpegArgs('samples/a.wav').includes('-protocol_whitelist'));
 });
 
 test('audio helpers', () => {

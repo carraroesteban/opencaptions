@@ -1,0 +1,41 @@
+# systemd unit for the OpenCaptions SERVER on Linux (bare metal / VM, without Docker).  Install:
+#   sudo useradd --system --home /opt/opencaptions --shell /usr/sbin/nologin opencaptions
+#   sudo git clone https://github.com/carraroesteban/opencaptions /opt/opencaptions
+#   cd /opt/opencaptions && sudo npm ci --omit=dev
+#   sudo cp .env.example .env && sudo nano .env        # GEMINI_API_KEY, ADMIN_TOKEN, INGEST_TOKEN, PUBLIC_URL
+#   sudo chown -R opencaptions: /opt/opencaptions/data /opt/opencaptions/config && sudo chmod 600 .env
+#   sudo cp deploy/opencaptions.service /etc/systemd/system/ && sudo systemctl enable --now opencaptions
+#   journalctl -u opencaptions -f
+[Unit]
+Description=OpenCaptions server
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=opencaptions
+WorkingDirectory=/opt/opencaptions
+ExecStart=/usr/bin/node src/server.js
+Environment=NODE_ENV=production
+# Only reachable through a local reverse proxy / tunnel. Remove to listen on all interfaces.
+Environment=HOST=127.0.0.1
+Restart=always
+RestartSec=3
+
+# Hardening
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+ReadWritePaths=/opt/opencaptions/data /opt/opencaptions/config
+CapabilityBoundingSet=
+AmbientCapabilities=
+MemoryMax=1G
+
+[Install]
+WantedBy=multi-user.target

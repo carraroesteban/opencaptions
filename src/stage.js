@@ -15,11 +15,13 @@ const EMA = (prev, v, a = 0.3) => (prev == null ? v : prev * (1 - a) + v * a);
 const USD_PER_SESSION_MIN = 0.0368;
 
 export class Stage extends EventEmitter {
-  constructor(def, { glossary, store }) {
+  constructor(def, { glossary, store, schedule = null }) {
     super();
     this.setMaxListeners(0);
     this.glossary = glossary;
     this.store = store;
+    this.schedule = schedule;
+    this.ticks = 0;
     this.applyDef(def);
     this.engines = new Map();
     this.ingest = null; // { kind, label, since, ws? }
@@ -102,6 +104,7 @@ export class Stage extends EventEmitter {
   }
 
   pushAudio(buf) {
+    if (this.destroyed) return;
     this.chunker.push(buf);
   }
 
@@ -116,6 +119,12 @@ export class Stage extends EventEmitter {
 
     if (speech) {
       if (now - this.lastSpeechAt > 800) this.onset = { at: now, asr: true, tr: new Set(this.transTargets) };
+      // Transcript timestamps start at the first words of the talk, not when the room/talk was created.
+      if (!this.talkSpoken && this.talkSegments === 0) {
+        this.talkSpoken = true;
+        this.talk.startedAt = now;
+        this.store.openTalk(this.id, this.talk, this.languages);
+      }
       this.lastSpeechAt = now;
       this.lowLevelSince = 0;
       if (this.gated) this.#ungate();
@@ -153,7 +162,7 @@ export class Stage extends EventEmitter {
 
   // ---------- engines ----------
   #ensureEngines() {
-    if (this.engines.size) return;
+    if (this.engines.size || this.destroyed) return;
     if (this.idleClosed && this.talkSegments > 0) this.#newTalk('', true);
     this.idleClosed = false;
     const glossaryVocab = this.glossary.vocabulary(this.def.vocabulary);
@@ -176,7 +185,13 @@ export class Stage extends EventEmitter {
       e.on('interim', (t) => primary && config.useInterim && this.#onInterim(t));
       e.on('output', (t) => this.#onOutput(target, t));
       e.on('audio', (buf) => this.emit('audio', target, buf));
-      e.on('turn', () => { if (primary) this.tracks.orig.flush(); this.tracks[target]?.flush(); });
+      e.on('turn', () => {
+        if (primary) this.tracks.orig.flush();
+        // Only flush a translation track that Live feeds directly; in text mode it belongs to the text
+        // translator, and flushing would commit a half-sentence provisional translation (duplicates).
+        const direct = this.mode === 'live' || (this.detectedLang || this.source) === target || this.mtQ?.[target]?.degraded();
+        if (direct) this.tracks[target]?.flush();
+      });
       e.on('state', (s) => { this.log(s === 'live' ? 'info' : 'debug', `${target}: ${s}`); this.emit('engine'); });
       e.on('log', (m) => this.log('warn', `${target}: ${m}`));
       e.on('error', (m) => this.log('error', `${target}: ${m}`));
@@ -220,19 +235,22 @@ export class Stage extends EventEmitter {
   // ---------- text translation (sentence by sentence, with provisional partials) ----------
   #mtFeed(text, finished, spoken) {
     this.mtQ ??= {};
+    // Bind translators to the tracks of the current talk: a translation that returns after a talk
+    // rollover must land in the talk it belongs to, not in the next one.
+    const tracks = this.tracks;
     for (const t of this.transTargets) {
       if (spoken && t === spoken) continue;
       this.mtQ[t] ??= new SentenceTranslator({
         from: this.source,
         to: t,
         vocabulary: this.glossary.vocabulary(this.def.vocabulary),
-        onPartial: (out) => { this.#markLatency(t, out); this.tracks[t]?.replace(out, { lang: t }); },
-        onFinal: (out) => { this.#markLatency(t, out); this.tracks[t]?.replace(out, { final: true, lang: t }); },
+        onPartial: (out) => { this.#markLatency(t, out); tracks[t]?.replace(out, { lang: t }); },
+        onFinal: (out) => { this.#markLatency(t, out); tracks[t]?.replace(out, { final: true, lang: t }); },
         onError: (m) => this.log('warn', `translate → ${t}: ${m}`),
         // The primary Live session already translates into this language: use it while text MT is throttled.
         canFallback: () => t === this.sessionTargets[0] && this.engines.get(t)?.state === 'live',
         onDegraded: (on) => {
-          this.tracks[t]?.flush(); // don't mix a half MT sentence with Live output
+          tracks[t]?.flush(); // don't mix a half MT sentence with Live output
           this.log(on ? 'warn' : 'info', on ? `${t}: text translation throttled → Live Translate captions` : `${t}: back to text translation`);
         },
       });
@@ -272,13 +290,18 @@ export class Stage extends EventEmitter {
 
   // ---------- captions ----------
   #buildTracks() {
-    for (const t of Object.values(this.tracks || {})) t.flush();
+    this.#flushTracks(false);
     this.tracks = {};
-    const clock = () => Date.now() - this.talk.startedAt;
+    const talk = this.talk;
+    // Cue times = when the words were spoken, not when the model returned them: subtract the measured delay.
+    const lag = (ch) => Math.min(8000, (ch === 'orig' ? this.lat.asr : this.lat.tr[ch] ?? this.lat.asr) ?? 0);
     for (const ch of ['orig', ...this.transTargets]) {
+      const clock = () => Math.max(0, Date.now() - talk.startedAt - lag(ch));
       const tr = new CaptionTrack({ channel: ch, glossary: this.glossary, clock });
       tr.on('caption', (seg) => {
-        if (seg.final) { this.talkSegments++; this.store.append(this.id, this.talk.id, seg); }
+        if (seg.final) this.store.append(this.id, talk.id, seg);
+        if (talk !== this.talk) return; // late translation of the previous talk: stored there, not shown
+        if (seg.final) this.talkSegments++;
         this.lastCaptionAt = Date.now();
         this.emit('caption', seg);
       });
@@ -286,18 +309,31 @@ export class Stage extends EventEmitter {
     }
   }
 
-  #flushTracks() {
-    for (const q of Object.values(this.mtQ || {})) q.flush();
-    for (const t of Object.values(this.tracks || {})) t.flush();
+  #flushTracks(translators = true) {
+    const mt = this.mtQ || {};
+    if (translators) for (const q of Object.values(mt)) q.flush();
+    for (const [ch, t] of Object.entries(this.tracks || {})) {
+      // Its final translation is on the way and will replace the provisional one (same caption id);
+      // flushing now would store the provisional text as a second, duplicate final.
+      if (mt[ch]?.pending() && !mt[ch].degraded()) continue;
+      t.flush();
+    }
   }
 
-  newTalk(title = '') { this.#newTalk(title, true); }
+  /** Operator action from the dashboard: also tells the agenda not to rename this slot's talk. */
+  newTalk(title = '', speaker = '') {
+    this.#newTalk(title, true, speaker);
+    this.talkSpoken = true; // an operator started it now: timestamps count from this moment (e.g. video subtitling)
+    this.#markScheduleHandled();
+  }
 
-  #newTalk(title, announce) {
+  #newTalk(title, announce, speaker = '') {
     this.#flushTracks();
-    this.talk = { id: new Date().toISOString().replace(/[:.]/g, '-'), title, startedAt: Date.now() };
+    this.talk = { id: new Date().toISOString().replace(/[:.]/g, '-'), title, speaker, startedAt: Date.now() };
     this.talkSegments = 0;
+    this.talkSpoken = false;
     this.#buildTracks();
+    this.mtQ = {}; // new translators bind to the new tracks; old ones finish into the old talk
     this.store.openTalk(this.id, this.talk, this.languages);
     if (announce) {
       this.log('info', `new talk started ${title ? `"${title}"` : ''}`.trim());
@@ -305,10 +341,38 @@ export class Stage extends EventEmitter {
     }
   }
 
-  setTitle(title) {
+  setTitle(title, speaker, { manual = true } = {}) {
     this.talk.title = title;
+    if (speaker !== undefined) this.talk.speaker = speaker;
     this.store.openTalk(this.id, this.talk, this.languages);
-    this.emit('talk');
+    this.emit('title'); // same talk, new name: viewers keep their captions
+    if (manual) this.#markScheduleHandled();
+  }
+
+  // ---------- agenda (src/schedule.js) ----------
+  #slotKey(e) { return e ? `${e.start}|${e.title}` : null; }
+  #markScheduleHandled() { this.scheduleKey = this.#slotKey(this.schedule?.slot(this.id).current); }
+
+  /**
+   * Name talks from the agenda. The first words of a slot get its title; when a new slot starts while the
+   * previous talk is still running, we wait for a pause (silence gate) so an overrunning talk isn't split.
+   */
+  #applySchedule(now) {
+    if (!this.schedule) return;
+    const { current, next } = this.schedule.slot(this.id, now);
+    this.nextTalk = next ? { title: next.title, speaker: next.speaker, start: next.start } : null;
+    const key = this.#slotKey(current);
+    if (!current || key === this.scheduleKey) return;
+    if (this.talkSegments === 0 || !this.talk.title) {
+      // Nothing said yet, or an unnamed talk in progress: just name it.
+      this.setTitle(current.title, current.speaker, { manual: false });
+      this.scheduleKey = key;
+      this.log('info', `agenda: talk is "${current.title}"`);
+    } else if ((this.gated || !this.engines.size) && now - current.start < 45 * 60_000) {
+      this.#newTalk(current.title, true, current.speaker);
+      this.scheduleKey = key;
+      this.log('info', `agenda: new talk "${current.title}"`);
+    }
   }
 
   history(channel, n = 30) {
@@ -323,6 +387,7 @@ export class Stage extends EventEmitter {
   // ---------- health ----------
   #housekeeping() {
     const now = Date.now();
+    if (this.ticks++ % 15 === 0) this.#applySchedule(now);
     // Cost: every open session is billed for streamed audio (input + generated output).
     if (this.engines.size && !this.gated) this.costUsd += (USD_PER_SESSION_MIN / 60) * this.engines.size;
 
@@ -353,7 +418,9 @@ export class Stage extends EventEmitter {
     if (!this.ingest) alerts.add('no-ingest');
     else if (now - this.lastAudioAt > 3000) alerts.add('no-audio');
     else if (this.lowLevelSince && now - this.lowLevelSince > 60000) alerts.add('muted?');
-    for (const e of this.engines.values()) if (e.state === 'reconnecting' || e.state === 'error') alerts.add('reconnecting');
+    for (const e of this.engines.values()) {
+      if (e.state === 'reconnecting' || ((e.state === 'connecting' || e.state === 'resuming') && now - (e.stateSince || now) > 10000)) alerts.add('reconnecting');
+    }
     if (this.lat.asr > 6000) alerts.add('high-latency');
     if (Object.values(this.mtQ || {}).some((q) => q.degraded() || q.stats.quotaErrors > (q._qe ?? 0))) alerts.add('mt-throttled');
     for (const q of Object.values(this.mtQ || {})) q._qe = q.stats.quotaErrors;
@@ -383,7 +450,9 @@ export class Stage extends EventEmitter {
       audioLangs: this.audioLangs,
       mt: Object.fromEntries(Object.entries(this.mtQ || {}).map(([k, q]) => [k, q.stats])),
       pull: this.def.pull || '',
+      loop: !!this.def.loop,
       talk: this.talk,
+      nextTalk: this.nextTalk || null,
       ingest: this.ingest ? { kind: this.ingest.kind, label: this.ingest.label, since: this.ingest.since } : null,
       level: this.level,
       peak: this.peak,
@@ -402,6 +471,8 @@ export class Stage extends EventEmitter {
   }
 
   destroy() {
+    this.destroyed = true;
+    this.emit('removed');
     clearInterval(this.tick);
     this.#stopEngines('removed');
     this.ingest?.detach?.('stage removed');

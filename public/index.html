@@ -14,6 +14,8 @@
     .stage h2 { margin: 0; font-size: 20px; }
     .stage .title { grid-column: 1 / -1; color: var(--fg2); font-size: 15px; }
     .stage .langs { grid-column: 1 / -1; }
+    .lib { margin-top: 12px; border-style: dashed; }
+    .stage .next { font-size: 13px; color: var(--fg2); }
     footer { margin-top: 40px; font-size: 13px; }
   </style>
 </head>
@@ -23,6 +25,7 @@
     <h1 id="event">…</h1>
     <p class="muted" id="subtitle"></p>
     <div class="stages" id="stages" data-no-i18n></div>
+    <a class="card stage lib" href="/talks.html" id="lib"><h2 id="lib-h"></h2><span style="font-size:22px">📚</span><div class="title" id="lib-p"></div></a>
     <footer class="muted row" style="justify-content:space-between">
       <span id="powered"></span>
       <a href="/admin.html" id="prod"></a>
@@ -35,6 +38,8 @@
     document.getElementById('subtitle').textContent = t('chooseStage');
     document.getElementById('powered').textContent = t('poweredBy');
     document.getElementById('prod').textContent = t('production');
+    document.getElementById('lib-h').textContent = t('library');
+    document.getElementById('lib-p').textContent = t('libraryHint');
     async function render() {
       const ev = await getEvent();
       document.getElementById('event').textContent = ev.name;
@@ -43,7 +48,8 @@
         <a class="card stage" href="/watch.html?stage=${encodeURIComponent(s.id)}">
           <h2>${esc(s.name)}</h2>
           <span class="chip ${s.live ? 'bad' : ''}">${s.live ? `<span class="dot live"></span> ${t('live')}` : t('offline')}</span>
-          ${s.title ? `<div class="title">${esc(s.title)}</div>` : ''}
+          ${s.title ? `<div class="title">${esc(s.title)}${s.speaker ? ` · <span class="muted">${esc(s.speaker)}</span>` : ''}</div>` : ''}
+          ${s.next ? `<div class="title next">${esc(t('next'))}: ${esc(s.next.title)} · ${new Date(s.next.start).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}</div>` : ''}
           <div class="langs row">${s.languages.map((l) => `<span class="chip">${esc(langLabel(l, ev.languages))}</span>`).join('')}</div>
         </a>`).join('');
     }

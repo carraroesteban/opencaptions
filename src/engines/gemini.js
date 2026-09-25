@@ -9,9 +9,16 @@ import { config } from '../config.js';
 
 let ai = null;
 const client = () => (ai ??= createClient());
+/** Test hook: inject a fake client. */
+export const _setClient = (c) => { ai = c; };
 
 const LEVELS = ['full', 'minimal', 'bare'];
 const MAX_BUFFER_CHUNKS = 120; // 12 s of 100 ms chunks
+const CONNECT_TIMEOUT_MS = 12000; // a connect that never completes setup is retried
+const DRAIN_MS = 4000; // after a reconnect, keep accepting the old session's trailing transcriptions
+// Only these close reasons mean "the model rejected our config" (→ retry with fewer optional fields).
+// Network drops (1006), overload (1011/1013) or quota errors must NOT strip the glossary/language config.
+const CONFIG_REJECTED = /invalid|unknown (name|field)|argument|unsupported|not supported|1007|1008/i;
 
 export class GeminiEngine extends EventEmitter {
   constructor({ label, target, echo = false, vocabulary = [], languageHints = [], mode = '' }) {
@@ -31,6 +38,9 @@ export class GeminiEngine extends EventEmitter {
     this.buffer = [];
     this.backoff = 1000;
     this.stopped = true;
+    this.drainGen = -1;
+    this.resumeFails = 0;
+    this.stateSince = Date.now();
     this.stats = { reconnects: 0, resumes: 0, errors: 0, lastError: '', connectedAt: 0, audioMs: 0, lastInputAt: 0, lastOutputAt: 0, tokens: 0 };
   }
 
@@ -43,7 +53,9 @@ export class GeminiEngine extends EventEmitter {
   stop() {
     this.stopped = true;
     this.gen++;
+    this.drainGen = -1;
     clearTimeout(this.retryTimer);
+    clearTimeout(this.connectTimer);
     try { this.session?.close(); } catch { /* ignore */ }
     this.session = null;
     this.buffer = [];
@@ -75,7 +87,7 @@ export class GeminiEngine extends EventEmitter {
   }
 
   status() {
-    return { target: this.target, echo: this.echo, state: this.state, level: LEVELS[this.level], ...this.stats };
+    return { target: this.target, echo: this.echo, state: this.state, stateSince: this.stateSince, level: LEVELS[this.level], ...this.stats };
   }
 
   #send(chunk) {
@@ -116,13 +128,22 @@ export class GeminiEngine extends EventEmitter {
     const resuming = !!this.handle;
     this.#setState(resuming ? 'resuming' : 'connecting');
     this.setupOk = false;
+    // A handshake that hangs (blocked network, server never sends setupComplete) must not stall the room.
+    clearTimeout(this.connectTimer);
+    this.connectTimer = setTimeout(() => {
+      if (gen === this.gen && !this.setupOk && !this.stopped) {
+        this.stats.lastError = `connect timeout (${CONNECT_TIMEOUT_MS / 1000}s)`;
+        this.#log(`no setup after ${CONNECT_TIMEOUT_MS / 1000}s → retrying`);
+        this.#reconnect('connect timeout');
+      }
+    }, CONNECT_TIMEOUT_MS);
     try {
       const session = await client().live.connect({
         model: config.model,
         config: this.#buildConfig(),
         callbacks: {
           onopen: () => {},
-          onmessage: (m) => gen === this.gen && this.#onMessage(m),
+          onmessage: (m) => (gen === this.gen ? this.#onMessage(m) : gen === this.drainGen && this.#onDrain(m)),
           onerror: (e) => gen === this.gen && this.#fail(e?.error || e),
           onclose: (e) => gen === this.gen && this.#onClose(e, resuming),
         },
@@ -134,14 +155,17 @@ export class GeminiEngine extends EventEmitter {
       setTimeout(() => { if (gen === this.gen && !this.setupOk && this.session) this.#onSetup(); }, 2500);
     } catch (e) {
       if (gen !== this.gen) return;
+      clearTimeout(this.connectTimer);
       this.#fail(e);
       this.#scheduleRetry();
     }
   }
 
   #onSetup() {
+    clearTimeout(this.connectTimer);
     this.setupOk = true;
     this.setupFails = 0;
+    this.resumeFails = 0;
     this.backoff = 1000;
     this.stats.connectedAt = Date.now();
     this.#setState('live');
@@ -195,15 +219,33 @@ export class GeminiEngine extends EventEmitter {
     if (sc.turnComplete) this.emit('turn');
   }
 
+  /** Trailing messages of the previous connection (goAway / restart): keep the words, ignore control. */
+  #onDrain(m) {
+    const sc = m.serverContent;
+    if (!sc) return;
+    if (sc.inputTranscription) this.emit('input', { text: sc.inputTranscription.text || '', finished: !!sc.inputTranscription.finished, lang: normLang(sc.inputTranscription.languageCode) });
+    if (sc.outputTranscription) this.emit('output', { text: sc.outputTranscription.text || '', finished: !!sc.outputTranscription.finished, lang: this.target });
+    for (const p of sc.modelTurn?.parts || []) {
+      if (p.inlineData?.data && (p.inlineData.mimeType || '').startsWith('audio')) this.emit('audio', Buffer.from(p.inlineData.data, 'base64'));
+    }
+  }
+
   #onClose(e, wasResuming) {
     this.session = null;
     if (this.stopped) return;
+    clearTimeout(this.connectTimer);
+    const code = Number(e?.code) || 0;
     const reason = `${e?.code ?? ''} ${e?.reason ?? ''}`.trim();
+    const transient = code === 1006 || code === 1001 || code === 1011 || code === 1013 || /429|quota|RESOURCE_EXHAUSTED|unavailable|overloaded|deadline/i.test(reason);
     if (!this.setupOk) {
       if (wasResuming) {
-        this.#log(`resume rejected (${reason}); starting fresh session`);
-        this.handle = null;
-      } else if (this.level < LEVELS.length - 1 && (/invalid|unknown|argument|unsupported|not supported|1007|1008/i.test(reason) || ++this.setupFails >= 2)) {
+        // A network blip while resuming shouldn't cost us the session context: retry the handle once more.
+        if (!transient || ++this.resumeFails >= 2) {
+          this.#log(`resume rejected (${reason}); starting fresh session`);
+          this.handle = null;
+          this.resumeFails = 0;
+        }
+      } else if (!transient && this.level < LEVELS.length - 1 && (CONFIG_REJECTED.test(reason) || (reason && ++this.setupFails >= 3))) {
         this.level++;
         this.setupFails = 0;
         this.#log(`setup rejected (${reason}); retrying with '${LEVELS[this.level]}' config`);
@@ -215,11 +257,19 @@ export class GeminiEngine extends EventEmitter {
   }
 
   #reconnect(reason, delay) {
-    this.gen++;
+    const oldGen = this.gen++;
     const old = this.session;
     this.session = null;
-    // Give the old socket a moment to deliver trailing transcriptions before closing it.
-    if (old) setTimeout(() => { try { old.close(); } catch { /* ignore */ } }, 1500);
+    clearTimeout(this.connectTimer);
+    // The model runs a few seconds behind the audio: keep accepting the old socket's trailing
+    // transcriptions (see #onDrain) for a moment before closing it, so no words are lost.
+    if (old) {
+      this.drainGen = oldGen;
+      setTimeout(() => {
+        if (this.drainGen === oldGen) this.drainGen = -1;
+        try { old.close(); } catch { /* ignore */ }
+      }, DRAIN_MS);
+    }
     this.stats.reconnects++;
     if (this.handle) this.stats.resumes++;
     this.#setState('reconnecting');
@@ -243,6 +293,7 @@ export class GeminiEngine extends EventEmitter {
   #setState(s) {
     if (this.state === s) return;
     this.state = s;
+    this.stateSince = Date.now();
     this.emit('state', s);
   }
 

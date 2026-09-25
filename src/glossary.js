@@ -10,7 +10,12 @@ export class Glossary {
     // Hot-reload: editing config/glossary.json during the event applies instantly (no restart).
     try {
       fs.watchFile(config.glossaryPath, { interval: 2000 }, () => {
-        try { this.load(); console.log('[glossary] reloaded'); } catch (e) { console.warn('[glossary] reload failed', e.message); }
+        try {
+          // Read strictly: a JSON typo must keep the previous rules, not silently load an empty glossary.
+          const data = JSON.parse(fs.readFileSync(config.glossaryPath, 'utf8'));
+          this.load(data);
+          console.log(`[glossary] reloaded (${this.data.vocabulary.length} terms, ${this.rules.length} replacements)`);
+        } catch (e) { console.warn('[glossary] reload failed — keeping the previous glossary:', e.message); }
       });
     } catch { /* ignore */ }
   }
@@ -26,6 +31,14 @@ export class Glossary {
   }
 
   set(data) {
+    const str = (v, max) => typeof v === 'string' && v.length > 0 && v.length <= max;
+    if (!data || !Array.isArray(data.vocabulary) || !Array.isArray(data.replacements ?? [])) throw new Error('expected { vocabulary: [], replacements: [] }');
+    if (data.vocabulary.length > 500 || !data.vocabulary.every((v) => str(v, 100))) throw new Error('vocabulary: up to 500 strings of ≤100 chars');
+    const reps = data.replacements || [];
+    if (reps.length > 500 || !reps.every((r) => r && str(r.from, 300) && typeof r.to === 'string' && r.to.length <= 300 && (r.lang == null || str(r.lang, 12)))) {
+      throw new Error('replacements: up to 500 { from, to, lang? } with strings ≤300 chars');
+    }
+    data = { vocabulary: data.vocabulary, replacements: reps.map(({ from, to, lang }) => (lang ? { from, to, lang } : { from, to })) };
     fs.writeFileSync(config.glossaryPath, JSON.stringify(data, null, 2));
     this.load(data);
   }

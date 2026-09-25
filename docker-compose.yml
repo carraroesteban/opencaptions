@@ -1,12 +1,49 @@
+# OpenCaptions with Docker Compose.
+#
+#   cp .env.example .env            # add GEMINI_API_KEY (and ADMIN_TOKEN / INGEST_TOKEN)
+#   docker compose up -d --build    # server on http://localhost:8080
+#   docker compose --profile tunnel up -d   # + Cloudflare Tunnel (set TUNNEL_TOKEN in .env)
+#
+# See docs/deployment.md for the full guide.
 services:
   opencaptions:
-    build: .
+    build:
+      context: .
+      args:
+        WITH_YTDLP: "${WITH_YTDLP:-0}"
+    image: opencaptions:latest
     restart: unless-stopped
+    init: true
     env_file: .env
+    environment:
+      # Trust X-Forwarded-* from proxies on the private Docker network (the tunnel below).
+      TRUST_PROXY: "${TRUST_PROXY:-uniquelocal}"
     ports:
-      - "8080:8080"
-      # SRT listener ports if you configure stages with `pull: "srt://0.0.0.0:900X?mode=listener"`
-      - "9001-9010:9001-9010/udp"
+      # Publish on localhost only by default. Use "8080:8080" to expose it on the LAN (tokens are enforced).
+      - "${BIND_ADDR:-127.0.0.1}:8080:8080"
+      # SRT listener ports, if a stage uses `pull: "srt://0.0.0.0:900X?mode=listener"` (vMix / OBS push).
+      # - "9001-9010:9001-9010/udp"
     volumes:
       - ./data:/app/data
       - ./config:/app/config
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    mem_limit: 1g
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "5" }
+
+  # Optional: publish over HTTPS without opening any inbound port (outbound-only connection to Cloudflare).
+  tunnel:
+    profiles: ["tunnel"]
+    image: cloudflare/cloudflared:latest
+    restart: unless-stopped
+    command: tunnel --no-autoupdate run
+    environment:
+      TUNNEL_TOKEN: "${TUNNEL_TOKEN:?set TUNNEL_TOKEN in .env to use the tunnel profile}"
+    depends_on: [opencaptions]

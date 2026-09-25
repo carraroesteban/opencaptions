@@ -93,18 +93,32 @@ function startCapture() {
 
 // ---------- server connection (reconnects forever) ----------
 let backoff = 1000;
+let lastMsgAt = 0;
+// The server sends a status message every 500 ms: silence for 6 s means a half-dead connection (Wi-Fi roam,
+// NAT timeout) that TCP would only notice after minutes. Drop it and reconnect.
+setInterval(() => {
+  if (ws?.readyState === 1 && Date.now() - lastMsgAt > 6000) { console.error('no reply from server for 6 s → reconnecting'); ws.terminate(); }
+}, 2000);
 function connect() {
-  const url = `${server}/ws/ingest?stage=${encodeURIComponent(stage)}&kind=agent&label=${encodeURIComponent(label)}&token=${encodeURIComponent(token)}`;
-  ws = new WebSocket(url);
+  const url = `${server}/ws/ingest?stage=${encodeURIComponent(stage)}&kind=agent&label=${encodeURIComponent(label)}`;
+  ws = new WebSocket(url, { headers: token ? { authorization: `Bearer ${token}` } : {} }); // token in a header, never in the URL
   ws.on('open', () => {
     backoff = 1000;
+    lastMsgAt = Date.now();
     console.log(`✓ connected to ${server} as stage "${stage}"`);
     while (pending.length && ws.readyState === 1) ws.send(pending.shift(), { binary: true });
   });
-  ws.on('message', (d) => { try { const m = JSON.parse(d.toString()); if (m.type === 'status') lastStatus = m; } catch { /* ignore */ } });
+  ws.on('message', (d) => { lastMsgAt = Date.now(); try { const m = JSON.parse(d.toString()); if (m.type === 'status') lastStatus = m; } catch { /* ignore */ } });
   ws.on('close', (code, reason) => {
     if (code === 4001) { console.error('✗ bad ingest token'); process.exit(1); }
     if (code === 4004) { console.error(`✗ unknown stage "${stage}"`); process.exit(1); }
+    if (code === 4000) {
+      // Another source (backup browser ingest, demo pull, second agent) took over this room on purpose.
+      // Don't fight it every second; check back later.
+      console.error('another audio source took over this room; retrying in 60 s');
+      setTimeout(connect, 60000);
+      return;
+    }
     console.error(`connection closed (${code} ${reason || ''}); retrying in ${backoff / 1000}s`);
     setTimeout(connect, backoff);
     backoff = Math.min(backoff * 2, 15000);

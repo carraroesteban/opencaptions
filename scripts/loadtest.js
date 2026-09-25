@@ -19,7 +19,7 @@ for (const id of ids) {
   const r = await fetch(`${http}/api/stages`, { method: 'POST', headers, body: JSON.stringify({ id, name: `Load ${id}`, source: a.source || 'auto', targets: (a.targets || 'es,en').split(',') }) });
   if (!r.ok && r.status !== 400) console.error(id, r.status, await r.text());
 }
-const sockets = ids.map((id) => new WebSocket(`${wsBase}/ws/ingest?stage=${id}&kind=loadtest&token=${process.env.INGEST_TOKEN || ''}`));
+const sockets = ids.map((id) => new WebSocket(`${wsBase}/ws/ingest?stage=${id}&kind=loadtest`, { headers: { authorization: `Bearer ${process.env.INGEST_TOKEN || a['admin-token'] || process.env.ADMIN_TOKEN || ''}` } }));
 await Promise.all(sockets.map((ws) => new Promise((res) => ws.on('open', res))));
 console.log(`${n} ingest sockets open → streaming ${input}`);
 const ff = openAudio(input, { realtime: true, loop: true });

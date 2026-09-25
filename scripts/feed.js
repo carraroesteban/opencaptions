@@ -34,8 +34,8 @@ if (!input) {
 
 
 function connect() {
-  const url = `${server}/ws/ingest?stage=${encodeURIComponent(stage)}&kind=cli&label=${encodeURIComponent(args.label || String(args.youtube || input).slice(0, 60))}&token=${encodeURIComponent(token)}`;
-  const ws = new WebSocket(url);
+  const url = `${server}/ws/ingest?stage=${encodeURIComponent(stage)}&kind=cli&label=${encodeURIComponent(args.label || String(args.youtube || input).slice(0, 60))}`;
+  const ws = new WebSocket(url, { headers: token ? { authorization: `Bearer ${token}` } : {} });
   let ff;
   ws.on('open', () => {
     console.log(`→ streaming to ${stage} @ ${server}`);

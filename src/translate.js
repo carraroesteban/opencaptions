@@ -142,6 +142,9 @@ export class SentenceTranslator {
 
   flush() { clearTimeout(this.idle); this.#finalize(this.buf); }
 
+  /** A final translation is still coming for text already fed (its track must not be flushed meanwhile). */
+  pending() { return this.busyFinal || this.finals.length > 0 || this.buf.trim().length > 0; }
+
   #finalize(text) {
     this.buf = this.buf.slice(text.length);
     text = text.trim();

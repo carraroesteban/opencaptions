@@ -1,0 +1,7 @@
+# Agenda example — paste into Dashboard → 📅 Agenda (or save as JSON via PUT /api/schedule).
+# stage,start,title,speaker      start = HH:MM (today, event time zone) or YYYY-MM-DD HH:MM
+stage,start,title,speaker
+main,10:00,Keynote de apertura,Organización Nerdearla
+main,10:45,Observabilidad en Kubernetes sin morir en el intento,Ana Pérez
+sala-a,10:45,Rust para gente que viene de Go,Juan Gómez
+sala-b,11:30,"IA en producción: costos, latencia y calidad",María López

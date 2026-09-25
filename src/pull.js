@@ -33,6 +33,8 @@ export function ffmpegArgs(input, { realtime = false, loop = false, start = 0 } 
   if (file && loop) args.push('-stream_loop', '-1');
   if (/^https?:/i.test(input)) args.push('-reconnect', '1', '-reconnect_streamed', '1', '-reconnect_delay_max', '5');
   if (start) args.push('-ss', String(start));
+  // Network inputs may only use network protocols (no file:, concat:, subfile: tricks via playlists).
+  if (!file) args.push('-protocol_whitelist', 'http,https,tcp,tls,crypto,httpproxy,srt,rtmp,rtmps,rtmpt,rtsp,rtsps,udp,rtp');
   args.push('-i', input.replace(/^file:\/\//, ''), '-vn', '-ac', '1', '-ar', '16000', '-f', 's16le', 'pipe:1');
   return args;
 }
@@ -195,11 +197,13 @@ export class PullSource {
   constructor(stage, url, { loop = false, start = 0, realtime, once = false, label, via = null } = {}) {
     this.via = via;
     this.firstData = new Promise((res, rej) => { this._resolveFirst = res; this._rejectFirst = rej; });
+    this.firstData.catch(() => {}); // only the YouTube endpoint awaits it; never an unhandled rejection
     this.stage = stage;
     this.url = url;
     this.loop = loop;
     this.start = start;
-    this.realtime = realtime ?? !isUrl(url);
+    // Files (local or http(s) media files) are paced at 1×; live streams (SRT/RTMP/HLS) arrive in real time already.
+    this.realtime = realtime ?? (!isUrl(url) || /^https?:\/\/[^?#]+\.(mp3|mp4|m4a|aac|wav|webm|ogg|opus|flac|mkv|mov)([?#]|$)/i.test(url));
     this.once = once;
     this.label = label || url;
     this.token = Symbol('pull');
@@ -214,7 +218,7 @@ export class PullSource {
     src.once('data', () => this._resolveFirst?.());
     src.once('error', (e) => this._rejectFirst?.(e));
     this.stage.attachIngest({ kind: 'pull', label: this.label, token: this.token, detach: () => this.stop() });
-    src.on('data', (b) => { this.backoff = 1000; this.stage.pushAudio(b); });
+    src.on('data', (b) => { if (this.stopped || this.src !== src) return; this.backoff = 1000; this.stage.pushAudio(b); });
     src.on('log', (m) => this.stage.log('warn', `ffmpeg: ${m.slice(0, 200)}`));
     const again = (why) => {
       if (this.src !== src) return;

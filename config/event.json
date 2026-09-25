@@ -2,6 +2,8 @@
   "eventName": "Nerdearla 2026",
   "accent": "#8b5cf6",
   "publicUrl": "",
+  "publicTranscripts": "all",
+  "timezone": "America/Argentina/Buenos_Aires",
   "model": "gemini-3.5-live-translate-preview",
   "languages": { "es": "Español", "en": "English", "pt": "Português" },
   "defaultTargets": ["es", "en"],

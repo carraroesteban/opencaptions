@@ -41,7 +41,8 @@
     </div>
   </div>
   <script type="module">
-    import { qs, t, esc, wsUrl, Socket, CaptionState, getEvent, langLabel, applyCaptionStyle, previewStream, toColor } from '/common.js';
+    import { qs, t, esc, wsUrl, Socket, CaptionState, getEvent, langLabel, applyCaptionStyle, previewStream, toColor, wakeLock } from '/common.js';
+    wakeLock(); // projector PCs must not blank mid-talk
     const $ = (id) => document.getElementById(id);
     const stageId = qs.get('stage') || 'main';
     const ev = await getEvent();
@@ -58,7 +59,7 @@
     $('qr').src = `/api/qr.svg?text=${encodeURIComponent(viewUrl)}`;
     if (qs.get('qr') === '0') $('qrbox').classList.add('hidden');
 
-    let hello, bands = [];
+    let hello, talkId = null, bands = [];
     const states = {};
     if (qs.get('preview') === '1') {
       // Style preview: fake captions, no server needed.
@@ -73,6 +74,7 @@
       message(m) {
         if (m.type === 'hello') {
           hello = m;
+          talkId = m.talk;
           $('stage').textContent = m.stage.name;
           $('talk').textContent = m.stage.title ? `· ${m.stage.title}` : '';
           // Distinct channels in the requested order (e.g. es→orig when the talk is already in Spanish).
@@ -84,7 +86,10 @@
           }).join('');
           render();
         } else if (m.type === 'caption') { (states[m.channel] ??= new CaptionState()).apply(m); render(m.channel); }
-        else if (m.type === 'talk') { for (const s of Object.values(states)) s.clear(); $('talk').textContent = m.title ? `· ${m.title}` : ''; render(); }
+        else if (m.type === 'talk' || m.type === 'title') {
+          $('talk').textContent = m.title ? `· ${m.title}` : '';
+          if (m.type === 'talk' && m.talk !== talkId) { talkId = m.talk; for (const s of Object.values(states)) s.clear(); render(); }
+        }
       },
     });
 

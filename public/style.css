@@ -67,3 +67,29 @@ label.field > * { color: var(--fg); }
 }
 .prefs select { padding: 4px 6px; font-size: 13px; } .prefs button { padding: 4px 9px; }
 .toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); background: var(--bg3); border: 1px solid var(--line); padding: 10px 16px; border-radius: 12px; z-index: 50; }
+
+/* ---------- audience: sheets, assistant, reading ---------- */
+dialog.sheet { margin: auto auto 0; width: 100%; max-width: 720px; max-height: 88dvh; border-radius: 20px 20px 0 0; padding: 18px 18px calc(18px + env(safe-area-inset-bottom)); overflow: auto; }
+dialog.sheet .sheet-head { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+dialog.sheet .sheet-head h2 { font-size: 18px; margin: 0; flex: 1; }
+.seg { display: inline-flex; background: var(--bg3); border: 1px solid var(--line); border-radius: 12px; padding: 3px; gap: 3px; }
+.seg button { border: 0; background: transparent; padding: 6px 12px; border-radius: 9px; font-size: 14px; }
+.seg button[aria-pressed='true'] { background: var(--bg); box-shadow: 0 1px 3px rgba(0,0,0,.25); font-weight: 600; }
+.as-sum { margin: 14px 0 6px; min-height: 60px; }
+.as-sum h3 { font-size: 18px; margin: 0 0 8px; line-height: 1.3; }
+.as-sum ul { margin: 0; padding-left: 20px; display: grid; gap: 6px; font-size: 16px; line-height: 1.45; }
+.as-terms { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.as-note { font-size: 12px; color: var(--fg2); margin-top: 10px; }
+.as-ask { margin-top: 16px; border-top: 1px solid var(--line); padding-top: 14px; }
+.as-ask label { font-weight: 600; display: block; margin-bottom: 8px; }
+.as-ask .row { flex-wrap: nowrap; }
+.as-ask input { flex: 1; font-size: 16px; min-width: 0; width: 100%; }
+.as-ans { margin-top: 12px; font-size: 16px; line-height: 1.5; }
+.as-ans blockquote { margin: 8px 0 0; padding: 8px 12px; border-left: 3px solid var(--accent); background: var(--bg3); border-radius: 0 10px 10px 0; font-size: 15px; }
+.as-ans blockquote b { font-family: var(--mono); font-size: 12px; color: var(--accent); margin-right: 6px; }
+.skeleton { background: linear-gradient(90deg, var(--bg3), var(--bg2), var(--bg3)); background-size: 200% 100%; animation: shimmer 1.2s infinite; border-radius: 8px; height: 14px; margin: 8px 0; }
+@keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+.set-row { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--line); }
+.set-row:last-child { border-bottom: 0; }
+mark { background: color-mix(in srgb, var(--accent) 35%, transparent); color: inherit; border-radius: 3px; padding: 0 1px; }
+@media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; scroll-behavior: auto !important; } }

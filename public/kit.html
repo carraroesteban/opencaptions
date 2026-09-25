@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Kit de QR</title>
+  <link rel="stylesheet" href="/style.css" />
+  <style>
+    .bar { max-width: 900px; margin: 0 auto; padding: 20px 16px; display: grid; gap: 10px; }
+    .bar h1 { margin: 0; font-size: 24px; }
+    .warn { border-color: var(--warn); color: var(--warn); }
+    .sheets { display: grid; gap: 24px; justify-content: center; padding: 0 16px 40px; }
+    .poster {
+      width: 210mm; min-height: 297mm; background: #fff; color: #111; border-radius: 6px; box-shadow: 0 10px 40px rgba(0,0,0,.35);
+      padding: 18mm 16mm; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 8mm; font-family: var(--font);
+    }
+    .poster .ev { font-size: 16pt; font-weight: 700; color: var(--accent); letter-spacing: .02em; }
+    .poster h2 { font-size: 44pt; margin: 0; line-height: 1.05; letter-spacing: -.02em; }
+    .poster .lead { font-size: 22pt; font-weight: 700; margin: 0; }
+    .poster .lead span { display: block; font-size: 16pt; font-weight: 500; color: #555; margin-top: 2mm; }
+    .poster img { width: 110mm; height: 110mm; image-rendering: pixelated; }
+    .poster .url { font-family: var(--mono); font-size: 14pt; color: #333; }
+    .poster .langs { display: flex; gap: 3mm; flex-wrap: wrap; justify-content: center; }
+    .poster .langs b { border: 1.5px solid #111; border-radius: 99px; padding: 1.5mm 5mm; font-size: 13pt; }
+    .poster .extra { font-size: 13pt; color: #333; max-width: 150mm; line-height: 1.4; }
+    .poster .foot { margin-top: auto; font-size: 10pt; color: #777; }
+    @media print {
+      @page { size: A4; margin: 0; }
+      body { background: #fff; }
+      .bar { display: none; }
+      .sheets { padding: 0; gap: 0; display: block; }
+      .poster { box-shadow: none; border-radius: 0; page-break-after: always; break-after: page; }
+    }
+  </style>
+</head>
+<body>
+  <div class="bar">
+    <div class="brand" style="font-size:13px">open<span>captions</span></div>
+    <h1>🖨 Kit de QR para las salas</h1>
+    <p class="muted" style="margin:0">Un cartel A4 por sala: pegalo en la entrada y junto al escenario. El público escanea, elige idioma y sigue los subtítulos en el celular (y puede pedir un resumen de lo que se perdió).</p>
+    <div class="card warn hidden" id="localwarn">⚠ Estos QR apuntan a <b id="lw-url"></b>, que el público no puede abrir. Configurá <code>PUBLIC_URL</code> con la dirección HTTPS del evento y recargá esta página.</div>
+    <div class="row">
+      <label class="row">Salas: <select id="which"><option value="">Todas</option></select></label>
+      <label class="row"><input type="checkbox" id="bilingual" checked /> Texto bilingüe (ES + EN)</label>
+      <button class="primary" id="print">🖨 Imprimir / guardar PDF</button>
+    </div>
+  </div>
+  <div class="sheets" id="sheets" data-no-i18n></div>
+  <script type="module">
+    import { getEvent, esc, langLabel, qs } from '/common.js';
+    import { localize, prefsControls } from '/i18n.js';
+    const $ = (id) => document.getElementById(id);
+    document.querySelector('.bar .row').append(prefsControls());
+    const ev = await getEvent();
+    const base = ev.publicUrl.replace(/\/$/, '');
+    if (/localhost|127\.0\.0\.1|\[::1\]/.test(base)) { $('localwarn').classList.remove('hidden'); $('lw-url').textContent = base; }
+    for (const s of ev.stages) $('which').append(new Option(s.name, s.id));
+    if (qs.get('stage')) $('which').value = qs.get('stage');
+    function render() {
+      const bi = $('bilingual').checked;
+      const list = ev.stages.filter((s) => !$('which').value || s.id === $('which').value);
+      $('sheets').innerHTML = list.map((s) => {
+        const url = `${base}/s/${s.id}`;
+        const langs = s.languages.filter((l) => l !== 'orig').map((l) => `<b>${esc(langLabel(l, ev.languages))}</b>`).join('');
+        return `<section class="poster">
+          <div class="ev">${esc(ev.name)}</div>
+          <h2>${esc(s.name)}</h2>
+          <p class="lead">Subtítulos en vivo${bi ? '<span>Live captions · translation</span>' : ''}</p>
+          <img src="/api/qr.svg?text=${encodeURIComponent(url)}" alt="QR ${esc(url)}" />
+          <div class="url">${esc(url.replace(/^https?:\/\//, ''))}</div>
+          <div class="langs">${langs}</div>
+          <p class="extra">📱 Escaneá con la cámara, elegí tu idioma y seguí la charla desde el celular. ✨ ¿Llegaste tarde? Tocá <b>“¿Qué me perdí?”</b>.${bi ? '<br><span style="color:#666">Scan with your camera, pick your language and follow the talk on your phone. Late? Tap “What did I miss?”.</span>' : ''}</p>
+          <div class="foot">Subtítulos generados con IA · pueden contener errores · open-source: OpenCaptions</div>
+        </section>`;
+      }).join('');
+    }
+    $('which').onchange = render;
+    $('bilingual').onchange = render;
+    $('print').onclick = () => window.print();
+    render();
+    localize();
+  </script>
+</body>
+</html>

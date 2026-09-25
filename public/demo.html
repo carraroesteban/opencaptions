@@ -53,7 +53,7 @@
     <button id="go" class="primary">▶ Start</button>
     <button id="stop">■ Stop</button>
   </header>
-  <div id="securewarn" class="hidden">⚠ El micrófono solo funciona en <b>localhost</b> o <b>HTTPS</b>. Abrí esta página como https://… (ver docs/EVENT-DAY.md).</div>
+  <div id="securewarn" class="hidden">⚠ El micrófono solo funciona en <b>localhost</b> o <b>HTTPS</b>. Abrí esta página como https://… (ver docs/deployment.md → HTTPS).</div>
   <main>
     <section>
       <div class="stagewrap"><div id="player"></div><div class="micidle mic-only" id="micidle">🎙 Elegí el micrófono, tocá ▶ Start y hablá en español o inglés.</div>
@@ -253,7 +253,7 @@
       if (!running) startAt(player.getCurrentTime() || Number($('start').value) || 0);
     };
     $('stop').onclick = () => { if (mode === 'mic') return micStop(); player?.pauseVideo(); stopPull(); };
-    window.addEventListener('beforeunload', () => { if (running) navigator.sendBeacon?.(`/api/stages/${stageId()}/pull/stop`); });
+    window.addEventListener('pagehide', () => { if (running) fetch(`/api/stages/${stageId()}/pull/stop`, { method: 'POST', headers, keepalive: true }).catch(() => {}); });
     function setState(t, cls) { $('state').textContent = t; $('state').className = 'chip ' + cls; }
 
     // ---------- captions ----------

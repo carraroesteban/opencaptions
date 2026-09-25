@@ -52,13 +52,13 @@
       // Style preview: fake streaming captions, no server connection.
       previewStream((t) => { txt.textContent = t.slice(-chars); box.classList.remove('idle'); }, lang === 'en' ? 'en' : 'es');
     } else {
-      let ch = null;
+      let ch = null, talkId = null;
       const st = new CaptionState();
       new Socket(() => wsUrl('/ws/view', { stage: p('stage', 'main'), langs: lang }), {
         message(m) {
-          if (m.type === 'hello') { ch = m.map[lang]; st.load(m.history[ch] || [], m.partial[ch]); st.updatedAt = 0; }
+          if (m.type === 'hello') { ch = m.map[lang]; talkId = m.talk; st.load(m.history[ch] || [], m.partial[ch]); st.updatedAt = 0; }
           else if (m.type === 'caption' && m.channel === ch) { st.apply(m); draw(); }
-          else if (m.type === 'talk') { st.clear(); draw(); }
+          else if (m.type === 'talk' && m.talk !== talkId) { talkId = m.talk; st.clear(); draw(); }
         },
       });
       function draw() {

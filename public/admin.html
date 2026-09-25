@@ -34,7 +34,11 @@
     .copy { display: flex; gap: 6px; } .copy input { flex: 1; font-family: var(--mono); font-size: 12px; }
     table { width: 100%; border-collapse: collapse; font-size: 13px; } td, th { padding: 6px 4px; border-bottom: 1px solid var(--line); text-align: left; }
     .langs-check { display: flex; gap: 10px; flex-wrap: wrap; }
-  </style>
+      #onboard { margin-bottom: 16px; border-color: color-mix(in srgb, var(--accent) 50%, var(--line)); }
+    #onboard ol { list-style: none; padding: 0; margin: 10px 0 0; display: grid; gap: 7px; font-size: 14px; }
+    #onboard li.done { opacity: .55; }
+    #onboard a { color: var(--accent); }
+</style>
 </head>
 <body>
   <header>
@@ -52,12 +56,19 @@
     </div>
     <div class="row">
       <button id="add">+ Sala</button>
+      <button id="agenda">📅 Agenda</button>
       <button id="gloss">Glosario</button>
+      <a href="/kit.html" target="_blank"><button>🖨 Kit de QR</button></a>
+      <a href="/talks.html" target="_blank"><button>📚 Transcripciones</button></a>
       <a href="/style.html" target="_blank"><button>🎨 Estilo</button></a>
       <a href="/demo.html?mode=mic" target="_blank"><button>🎙 Prueba de sonido</button></a>
     </div>
   </header>
   <main>
+    <section class="card hidden" id="onboard">
+      <div class="row" style="justify-content:space-between"><b>🚀 Primeros pasos</b><button id="ob-hide" class="muted" style="padding:2px 10px">Ocultar</button></div>
+      <ol id="ob-steps"></ol>
+    </section>
     <div class="grid" id="grid"></div>
     <section class="card">
       <div class="row" style="justify-content:space-between;margin-bottom:8px"><b>Eventos</b><select id="logfilter"><option value="">Todas las salas</option></select></div>
@@ -90,6 +101,13 @@
 
   <dialog id="dlg-links"><div style="display:grid;gap:14px" id="links-body"></div><form method="dialog" style="text-align:right;margin-top:12px"><button>Cerrar</button></form></dialog>
   <dialog id="dlg-export"><div id="export-body"></div><form method="dialog" style="text-align:right;margin-top:12px"><button>Cerrar</button></form></dialog>
+  <dialog id="dlg-agenda"><form method="dialog" style="display:grid;gap:10px">
+    <h3 style="margin:0">📅 Agenda del evento</h3>
+    <p class="muted" style="margin:0;font-size:13px">Pegá la agenda (CSV: <code>sala,hora,título,speaker</code> — una charla por línea, la hora como <code>14:30</code> para hoy o <code>2026-09-26 14:30</code>). Cada sala toma el título solo cuando empieza su charla, y si el speaker anterior se pasa de tiempo espera una pausa para no cortarlo.</p>
+    <textarea id="agenda-text" rows="14" style="font-family:var(--mono);font-size:12px" placeholder="main,10:00,Keynote de apertura,Organización&#10;sala-a,10:30,Observabilidad en Kubernetes,Ana Pérez"></textarea>
+    <div id="agenda-msg" class="muted" style="font-size:13px"></div>
+    <div class="row" style="justify-content:flex-end"><button value="cancel">Cancelar</button><button class="primary" value="ok" id="agenda-save">Guardar</button></div>
+  </form></dialog>
   <dialog id="dlg-gloss"><form method="dialog" style="display:grid;gap:10px">
     <h3 style="margin:0">Glosario técnico</h3>
     <p class="muted" style="margin:0;font-size:13px"><b>vocabulary</b>: términos que se le pasan al reconocimiento de voz. <b>replacements</b>: correcciones que se aplican a todos los subtítulos (se aplican al instante, sin reiniciar).</p>
@@ -98,11 +116,11 @@
   </form></dialog>
 
   <script type="module">
-    import { qs, esc, store, wsUrl, Socket, langLabel } from '/common.js';
+    import { qs, esc, store, wsUrl, Socket, langLabel, takeUrlToken } from '/common.js';
     import { localize, prefsControls, tr } from '/i18n.js';
     document.querySelector('header > .row:last-child').append(prefsControls());
     const $ = (id) => document.getElementById(id);
-    let token = qs.get('token') || store.get('admin.token', '');
+    let token = takeUrlToken('admin.token');
     let ev = await (await fetch('/api/event')).json();
     document.documentElement.style.setProperty('--accent', ev.accent);
     $('event').textContent = `${ev.name} · Producción`;
@@ -144,8 +162,37 @@
       return `<span class="chip ${cls}" title="${esc(e.lastError || '')}">${esc(e.target)} · ${esc(e.state)}${e.reconnects ? ` · ↻${e.reconnects}` : ''}${e.level && e.level !== 'full' && e.level !== 'mock' ? ` · cfg:${e.level}` : ''}</span>`;
     };
 
+    // ---------- first-run guide: what's left to do before doors open ----------
+    let scheduleCount = null;
+    async function refreshSchedule() { try { scheduleCount = (await (await fetch('/api/schedule')).json()).length; } catch { scheduleCount = 0; } }
+    refreshSchedule();
+    function renderOnboard(s) {
+      if (store.get('admin.obHidden', false)) return $('onboard').classList.add('hidden');
+      const withAudio = s.stages.filter((x) => x.ingest).length;
+      const steps = [
+        [s.engine === 'gemini', 'Conectar Gemini', s.engine === 'gemini' ? `listo · ${esc(s.model)}` : 'poné <code>GEMINI_API_KEY</code> en <code>.env</code> y reiniciá (hoy corre en modo simulado)'],
+        [s.stages.length > 0, 'Crear las salas', `${s.stages.length} sala(s) · <a href="#" data-ob="add">+ Sala</a>`],
+        [withAudio === s.stages.length && s.stages.length > 0, 'Conectar el audio de cada sala', `${withAudio}/${s.stages.length} con audio · agente, navegador o stream (ver <a href="https://github.com/carraroesteban/opencaptions/blob/main/docs/operations/runbook.md" target="_blank">runbook</a>)`],
+        [scheduleCount > 0, 'Cargar la agenda (títulos automáticos)', scheduleCount ? `${scheduleCount} charla(s) cargadas` : '<a href="#" data-ob="agenda">📅 pegar agenda</a> (opcional)'],
+        [store.get('admin.kitDone', false), 'Imprimir los QR de cada sala', '<a href="/kit.html" target="_blank" data-ob="kit">🖨 abrir kit</a>'],
+        [store.get('admin.soundDone', false), 'Prueba de sonido en cada sala', '<a href="/demo.html?mode=mic" target="_blank" data-ob="sound">🎙 abrir</a>'],
+      ];
+      $('ob-steps').innerHTML = steps.map(([ok, title, detail]) => `<li class="${ok ? 'done' : ''}"><span>${ok ? '✅' : '⬜'}</span> <b>${title}</b> <span class="muted">— ${detail}</span></li>`).join('');
+      $('onboard').classList.toggle('hidden', steps.every(([ok]) => ok));
+    }
+    $('ob-steps').onclick = (e) => {
+      const a = e.target.closest('[data-ob]');
+      if (!a) return;
+      if (a.dataset.ob === 'add') { e.preventDefault(); openEdit(null); }
+      if (a.dataset.ob === 'agenda') { e.preventDefault(); openAgenda(); }
+      if (a.dataset.ob === 'kit') store.set('admin.kitDone', true);
+      if (a.dataset.ob === 'sound') store.set('admin.soundDone', true);
+    };
+    $('ob-hide').onclick = () => { store.set('admin.obHidden', true); $('onboard').classList.add('hidden'); };
+
     function render(s) {
       last = s;
+      renderOnboard(s);
       $('engine').textContent = s.engine === 'gemini' ? `Gemini · ${s.model}` : 'Modo simulado (sin API key)';
       $('engine').className = 'chip ' + (s.engine === 'gemini' ? 'ok' : 'warn');
       $('k-live').textContent = `${s.totals.live}/${s.totals.stages}`;
@@ -175,6 +222,7 @@
           el.innerHTML = `
             <div class="top"><h3></h3><span data-f="state"></span></div>
             <div class="sub" data-f="sub"></div>
+            <div class="sub muted" data-f="next" data-no-i18n></div>
             <div class="meter"><i data-f="lvl"></i><b data-f="pk"></b></div>
             <div class="sub" data-f="ingest"></div>
             <div class="row" data-f="engines"></div>
@@ -196,6 +244,7 @@
         el.classList.toggle('alert', st.alerts.some((a) => a !== 'no-ingest'));
         f('state').innerHTML = stateChip(st);
         const tgt = st.targets.filter((x) => x !== st.source).join(', ');
+        f('next').textContent = st.nextTalk ? `⏭ ${st.nextTalk.title} · ${new Date(st.nextTalk.start).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : '';
         f('sub').innerHTML = `<code>${esc(st.id)}</code> · <span class="chip">${esc(st.mode)}</span> · ${esc(st.source === 'auto' ? `auto${st.detectedLang ? ` (${st.detectedLang})` : ''}` : st.source)} → ${esc(tgt || '—')}${st.talk.title ? ` · <b>${esc(st.talk.title)}</b>` : ''}`;
         const db = 20 * Math.log10(st.level || 1e-6), pct = Math.max(0, Math.min(100, ((db + 60) / 60) * 100));
         const pk = Math.max(0, Math.min(100, ((20 * Math.log10(st.peak || 1e-6) + 60) / 60) * 100));
@@ -254,6 +303,7 @@
         ${copyRow('Pantalla del escenario / proyector', `${o}/screen.html?stage=${st.id}&langs=es,orig`)}
         ${others.map((l) => copyRow(`Overlay vMix/OBS — ${langLabel(l, ev.languages)} (1920×1080, fondo transparente)`, `${o}/overlay.html?stage=${st.id}&lang=${l}`)).join('')}
         ${copyRow('Overlay con fondo verde (chroma key)', `${o}/overlay.html?stage=${st.id}&lang=${others[0] || 'orig'}&bg=%2300ff00&style=outline`)}
+        ${copyRow('Transcripción en vivo (leer, buscar, resumen IA)', `${o}/talk.html?stage=${st.id}`)}
         ${copyRow('Ingesta (abrir en la mini PC del escenario)', `${o}/ingest.html?stage=${st.id}`)}`;
       $('dlg-links').showModal();
     }
@@ -263,7 +313,7 @@
       const langs = st.languages;
       $('export-body').innerHTML = `<h3 style="margin-top:0">Transcripciones · ${esc(st.name)}</h3>` + (talks.length ? `<table><tr><th>Charla</th><th>Seg.</th><th>Descargas</th></tr>${talks.map((t) => `
         <tr><td>${esc(t.title || 'Sin título')}<br><span class="muted">${new Date(t.startedAt).toLocaleString()}</span></td><td>${t.segments}</td>
-        <td>${langs.map((l) => `<div><b>${esc(langLabel(l, ev.languages))}</b>: ${['srt', 'vtt', 'txt'].map((f) => `<a href="/api/stages/${st.id}/export.${f}?lang=${l}&talk=${encodeURIComponent(t.id)}">${f}</a>`).join(' · ')}</div>`).join('')}</td></tr>`).join('')}</table>` : '<p class="muted">Todavía no hay transcripciones.</p>');
+        <td>${langs.map((l) => `<div><b>${esc(langLabel(l, ev.languages))}</b>: ${['srt', 'vtt', 'txt'].map((f) => `<a href="/api/stages/${st.id}/export.${f}?lang=${l}&talk=${encodeURIComponent(t.id)}${token ? `&token=${encodeURIComponent(token)}` : ''}">${f}</a>`).join(' · ')}</div>`).join('')}</td></tr>`).join('')}</table>` : '<p class="muted">Todavía no hay transcripciones.</p>');
       $('dlg-export').showModal();
     }
 
@@ -279,6 +329,7 @@
       fe.title.value = st?.talk?.title || '';
       fe.source.value = st?.source || 'auto';
       fe.pull.value = st?.pull || '';
+      fe.loop.checked = !!st?.loop;
       fe.translation.value = st?.translationDef || '';
       $('edit-targets').innerHTML = Object.entries(ev.languages).map(([c, n]) => `<label class="row"><input type="checkbox" value="${c}" ${(st?.targets || ['es', 'en']).includes(c) ? 'checked' : ''}/> ${esc(n)}</label>`).join('');
       $('edit-del').classList.toggle('hidden', !st);
@@ -288,7 +339,7 @@
     $('dlg-edit').addEventListener('close', async () => {
       if ($('dlg-edit').returnValue !== 'ok') return;
       const body = {
-        name: fe.name.value, title: fe.title.value, source: fe.source.value, translation: fe.translation.value || undefined, pull: fe.pull.value.trim(), loop: fe.loop.checked,
+        name: fe.name.value, title: fe.title.value, source: fe.source.value, translation: fe.translation.value || '', pull: fe.pull.value.trim(), loop: fe.loop.checked,
         targets: [...$('edit-targets').querySelectorAll('input:checked')].map((i) => i.value),
       };
       if (editing) await api('PATCH', `/api/stages/${editing.id}`, body);
@@ -299,6 +350,25 @@
       if (!confirm(tr(`¿Eliminar la sala ${editing.name}? (las transcripciones guardadas se conservan)`))) return;
       await api('DELETE', `/api/stages/${editing.id}`);
       $('dlg-edit').close();
+    };
+
+    // ---------- agenda ----------
+    const two = (n) => String(n).padStart(2, '0');
+    async function openAgenda() {
+      const list = await (await fetch('/api/schedule')).json();
+      $('agenda-text').value = list.map((e) => { const d = new Date(e.start); return [e.stage, `${d.getFullYear()}-${two(d.getMonth() + 1)}-${two(d.getDate())} ${two(d.getHours())}:${two(d.getMinutes())}`, /[,"]/.test(e.title) ? `"${e.title.replace(/"/g, '""')}"` : e.title, e.speaker || ''].join(','); }).join('\n');
+      $('agenda-msg').textContent = list.length ? `${list.length} charla(s) cargadas.` : '';
+      $('dlg-agenda').showModal();
+    }
+    $('agenda').onclick = openAgenda;
+    $('agenda-save').onclick = async (e) => {
+      e.preventDefault();
+      try {
+        const r = await api('PUT', '/api/schedule', { csv: $('agenda-text').value });
+        await refreshSchedule();
+        $('agenda-msg').textContent = `✓ ${r.count} charla(s) guardadas${r.unknownRooms.length ? ` · ⚠ salas desconocidas: ${r.unknownRooms.join(', ')}` : ''}`;
+        if (!r.unknownRooms.length) setTimeout(() => $('dlg-agenda').close(), 900);
+      } catch { /* api() already showed the error */ }
     };
 
     $('gloss').onclick = async () => {

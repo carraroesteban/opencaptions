@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Transcripciones</title>
+  <link rel="stylesheet" href="/style.css" />
+  <style>
+    main { max-width: 860px; margin: 0 auto; padding: 24px 16px 60px; }
+    h1 { font-size: 28px; margin: 8px 0 4px; }
+    .tools { display: flex; gap: 8px; margin: 18px 0; flex-wrap: wrap; }
+    .tools input { flex: 1; min-width: 200px; font-size: 16px; }
+    .list { display: grid; gap: 10px; }
+    .talk { display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; text-decoration: none; padding: 14px 16px; }
+    .talk:hover { border-color: var(--accent); }
+    .talk h2 { font-size: 18px; margin: 0; line-height: 1.3; }
+    .talk .m { grid-column: 1 / -1; color: var(--fg2); font-size: 14px; display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+    .day { margin: 22px 0 8px; font-size: 13px; letter-spacing: .06em; text-transform: uppercase; color: var(--fg2); }
+    footer { margin-top: 36px; font-size: 13px; }
+  </style>
+</head>
+<body>
+  <main>
+    <div class="row" style="justify-content:space-between"><a href="/" class="muted" id="back" style="text-decoration:none">‹</a><div class="brand" style="font-size:14px">open<span>captions</span></div></div>
+    <h1 id="h"></h1>
+    <p class="muted" id="hint"></p>
+    <div class="tools">
+      <input id="q" type="search" autocomplete="off" />
+      <select id="room"></select>
+    </div>
+    <div class="list" id="list" data-no-i18n></div>
+    <footer class="muted" id="foot"></footer>
+  </main>
+  <script type="module">
+    import { t, esc, getEvent, langLabel } from '/common.js';
+    const $ = (id) => document.getElementById(id);
+    const ev = await getEvent();
+    document.title = `${t('library')} · ${ev.name}`;
+    $('h').textContent = t('library');
+    $('hint').textContent = t('libraryHint');
+    $('back').textContent = `‹ ${t('stages')}`;
+    $('q').placeholder = '🔎 ' + t('searchTalks');
+    $('foot').textContent = t('poweredBy');
+    let talks = [];
+    async function load() {
+      const r = await fetch('/api/talks');
+      const d = r.ok ? await r.json() : { talks: [] };
+      talks = d.talks;
+      const rooms = [...new Map(talks.map((x) => [x.stage, x.stageName])).entries()];
+      const cur = $('room').value;
+      $('room').innerHTML = `<option value="">${esc(t('allStages'))}</option>` + rooms.map(([id, n]) => `<option value="${esc(id)}">${esc(n)}</option>`).join('');
+      $('room').value = cur;
+      render();
+    }
+    function render() {
+      const q = $('q').value.trim().toLowerCase();
+      const room = $('room').value;
+      const list = talks.filter((x) => (!room || x.stage === room) && (!q || `${x.title} ${x.speaker} ${x.stageName}`.toLowerCase().includes(q)));
+      if (!list.length) { $('list').innerHTML = `<p class="muted">${esc(t('noTalks'))}</p>`; return; }
+      let day = '';
+      $('list').innerHTML = list.map((x) => {
+        const d = new Date(x.startedAt);
+        const dl = d.toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' });
+        const head = dl !== day ? `<div class="day">${esc((day = dl))}</div>` : '';
+        const langs = x.channels.filter((c) => c !== 'orig').map((c) => `<span class="chip">${esc(langLabel(c, ev.languages))}</span>`).join('');
+        return `${head}<a class="card talk" href="/talk.html?stage=${encodeURIComponent(x.stage)}&talk=${encodeURIComponent(x.id)}">
+          <h2>${esc(x.title || t('untitled'))}</h2>
+          ${x.live ? `<span class="chip bad"><span class="dot live"></span> ${esc(t('live'))}</span>` : '<span></span>'}
+          <div class="m">${x.speaker ? `<b>${esc(x.speaker)}</b>·` : ''}<span>${esc(x.stageName)}</span>·<span>${d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}</span>·<span>${Math.max(1, Math.round(x.durationMs / 60000))} min</span> ${langs}</div>
+        </a>`;
+      }).join('');
+    }
+    $('q').oninput = render;
+    $('room').onchange = render;
+    await load();
+    setInterval(load, 30000);
+  </script>
+</body>
+</html>

@@ -26,7 +26,7 @@
       <span class="chip" id="conn">desconectado</span>
     </div>
 
-    <div id="securewarn" class="card hidden" style="border-color:var(--bad)">⚠ Esta página no está en un contexto seguro: el navegador <b>no va a dejar usar el micrófono</b>. Abrila por <b>HTTPS</b> o en <b>localhost</b> (ver docs/EVENT-DAY.md → HTTPS).</div>
+    <div id="securewarn" class="card hidden" style="border-color:var(--bad)">⚠ Esta página no está en un contexto seguro: el navegador <b>no va a dejar usar el micrófono</b>. Abrila por <b>HTTPS</b> o en <b>localhost</b> (ver docs/deployment.md → HTTPS).</div>
     <section class="card" style="display:grid;gap:14px">
       <div class="grid">
         <label class="field">Escenario<select id="stage"></select></label>
@@ -63,7 +63,7 @@
     <section class="card links row" id="links"></section>
   </main>
   <script type="module">
-    import { qs, esc, store, wsUrl, Socket, getEvent, langLabel } from '/common.js';
+    import { qs, esc, store, wsUrl, Socket, getEvent, langLabel, takeUrlToken } from '/common.js';
     import { localize, prefsControls, tr } from '/i18n.js';
     document.getElementById('conn').before(prefsControls());
     const $ = (id) => document.getElementById(id);
@@ -73,7 +73,7 @@
     $('mode').value = qs.get('mode') || store.get('ingest.mode', 'mic');
     $('channel').value = store.get('ingest.channel', 'mix');
     $('gain').value = store.get('ingest.gain', 1);
-    $('token').value = qs.get('token') || store.get('ingest.token', '');
+    $('token').value = takeUrlToken('ingest.token');
     $('auto').checked = store.get('ingest.auto', false);
 
     let ctx, node, stream, media, sock, running = false;
@@ -133,7 +133,10 @@
       return src;
     }
 
+    let starting = false;
     async function start() {
+      if (starting || running) return; // double click / second click while the mic prompt is open
+      starting = true;
       try {
         ctx = new AudioContext();
         await ctx.audioWorklet.addModule('/pcm-worklet.js');
@@ -142,11 +145,20 @@
         src.connect(node);
         const mute = ctx.createGain(); mute.gain.value = 0; node.connect(mute).connect(ctx.destination); // keeps the graph pulling
         node.port.onmessage = (e) => onPcm(e.data);
-        sock = new Socket(() => wsUrl('/ws/ingest', { stage: $('stage').value, kind: 'browser', label: `${$('mode').value}${$('mode').value === 'mic' ? ': ' + ($('device').selectedOptions[0]?.text || '') : ''}`, token: $('token').value }), {
+        // USB interface unplugged / "Stop sharing" clicked: say so instead of silently sending nothing.
+        stream?.getAudioTracks().forEach((tk) => { tk.onended = () => { alertBox(tr('La entrada de audio se desconectó. Revisá el cable/placa y volvé a empezar.')); setConn('entrada desconectada', 'bad'); }; });
+        const mySock = (sock = new Socket(() => wsUrl('/ws/ingest', { stage: $('stage').value, kind: 'browser', label: `${$('mode').value}${$('mode').value === 'mic' ? ': ' + ($('device').selectedOptions[0]?.text || '') : ''}`, token: $('token').value }), {
           open() { setConn('conectado', 'ok'); while (pending.length && sock.ready) sock.send(pending.shift()); },
-          close(e) { setConn(e.code === 4001 ? 'token inválido' : e.code === 4000 ? 'reemplazado por otra ingesta' : 'reconectando…', 'bad'); if (e.code === 4000 || e.code === 4001) stop(); },
+          close(e) {
+            if (sock !== mySock) return; // an old connection closing must not tear down the current one
+            setConn(e.code === 4001 ? 'token inválido' : e.code === 4000 ? 'reemplazado por otra ingesta' : 'reconectando…', 'bad');
+            if (e.code === 4000 || e.code === 4001) stop();
+          },
           message: onStatus,
-        });
+        }));
+        // Autostart on a kiosk without a user gesture leaves the context suspended: try to resume and warn.
+        if (ctx.state !== 'running') { try { await ctx.resume(); } catch { /* needs a click */ } }
+        if (ctx.state !== 'running') { alertBox(tr('El navegador bloqueó el audio: hacé clic en la página (o usá el agente nativo).')); document.addEventListener('click', () => ctx?.resume(), { once: true }); }
         running = true;
         $('go').textContent = '■ Detener';
         $('go').classList.remove('primary');
@@ -154,6 +166,8 @@
       } catch (e) {
         alertBox(tr(e.message));
         stop();
+      } finally {
+        starting = false;
       }
     }
 

@@ -23,6 +23,8 @@ const eventPath = process.env.EVENT_CONFIG || 'config/event.json';
 const event = readJson(eventPath);
 
 const env = process.env;
+// Agenda times like "14:30" are read in the event's time zone (Docker containers default to UTC).
+if (event.timezone && !env.TZ) env.TZ = event.timezone;
 const DEFAULT_TARGETS = event.defaultTargets || ['es', 'en'];
 const vertex = /^(1|true)$/i.test(env.GOOGLE_GENAI_USE_VERTEXAI || '');
 const engine = flag('mock') ? 'mock' : (env.ENGINE || (env.GEMINI_API_KEY || vertex ? 'gemini' : 'mock'));
@@ -71,6 +73,8 @@ export const config = {
     accent: event.accent || '#7c5cff',
     languages: event.languages || { es: 'Español', en: 'English', pt: 'Português' },
     defaultTargets: DEFAULT_TARGETS,
+    publicTranscripts: event.publicTranscripts || '',
+    schedule: event.schedule || null,
     stages: (event.stages || []).map(normalizeStage),
   },
   glossaryPath: path.resolve(ROOT, env.GLOSSARY || event.glossary || 'config/glossary.json'),

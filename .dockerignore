@@ -1,4 +1,11 @@
 node_modules
 data
 .env
+.env.*
+!.env.example
 .git
+.github
+docs
+test
+*.log
+.DS_Store
