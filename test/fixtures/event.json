@@ -1,0 +1,19 @@
+{
+  "eventName": "Horizon Summit 2026",
+  "accent": "#D4FF3A",
+  "publicUrl": "",
+  "publicTranscripts": "all",
+  "timezone": "America/Argentina/Buenos_Aires",
+  "model": "gemini-3.5-live-translate-preview",
+  "languages": { "es": "Español", "en": "English", "pt": "Português" },
+  "defaultTargets": ["es", "en"],
+  "glossary": "test/fixtures/glossary.json",
+  "silenceGateSec": 30,
+  "idleCloseSec": 300,
+  "stages": [
+    { "id": "main",   "name": "Main Stage", "source": "auto", "targets": ["es", "en"] },
+    { "id": "room-a", "name": "Room A",     "source": "auto", "targets": ["es", "en", "pt"] },
+    { "id": "room-b", "name": "Room B",     "source": "auto", "targets": ["es", "en"] },
+    { "id": "room-c", "name": "Room C",     "source": "auto", "targets": ["es", "en"] }
+  ]
+}

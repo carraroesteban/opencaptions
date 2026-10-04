@@ -13,6 +13,8 @@ const SPEED = 3; // replay the recorded session 3× faster than real time
 const PORT = 21000 + Math.floor(Math.random() * 2000);
 const base = `http://127.0.0.1:${PORT}`;
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+// Tests never write to config/: the agenda and glossary live in the temp data dir.
+const seedGlossary = (dir) => { const f = path.join(dir, 'glossary.json'); fs.copyFileSync('test/fixtures/glossary.json', f); return f; };
 let srv, dataDir;
 const finals = { orig: [], es: [], en: [] };
 const partials = { orig: 0, es: 0, en: 0 };
@@ -20,7 +22,7 @@ const partials = { orig: 0, es: 0, en: 0 };
 before(async () => {
   dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'oc-e2e-'));
   srv = spawn(process.execPath, ['src/server.js'], {
-    env: { ...process.env, PORT: String(PORT), ENGINE: 'gemini', GEMINI_API_KEY: 'replay', OC_REPLAY: 'test/fixtures/talk-en.json', OC_REPLAY_SPEED: String(SPEED), DATA_DIR: dataDir, ADMIN_TOKEN: 't', INGEST_TOKEN: 't', PUBLIC_URL: '', FALLBACK: '' },
+    env: { ...process.env, PORT: String(PORT), ENGINE: 'gemini', GEMINI_API_KEY: 'replay', OC_REPLAY: 'test/fixtures/talk-en.json', OC_REPLAY_SPEED: String(SPEED), DATA_DIR: dataDir, SCHEDULE: path.join(dataDir, 'schedule.json'), GLOSSARY: seedGlossary(dataDir), ADMIN_TOKEN: 't', INGEST_TOKEN: 't', PUBLIC_URL: '', FALLBACK: '' },
     stdio: 'ignore',
   });
   for (let i = 0; i < 100; i++) {

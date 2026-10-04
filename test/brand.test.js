@@ -57,3 +57,20 @@ test('website: both languages, hreflang, custom domain', () => {
     }
   }
 });
+
+test('pages use the line icon set, not emoji', () => {
+  // Buttons, toolbars and headings use the SVG icons in public/illustrations.js. Typographic signs (→ ✓ ⚠ ◐) are fine.
+  const emoji = /[\u{1F300}-\u{1FAFF}]/u;
+  const files = [...pages.map((f) => `public/${f}`), ...fs.readdirSync(path.join(ROOT, 'public/pages')).map((f) => `public/pages/${f}`), 'public/assist-ui.js', 'public/common.js'];
+  for (const f of files) {
+    const code = read(f).replace(/\/\/.*$/gm, '').replace(/\/\*[\s\S]*?\*\//g, '');
+    const m = code.match(emoji);
+    assert.equal(m, null, `${f} uses an emoji as an icon: ${m?.[0]}`);
+  }
+});
+
+test('every page people read has a language switch', () => {
+  for (const f of ['index', 'watch', 'talk', 'talks', 'admin', 'welcome', 'kit', 'style', 'ingest', 'demo']) {
+    assert.match(read(`public/pages/${f}.js`), /prefsControls\(/, `${f}: no language switch`);
+  }
+});

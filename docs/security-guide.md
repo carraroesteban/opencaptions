@@ -94,6 +94,15 @@ The ✨ *What did I miss?* summary and 💬 *Ask the talk* are public by design 
 - **Graceful without a model:** mock mode, `AUDIENCE_AI=off`, quota or network errors return transcript highlights and keyword quotes instead of failing.
 - **Privacy:** questions are not stored or logged.
 
+## Protecting the setup from mistakes
+
+Tokens decide *who* can administer. Two more layers protect the event manager's work from accidents by people who are allowed in:
+
+- **Event mode** locks the setup on the server while the event is live. Rooms, the agenda, the glossary and the event name can't be deleted or changed (the API answers `423 Locked`), whatever the dashboard sends. Live operations keep working. Turning it off takes an explicit confirmation and is recorded.
+- **History and undo:** every setup change is stored in `data/history.jsonl` with what it replaced, and can be undone from the dashboard. Deleted rooms go to a trash and come back exactly as they were. Transcripts are never deleted by any dashboard action.
+
+The setup wizard follows the same rules: it shows a review of every change before applying it, never removes a room that has transcripts unless you tick it, and can't apply anything in Event mode.
+
 ## Authentication modes
 
 Set with `AUTH`:

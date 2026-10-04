@@ -1,10 +1,19 @@
 // watch.html: page script (kept out of the HTML so the Content-Security-Policy can forbid inline scripts).
 import { qs, t, esc, store, wsUrl, Socket, CaptionState, PcmPlayer, langLabel, wakeLock, getEvent, applyReadingPrefs, setReadingPref, setTheme, liveText } from '/common.js';
 import { mountAssistant } from '/assist-ui.js';
+import { icon, mountIcons } from '/illustrations.js';
+import { prefsControls } from '/i18n.js';
 const $ = (id) => document.getElementById(id);
 const stageId = qs.get('stage');
 if (!stageId) location.href = '/';
 
+// Icons, the page-language switch (in Settings) and translated labels for the icon-only buttons.
+mountIcons();
+$('ui-slot').append(prefsControls({ langs: ['es', 'en', 'pt'] }));
+$('l-ui').textContent = t('uiLang');
+for (const id of ['ai-close', 'set-close']) $(id).setAttribute('aria-label', t('close'));
+$('back-link').setAttribute('aria-label', t('stages'));
+$('doc').title = t('transcript');
 const ev = await getEvent();
 let lang = qs.get('lang') || store.get(`lang.${stageId}`) || store.get('lang') || null;
 let dual = store.get('dual', false);
@@ -16,17 +25,17 @@ const player = new PcmPlayer();
 let pipWin = null, pipVid = null, pipCv = null; // ⧉ floating captions (see below)
 
 $('empty').textContent = t('connecting');
-$('tolive').textContent = '↓ ' + t('backToLive');
+$('tolive').innerHTML = `${icon('arrowdown')} ${esc(t('backToLive'))}`;
 $('dual').textContent = t('dual');
-$('listen').innerHTML = `🎧 <span class="lbl">${t('listen')}</span>`;
+$('listen').innerHTML = `${icon('headphones')} <span class="lbl">${esc(t('listen'))}</span>`;
 $('orig').querySelector('b').textContent = t('original');
 document.documentElement.style.setProperty('--size', size + 'px');
 let prefs = applyReadingPrefs();
 
 // ---- ✨ assistant sheet: "what did I miss?" + ask the talk ----
 $('ai').querySelector('.lbl').textContent = t('catchUp');
-$('ai-title').textContent = '✨ ' + t('catchUp');
-$('ai-doc').textContent = '📄 ' + t('readTranscript') + ' →';
+$('ai-title').innerHTML = `${icon('sparkle')} ${esc(t('catchUp'))}`;
+$('ai-doc').textContent = t('readTranscript') + ' →';
 const assistant = mountAssistant($('assistant'), { stage: stageId, lang: () => (lang && lang !== 'orig' ? lang : hello?.stage?.source && hello.stage.source !== 'auto' ? hello.stage.source : (navigator.language || 'es').slice(0, 2)) });
 $('ai').onclick = () => { $('dlg-ai').showModal(); assistant.load(); };
 $('ai-close').onclick = () => $('dlg-ai').close();
@@ -184,7 +193,7 @@ opts($('dual-opts'), [['false', t('no')], ['true', t('yes')]], String(dual), (v)
 async function toggleListen() {
   listening = !listening;
   $('listen').setAttribute('aria-pressed', listening);
-  $('listen').innerHTML = `🎧 <span class="lbl">${listening ? t('stopListen') : t('listen')}</span>`;
+  $('listen').innerHTML = `${icon('headphones')} <span class="lbl">${esc(listening ? t('stopListen') : t('listen'))}</span>`;
   if (listening) { await player.start(); toast(t('listenHint')); } else player.stop();
   sock.reconnect();
 }

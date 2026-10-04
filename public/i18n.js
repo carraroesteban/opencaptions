@@ -21,8 +21,70 @@ const DICTS = {
     'Producción · OpenCaptions': 'Production · OpenCaptions', '📊 Producción': '📊 Production', 'Producción': 'Production', 'Salas en vivo': 'Live rooms', 'Sesiones IA': 'AI sessions',
     'Espectadores': 'Viewers', 'Costo estimado': 'Estimated cost', 'Uptime': 'Uptime', 'CPU': 'CPU', 'Memoria': 'Memory', 'Event loop': 'Event loop',
     '+ Sala': '+ Room', 'Glosario': 'Glossary', '🎨 Estilo': '🎨 Style', '🎙 Prueba de sonido': '🎙 Sound check', 'Eventos': 'Events',
+    'Empezar': 'Start', 'Detener': 'Stop', 'Empezar a transcribir': 'Start captioning', 'Video de YouTube': 'YouTube video', 'Micrófono en vivo': 'Live microphone',
+    'Elegí el micrófono, tocá Empezar y hablá en español o inglés.': 'Pick the microphone, press Start and speak in Spanish or English.',
+    'Abrir pantalla para proyector': 'Open projector screen', 'Overlay para vMix/OBS': 'vMix/OBS overlay', 'Vista del público': 'Audience view', 'Panel de producción': 'Production dashboard',
+    'Overlay vMix / OBS': 'vMix / OBS overlay', 'Pantalla / proyector': 'Screen / projector', 'Agenda del evento': 'Event agenda', 'Siguiente': 'Next',
+    'Híbrido (subtítulos por texto + voz traducida en todos los idiomas)': 'Hybrid (text captions + translated voice in every language)',
+    'Retraso del event loop (p99). > 50 ms afecta el tiempo real': 'Event-loop delay (p99). Over 50 ms affects real time',
+    'sala,hora,título,speaker': 'room,time,title,speaker', 'Sistema': 'System', 'Monoespaciada': 'Monospace', 'Atkinson Hyperlegible (máxima legibilidad)': 'Atkinson Hyperlegible (most legible)',
+    'main,10:00,Keynote de apertura,Equipo del evento\nroom-a,10:30,Diseñar ciudades para todos,María José Fernández': 'main,10:00,Opening keynote,Event team\nroom-a,10:30,Designing cities for everyone,María José Fernández',
+    "Abrir el asistente": "Open the wizard",
+    "Abrir la biblioteca pública": "Open the public library",
+    "Agregar": "Add",
+    "Agregar corrección": "Add a correction",
+    "Ajustes": "Settings",
+    "Aparece en los celulares, en la pantalla del escenario y en los carteles.": "It appears on phones, on the stage screen and on the posters.",
+    "Automática: Gemini, y esta computadora si se corta internet": "Automatic: Gemini, and this computer if the internet goes down",
+    "Cada cambio en la configuración del evento queda acá. Deshacé cualquiera para volver a como estaba.": "Every change to the event’s setup is listed here. Undo any of them to put things back as they were.",
+    "Cada sala tiene su QR, su pantalla y su overlay. Cada cambio queda en el Historial y se puede deshacer.": "Each room has its own QR code, screen and overlay. Every change is recorded in History and can be undone.",
+    "Con la agenda, cada sala nombra sola sus charlas sin cortar a quien se pasa de tiempo, y los nombres de speakers ayudan a la IA a escribirlos bien.": "With the agenda, each room names its talks by itself without cutting off a speaker who runs over, and speaker names help the AI spell them right.",
+    "Correcciones": "Corrections",
+    "Cuando la IA escribe algo mal siempre igual, corregilo acá. Podés poner varias variantes separadas por una barra vertical.": "When the AI always gets something wrong the same way, fix it here. Separate several variants with a vertical bar.",
+    "Desde Swapcard, Sessionize o una planilla: exportá las sesiones, seleccioná todo (con la fila de títulos), copiá y pegá acá. O una charla por línea: sala, hora, título, speaker.": "From Swapcard, Sessionize or a spreadsheet: export the sessions, select everything (with the header row), copy and paste it here. Or one talk per line: room, time, title, speaker.",
+    "Durante el evento, bloqueá la configuración: nadie puede borrar ni cambiar salas, agenda o glosario por error. Las acciones en vivo (siguiente charla, reconectar una sala) siguen funcionando.": "During the event, lock the setup: nobody can delete or change rooms, the agenda or the glossary by accident. Live actions (next talk, reconnecting a room) keep working.",
+    "Editar": "Edit",
+    "Ej: María José Fernández": "e.g. María José Fernández",
+    "Eliminar": "Delete",
+    "Escribir": "Write",
+    "Guardar glosario": "Save glossary",
+    "Hablá al micrófono y mirá los subtítulos.": "Speak into the microphone and watch the captions.",
+    "Historial": "History",
+    "IA y respaldo sin internet": "AI and offline backup",
+    "Idiomas": "Languages",
+    "Ingesta (abrir en la PC del escenario)": "Audio input (open on the stage PC)",
+    "Lo que va en cada pantalla del lugar: el QR para el público, la pantalla del escenario y el overlay del streaming.": "What goes on each screen at the venue: the QR code for the audience, the stage screen and the livestream overlay.",
+    "Modo evento": "Event mode",
+    "Nombre del evento": "Event name",
+    "Nombres y términos": "Names and terms",
+    "Nombres y términos que la IA tiene que escribir bien, y correcciones que se aplican a todos los subtítulos al instante.": "Names and terms the AI has to get right, and corrections applied to every caption instantly.",
+    "Overlay vMix/OBS": "vMix/OBS overlay",
+    "Pantallas y QR": "Screens and QR",
+    "Quitar": "Remove",
+    "Reemplazar la agenda": "Replace the agenda",
+    "Registro de eventos": "Event log",
+    "Renombrar charla": "Rename talk",
+    "Salas eliminadas": "Deleted rooms",
+    "Servidor": "Server",
+    "Si dice": "If it says",
+    "Siguiente charla": "Next talk",
+    "Speakers, marcas, siglas y palabras técnicas. Ayudan al reconocimiento de voz y a la traducción.": "Speakers, brands, acronyms and technical words. They help speech recognition and translation.",
+    "Sus transcripciones se conservan. Restaurá una sala para tenerla de nuevo tal como estaba.": "Their transcripts are kept. Restore a room to get it back exactly as it was.",
+    "Texto (frase a frase · menor latencia · 1 sesión Live por sala)": "Text (sentence by sentence · lowest delay · 1 Live session per room)",
+    "Tipografía, colores y posición del overlay y la pantalla.": "Fonts, colours and position for the overlay and the screen.",
+    "Todas las salas en una ventana siempre visible, encima de OBS o vMix.": "Every room in an always-on-top window, over OBS or vMix.",
+    "Todavía no hay cambios.": "No changes yet.",
+    "Todo lo que se dijo en cada charla, para leer, buscar y descargar en cada idioma.": "Everything said in each talk, to read, search and download in every language.",
+    "Título": "Title",
+    "Un cartel A4 por sala, para imprimir.": "One A4 poster per room, ready to print.",
+    "Ver qué cambia": "See what changes",
+    "Volvé a responder las preguntas del primer día: nombre, salas e idiomas. Antes de aplicar, muestra exactamente qué va a cambiar.": "Answer the first-day questions again: name, rooms and languages. Before applying, it shows exactly what will change.",
+    "hace": "",
     'Todas las salas': 'All rooms', 'Modo simulado (sin API key)': 'Simulated mode (no API key)',
     'Asistente de configuración': 'Setup wizard', 'Motor de IA': 'AI engine',
+    'Gemini (la IA en la nube)': 'Gemini (the AI in the cloud)', 'Conectar Gemini en Ajustes': 'Connect Gemini in Settings', 'Dirección pública': 'Public address',
+    'La API key con la que OpenCaptions usa Gemini. Se guarda en este servidor y nunca se muestra completa.': 'The API key OpenCaptions uses for Gemini. It’s kept on this server and never shown in full.',
+    'La dirección a la que apuntan los QR y los links.': 'The address the QR codes and links point to.',
     'Qué IA genera los subtítulos. Automática: Gemini, y esta computadora si se corta internet.': 'Which AI makes the captions. Automatic: Gemini, and this computer if the internet goes down.',
     'IA automática · respaldo sin internet': 'Automatic AI · offline backup', 'Siempre Gemini (nube)': 'Always Gemini (cloud)', 'Siempre esta computadora': 'Always this computer',
     'Usando la IA de esta computadora': 'Using this computer’s AI', 'Sin internet: los subtítulos siguen funcionando': 'No internet: captions keep running',
@@ -148,7 +210,8 @@ export const LANG = (() => {
   if (q) { store.set('ui', q); return q; }
   const saved = store.get('ui', null);
   if (saved) return saved;
-  return (navigator.language || 'es').toLowerCase().startsWith('es') ? 'es' : 'en';
+  const b = (navigator.language || 'es').toLowerCase();
+  return b.startsWith('es') ? 'es' : b.startsWith('pt') ? 'pt' : 'en';
 })();
 
 const dict = DICTS[LANG] || null;
@@ -191,15 +254,31 @@ export function localize() {
   }).observe(document.body, { childList: true, subtree: true, characterData: true });
 }
 
-/** Language + theme switcher for page headers. */
-export function prefsControls() {
+const PREFS_LABELS = {
+  es: { lang: 'Idioma de la página', theme: 'Claro / oscuro' },
+  en: { lang: 'Page language', theme: 'Light / dark' },
+  pt: { lang: 'Idioma da página', theme: 'Claro / escuro' },
+};
+
+/**
+ * Language + theme switcher for page headers.
+ * @param {{ langs?: string[] }} [o]  languages to offer (audience pages add 'pt'); default: Spanish and English
+ */
+export function prefsControls({ langs = ['es', 'en', ...Object.keys(DICTS).filter((k) => k !== 'en')] } = {}) {
   const wrap = document.createElement('span');
   wrap.className = 'row prefs';
   wrap.setAttribute('data-no-i18n', '');
-  const langs = { es: 'ES', en: 'EN', ...Object.fromEntries(Object.keys(DICTS).map((k) => [k, k.toUpperCase()])) };
-  wrap.innerHTML = `<select aria-label="UI language" title="UI language">${Object.entries(langs).map(([k, v]) => `<option value="${k}" ${k === LANG ? 'selected' : ''}>${v}</option>`).join('')}</select>
-    <button type="button" aria-label="Theme" title="Light / dark">◐</button>`;
-  wrap.querySelector('select').onchange = (e) => { store.set('ui', e.target.value); const u = new URL(location.href); u.searchParams.delete('ui'); location.href = u; };
+  const cur = langs.includes(LANG) ? LANG : 'es';
+  const L = PREFS_LABELS[cur] || PREFS_LABELS.en;
+  wrap.innerHTML = `<select aria-label="${L.lang}" title="${L.lang}">${[...new Set(langs)].map((k) => `<option value="${k}" ${k === cur ? 'selected' : ''}>${k.toUpperCase()}</option>`).join('')}</select>
+    <button type="button" aria-label="${L.theme}" title="${L.theme}">◐</button>`;
+  wrap.querySelector('select').onchange = (e) => {
+    store.set('ui', e.target.value);
+    const u = new URL(location.href);
+    u.searchParams.delete('ui');
+    // Same address (e.g. only a #hash): assigning it wouldn't reload the page.
+    if (u.href === location.href || u.href.split('#')[0] === location.href.split('#')[0]) location.reload(); else location.href = u.href;
+  };
   wrap.querySelector('button').onclick = () => {
     const cur = document.documentElement.dataset.theme || (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
     const next = cur === 'light' ? 'dark' : 'light';

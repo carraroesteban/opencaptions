@@ -16,3 +16,8 @@ export function createClient() {
   return process.env.OC_RECORD ? (shared ??= recordingClient(real, process.env.OC_RECORD)) : real;
 }
 let shared = null;
+
+let cached = null;
+/** The client every module uses. Rebuilt after the API key changes from the dashboard (resetClient). */
+export function getClient() { return (cached ??= createClient()); }
+export function resetClient() { cached = null; }

@@ -57,6 +57,12 @@
     pre.cmd { margin: 8px 0 0; background: var(--ink); color: var(--paper); border-radius: 10px; padding: 9px 12px; font-size: 13px; overflow-x: auto; }
     pre.cmd code { background: none; color: inherit; padding: 0; font-size: inherit; } /* the shared inline-code chip is light in light mode */
 
+    .ops { display: grid; gap: 8px; max-width: 560px; }
+    .op { display: grid; grid-template-columns: 22px minmax(0, 1fr); gap: 10px; align-items: start; padding: 12px 14px; border-radius: 14px; border: 1px solid var(--line); background: var(--bg2); font-size: 15px; cursor: pointer; }
+    .op input { margin-top: 3px; width: 18px; height: 18px; }
+    .op small { display: block; color: var(--fg2); font-size: 13px; margin-top: 2px; }
+    .op.danger { border-color: color-mix(in srgb, var(--bad) 35%, var(--line)); }
+    .locknote { max-width: 560px; margin: 0 0 14px; padding: 12px 14px; border-radius: 14px; border: 1px solid color-mix(in srgb, var(--warn) 40%, var(--line)); background: color-mix(in srgb, var(--warn) 9%, var(--bg2)); font-size: 14px; }
     .summary { display: grid; gap: 8px; margin: 0 0 4px; max-width: 520px; }
     .summary div { display: flex; gap: 12px; padding: 12px 16px; border-radius: 14px; background: var(--bg2); border: 1px solid var(--line); font-size: 15px; }
     .summary div b { min-width: 110px; color: var(--fg2); font-weight: 400; }
@@ -65,6 +71,8 @@
     .art { margin: 0; justify-self: center; width: 100%; }
     .art img { display: block; width: 100%; height: auto; border-radius: 26px; border: 1px solid var(--line); background: #FAF8F3; box-shadow: var(--shadow-lg); transition: opacity .3s var(--ease); }
     .art img.fade { opacity: 0; }
+    .panel { max-width: 560px; margin: 0 0 16px; }
+    .panel:empty { display: none; }
     .err { color: var(--bad); font-size: 14px; margin-top: 12px; min-height: 1em; }
     @media (prefers-reduced-motion: reduce) { .step.on { animation: none; } }
   </style>
@@ -115,10 +123,28 @@
         <div class="actions"><button class="back" data-back data-t="back"></button><button class="skip" data-skip data-t="notSure"></button><button class="primary" data-next data-t="next"></button></div>
       </div>
 
-      <div class="step" data-step="ai" data-art="local">
+      <div class="step" data-step="review" data-art="ob-rooms">
+        <p class="kicker" data-t="kR"></p>
+        <h1 data-t="reviewH"></h1>
+        <p class="lede" data-t="reviewP"></p>
+        <div class="locknote hidden" id="locknote" data-t="lockedMsg"></div>
+        <div class="ops" id="ops"></div>
+        <div class="actions"><button class="back" data-back data-t="back"></button><button class="skip" data-skip data-t="skipReview"></button><button class="primary" id="apply" data-t="apply"></button></div>
+      </div>
+
+      <div class="step" data-step="ai" data-art="setup">
         <p class="kicker" data-t="k4"></p>
         <h1 data-t="aiH"></h1>
+        <p class="lede" id="ai-lede"></p>
+        <div class="panel" id="ai-key"></div>
         <div class="opts" id="ai"></div>
+        <div class="actions"><button class="back" data-back data-t="back"></button><button class="skip" data-skip data-t="later"></button><button class="primary" data-next data-t="next"></button></div>
+      </div>
+
+      <div class="step" data-step="share" data-art="audience">
+        <p class="kicker" data-t="kS"></p>
+        <h1 data-t="shareH"></h1>
+        <div class="panel" id="share"></div>
         <div class="actions"><button class="back" data-back data-t="back"></button><button class="skip" data-skip data-t="later"></button><button class="primary" data-next data-t="next"></button></div>
       </div>
 

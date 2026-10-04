@@ -1,6 +1,8 @@
 // style.html: page script (kept out of the HTML so the Content-Security-Policy can forbid inline scripts).
 import { esc, store, getEvent, FONTS, langLabel } from '/common.js';
 import { localize, prefsControls, tr } from '/i18n.js';
+import { mountIcons } from '/illustrations.js';
+mountIcons();
 document.querySelector('header').append(prefsControls());
 const $ = (id) => document.getElementById(id);
 const ev = await getEvent();

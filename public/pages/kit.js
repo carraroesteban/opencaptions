@@ -22,8 +22,8 @@ const UI = {
   },
 };
 const POSTER = {
-  es: { lead: 'Subtítulos en vivo', sub: 'y traducción', extra: '📱 Escaneá con la cámara, elegí tu idioma y seguí la charla desde el celular. ✨ ¿Llegaste tarde? Tocá <b>“¿Qué me perdí?”</b>.', foot: 'Subtítulos generados con IA · pueden contener errores · hecho con OpenCaptions' },
-  en: { lead: 'Live captions', sub: 'and translation', extra: '📱 Scan with your camera, pick your language and follow the talk on your phone. ✨ Arrived late? Tap <b>“What did I miss?”</b>.', foot: 'AI-generated captions · may contain mistakes · made with OpenCaptions' },
+  es: { lead: 'Subtítulos en vivo', sub: 'y traducción', extra: 'Escaneá con la cámara, elegí tu idioma y seguí la charla desde el celular. ¿Llegaste tarde? Tocá <b>“¿Qué me perdí?”</b>.', foot: 'Subtítulos generados con IA · pueden contener errores · hecho con OpenCaptions' },
+  en: { lead: 'Live captions', sub: 'and translation', extra: 'Scan with your camera, pick your language and follow the talk on your phone. Arrived late? Tap <b>“What did I miss?”</b>.', foot: 'AI-generated captions · may contain mistakes · made with OpenCaptions' },
 };
 const main = UI[LANG] ? LANG : 'en';
 const other = main === 'es' ? 'en' : 'es';
@@ -56,7 +56,7 @@ function render() {
       <img src="/api/qr.svg?text=${encodeURIComponent(url)}" alt="QR ${esc(url)}" />
       <div class="url">${esc(url.replace(/^https?:\/\//, ''))}</div>
       <div class="langs">${langs}</div>
-      <p class="extra">${P.extra}${bi ? `<br><span class="tr">${Q.extra.replace(/^📱 /, '').replace(/ ✨ /, ' ').replace(/<\/?b>/g, '')}</span>` : ''}</p>
+      <p class="extra">${P.extra}${bi ? `<br><span class="tr">${Q.extra.replace(/<\/?b>/g, '')}</span>` : ''}</p>
       <div class="foot"><img src="/brand/mark-ink.svg" alt="" />${P.foot}</div>
     </section>`;
   }).join('');

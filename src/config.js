@@ -27,8 +27,13 @@ const env = process.env;
 if (event.timezone && !env.TZ) env.TZ = event.timezone;
 const DEFAULT_TARGETS = event.defaultTargets || ['es', 'en'];
 const vertex = /^(1|true)$/i.test(env.GOOGLE_GENAI_USE_VERTEXAI || '');
+const dataDir = path.resolve(ROOT, env.DATA_DIR || 'data');
+// A Gemini key typed in the dashboard (welcome wizard or Settings) is kept in data/secrets.json and wins over
+// GEMINI_API_KEY, so nobody has to edit .env. See src/aikey.js.
+const savedKey = String(readJson(path.join(dataDir, 'secrets.json'), {}).geminiApiKey || '');
+const geminiApiKey = savedKey || env.GEMINI_API_KEY || '';
 // gemini (cloud) | local (Whisper + a local text model, see docs/local.md) | mock (simulated, no AI at all)
-const engine = flag('mock') ? 'mock' : flag('local') ? 'local' : (env.ENGINE || (env.GEMINI_API_KEY || vertex ? 'gemini' : 'mock'));
+const engine = flag('mock') ? 'mock' : flag('local') ? 'local' : (env.ENGINE || (geminiApiKey || vertex ? 'gemini' : 'mock'));
 // Settings whose default depends on the engine. Recomputed when the offline backup switches engines.
 const engineDefaults = (eng) => ({
   // Give up on (and retry) a translation request after this long.
@@ -47,7 +52,9 @@ export const config = {
   // Offline backup: 'local' = when the internet goes down, switch rooms from Gemini to the local engine
   // (Whisper + Ollama on this machine) and back when it returns. `npm run local -- --fallback` sets it up.
   fallback: (env.FALLBACK || event.fallback || '').toLowerCase(),
-  geminiApiKey: env.GEMINI_API_KEY || '',
+  geminiApiKey,
+  // Where the key came from: 'dashboard' (data/secrets.json), 'env' (GEMINI_API_KEY) or '' (none).
+  keySource: savedKey ? 'dashboard' : env.GEMINI_API_KEY ? 'env' : '',
   // Enterprise: use Vertex AI in your own Google Cloud project instead of an API key.
   vertex,
   gcpProject: env.GOOGLE_CLOUD_PROJECT || '',
@@ -59,7 +66,7 @@ export const config = {
   model: env.GEMINI_MODEL || event.model || 'gemini-3.5-live-translate-preview',
   ingestToken: env.INGEST_TOKEN || '',
   adminToken: env.ADMIN_TOKEN || '',
-  dataDir: path.resolve(ROOT, env.DATA_DIR || 'data'),
+  dataDir,
   // Stop streaming audio to the model after this many seconds of silence (saves cost between talks).
   silenceGateSec: Number(env.SILENCE_GATE_SEC ?? event.silenceGateSec ?? 30),
   // Close model sessions entirely after this many seconds without speech / ingest.
@@ -106,6 +113,8 @@ export const config = {
   localLlmKeepAlive: env.LOCAL_LLM_KEEP_ALIVE || '30m',
   event: {
     name: event.eventName || 'OpenCaptions',
+    // false until someone names the event (config/event.json, npm run setup or the welcome wizard)
+    named: !!event.eventName,
     accent: event.accent || '#D4FF3A',
     languages: event.languages || { es: 'Español', en: 'English', pt: 'Português' },
     defaultTargets: DEFAULT_TARGETS,

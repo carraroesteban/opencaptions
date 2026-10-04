@@ -94,7 +94,7 @@ With someone speaking into the stage microphone, or with a handheld mic on `/dem
 
 ## During talks
 
-There's nothing to press. If you're also running OBS or vMix, press **📌 Float** on the dashboard (Chrome or Edge): every room's status and alerts stay on top of the production software, and clicking a room jumps to it.
+There's nothing to press. If you're also running OBS or vMix, open **Floating window** in the dashboard’s **Screens and QR** (Chrome or Edge): every room's status and alerts stay on top of the production software, and clicking a room jumps to it.
 
 The system:
 
@@ -104,7 +104,11 @@ The system:
 - restarts a session if there's speech but no text for 20 s;
 - falls back to Live Translate's own captions while text translation is throttled.
 
-Optionally, use **+ New talk** with the talk title. The title appears on screens and in the export file names.
+Turn on **Event mode** (bottom of the dashboard's sidebar, or **Settings**) when doors open. It locks the setup on the server: nobody can delete or change rooms, the agenda, the glossary or the event name by accident. Everything you need during talks keeps working: starting the next talk, renaming the current one, reconnecting a room and the AI switch.
+
+When a speaker runs over, the room's card turns orange and says which talk is due. Press **Start "…"** when the next speaker begins, or let the room switch by itself at the next pause. **Next talk** starts one by hand, with the title and speaker from the agenda already filled in.
+
+If something was changed by mistake, open **History** and press **Undo** on that change: deleted rooms come back exactly as they were, and the agenda and glossary return to the previous version. Transcripts are never deleted.
 
 ### Tell the audience
 

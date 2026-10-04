@@ -1,7 +1,9 @@
 // welcome.html: page script (kept out of the HTML so the Content-Security-Policy can forbid inline scripts).
-import { store, takeUrlToken, esc } from '/common.js';
+import { takeUrlToken, esc } from '/common.js';
 import { prefsControls, LANG } from '/i18n.js';
 import { icon } from '/illustrations.js';
+import { adminSignIn } from '/signin.js';
+import { keyPanel, tunnelPanel } from '/connect.js';
 const $ = (id) => document.getElementById(id);
 $('prefs-slot').append(prefsControls());
 document.documentElement.lang = LANG;
@@ -12,22 +14,30 @@ const T = {
     title: 'Welcome · OpenCaptions',
     k0: 'Welcome', welcomeH: 'Let’s get your event ready.', welcomeP: 'A few quick questions, about two minutes. Skip anything you’re not sure about: you can change all of it later from the dashboard.',
     start: 'Let’s start', skipAll: 'Skip setup, I’ll do it later', back: 'Back', next: 'Continue',
-    k1: 'Step 1 of 5 · Your event', nameH: 'What’s your event called?', namePh: 'e.g. City Design Week 2026', nameHint: 'It appears on the audience’s phones, on the projector screen and on the QR posters.', skipName: 'Skip, decide later',
-    k2: 'Step 2 of 5 · Rooms', roomsH: 'Where will people speak?', roomsP: 'One stage or many. Each room gets its own captions link and QR code.', addRoom: '+ Add a room', skipRooms: 'Skip, keep these rooms', roomPh: (i) => `Room ${i}`, remove: 'Remove room',
+    k1: 'Step 1 of 7 · Your event', nameH: 'What’s your event called?', namePh: 'e.g. City Design Week 2026', nameHint: 'It appears on the audience’s phones, on the projector screen and on the QR posters.', skipName: 'Skip, decide later',
+    k2: 'Step 2 of 7 · Rooms', roomsH: 'Where will people speak?', roomsP: 'One stage or many. Each room gets its own captions link and QR code.', addRoom: '+ Add a room', skipRooms: 'Skip, keep these rooms', roomPh: (i) => `Room ${i}`, remove: 'Remove room',
     presets: [['One room', ['Main Stage']], ['Two rooms', ['Main Stage', 'Room A']], ['Main stage + 3 rooms', ['Main Stage', 'Room A', 'Room B', 'Room C']]],
-    k3: 'Step 3 of 5 · Languages', langsH: 'Which languages?', spokenQ: 'What language will the talks be in?', auto: 'Detect automatically', captionsQ: 'Which captions can the audience choose?', langsHint: 'Not sure? Leave “Detect automatically”: OpenCaptions recognises the language as people speak, even when they switch.', notSure: 'I’m not sure, skip',
-    k4: 'Step 4 of 5 · The AI', aiH: 'How captions are made', later: 'Skip for now',
+    k3: 'Step 3 of 7 · Languages', langsH: 'Which languages?', spokenQ: 'What language will the talks be in?', auto: 'Detect automatically', captionsQ: 'Which captions can the audience choose?', langsHint: 'Not sure? Leave “Detect automatically”: OpenCaptions recognises the language as people speak, even when they switch.', notSure: 'I’m not sure, skip',
+    k4: 'Step 5 of 7 · The AI', aiLedeMock: 'Right now captions are simulated. To caption real talks, connect Google’s Gemini with an API key: it takes about two minutes.', aiLedeOn: 'Captions come from Google’s Gemini, in the cloud.',
+    kS: 'Step 6 of 7 · Phones', shareH: 'How will phones reach the captions?', sAddr: 'Address',
+    altLocal: 'Or run the AI on this computer', altLocalD: 'No account and no cost per hour, but it needs a recent computer and a one-time install from the terminal:',
+    kR: 'Step 4 of 7 · Review', reviewH: 'Check before anything changes', reviewP: 'Nothing has changed yet. Untick anything you don’t want.', apply: 'Apply changes', skipReview: 'Skip, change nothing',
+    noChanges: 'Nothing to change: your event already looks like this.',
+    lockedMsg: 'Event mode is on, so the setup is locked. Turn it off in the dashboard’s Settings to apply changes.',
+    opRename: (n) => `Rename the event to “${n}”`, opCreate: (n) => `Add the room “${n}”`, opRenameRoom: (a, b) => `Rename “${a}” to “${b}”`,
+    opDelete: (n) => `Remove “${n}”`, opDeleteNote: (k) => (k ? `It has ${k} transcript${k === 1 ? '' : 's'}: they’re kept, and the room can be restored from History.` : 'You can restore it from History.'),
+    opLangs: (n, a, b) => `Change “${n}” from ${a} to ${b}`, opCustom: 'This room has its own language setup: tick to change it too.', aiH: 'How captions are made', later: 'Skip for now',
     gemini: 'Connected to Gemini', geminiD: 'Captions and translations come from Google’s Gemini, in the cloud. About 3 seconds behind the speaker.',
     local: 'Running on this computer', localD: 'Speech recognition and translation run here. The audio never leaves the building, and it works without internet.',
     mock: 'Demo mode: captions are simulated', mockD: 'Everything works so you can explore, but the words are made up. To caption real talks, pick one of these and restart:',
     mockGemini: 'Cloud (best quality): add a Gemini API key', mockLocal: 'On this computer, no account needed:',
     backupOn: 'Offline backup is ready', backupOnD: 'If the internet goes down, captions keep running on this computer and switch back when it returns.',
     backupOff: 'Optional: an offline backup', backupOffD: 'Start the server with this command and captions keep running on this computer if the venue loses internet:',
-    k5: 'Step 5 of 5 · Sound', audioH: 'Connect the sound', audioP: 'OpenCaptions listens to each room’s audio. Pick whatever is easiest; you can try it right now.',
+    k5: 'Step 7 of 7 · Sound', audioH: 'Connect the sound', audioP: 'OpenCaptions listens to each room’s audio. Pick whatever is easiest; you can try it right now.',
     mic: 'A microphone on this computer', micD: 'Open the room’s audio page in a browser next to the stage and allow the microphone.',
     mixer: 'The sound desk or a stream', mixerD: 'Send the mixer’s output, OBS, vMix or an RTMP/SRT stream. Ask your AV team, it takes a minute.',
     test: 'Just try it first', testD: 'Talk into your microphone and watch the captions appear.',
-    k6: 'All set', doneH: 'You’re ready. 🎉', sEvent: 'Event', sRooms: 'Rooms', sLangs: 'Captions', sAI: 'AI',
+    k6: 'All set', doneH: 'You’re ready.', sEvent: 'Event', sRooms: 'Rooms', sLangs: 'Captions', sAI: 'AI',
     openDash: 'Open the dashboard', printQr: 'Print the QR codes', seeAudience: 'See what the audience sees', autoL: 'auto-detected',
     aiG: 'Gemini (cloud)', aiL: 'This computer', aiM: 'Demo mode', withBackup: ' + offline backup',
   },
@@ -35,22 +45,30 @@ const T = {
     title: 'Bienvenida · OpenCaptions',
     k0: 'Bienvenida', welcomeH: 'Preparemos tu evento.', welcomeP: 'Unas pocas preguntas, unos dos minutos. Saltá lo que no sepas: podés cambiar todo después desde el panel.',
     start: 'Empezar', skipAll: 'Saltar, lo hago después', back: 'Atrás', next: 'Continuar',
-    k1: 'Paso 1 de 5 · Tu evento', nameH: '¿Cómo se llama tu evento?', namePh: 'Ej: Semana del Diseño 2026', nameHint: 'Aparece en los celulares del público, en la pantalla del proyector y en los carteles con QR.', skipName: 'Saltar, lo decido después',
-    k2: 'Paso 2 de 5 · Salas', roomsH: '¿Dónde va a hablar la gente?', roomsP: 'Un escenario o varios. Cada sala tiene su propio link de subtítulos y su QR.', addRoom: '+ Agregar una sala', skipRooms: 'Saltar, dejar estas salas', roomPh: (i) => `Sala ${i}`, remove: 'Quitar sala',
+    k1: 'Paso 1 de 7 · Tu evento', nameH: '¿Cómo se llama tu evento?', namePh: 'Ej: Semana del Diseño 2026', nameHint: 'Aparece en los celulares del público, en la pantalla del proyector y en los carteles con QR.', skipName: 'Saltar, lo decido después',
+    k2: 'Paso 2 de 7 · Salas', roomsH: '¿Dónde va a hablar la gente?', roomsP: 'Un escenario o varios. Cada sala tiene su propio link de subtítulos y su QR.', addRoom: '+ Agregar una sala', skipRooms: 'Saltar, dejar estas salas', roomPh: (i) => `Sala ${i}`, remove: 'Quitar sala',
     presets: [['Una sala', ['Escenario principal']], ['Dos salas', ['Escenario principal', 'Sala A']], ['Principal + 3 salas', ['Escenario principal', 'Sala A', 'Sala B', 'Sala C']]],
-    k3: 'Paso 3 de 5 · Idiomas', langsH: '¿Qué idiomas?', spokenQ: '¿En qué idioma van a ser las charlas?', auto: 'Detectar automáticamente', captionsQ: '¿Qué subtítulos puede elegir el público?', langsHint: '¿No sabés? Dejá “Detectar automáticamente”: OpenCaptions reconoce el idioma mientras hablan, aunque cambien.', notSure: 'No sé, saltar',
-    k4: 'Paso 4 de 5 · La IA', aiH: 'Cómo se generan los subtítulos', later: 'Saltar por ahora',
+    k3: 'Paso 3 de 7 · Idiomas', langsH: '¿Qué idiomas?', spokenQ: '¿En qué idioma van a ser las charlas?', auto: 'Detectar automáticamente', captionsQ: '¿Qué subtítulos puede elegir el público?', langsHint: '¿No sabés? Dejá “Detectar automáticamente”: OpenCaptions reconoce el idioma mientras hablan, aunque cambien.', notSure: 'No sé, saltar',
+    k4: 'Paso 5 de 7 · La IA', aiLedeMock: 'Por ahora los subtítulos son simulados. Para subtitular charlas reales, conectá Gemini de Google con una API key: son unos dos minutos.', aiLedeOn: 'Los subtítulos vienen de Gemini de Google, en la nube.',
+    kS: 'Paso 6 de 7 · Celulares', shareH: '¿Cómo llegan los celulares a los subtítulos?', sAddr: 'Dirección',
+    altLocal: 'O usar la IA de esta computadora', altLocalD: 'Sin cuenta ni costo por hora, pero necesita una computadora reciente y una instalación desde la terminal (una sola vez):',
+    kR: 'Paso 4 de 7 · Revisión', reviewH: 'Revisá antes de cambiar nada', reviewP: 'Todavía no cambió nada. Destildá lo que no quieras.', apply: 'Aplicar cambios', skipReview: 'Saltar, no cambiar nada',
+    noChanges: 'No hay nada que cambiar: tu evento ya está así.',
+    lockedMsg: 'El modo evento está activado, así que la configuración está bloqueada. Desactivalo en Ajustes del panel para aplicar cambios.',
+    opRename: (n) => `Renombrar el evento a “${n}”`, opCreate: (n) => `Agregar la sala “${n}”`, opRenameRoom: (a, b) => `Renombrar “${a}” a “${b}”`,
+    opDelete: (n) => `Quitar “${n}”`, opDeleteNote: (k) => (k ? `Tiene ${k} ${k === 1 ? 'transcripción' : 'transcripciones'}: se conservan, y la sala se puede recuperar desde el Historial.` : 'Podés recuperarla desde el Historial.'),
+    opLangs: (n, a, b) => `Cambiar “${n}” de ${a} a ${b}`, opCustom: 'Esta sala tiene su propia configuración de idiomas: tildala para cambiarla también.', aiH: 'Cómo se generan los subtítulos', later: 'Saltar por ahora',
     gemini: 'Conectado a Gemini', geminiD: 'Los subtítulos y traducciones vienen de Gemini de Google, en la nube. Unos 3 segundos detrás de quien habla.',
     local: 'Funcionando en esta computadora', localD: 'El reconocimiento de voz y la traducción corren acá. El audio no sale del lugar y funciona sin internet.',
     mock: 'Modo demo: los subtítulos son simulados', mockD: 'Todo funciona para que lo recorras, pero las palabras son inventadas. Para subtitular charlas reales, elegí una opción y reiniciá:',
     mockGemini: 'En la nube (mejor calidad): agregá una API key de Gemini', mockLocal: 'En esta computadora, sin cuenta:',
     backupOn: 'Respaldo sin internet listo', backupOnD: 'Si se corta internet, los subtítulos siguen en esta computadora y vuelven a la nube cuando regresa.',
     backupOff: 'Opcional: un respaldo sin internet', backupOffD: 'Iniciá el servidor con este comando y los subtítulos siguen en esta computadora si el lugar se queda sin internet:',
-    k5: 'Paso 5 de 5 · Sonido', audioH: 'Conectá el sonido', audioP: 'OpenCaptions escucha el audio de cada sala. Elegí lo más fácil; podés probarlo ahora mismo.',
+    k5: 'Paso 7 de 7 · Sonido', audioH: 'Conectá el sonido', audioP: 'OpenCaptions escucha el audio de cada sala. Elegí lo más fácil; podés probarlo ahora mismo.',
     mic: 'Un micrófono en esta computadora', micD: 'Abrí la página de audio de la sala en un navegador junto al escenario y permití el micrófono.',
     mixer: 'La consola de sonido o un stream', mixerD: 'Mandá la salida de la consola, OBS, vMix o un stream RTMP/SRT. Pedíselo a técnica, es un minuto.',
     test: 'Probarlo primero', testD: 'Hablá al micrófono y mirá cómo aparecen los subtítulos.',
-    k6: 'Listo', doneH: 'Ya está todo. 🎉', sEvent: 'Evento', sRooms: 'Salas', sLangs: 'Subtítulos', sAI: 'IA',
+    k6: 'Listo', doneH: 'Ya está todo.', sEvent: 'Evento', sRooms: 'Salas', sLangs: 'Subtítulos', sAI: 'IA',
     openDash: 'Abrir el panel', printQr: 'Imprimir los QR', seeAudience: 'Ver lo que ve el público', autoL: 'detección automática',
     aiG: 'Gemini (nube)', aiL: 'Esta computadora', aiM: 'Modo demo', withBackup: ' + respaldo sin internet',
   },
@@ -65,12 +83,11 @@ let token = takeUrlToken('admin.token');
 const api = async (method, url, body) => {
   const r = await fetch(url, { method, headers: { 'content-type': 'application/json', 'x-admin-token': token || '' }, body: body ? JSON.stringify(body) : undefined });
   if (r.status === 401) {
-    const v = prompt('ADMIN_TOKEN');
-    if (v) { token = v; store.set('admin.token', v); return api(method, url, body); }
-    throw new Error('admin token required');
+    token = await adminSignIn();
+    return api(method, url, body);
   }
   const j = await r.json().catch(() => ({}));
-  if (!r.ok) throw new Error(j.error || r.statusText);
+  if (!r.ok) throw Object.assign(new Error(j.error || r.statusText), { body: j });
   return j;
 };
 const fail = (e) => { $('err').textContent = e.message || String(e); };
@@ -79,7 +96,7 @@ const langNames = S.languages || { es: 'Español', en: 'English', pt: 'Portuguê
 
 // ---------- answers ----------
 const A = {
-  name: S.name,
+  name: S.named === false ? '' : S.name, // a new install has no name yet: leave the field empty
   rooms: S.stages.map((s) => ({ id: s.id, name: s.name })),
   spoken: S.stages[0]?.source || 'auto',
   targets: [...(S.stages[0]?.targets || S.defaultTargets)],
@@ -98,6 +115,7 @@ function show(i) {
   const img = $('art'), src = `/art/${steps[cur].dataset.art}.webp`;
   if (!img.src.endsWith(src)) { img.classList.add('fade'); setTimeout(() => { img.src = src; img.onload = () => img.classList.remove('fade'); }, 150); }
   if (steps[cur].dataset.step === 'done') renderSummary();
+  if (steps[cur].dataset.step === 'review') buildPlan().catch(fail);
   steps[cur].querySelector('input, .primary')?.focus({ preventScroll: true });
   history.replaceState(null, '', `#${steps[cur].dataset.step}`);
 }
@@ -105,42 +123,76 @@ const start = steps.findIndex((s) => `#${s.dataset.step}` === location.hash);
 // Preload the illustrations so steps switch instantly.
 for (const s of steps) new Image().src = `/art/${s.dataset.art}.webp`;
 
-// Save what this step changed, then move on. Skipping moves on without saving.
+// The steps only collect answers; nothing on the server changes until the review step's "Apply changes".
 const save = {
-  async name() {
-    const name = $('name').value.trim();
-    if (name && name !== S.name) { await api('PUT', '/api/setup', { name }); S.name = name; }
-    A.name = S.name;
-  },
+  async name() { A.name = $('name').value.trim() || S.name; },
   async rooms() {
-    const want = A.rooms.filter((r) => r.name.trim());
-    if (!want.length) throw new Error(LANG === 'es' ? 'Dejá al menos una sala.' : 'Keep at least one room.');
-    const keep = new Set(want.filter((r) => r.id).map((r) => r.id));
-    for (const s of S.stages) if (!keep.has(s.id)) await api('DELETE', `/api/stages/${encodeURIComponent(s.id)}`);
-    const taken = new Set([...keep]);
-    for (const r of want) {
-      if (r.id) {
-        const old = S.stages.find((s) => s.id === r.id);
-        if (old && old.name !== r.name.trim()) await api('PATCH', `/api/stages/${encodeURIComponent(r.id)}`, { name: r.name.trim() });
-      } else {
-        let id = slug(r.name) || 'room', n = 2;
-        while (taken.has(id)) id = `${slug(r.name) || 'room'}-${n++}`;
-        taken.add(id);
-        await api('POST', '/api/stages', { id, name: r.name.trim(), source: A.spoken, targets: A.targets });
-        r.id = id;
-      }
-    }
-    S = await api('GET', '/api/setup');
-    A.rooms = S.stages.map((s) => ({ id: s.id, name: s.name }));
+    if (!A.rooms.some((r) => r.name.trim())) throw new Error(LANG === 'es' ? 'Dejá al menos una sala.' : 'Keep at least one room.');
   },
   async langs() {
     if (!A.targets.length) throw new Error(LANG === 'es' ? 'Elegí al menos un idioma de subtítulos.' : 'Pick at least one caption language.');
-    for (const s of S.stages) {
-      if (s.source === A.spoken && s.targets.join() === A.targets.join()) continue;
-      await api('PATCH', `/api/stages/${encodeURIComponent(s.id)}`, { source: A.spoken, targets: A.targets });
-    }
-    S = await api('GET', '/api/setup');
   },
+};
+
+// ---------- review: every change listed, each one can be unticked ----------
+const cfgKey = (src, tg) => `${src}|${[...tg].sort().join(',')}`;
+const langText = (src, tg) => `${src === 'auto' ? t.auto : langNames[src] || src} → ${tg.map((k) => langNames[k] || k).join(', ')}`;
+let ops = [];
+async function buildPlan() {
+  S = await api('GET', '/api/setup');
+  ops = [];
+  if (A.name && A.name !== S.name) ops.push({ type: 'rename', label: t.opRename(A.name), on: true });
+  const want = A.rooms.filter((r) => r.name.trim());
+  const keep = new Set(want.filter((r) => r.id).map((r) => r.id));
+  for (const r of want) {
+    const old = r.id && S.stages.find((x) => x.id === r.id);
+    if (!old) ops.push({ type: 'create', name: r.name.trim(), label: t.opCreate(r.name.trim()), on: true });
+    else if (old.name !== r.name.trim()) ops.push({ type: 'renameRoom', id: old.id, name: r.name.trim(), label: t.opRenameRoom(old.name, r.name.trim()), on: true });
+  }
+  // Languages: rooms set up like most of the others follow the new answer; a room with its own setup
+  // (say, the only one with Portuguese) is listed unticked so it isn't overwritten by accident.
+  const counts = {};
+  for (const x of S.stages) counts[cfgKey(x.source, x.targets)] = (counts[cfgKey(x.source, x.targets)] || 0) + 1;
+  const common = Object.entries(counts).sort((a, b) => b[1] - a[1])[0]?.[0];
+  for (const x of S.stages.filter((x) => keep.has(x.id))) {
+    if (cfgKey(x.source, x.targets) === cfgKey(A.spoken, A.targets)) continue;
+    const custom = cfgKey(x.source, x.targets) !== common && S.stages.length > 1;
+    ops.push({ type: 'langs', id: x.id, label: t.opLangs(x.name, langText(x.source, x.targets), langText(A.spoken, A.targets)), note: custom ? t.opCustom : '', on: !custom });
+  }
+  for (const x of S.stages.filter((x) => !keep.has(x.id))) {
+    let talks = 0;
+    try { talks = (await api('GET', `/api/stages/${encodeURIComponent(x.id)}/talks`)).filter((k) => k.segments > 0).length; } catch { /* unknown: be careful */ talks = 1; }
+    ops.push({ type: 'delete', id: x.id, label: t.opDelete(x.name), note: t.opDeleteNote(talks), on: talks === 0, danger: true });
+  }
+  $('locknote').classList.toggle('hidden', !S.locked);
+  $('apply').disabled = !!S.locked || !ops.length;
+  $('ops').innerHTML = ops.length
+    ? ops.map((o, i) => `<label class="op${o.danger ? ' danger' : ''}"><input type="checkbox" data-op="${i}" ${o.on ? 'checked' : ''} ${S.locked ? 'disabled' : ''} /><span>${esc(o.label)}${o.note ? `<small>${esc(o.note)}</small>` : ''}</span></label>`).join('')
+    : `<p class="hint">${esc(t.noChanges)}</p>`;
+}
+$('ops').addEventListener('change', (e) => { const i = e.target.dataset.op; if (i != null) ops[+i].on = e.target.checked; });
+async function applyPlan() {
+  const todo = ops.filter((o) => o.on);
+  const taken = new Set(S.stages.map((x) => x.id));
+  // Additions and renames first, removals last: a failure part-way never leaves the event with fewer rooms.
+  if (todo.some((o) => o.type === 'rename')) await api('PUT', '/api/setup', { name: A.name });
+  for (const o of todo.filter((o) => o.type === 'create')) {
+    let id = slug(o.name) || 'room', n = 2;
+    while (taken.has(id)) id = `${slug(o.name) || 'room'}-${n++}`;
+    taken.add(id);
+    await api('POST', '/api/stages', { id, name: o.name, source: A.spoken, targets: A.targets });
+  }
+  for (const o of todo.filter((o) => o.type === 'renameRoom')) await api('PATCH', `/api/stages/${encodeURIComponent(o.id)}`, { name: o.name });
+  for (const o of todo.filter((o) => o.type === 'langs')) await api('PATCH', `/api/stages/${encodeURIComponent(o.id)}`, { source: A.spoken, targets: A.targets });
+  for (const o of todo.filter((o) => o.type === 'delete')) await api('DELETE', `/api/stages/${encodeURIComponent(o.id)}`);
+  S = await api('GET', '/api/setup');
+  A.name = S.name;
+  A.rooms = S.stages.map((x) => ({ id: x.id, name: x.name }));
+  renderRooms();
+}
+$('apply').onclick = async () => {
+  $('apply').disabled = true;
+  try { await applyPlan(); show(cur + 1); } catch (err) { fail(err); } finally { $('apply').disabled = false; }
 };
 const slug = (s) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40);
 
@@ -198,22 +250,35 @@ renderLangs();
 // ---------- AI ----------
 const opt = (ic, title, desc, extra = '', cls = '') => `<div class="opt ${cls}"><div class="ic">${icon(ic)}</div><div><b>${title}</b><span>${desc}</span>${extra}</div></div>`;
 const cmd = (c) => `<pre class="cmd"><code>${esc(c)}</code></pre>`;
+const keyP = keyPanel($('ai-key'), { api, onChange: (s) => { S = { ...S, ...s, primaryEngine: s.engine === 'gemini' && S.primaryEngine === 'mock' ? 'gemini' : S.primaryEngine }; renderAi(); } });
 function renderAi() {
   const f = S.failover;
   let html = '';
+  $('ai-lede').textContent = S.primaryEngine === 'mock' ? t.aiLedeMock : S.primaryEngine === 'gemini' ? t.aiLedeOn : '';
+  $('ai-key').classList.toggle('hidden', S.primaryEngine === 'local');
+  keyP.update(S);
   if (S.primaryEngine === 'gemini') {
-    html += opt('check', t.gemini, t.geminiD, '', 'good');
     html += f?.mode === 'auto' && f.localReady
       ? opt('shield', t.backupOn, t.backupOnD, '', 'good')
       : opt('shield', t.backupOff, t.backupOffD, cmd('npm run local -- --fallback'));
   } else if (S.primaryEngine === 'local') {
     html += opt('shield', t.local, t.localD, '', 'good');
   } else {
-    html += opt('spark', t.mock, t.mockD, `<p style="margin:12px 0 0;font-size:14px">${t.mockGemini}</p>${cmd('npm run setup')}<p style="margin:12px 0 0;font-size:14px">${t.mockLocal}</p>${cmd('npm run local')}`);
+    html += opt('shield', t.altLocal, t.altLocalD, cmd('npm run local'));
   }
   $('ai').innerHTML = html;
 }
 renderAi();
+
+// ---------- public address ----------
+const shareP = tunnelPanel($('share'), { api, onChange: (s) => { S = { ...S, tunnel: s.tunnel }; } });
+shareP.update(S);
+// While the address is being set up, follow it (it takes a minute or two).
+setInterval(async () => {
+  const st = S.tunnel?.state;
+  if (steps[cur].dataset.step !== 'share' || !st || (st === 'off' || st === 'error' || (st === 'on' && S.tunnel.reachable !== null))) return;
+  try { S = await api('GET', '/api/setup'); shareP.update(S); } catch { /* next time */ }
+}, 2000);
 
 // ---------- audio ----------
 $('audio').innerHTML = [
@@ -233,6 +298,7 @@ function renderSummary() {
     [t.sRooms, S.stages.map((s) => s.name).join(', ')],
     [t.sLangs, `${langs}${st?.source === 'auto' ? ` · ${t.autoL}` : ''}`],
     [t.sAI, ai],
+    [t.sAddr, S.tunnel?.state === 'on' && S.tunnel.url ? S.tunnel.url : S.publicUrl],
   ].map(([k, v]) => `<div><b>${esc(k)}</b><span>${esc(v)}</span></div>`).join('');
 }
 

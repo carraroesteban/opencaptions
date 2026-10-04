@@ -2,6 +2,7 @@
 import { qs, t, esc, wsUrl, Socket, CaptionState, getEvent, langLabel, applyCaptionStyle, previewStream, toColor, wakeLock, liveText } from '/common.js';
 wakeLock(); // projector PCs must not blank mid-talk
 const $ = (id) => document.getElementById(id);
+document.title = `${t('screenTitle')} · ${t('liveCaptions')}`;
 const stageId = qs.get('stage') || 'main';
 const ev = await getEvent();
 const want = (qs.get('langs') || 'es,orig').split(',');

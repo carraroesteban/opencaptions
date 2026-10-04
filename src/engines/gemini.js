@@ -4,11 +4,11 @@
 // so no speech is lost.
 import { EventEmitter } from 'node:events';
 import { Modality } from '@google/genai';
-import { createClient } from '../genai.js';
+import { getClient } from '../genai.js';
 import { config } from '../config.js';
 
 let ai = null;
-const client = () => (ai ??= createClient());
+const client = () => ai ?? getClient(); // tests can inject their own (_setClient)
 /** Test hook: inject a fake client. */
 export const _setClient = (c) => { ai = c; };
 

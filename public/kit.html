@@ -36,6 +36,9 @@
     .poster .extra .tr { color: var(--graphite); }
     .poster .foot { margin-top: auto; font-size: 10pt; color: #6A6870; display: flex; gap: 2mm; align-items: center; }
     .poster .foot img { width: 7mm; height: auto; border: 0; padding: 0; border-radius: 0; image-rendering: auto; }
+    /* Small screens: show the A4 posters scaled down (printing still uses the real size). */
+    @media screen and (max-width: 860px) { .poster { zoom: .5; } }
+    @media screen and (max-width: 520px) { .poster { zoom: .42; } }
     @media print {
       @page { size: A4; margin: 0; }
       body { background: #fff; }

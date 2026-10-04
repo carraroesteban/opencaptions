@@ -12,3 +12,6 @@ samples/*.webm
 
 # Landing page build output (npm run site)
 /_site/
+
+# The event agenda saved from the dashboard (runtime data, like data/)
+config/schedule.json

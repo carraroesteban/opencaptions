@@ -47,5 +47,6 @@ services:
     restart: unless-stopped
     command: tunnel --no-autoupdate run
     environment:
-      TUNNEL_TOKEN: "${TUNNEL_TOKEN:?set TUNNEL_TOKEN in .env to use the tunnel profile}"
+      # Set TUNNEL_TOKEN in .env. (Not `${…:?}`: Compose checks that even when the tunnel profile is off.)
+      TUNNEL_TOKEN: "${TUNNEL_TOKEN:-}"
     depends_on: [opencaptions]

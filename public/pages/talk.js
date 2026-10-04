@@ -1,10 +1,16 @@
 // talk.html: page script (kept out of the HTML so the Content-Security-Policy can forbid inline scripts).
-import { qs, t, esc, store, wsUrl, Socket, langLabel, getEvent, applyReadingPrefs, setReadingPref, setTheme, fmtClock, liveHtml } from '/common.js';
+import { qs, t, UI, esc, store, wsUrl, Socket, langLabel, getEvent, applyReadingPrefs, setReadingPref, setTheme, fmtClock, liveHtml } from '/common.js';
 import { mountAssistant } from '/assist-ui.js';
+import { icon, mountIcons } from '/illustrations.js';
+import { prefsControls } from '/i18n.js';
 const $ = (id) => document.getElementById(id);
 const stageId = qs.get('stage');
 if (!stageId) location.href = '/talks.html';
 const talkParam = qs.get('talk');
+// Icons, the page-language switch and translated labels for the icon-only buttons.
+mountIcons();
+$('prefs-slot').append(prefsControls({ langs: ['es', 'en', 'pt'] }));
+$('set-close').setAttribute('aria-label', t('close'));
 const ev = await getEvent();
 let prefs = applyReadingPrefs();
 let size = store.get('docSize', 19);
@@ -22,7 +28,7 @@ document.title = `${title} · ${info.stageName} · ${ev.name}`;
 $('title').textContent = title;
 $('back').textContent = `‹ ${t('allTalks')}`;
 const started = new Date(info.startedAt);
-$('meta').innerHTML = `${info.speaker ? `<b>${esc(info.speaker)}</b> · ` : ''}<span>${esc(info.stageName)}</span> · <span>${started.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' })} ${started.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}</span> · <span>${Math.max(1, Math.round(info.durationMs / 60000))} min</span>${info.current ? ` · <span class="chip bad"><span class="dot live"></span> ${esc(t('liveNow'))}</span>` : ''}`;
+$('meta').innerHTML = `${info.speaker ? `<b>${esc(info.speaker)}</b> · ` : ''}<span>${esc(info.stageName)}</span> · <span>${started.toLocaleDateString(UI, { weekday: 'short', day: 'numeric', month: 'short' })} ${started.toLocaleTimeString(UI, { hour: '2-digit', minute: '2-digit' })}</span> · <span>${Math.max(1, Math.round(info.durationMs / 60000))} min</span>${info.current ? ` · <span class="chip bad"><span class="dot live"></span> ${esc(t('liveNow'))}</span>` : ''}`;
 
 // languages present in this transcript
 const chans = [...new Set(all.map((s) => s.channel))];
@@ -81,7 +87,7 @@ function render() {
   if (following) scrollEnd();
 }
 let qTimer;
-$('q').placeholder = '🔎 ' + t('search');
+$('q').placeholder = t('search');
 $('q').oninput = () => { clearTimeout(qTimer); qTimer = setTimeout(() => { query = $('q').value.trim(); following = false; render(); document.querySelector('mark')?.scrollIntoView({ block: 'center' }); }, 180); };
 $('q').onkeydown = (e) => {
   if (e.key !== 'Enter') return;
@@ -99,8 +105,8 @@ const scrollEnd = () => requestAnimationFrame(() => window.scrollTo({ top: docum
 if (info.current) {
   $('live').classList.remove('hidden');
   $('live').href = `/watch.html?stage=${encodeURIComponent(stageId)}&lang=${encodeURIComponent(lang)}`;
-  $('live').querySelector('span').textContent = t('seeLive');
-  $('follow').textContent = '↓ ' + t('followLive');
+  $('live').querySelector('.live-lbl').textContent = t('seeLive');
+  $('follow').innerHTML = `${icon('arrowdown')} ${esc(t('followLive'))}`;
   $('follow').onclick = () => { following = true; $('follow').classList.add('hidden'); scrollEnd(); };
   window.addEventListener('scroll', () => {
     const atEnd = window.innerHeight + window.scrollY >= document.body.scrollHeight - 80;
@@ -122,7 +128,7 @@ if (info.current) {
 }
 
 // ---- summary + ask ----
-$('sum-title').textContent = '✨ ' + (info.current ? t('catchUp') : t('summary'));
+$('sum-title').innerHTML = `${icon('sparkle')} ${esc(info.current ? t('catchUp') : t('summary'))}`;
 const assistant = mountAssistant($('assistant'), {
   stage: stageId, talk: talkId,
   lang: () => (lang !== 'orig' ? lang : (UIlang())),
@@ -146,6 +152,7 @@ assistant.load();
 $('copy').querySelector('span').textContent = t('copyLink');
 $('copy').title = t('copyLink');
 $('dl-lbl').textContent = t('download');
+for (const [f, k] of [['txt', 'fmtText'], ['srt', 'fmtSubs'], ['vtt', 'fmtWeb']]) $(`dl-${f}`).textContent = `${f.toUpperCase()} · ${t(k)}`;
 $('copy').onclick = async () => {
   const u = new URL(location.href); u.searchParams.set('talk', talkId);
   try { await navigator.clipboard.writeText(u.toString()); $('copy').querySelector('span').textContent = t('copied'); setTimeout(() => ($('copy').querySelector('span').textContent = t('copyLink')), 1800); } catch { prompt('', u.toString()); }

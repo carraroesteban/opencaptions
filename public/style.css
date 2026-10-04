@@ -128,3 +128,35 @@ mark { background: var(--hl); color: var(--hl-ink); border-radius: 3px; padding:
 }
 svg.i { width: 16px; height: 16px; flex: none; vertical-align: -3px; }
 button:has(> svg.i), .btn-i { display: inline-flex; align-items: center; gap: 7px; }
+
+/* search fields with a magnifier (the icon is a CSS mask, so it follows the text colour) */
+.has-icon { position: relative; display: block; }
+.has-icon::before { content: ''; position: absolute; left: 15px; top: 50%; width: 18px; height: 18px; translate: 0 -50%; pointer-events: none; z-index: 1; background: var(--fg2);
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round'%3E%3Ccircle cx='11' cy='11' r='6.5'/%3E%3Cpath d='M16 16l4.5 4.5'/%3E%3C/svg%3E") center / contain no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round'%3E%3Ccircle cx='11' cy='11' r='6.5'/%3E%3Cpath d='M16 16l4.5 4.5'/%3E%3C/svg%3E") center / contain no-repeat; }
+.has-icon > input { padding-left: 42px; width: 100%; box-sizing: border-box; }
+
+/* ---- connect panels (public/connect.js): API key and public address, in the wizard and Settings ---- */
+.connect { display: grid; gap: 12px; font-size: 15px; }
+.connect p { margin: 0; }
+.connect .cx-status { display: flex; gap: 10px; align-items: flex-start; font-weight: 600; }
+.connect .cx-status svg { width: 20px; height: 20px; flex: none; margin-top: 1px; }
+.connect .cx-status.ok svg { color: var(--ok); }
+.connect .cx-status.warn svg { color: var(--warn); }
+.connect .cx-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.connect .cx-row input { flex: 1 1 220px; min-width: 0; font-size: 15px; }
+.connect .cx-row button svg { width: 17px; height: 17px; margin-right: 6px; vertical-align: -3px; }
+.connect .cx-steps { margin: 0; padding-left: 20px; display: grid; gap: 10px; }
+.connect .cx-steps .cx-row { margin-top: 8px; }
+.connect .cx-fine { font-size: 13px; color: var(--fg2); }
+.connect .cx-msg { font-size: 14px; padding: 10px 12px; border-radius: 12px; background: var(--bg3); }
+.connect .cx-msg.ok { color: var(--ok); background: color-mix(in srgb, var(--ok) 10%, var(--bg2)); }
+.connect .cx-msg.warn { color: var(--warn); background: color-mix(in srgb, var(--warn) 10%, var(--bg2)); }
+.connect .cx-msg.bad { color: var(--bad); background: color-mix(in srgb, var(--bad) 9%, var(--bg2)); }
+.connect .cx-link { background: none; border: 0; box-shadow: none; padding: 4px 2px; color: var(--fg2); text-decoration: underline; text-underline-offset: 3px; }
+.connect .cx-link:hover { background: none; color: var(--fg); }
+.connect .cx-url { font-size: 17px; font-weight: 700; overflow-wrap: anywhere; padding: 12px 14px; border-radius: 12px; border: 1px solid var(--line); background: var(--bg2); }
+.connect .cx-url a { color: inherit; }
+.connect .cx-own summary { cursor: pointer; font-size: 14px; color: var(--fg2); }
+.connect .cx-own[open] summary { margin-bottom: 10px; }
+.connect .cx-grid { display: grid; gap: 10px; }

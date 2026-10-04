@@ -1,8 +1,11 @@
 // ingest.html: page script (kept out of the HTML so the Content-Security-Policy can forbid inline scripts).
 import { qs, esc, store, wsUrl, Socket, getEvent, langLabel, takeUrlToken } from '/common.js';
 import { localize, prefsControls, tr } from '/i18n.js';
+import { icon } from '/illustrations.js';
+const goLabel = (on) => { $('go').innerHTML = on ? `${icon('stop')} <span>Detener</span>` : `${icon('play')} <span>Empezar a transcribir</span>`; };
 document.getElementById('conn').before(prefsControls());
 const $ = (id) => document.getElementById(id);
+goLabel(false);
 const ev = await getEvent();
 $('stage').innerHTML = ev.stages.map((s) => `<option value="${s.id}">${esc(s.name)} (${s.id})</option>`).join('');
 $('stage').value = qs.get('stage') || store.get('ingest.stage', ev.stages[0]?.id);
@@ -96,7 +99,7 @@ async function start() {
     if (ctx.state !== 'running') { try { await ctx.resume(); } catch { /* needs a click */ } }
     if (ctx.state !== 'running') { alertBox(tr('El navegador bloqueó el audio: hacé clic en la página (o usá el agente nativo).')); document.addEventListener('click', () => ctx?.resume(), { once: true }); }
     running = true;
-    $('go').textContent = '■ Detener';
+    goLabel(true);
     $('go').classList.remove('primary');
     $('go').classList.add('danger');
   } catch (e) {
@@ -115,7 +118,7 @@ function stop() {
   ctx?.close(); ctx = null; node = null;
   pending.length = 0;
   setConn('desconectado', '');
-  $('go').textContent = '▶ Empezar a transcribir';
+  goLabel(false);
   $('go').classList.add('primary');
   $('go').classList.remove('danger');
   $('lvl').style.width = '0';
@@ -155,10 +158,10 @@ function alertBox(msg) { const d = document.createElement('div'); d.className = 
 function links() {
   const s = $('stage').value;
   $('links').innerHTML = `
-    <a href="/screen.html?stage=${s}" target="_blank">🖥️ Abrir pantalla para proyector</a>
-    <a href="/overlay.html?stage=${s}&lang=es" target="_blank">🎬 Overlay para vMix/OBS</a>
-    <a href="/s/${s}" target="_blank">📱 Vista del público</a>
-    <a href="/admin.html" target="_blank">📊 Panel de producción</a>`;
+    <a href="/screen.html?stage=${s}" target="_blank">${icon('monitor')} <span>Abrir pantalla para proyector</span></a>
+    <a href="/overlay.html?stage=${s}&lang=es" target="_blank">${icon('film')} <span>Overlay para vMix/OBS</span></a>
+    <a href="/s/${s}" target="_blank">${icon('phone')} <span>Vista del público</span></a>
+    <a href="/admin.html" target="_blank">${icon('dashboard')} <span>Panel de producción</span></a>`;
 }
 if ($('auto').checked || qs.get('autostart') === '1') start();
 localize();

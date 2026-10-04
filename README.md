@@ -80,7 +80,8 @@ Conferences and summits · universities and schools · places of worship · town
 **For organizers**
 
 - **Guided setup:** the first time you open the dashboard, a short illustrated wizard asks for the event name, rooms and languages. Skip anything you're not sure about.
-- **Production dashboard** with every room's status, audio level, delay, audience, cost and alerts, plus a floating mini-dashboard.
+- **Production dashboard** with every room's status, audio level, delay, audience, cost and alerts, plus a floating mini-dashboard. It warns when a talk runs over and starts the next one in one click.
+- **Safe on event day:** Event mode locks the setup while you're live, every change can be undone from History, and deleted rooms come back from the trash.
 - **Agenda import** from Swapcard, Sessionize or any spreadsheet: titles and speaker names appear automatically.
 - **Printable QR posters** for every room, in one click.
 - **Glossary** so names, brands and specialist terms are spelled right.
@@ -176,9 +177,13 @@ To keep it running across reboots, use the service files in [`deploy/`](deploy/)
 ```bash
 git clone https://github.com/carraroesteban/opencaptions.git
 cd opencaptions
-cp .env.example .env     # add your GEMINI_API_KEY
-docker compose up -d     # http://localhost:8080
+cp .env.example .env     # paste your GEMINI_API_KEY in it (without one, captions are simulated)
+mkdir -p data            # where transcripts and settings are kept
+docker compose up -d --build
+docker compose logs opencaptions | grep "Open the dashboard"
 ```
+
+The last command prints a link that opens the dashboard already signed in. In Docker, even your own browser counts as another device, so the dashboard asks for that password otherwise.
 
 Add `--profile tunnel` and a `TUNNEL_TOKEN` for public HTTPS through Cloudflare. The image runs as a non-root user on a read-only filesystem.
 

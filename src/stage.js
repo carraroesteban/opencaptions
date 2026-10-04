@@ -458,7 +458,7 @@ export class Stage extends EventEmitter {
 
   // ---------- agenda (src/schedule.js) ----------
   #slotKey(e) { return e ? `${e.start}|${e.title}` : null; }
-  #markScheduleHandled() { this.scheduleKey = this.#slotKey(this.schedule?.slot(this.id).current); }
+  #markScheduleHandled() { this.scheduleKey = this.#slotKey(this.schedule?.slot(this.id).current); this.dueTalk = null; }
 
   /**
    * Name talks from the agenda. The first words of a slot get its title; when a new slot starts while the
@@ -469,6 +469,9 @@ export class Stage extends EventEmitter {
     const { current, next } = this.schedule.slot(this.id, now);
     this.nextTalk = next ? { title: next.title, speaker: next.speaker, start: next.start } : null;
     const key = this.#slotKey(current);
+    // The agenda says a new talk has started but the room hasn't switched yet (the speaker is running over):
+    // the dashboard shows it and offers to start it with one click.
+    this.dueTalk = current && key !== this.scheduleKey && this.talkSegments > 0 && this.talk.title ? { title: current.title, speaker: current.speaker, start: current.start } : null;
     if (!current || key === this.scheduleKey) return;
     if (this.talkSegments === 0 || !this.talk.title) {
       // Nothing said yet, or an unnamed talk in progress: just name it.
@@ -560,6 +563,7 @@ export class Stage extends EventEmitter {
       loop: !!this.def.loop,
       talk: this.talk,
       nextTalk: this.nextTalk || null,
+      dueTalk: this.dueTalk || null,
       ingest: this.ingest ? { kind: this.ingest.kind, label: this.ingest.label, since: this.ingest.since } : null,
       level: this.level,
       peak: this.peak,

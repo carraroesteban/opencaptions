@@ -1,0 +1,40 @@
+{
+  "_doc": "Example glossary — replace it with your event's names and terms. vocabulary: biases speech recognition (sent to the AI as custom vocabulary). replacements: deterministic fixes applied to every caption (case-insensitive, whole words). Use 'lang' to restrict a rule to one channel ('orig', 'es', 'en', ...).",
+  "vocabulary": [
+    "Horizon Summit",
+    "OpenCaptions",
+    "keynote",
+    "Q&A",
+    "breakout session",
+    "María José Fernández",
+    "Ngozi Okafor",
+    "Hiroshi Tanaka",
+    "UNESCO",
+    "net zero",
+    "photovoltaic",
+    "telehealth"
+  ],
+  "replacements": [
+    {
+      "from": "horizons summit|horizon sumit|orizon summit",
+      "to": "Horizon Summit"
+    },
+    {
+      "from": "open captions|open caption",
+      "to": "OpenCaptions"
+    },
+    {
+      "from": "q and a|q n a|q & a",
+      "to": "Q&A"
+    },
+    {
+      "from": "net cero|net 0",
+      "to": "net zero"
+    },
+    {
+      "from": "tele salud|tele-salud",
+      "to": "telesalud",
+      "lang": "es"
+    }
+  ]
+}

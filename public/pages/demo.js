@@ -2,6 +2,8 @@
 // demo.html: page script (kept out of the HTML so the Content-Security-Policy can forbid inline scripts).
 import { qs, esc, store, wsUrl, Socket, CaptionState, getEvent, langLabel, liveText, liveHtml } from '/common.js';
 import { localize, prefsControls, tr } from '/i18n.js';
+import { mountIcons } from '/illustrations.js';
+mountIcons();
 document.querySelector('header').append(prefsControls());
 localize();
 const $ = (id) => document.getElementById(id);
@@ -153,7 +155,7 @@ async function micStart() {
     };
     mic = { ctx, stream, sock };
     $('micidle').classList.add('hidden');
-    setState('en vivo 🎙', 'bad');
+    setState('en vivo', 'bad');
   } catch (e) {
     alert(tr('No se pudo abrir el micrófono: ') + e.message);
   }

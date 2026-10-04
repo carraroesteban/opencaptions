@@ -3,18 +3,24 @@ import http from 'node:http';
 import https from 'node:https';
 import fs from 'node:fs';
 import path from 'node:path';
+import os from 'node:os';
+import { spawn } from 'node:child_process';
 import express from 'express';
 import { WebSocketServer } from 'ws';
 import QRCode from 'qrcode';
 import { config, normalizeStage, ROOT, langName, setEngine } from './config.js';
 import { Failover } from './failover.js';
+import { checkKey, saveKey, keyInfo, looksLikeKey, readSecret, saveSecret } from './aikey.js';
+import { Tunnel, tunnelOrigin } from './tunnel.js';
+import { resetClient } from './genai.js';
 import { Glossary } from './glossary.js';
 import { Stage } from './stage.js';
 import { Store, toSRT, toVTT, toTXT } from './store.js';
 import { PullSource } from './pull.js';
 import { systemStats } from './system.js';
 import { summarize, ask, audienceAiEnabled, assistStats } from './assist.js';
-import { Schedule } from './schedule.js';
+import { Schedule, parseSchedule } from './schedule.js';
+import { History } from './history.js';
 import { asrInfo, asrReachable } from './local/asr.js';
 import { llmInfo, llmHealth, chat as localChat } from './local/llm.js';
 import { authMode, tokens, canAdmin, canIngest, noteAuthFailure, securityHeaders, apiRateLimit, originAllowed, wsAllowed, checkPullUrl, clientIp } from './security.js';
@@ -89,11 +95,16 @@ for (const def of initial) addStage(def);
 // First-run setup (the dashboard's welcome wizard): what the organizer chose is kept in data/setup.json.
 const SETUP_FILE = path.join(config.dataDir, 'setup.json');
 const setup = (() => { try { return JSON.parse(fs.readFileSync(SETUP_FILE, 'utf8')); } catch { return { done: false }; } })();
-if (setup.name) config.event.name = setup.name;
+if (setup.name) Object.assign(config.event, { name: setup.name, named: true });
 function saveSetup(patch) {
   Object.assign(setup, patch, { updatedAt: new Date().toISOString() });
   fs.writeFileSync(SETUP_FILE, JSON.stringify(setup, null, 2));
 }
+
+// Every setup change is recorded with what it replaced, so it can be undone (src/history.js).
+const history = new History(path.join(config.dataDir, 'history.jsonl'));
+const clone = (v) => (v == null ? v : JSON.parse(JSON.stringify(v)));
+const recordChange = (c) => { const e = history.record(c); broadcastAdmin({ type: 'history', change: { ...e, before: undefined, after: undefined } }); return e; };
 
 // ---------------- http ----------------
 const app = express();
@@ -114,7 +125,24 @@ const getStage = (req, res, next) => {
   req.stage = stages.get(req.params.id);
   return req.stage ? next() : res.status(404).json({ error: 'unknown stage' });
 };
-const publicUrl = (req) => config.publicUrl || `${req.protocol}://${req.get('host')}`;
+// This computer's address on the venue network (not in Docker, where it would be the container's own).
+const lanUrl = () => {
+  if (process.env.OC_DOCKER || !['0.0.0.0', '::'].includes(config.host)) return '';
+  const ip = Object.values(os.networkInterfaces()).flat().find((i) => i && i.family === 'IPv4' && !i.internal)?.address;
+  return ip ? `${tls ? 'https' : 'http'}://${ip}:${config.port}` : '';
+};
+// The address QR codes and shared links use: PUBLIC_URL / the public tunnel, else the address the page was opened
+// with, except "localhost", which no phone can open: then this computer's address on the Wi-Fi.
+const publicUrl = (req) => {
+  if (config.publicUrl) return config.publicUrl;
+  const host = req.get('host') || '';
+  if (/^(localhost|127\.0\.0\.1|\[::1\])(:\d+)?$/i.test(host)) { const lan = lanUrl(); if (lan) return lan; }
+  return `${req.protocol}://${host}`;
+};
+// Event mode: while the event is live, the setup (rooms, agenda, glossary, event name, undo) is locked on the
+// server, whatever the page sends. Live operations (next talk, restart a room, the AI switch) keep working.
+const LOCKED = { error: 'Event mode is on: the setup is locked. Turn it off in Settings to change it.', locked: true };
+const unlocked = (req, res, next) => (setup.locked ? res.status(423).json(LOCKED) : next());
 
 app.get('/healthz', (req, res) => {
   const sys = systemStats();
@@ -147,12 +175,13 @@ app.get('/api/event', (req, res) => {
 
 app.get('/api/status', admin, (req, res) => res.json(snapshot()));
 
-app.post('/api/stages', admin, async (req, res) => {
+app.post('/api/stages', admin, unlocked, async (req, res) => {
   try {
     if (req.body?.pull) await checkPullUrl(req.body.pull);
     const st = addStage(req.body || {});
     persistStages();
-    res.json(st.status());
+    const change = recordChange({ kind: 'room.create', target: st.id, summary: `Room "${st.def.name}" created`, after: clone(st.def) });
+    res.json({ ...st.status(), change: change.id });
   } catch (e) { res.status(400).json({ error: e.message }); }
 });
 
@@ -165,6 +194,8 @@ app.patch('/api/stages/:id', admin, getStage, async (req, res) => {
     if (b.pull) await checkPullUrl(b.pull);
   } catch (e) { return res.status(400).json({ error: e.message }); }
   const old = st.def;
+  const setupKeys = Object.keys(b).filter((k) => k !== 'title');
+  if (setup.locked && setupKeys.length) return res.status(423).json(LOCKED);
   // Only a real change touches the room: saving the dialog must not restart audio or clear viewers' screens.
   if ('title' in b && (b.title || '') !== (st.talk.title || '')) st.setTitle(b.title || '');
   const langsChanged = def.source !== old.source || def.targets.join() !== old.targets.join() || def.translation !== old.translation;
@@ -175,13 +206,19 @@ app.patch('/api/stages/:id', admin, getStage, async (req, res) => {
     if (def.pull) startPull(st, def.pull, def.loop); else stopPull(st.id);
   }
   persistStages();
-  res.json(st.status());
+  const change = setupKeys.length && JSON.stringify(old) !== JSON.stringify(st.def) ? recordChange({ kind: 'room.update', target: st.id, summary: `Room "${st.def.name}" changed`, before: clone(old), after: clone(st.def) }) : null;
+  res.json({ ...st.status(), change: change?.id ?? null });
 });
 
-app.delete('/api/stages/:id', admin, getStage, (req, res) => {
-  removeStage(req.params.id);
+/** Delete a room: its setup goes to the trash (history), its transcripts stay on disk. */
+function deleteRoom(st, extra = {}) {
+  const def = clone(st.def);
+  removeStage(st.id);
   persistStages();
-  res.json({ ok: true });
+  return recordChange({ kind: 'room.delete', target: def.id, summary: `Room "${def.name}" deleted`, before: def, ...extra });
+}
+app.delete('/api/stages/:id', admin, unlocked, getStage, (req, res) => {
+  res.json({ ok: true, change: deleteRoom(req.stage).id });
 });
 
 app.post('/api/stages/:id/talk', admin, getStage, (req, res) => {
@@ -321,13 +358,21 @@ app.post('/api/stages/:id/ask', getStage, async (req, res) => {
 app.get('/api/setup', admin, (req, res) => {
   res.json({
     done: !!setup.done,
+    locked: !!setup.locked,
     name: config.event.name,
+    named: config.event.named,
     languages: config.event.languages,
     defaultTargets: config.event.defaultTargets,
     stages: [...stages.values()].map((s) => ({ id: s.id, name: s.def.name, source: s.def.source, targets: s.def.targets })),
     engine: config.engine,
     primaryEngine: config.primaryEngine,
     failover: failover?.status() || null,
+    ai: keyInfo(),
+    tunnel: tunnel.status(),
+    tunnelTokenSaved: !!readSecret('tunnelToken'),
+    publicUrlSource: configuredPublicUrl ? 'config' : tunnel.status().state === 'on' ? 'tunnel' : 'auto',
+    lanUrl: lanUrl(),
+    port: config.port,
     publicUrl: publicUrl(req),
   });
 });
@@ -335,38 +380,178 @@ app.put('/api/setup', admin, (req, res) => {
   const b = req.body || {};
   const patch = {};
   if ('name' in b) {
+    if (setup.locked) return res.status(423).json(LOCKED);
     const name = String(b.name || '').trim().slice(0, 80);
     if (!name) return res.status(400).json({ error: 'name required' });
+    if (name !== config.event.name) patch.change = recordChange({ kind: 'event.rename', summary: `Event renamed to "${name}"`, before: config.event.name, after: name }).id;
     patch.name = config.event.name = name;
+    config.event.named = true;
   }
   if ('done' in b) patch.done = !!b.done;
+  const change = patch.change ?? null;
+  delete patch.change;
   saveSetup(patch);
-  res.json({ ok: true, done: !!setup.done, name: config.event.name });
+  res.json({ ok: true, done: !!setup.done, name: config.event.name, change });
+});
+
+// Event mode on/off. Turning it off is deliberate (the dashboard asks first) and both are recorded.
+app.post('/api/lock', admin, (req, res) => {
+  const locked = !!req.body?.locked;
+  if (locked !== !!setup.locked) {
+    saveSetup({ locked });
+    recordChange({ kind: 'event.lock', summary: locked ? 'Event mode on: setup locked' : 'Event mode off: setup unlocked', before: !locked, after: locked });
+  }
+  res.json({ locked: !!setup.locked });
+});
+
+app.get('/api/history', admin, (req, res) => {
+  res.json({ locked: !!setup.locked, changes: history.recent({ limit: Math.min(500, Number(req.query.limit) || 200) }), trash: history.trash((id) => stages.has(id)) });
+});
+
+// Undo one change: put back what it replaced. The undo is recorded too (and can itself be undone).
+app.post('/api/history/:id/undo', admin, unlocked, async (req, res) => {
+  const c = history.get(Number(req.params.id));
+  if (!c) return res.status(404).json({ error: 'unknown change' });
+  if (history.undone.has(c.id)) return res.status(409).json({ error: 'already undone' });
+  const undo = { undoes: c.id };
+  try {
+    if (c.kind === 'room.create') {
+      const st = stages.get(c.target);
+      if (!st) throw new Error('that room no longer exists');
+      deleteRoom(st, { ...undo, summary: `Undo: room "${st.def.name}" removed again` });
+    } else if (c.kind === 'room.delete') {
+      if (stages.has(c.target)) throw new Error(`a room with the id "${c.target}" already exists`);
+      const st = addStage(c.before);
+      persistStages();
+      recordChange({ kind: 'room.create', target: st.id, summary: `Room "${st.def.name}" restored`, after: clone(st.def), ...undo });
+    } else if (c.kind === 'room.update') {
+      const st = stages.get(c.target);
+      if (!st) throw new Error('that room no longer exists');
+      const old = clone(st.def);
+      const def = normalizeStage({ ...c.before, id: st.id });
+      validateStage(def);
+      if (def.source !== old.source || def.targets.join() !== old.targets.join() || def.translation !== old.translation) st.reconfigure(def); else st.def = def;
+      if ((def.pull || '') !== (old.pull || '') || !!def.loop !== !!old.loop) { if (def.pull) startPull(st, def.pull, def.loop); else stopPull(st.id); }
+      persistStages();
+      recordChange({ kind: 'room.update', target: st.id, summary: `Room "${def.name}" put back as before`, before: old, after: clone(def), ...undo });
+    } else if (c.kind === 'agenda.set') {
+      const before = schedule.entries.map((e) => ({ ...e }));
+      schedule.set(c.before || []);
+      recordChange({ kind: 'agenda.set', summary: `Agenda put back (${(c.before || []).length} talks)`, before, after: clone(c.before), ...undo });
+    } else if (c.kind === 'glossary.set') {
+      const before = clone(glossary.data);
+      glossary.set(c.before);
+      recordChange({ kind: 'glossary.set', summary: 'Glossary put back', before, after: clone(glossary.data), ...undo });
+    } else if (c.kind === 'event.rename') {
+      const before = config.event.name;
+      saveSetup({ name: (config.event.name = c.before) });
+      recordChange({ kind: 'event.rename', summary: `Event renamed back to "${c.before}"`, before, after: c.before, ...undo });
+    } else if (c.kind === 'engine.mode') {
+      if (!failover) throw new Error('the offline backup is not available');
+      failover.setMode(c.before);
+      recordChange({ kind: 'engine.mode', summary: `AI mode back to ${c.before}`, before: c.after, after: c.before, ...undo });
+    } else {
+      throw new Error('this change cannot be undone');
+    }
+  } catch (e) { return res.status(400).json({ error: e.message }); }
+  res.json({ ok: true });
 });
 
 // Offline backup: which engine the rooms use (auto | cloud | local). Only with Gemini as the main engine.
 app.post('/api/engine', admin, (req, res) => {
   if (!failover) return res.status(400).json({ error: 'the offline backup needs Gemini as the main engine (see docs/local.md)' });
+  const before = failover.mode;
   try { failover.setMode(String(req.body?.mode || '')); } catch (e) { return res.status(400).json({ error: e.message }); }
-  res.json(failover.status());
+  const change = failover.mode !== before ? recordChange({ kind: 'engine.mode', summary: `AI mode: ${failover.mode}`, before, after: failover.mode }) : null;
+  res.json({ ...failover.status(), change: change?.id ?? null });
+});
+
+// Gemini API key from the dashboard (src/aikey.js): check it with Google, save it, remove it. The key itself is
+// never sent back. Saving works in Event mode too (a key out of quota mid-event must be replaceable).
+app.post('/api/ai/key/check', admin, async (req, res) => {
+  const key = String(req.body?.key || '').trim();
+  if (!looksLikeKey(key)) return res.status(400).json({ ok: false, code: 'format' });
+  res.json(await checkKey(key));
+});
+app.put('/api/ai/key', admin, async (req, res) => {
+  const key = String(req.body?.key || '').trim();
+  if (!looksLikeKey(key)) return res.status(400).json({ ok: false, code: 'format', error: 'That doesn\'t look like a Gemini API key (they start with "AIza")' });
+  const check = req.body?.force ? { ok: true, code: 'unchecked' } : await checkKey(key);
+  if (!check.ok) return res.status(400).json({ ...check, error: `Google didn't accept the key (${check.code})` });
+  saveKey(key);
+  Object.assign(config, { geminiApiKey: key, keySource: 'dashboard' });
+  useKeyChange(`Gemini API key saved (…${key.slice(-4)})`);
+  res.json({ ok: true, check: check.code, engine: config.engine, key: keyInfo() });
+});
+app.delete('/api/ai/key', admin, unlocked, (req, res) => {
+  saveKey(null);
+  const envKey = process.env.GEMINI_API_KEY || '';
+  Object.assign(config, { geminiApiKey: envKey, keySource: envKey ? 'env' : '' });
+  useKeyChange(envKey ? 'Saved Gemini API key removed: using the one in .env' : 'Gemini API key removed: simulated captions');
+  res.json({ ok: true, engine: config.engine, key: keyInfo() });
+});
+/** Apply a new (or no) key: fresh client, and rooms move between simulated captions and Gemini. */
+function useKeyChange(summary) {
+  resetClient();
+  const want = config.geminiApiKey || config.vertex ? 'gemini' : 'mock';
+  // A local engine (npm run local, or the offline backup right now) keeps running; the key is used when Gemini is.
+  const switching = config.engine !== 'local' && config.engine !== want;
+  if (switching) { setEngine(want); config.primaryEngine = want; }
+  for (const st of stages.values()) {
+    if (config.engine !== 'gemini' && !switching) continue;
+    st.log('info', switching ? (want === 'gemini' ? 'API key saved: captions now come from Gemini' : 'No API key: captions are simulated') : 'New API key in use');
+    st.reconfigure(st.def);
+  }
+  recordChange({ kind: 'ai.key', summary });
+
+}
+
+// Public HTTPS address through Cloudflare Tunnel (src/tunnel.js). While it's on, its address is the public URL
+// (QR codes, links, allowed origins); turning it off goes back to PUBLIC_URL. Locked in Event mode: stopping it
+// would cut every phone off.
+app.post('/api/tunnel', admin, unlocked, (req, res) => {
+  const mode = String(req.body?.mode || '');
+  if (!['quick', 'token', 'off'].includes(mode)) return res.status(400).json({ error: 'mode must be quick|token|off' });
+  let host = '';
+  if (mode === 'token') {
+    const token = String(req.body?.token || '').trim();
+    if (token) saveSecret('tunnelToken', token);
+    host = String(req.body?.host || setup.tunnel?.host || '').trim().replace(/^https?:\/\//, '').replace(/\/.*$/, '');
+    if (!readSecret('tunnelToken')) return res.status(400).json({ error: 'paste the tunnel token from the Cloudflare dashboard' });
+    if (!/^[a-z0-9.-]+\.[a-z]{2,}$/i.test(host)) return res.status(400).json({ error: 'type the tunnel\'s public hostname, e.g. captions.example.com' });
+  }
+  saveSetup({ tunnel: mode === 'off' ? null : { mode, host } });
+  startTunnel(mode, host);
+  recordChange({ kind: 'tunnel', summary: mode === 'off' ? 'Public address turned off' : mode === 'quick' ? 'Quick public address turned on' : `Public address ${host} turned on` });
+  res.json(tunnel.status());
 });
 
 app.get('/api/schedule', (req, res) => res.json(schedule.entries.map((e) => ({ ...e, startIso: new Date(e.start).toISOString() }))));
-app.put('/api/schedule', admin, (req, res) => {
+app.put('/api/schedule', admin, unlocked, (req, res) => {
   try {
     const csv = typeof req.body?.csv === 'string' ? req.body.csv : null;
     // Pasted text is matched to the rooms that exist (by id or name); rows for other rooms are skipped.
     const rooms = csv != null ? [...stages.values()].map((s) => ({ id: s.id, name: s.def.name })) : undefined;
-    const entries = /** @type {any} */ (schedule.set(csv ?? req.body?.entries ?? req.body, { rooms }));
+    const input = csv ?? req.body?.entries ?? req.body;
+    const before = schedule.entries.map((e) => ({ ...e }));
+    // ?dryRun=1: parse and report, without saving (the dashboard's preview before replacing the agenda).
+    const entries = /** @type {any} */ (req.query.dryRun ? parseSchedule(input, new Date(), { rooms }) : schedule.set(input, { rooms }));
     const unknown = [...new Set(entries.map((e) => e.stage))].filter((id) => !stages.has(id));
     const skipped = entries.skipped || [];
-    res.json({ ok: true, count: entries.length, unknownRooms: unknown, skipped: { count: skipped.length, rooms: [...new Set(skipped.map((x) => x.room))].slice(0, 20) } });
+    const change = req.query.dryRun ? null : recordChange({ kind: 'agenda.set', summary: `Agenda saved (${before.length} → ${entries.length} talks)`, before, after: entries.map((e) => ({ ...e })) });
+    res.json({ ok: true, change: change?.id ?? null, count: entries.length, unknownRooms: unknown, skipped: { count: skipped.length, rooms: [...new Set(skipped.map((x) => x.room))].slice(0, 20) },
+      ...(req.query.dryRun ? { entries: entries.map((e) => ({ ...e, startIso: new Date(e.start).toISOString() })) } : {}) });
   } catch (e) { res.status(400).json({ error: e.message }); }
 });
 
 app.get('/api/glossary', (req, res) => res.json(glossary.data));
-app.put('/api/glossary', admin, (req, res) => {
-  try { glossary.set(req.body); res.json(glossary.data); } catch (e) { res.status(400).json({ error: e.message }); }
+app.put('/api/glossary', admin, unlocked, (req, res) => {
+  try {
+    const before = clone(glossary.data);
+    glossary.set(req.body);
+    const change = recordChange({ kind: 'glossary.set', summary: `Glossary saved (${glossary.data.vocabulary.length} terms, ${glossary.data.replacements.length} corrections)`, before, after: clone(glossary.data) });
+    res.json({ ...glossary.data, change: change.id });
+  } catch (e) { res.status(400).json({ error: e.message }); }
 });
 
 app.get('/api/qr.svg', async (req, res) => {
@@ -485,7 +670,11 @@ function snapshot() {
     engine: config.engine,
     model: engineLabel(),
     failover: failover?.status() || null,
+    tunnel: tunnel.status(),
+    ai: keyInfo(),
+    publicUrl: config.publicUrl, // '' = none: QR codes use the address the page was opened with
     setupDone: !!setup.done,
+    locked: !!setup.locked,
     local: config.engine === 'local' ? { asrUrl: asrInfo().url, llmUrl: llmInfo().url, llmModel: llmInfo().model, mtModel: llmInfo().mtModel, llmOff: config.localLlmOff, ...localHealth } : undefined,
     event: config.event.name,
     uptimeSec: Math.round(process.uptime()),
@@ -509,6 +698,22 @@ const tls = process.env.HTTPS_CERT && process.env.HTTPS_KEY
   ? { cert: fs.readFileSync(process.env.HTTPS_CERT), key: fs.readFileSync(process.env.HTTPS_KEY) }
   : null;
 const server = tls ? https.createServer(tls, app) : http.createServer(app);
+
+// Public address (see /api/tunnel). PUBLIC_URL / publicUrl in event.json is what we go back to when it's off.
+const configuredPublicUrl = config.publicUrl;
+const tunnel = new Tunnel({ origin: tunnelOrigin(config.port, !!tls) });
+let lastTunnelLine = '';
+tunnel.on('change', (st) => {
+  config.publicUrl = st.state === 'on' && st.url ? st.url : configuredPublicUrl;
+  broadcastAdmin({ type: 'tunnel', ...st });
+  const line = st.state === 'on' && st.url ? `  ✓ Public address: ${st.url}` : st.state === 'error' ? `  ⚠ Public address: ${st.error}` : '';
+  if (line && line !== lastTunnelLine) console.log(line);
+  lastTunnelLine = line;
+});
+function startTunnel(mode, host) {
+  if (mode === 'off') return tunnel.stop();
+  tunnel.start({ mode, host, token: mode === 'token' ? readSecret('tunnelToken') : '' }).catch((e) => console.error('✗ tunnel:', e.message));
+}
 // 256 KB is ~8 s of audio per message; clients send 100 ms (3.2 KB) chunks and tiny JSON.
 const wss = new WebSocketServer({ noServer: true, perMessageDeflate: false, maxPayload: 256 * 1024 });
 const reject = (socket, code, msg) => { socket.write(`HTTP/1.1 ${code} ${msg}\r\nConnection: close\r\n\r\n`); socket.destroy(); };
@@ -668,6 +873,9 @@ server.on('error', (/** @type {NodeJS.ErrnoException} */ e) => {
 });
 
 server.listen(config.port, config.host, () => {
+  // Public address turned on from the dashboard (or TUNNEL=quick): bring it back after a restart.
+  const savedTunnel = process.env.TUNNEL ? { mode: process.env.TUNNEL, host: process.env.TUNNEL_HOST || '' } : setup.tunnel;
+  if (savedTunnel && ['quick', 'token'].includes(savedTunnel.mode)) startTunnel(savedTunnel.mode, savedTunnel.host || '');
   const base = config.publicUrl || `${tls ? 'https' : 'http'}://localhost:${config.port}`;
   console.log(`\n  OpenCaptions · ${config.event.name}`);
   console.log(`  engine: ${config.engine}${config.engine === 'gemini' ? ` (${config.model})` : config.engine === 'local' ? ` (${engineLabel()}, nothing leaves this machine)` : ' (no GEMINI_API_KEY → simulated captions)'}`);
@@ -698,6 +906,14 @@ server.listen(config.port, config.host, () => {
     console.log(`  Admin token  ${tokens.admin}${tokens.adminGenerated ? '  (generated, stored in data/secrets.json — set ADMIN_TOKEN to choose your own)' : ''}`);
     console.log(`  Ingest token ${tokens.ingest}${tokens.ingestGenerated ? '  (generated)' : ''}`);
     console.log(`  From another device: ${remote}/admin.html?token=… · ${remote}/ingest.html?token=…\n`);
+    // Docker: the browser on the host counts as another device, so hand over a link that signs in directly.
+    if (process.env.OC_DOCKER) console.log(`  ➜ Open the dashboard: ${config.publicUrl || 'http://localhost:8080'}/admin.html?token=${tokens.admin}\n`);
+  }
+  // --open (the double-click starter): show the dashboard. On this computer it needs no password.
+  if (process.argv.includes('--open') && !process.env.OC_DOCKER) {
+    const url = `${tls ? 'https' : 'http'}://localhost:${config.port}/admin.html`;
+    const [cmd, args] = process.platform === 'darwin' ? ['open', [url]] : process.platform === 'win32' ? ['cmd', ['/c', 'start', '""', url]] : ['xdg-open', [url]];
+    try { spawn(cmd, args, { stdio: 'ignore', detached: true, windowsHide: true }).unref(); } catch { /* the address is printed above */ }
   }
   if (!tls && !config.publicUrl && config.host !== '127.0.0.1' && config.host !== 'localhost') {
     console.log('  Note: plain HTTP. Put HTTPS in front (Cloudflare Tunnel / Caddy) before exposing this beyond a trusted LAN — see docs/deployment.md\n');
@@ -710,6 +926,7 @@ process.on('uncaughtException', (e) => console.error('✗ uncaught exception (se
 
 for (const sig of ['SIGINT', 'SIGTERM']) {
   process.on(sig, () => {
+    tunnel.stop();
     for (const id of [...stages.keys()]) removeStage(id);
     process.exit(0);
   });

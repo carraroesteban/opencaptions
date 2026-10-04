@@ -4,6 +4,29 @@ All notable changes to this project are documented in this file. The format foll
 
 ## [Unreleased]
 
+### Added — a production dashboard that protects the event manager's work
+
+- **New dashboard layout:** a sidebar with Live, Rooms, Agenda, Glossary, Screens and QR, Transcripts, History and Settings. The Live view shows only what matters during the event; setup tools moved to their own pages, and the AI switch and setup wizard to Settings.
+- **Event mode:** locks the setup on the server while the event is live (`POST /api/lock`; setup endpoints answer `423`). Starting the next talk, renaming the current one, reconnecting a room and the AI switch keep working.
+- **History and undo:** every setup change (rooms, agenda, glossary, event name, AI mode) is recorded in `data/history.jsonl` with what it replaced, and can be undone (`GET /api/history`, `POST /api/history/:id/undo`). Each save shows an **Undo** button right away. Deleted rooms go to a trash and can be restored exactly as they were.
+- **Overrun alert:** when the agenda says a new talk has started but the speaker is still going, the room's card says how many minutes over it is and offers **Start "…"** with one click (`dueTalk` in the room status).
+- **Safer editing:** real confirmation dialogs instead of browser pop-ups; pasting an agenda shows what will be added and removed before replacing it (`PUT /api/schedule?dryRun=1`); the glossary is a table of terms and corrections instead of raw JSON.
+- **The setup wizard no longer deletes anything silently:** it collects answers, then shows a review of every change. Rooms with transcripts are only removed if ticked, rooms with their own language setup keep it unless ticked, and nothing can be applied in Event mode.
+
+### Changed — a new install starts blank
+
+- `config/event.json` now ships with no event name and one room ("Main stage"); the welcome wizard asks for the rest. `config/glossary.json` ships empty, so no example names are sent to the AI as vocabulary. The old example glossary is in `config/glossary.example.json`.
+- The dashboard and the wizard ask for the admin token with a sign-in screen that explains where to find it, and check it before saving, instead of a browser pop-up (cancelling the pop-up left an empty dashboard).
+- Docker prints a dashboard link that signs in directly (`docker compose logs opencaptions | grep "Open the dashboard"`).
+
+### Fixed
+
+- `docker compose up` failed on a new install with "required variable TUNNEL_TOKEN is missing a value", even without the tunnel.
+
+### Changed — tests
+
+- Tests run against their own fictional event (`test/fixtures/event.json`, `test/fixtures/glossary.json`) and never read or write `config/`.
+
 ### Added — from the roadmap
 
 - **Streaming translation:** when a sentence ends, its translation streams into the caption as Gemini writes it. Measured on Gemini 3.5 Flash-Lite: first translated words after a median 0.61 s instead of 0.69 s, and an average of 0.61 s instead of 0.83 s (slow answers gain most). The caption never shrinks while streaming. On by default; `MT_STREAM=0` turns it off. See [Latency](docs/latency.md#tuning).

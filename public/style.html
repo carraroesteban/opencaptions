@@ -15,7 +15,9 @@
     body { min-height: 100vh; }
     header { display: flex; gap: 12px 16px; align-items: center; padding: 14px 24px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
     main { display: grid; grid-template-columns: 360px minmax(0, 1fr); gap: 20px; padding: 24px; }
-    @media (max-width: 1000px) { main { grid-template-columns: 1fr; } }
+    @media (max-width: 1000px) { main { grid-template-columns: minmax(0, 1fr); } }
+    @media (max-width: 560px) { main { padding: 16px; } }
+    main > section { min-width: 0; grid-template-columns: minmax(0, 1fr); }
     .controls { display: grid; gap: 14px; align-content: start; }
     .controls > div > b, .controls > b { font-family: var(--font-display); font-weight: 800; letter-spacing: -.01em; }
     .controls .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
@@ -37,8 +39,8 @@
   <header>
     <a class="brand" href="/admin.html" title="Panel de producción" style="font-size:14px">OpenCaptions<span class="sub">· estilo de subtítulos</span></a>
     <div class="row" role="group">
-      <button class="pill" data-target="overlay" aria-pressed="true">🎬 Overlay vMix / OBS</button>
-      <button class="pill" data-target="screen" aria-pressed="false">🖥️ Pantalla / proyector</button>
+      <button class="pill" data-target="overlay" aria-pressed="true" data-icon="film">Overlay vMix / OBS</button>
+      <button class="pill" data-target="screen" aria-pressed="false" data-icon="monitor">Pantalla / proyector</button>
     </div>
     <span class="muted" style="font-size:13px;flex:1 1 320px;min-width:0">Diseñá el estilo, copiá la URL y pegala en vMix (Web Browser input), OBS (Browser Source) o el navegador del proyector.</span>
   </header>

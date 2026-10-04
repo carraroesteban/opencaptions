@@ -54,7 +54,7 @@
 <body>
   <header>
     <div class="top">
-      <a class="back" href="/" aria-label="Salas">‹</a>
+      <a class="back" href="/" id="back-link">‹</a>
       <h1 id="stage">…</h1>
       <span class="chip" id="status"><span class="dot"></span> <span></span></span>
     </div>
@@ -68,25 +68,26 @@
     <button id="settings" aria-haspopup="dialog">Aa</button>
     <button id="dual" class="pill" aria-pressed="false"></button>
     <span class="spacer"></span>
-    <button id="ai" class="primary" aria-haspopup="dialog">✨ <span class="lbl"></span></button>
-    <button id="listen" class="hidden" aria-pressed="false">🎧</button>
-    <button id="pip" class="hidden">⧉</button>
-    <a id="doc" class="btn"><button tabindex="-1">📄</button></a>
+    <button id="ai" class="primary" aria-haspopup="dialog" data-icon="sparkle"><span class="lbl"></span></button>
+    <button id="listen" class="hidden" aria-pressed="false"></button>
+    <button id="pip" class="hidden" data-icon="pin"></button>
+    <a id="doc" class="btn"><button tabindex="-1" data-icon="doc"></button></a>
   </footer>
 
   <dialog id="dlg-ai" class="sheet" aria-labelledby="ai-title">
-    <div class="sheet-head"><h2 id="ai-title"></h2><button id="ai-close" aria-label="close">✕</button></div>
+    <div class="sheet-head"><h2 id="ai-title"></h2><button id="ai-close" data-icon="x"></button></div>
     <div id="assistant"></div>
     <p style="margin:14px 0 0"><a id="ai-doc" href="#"></a></p>
   </dialog>
 
   <dialog id="dlg-set" class="sheet" aria-labelledby="set-title">
-    <div class="sheet-head"><h2 id="set-title"></h2><button id="set-close" aria-label="close">✕</button></div>
+    <div class="sheet-head"><h2 id="set-title"></h2><button id="set-close" data-icon="x"></button></div>
     <div class="set-row"><span id="l-size"></span><span class="row"><button id="smaller" aria-label="A−">A−</button><b id="size-val" style="min-width:3ch;text-align:center"></b><button id="bigger" aria-label="A+">A+</button></span></div>
     <div class="set-row"><span id="l-font"></span><span class="row" id="font-opts"></span></div>
     <div class="set-row"><span id="l-lh"></span><span class="row" id="lh-opts"></span></div>
     <div class="set-row"><span id="l-theme"></span><span class="row" id="theme-opts"></span></div>
     <div class="set-row"><span id="l-dual"></span><span class="row" id="dual-opts"></span></div>
+    <div class="set-row"><span id="l-ui"></span><span id="ui-slot"></span></div>
   </dialog>
   <script type="module" src="/pages/watch.js"></script>
 </body>

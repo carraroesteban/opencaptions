@@ -5,6 +5,7 @@
   "main": "src/server.js",
   "scripts": {
     "start": "node src/server.js",
+    "app": "node scripts/start.js",
     "mock": "node src/server.js --mock",
     "check": "node scripts/check-gemini.js",
     "feed": "node scripts/feed.js",

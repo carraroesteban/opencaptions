@@ -9,5 +9,7 @@ import { fileURLToPath } from 'node:url';
 
 const dir = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'test');
 const files = fs.readdirSync(dir).filter((f) => f.endsWith('.test.js')).sort().map((f) => path.join(dir, f));
-const r = spawnSync(process.execPath, ['--test', ...process.argv.slice(2), ...files], { stdio: 'inherit' });
+// Tests run against a fictional event (four rooms, example glossary) instead of the blank config/ a new user starts with.
+const env = { ...process.env, EVENT_CONFIG: process.env.EVENT_CONFIG || 'test/fixtures/event.json', GLOSSARY: process.env.GLOSSARY || 'test/fixtures/glossary.json' };
+const r = spawnSync(process.execPath, ['--test', ...process.argv.slice(2), ...files], { stdio: 'inherit', env });
 process.exit(r.status ?? 1);

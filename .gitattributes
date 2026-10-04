@@ -1,0 +1,4 @@
+# Windows needs CRLF in batch files; the Mac starter must keep LF.
+*.bat text eol=crlf
+*.command text eol=lf
+*.sh text eol=lf

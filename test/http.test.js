@@ -9,6 +9,8 @@ import http from 'node:http';
 
 const PORT = 18000 + Math.floor(Math.random() * 2000);
 const base = `http://127.0.0.1:${PORT}`;
+// Tests never write to config/: the agenda and glossary live in the temp data dir.
+const seedGlossary = (dir) => { const f = path.join(dir, 'glossary.json'); fs.copyFileSync('test/fixtures/glossary.json', f); return f; };
 let srv;
 let dataDir;
 
@@ -25,7 +27,7 @@ const get = (url, headers = {}) => new Promise((resolve, reject) => {
 before(async () => {
   dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'oc-http-'));
   srv = spawn(process.execPath, ['src/server.js'], {
-    env: { ...process.env, PORT: String(PORT), ENGINE: 'mock', DATA_DIR: dataDir, ADMIN_TOKEN: 't', INGEST_TOKEN: 't', PUBLIC_URL: '', GEMINI_API_KEY: '' },
+    env: { ...process.env, PORT: String(PORT), ENGINE: 'mock', DATA_DIR: dataDir, SCHEDULE: path.join(dataDir, 'schedule.json'), GLOSSARY: seedGlossary(dataDir), ADMIN_TOKEN: 't', INGEST_TOKEN: 't', PUBLIC_URL: '', GEMINI_API_KEY: '' },
     stdio: 'ignore',
   });
   for (let i = 0; i < 100; i++) {
@@ -64,7 +66,7 @@ test('manifest is named after the event', async () => {
 test('audience pages get absolute preview URLs and the event name', async () => {
   for (const page of ['/', '/watch', '/watch.html', '/talks.html']) {
     const { body } = await get(base + page);
-    assert.match(body, new RegExp(`og:image" content="http://127\\.0\\.0\\.1:${PORT}/brand/og\\.png"`), page);
+    assert.match(body, new RegExp(`og:image" content="http://[\\d.]+:${PORT}/brand/og\\.png"`), page);
     assert.doesNotMatch(body, /%EVENT%/, page);
   }
 });

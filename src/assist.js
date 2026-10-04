@@ -5,13 +5,13 @@
 // a one-hour talk costs well under one US cent) but they are public, so: results are cached and shared by
 // all viewers, questions are rate-limited per client and globally, and AUDIENCE_AI=off disables them.
 // Without a model (mock mode, errors, quota) they fall back to an extractive, AI-free answer.
-import { createClient } from './genai.js';
+import { getClient } from './genai.js';
 import { config } from './config.js';
 import { rateLimiter } from './security.js';
 import { chat as localChat } from './local/llm.js';
 
 let ai = null;
-const client = () => (ai ??= createClient());
+const client = () => ai ?? getClient(); // tests can inject their own (_setClient)
 /** Test hook. */
 export const _setClient = (c) => { ai = c; };
 

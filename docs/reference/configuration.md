@@ -242,7 +242,7 @@ Each entry in `stages` (and the body of `POST /api/stages` / `PATCH /api/stages/
 
 ## Glossary file (`config/glossary.json`)
 
-Loaded from the path in `glossary`/`GLOSSARY` (default `config/glossary.json`). Hot-reloaded: the file is watched (polled every 2 s) and changes apply instantly, no restart needed. It can also be replaced via `PUT /api/glossary` (admin-only), which writes it back to the same file.
+Loaded from the path in `glossary`/`GLOSSARY` (default `config/glossary.json`, empty in a new install; `config/glossary.example.json` shows a filled-in one for a fictional event). Hot-reloaded: the file is watched (polled every 2 s) and changes apply instantly, no restart needed. It can also be replaced via `PUT /api/glossary` (admin-only), which writes it back to the same file.
 
 | Key | Type | Constraints | Description |
 |---|---|---|---|
@@ -305,6 +305,8 @@ All under `DATA_DIR` (default `data/`), created on demand.
 | Path | Written by | Contents |
 |---|---|---|
 | `data/stages.json` | Every `POST`/`PATCH`/`DELETE /api/stages*` call | JSON array of the current stage definitions (same shape as `event.json`'s `stages`). Takes precedence over `config/event.json` on the next restart — see [precedence](#configuration-reference). |
+| `data/setup.json` | The welcome wizard and the dashboard's Settings | `{ "done", "name", "locked" }`: whether first-run setup is finished, the event name (overrides `eventName` in `config/event.json`), and whether Event mode is on. |
+| `data/history.jsonl` | Every change to the setup: rooms, agenda, glossary, event name, AI mode, Event mode | One JSON object per line: `{ "id", "at", "kind", "target", "summary", "before", "after", "undoes"? }`. `before` is what an undo puts back. Only appended to; an undo is a new line pointing at the change it reverted. Deleted rooms stay restorable from here (the dashboard's trash). |
 | `data/secrets.json` | First startup, when `AUTH != off` and `ADMIN_TOKEN`/`INGEST_TOKEN` aren't both set via env | `{ "adminToken": "...", "ingestToken": "..." }`, random 24-character base64url tokens (18 random bytes). Written with file mode `0600`. Whichever of the two you *do* set via env is used in preference to the stored value; the file still fills in the other. |
 | `data/transcripts/<stage-id>/<talk-id>/meta.json` | `Store.openTalk` — on every new talk and title change (only when `STORE_TRANSCRIPTS` is not disabled) | `{ "stage", "id", "title", "startedAt", "languages" }`. `stage-id` and `talk-id` are sanitized to `[a-zA-Z0-9_-]`; `talk-id` is an ISO timestamp with `:`/`.` replaced by `-` (e.g. `2026-09-24T18-30-05-123Z`). |
 | `data/transcripts/<stage-id>/<talk-id>/captions.jsonl` | `Store.append` — one line per **finalized** caption segment | Each line: `{ "id", "channel", "lang", "text", "start", "end", "final": true }` (`start`/`end` in ms since the talk started). Read back by `GET /api/stages/:id/export.{srt,vtt,txt,json}`. |

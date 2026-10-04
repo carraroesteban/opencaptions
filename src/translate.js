@@ -8,12 +8,12 @@
 // Rate limits: a process-wide limiter (MT_RPM, 0 = unlimited) plus adaptive back-off on 429/quota errors.
 // Partial (provisional) requests are the first thing sacrificed; final sentences are retried and never
 // replaced by text in the wrong language.
-import { createClient } from './genai.js';
+import { getClient } from './genai.js';
 import { config } from './config.js';
 import { chat as localChat, cleanTranslation, llmBusy, llmInfo } from './local/llm.js';
 
 let ai = null;
-const client = () => (ai ??= createClient());
+const client = () => ai ?? getClient(); // tests can inject their own (_setClient)
 /** Test hook: inject a fake client. */
 export const _setClient = (c) => { ai = c; };
 

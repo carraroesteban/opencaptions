@@ -1,6 +1,7 @@
 // "What did I miss?" + "Ask the talk" widget, shared by the audience page (watch.html) and the transcript
 // page (talk.html). Talks to GET /api/stages/:id/summary and POST /api/stages/:id/ask.
 import { t, esc } from '/common.js';
+import { icon } from '/illustrations.js';
 
 /**
  * @param {HTMLElement} root
@@ -15,7 +16,7 @@ export function mountAssistant(root, o) {
     </div>
     <div class="as-sum" aria-live="polite"></div>
     <form class="as-ask">
-      <label for="as-q-${o.stage}">💬 ${esc(t('askTalk'))}</label>
+      <label for="as-q-${o.stage}">${icon('chat')} ${esc(t('askTalk'))}</label>
       <div class="row"><input id="as-q-${o.stage}" maxlength="300" autocomplete="off" enterkeyhint="send" placeholder="${esc(t('askPlaceholder'))}" /><button class="primary" type="submit">${esc(t('askBtn'))}</button></div>
     </form>
     <div class="as-ans" aria-live="polite"></div>`;
@@ -46,7 +47,7 @@ export function mountAssistant(root, o) {
         ${d.headline ? `<h3>${esc(d.headline)}</h3>` : ''}
         <ul>${d.bullets.map((b) => `<li>${esc(b)}</li>`).join('')}</ul>
         ${d.terms?.length ? `<div class="as-terms">${d.terms.map((x) => `<span class="chip">${esc(x)}</span>`).join('')}</div>` : ''}
-        <div class="as-note">${d.ai ? '✨ ' + esc(t('aiNote')) : esc(t('noAiNote'))}</div>`;
+        <div class="as-note">${d.ai ? icon('sparkle') + ' ' + esc(t('aiNote')) : esc(t('noAiNote'))}</div>`;
     } catch {
       sum.innerHTML = `<p class="muted">${esc(t('error'))}</p>`;
     }
@@ -65,7 +66,7 @@ export function mountAssistant(root, o) {
       if (r.status === 429) { ans.innerHTML = `<p class="muted">${esc(t('tooMany'))}</p>`; return; }
       if (!r.ok) throw new Error(d.error);
       if (d.ai && d.found && d.answer) {
-        ans.innerHTML = `<p>${esc(d.answer)}</p>${(d.quotes || []).map(quote).join('')}<div class="as-note">✨ ${esc(t('aiNote'))}</div>`;
+        ans.innerHTML = `<p>${esc(d.answer)}</p>${(d.quotes || []).map(quote).join('')}<div class="as-note">${icon('sparkle')} ${esc(t('aiNote'))}</div>`;
       } else if (d.quotes?.length) {
         ans.innerHTML = `<p class="muted">${esc(t('quotesFrom'))}:</p>${d.quotes.map(quote).join('')}`;
       } else {

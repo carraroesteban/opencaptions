@@ -13,35 +13,69 @@
   <link rel="stylesheet" href="/style.css" />
   <style>
     body { min-height: 100vh; }
-    header { position: sticky; top: 0; z-index: 5; background: color-mix(in srgb, var(--bg) 90%, transparent); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); border-bottom: 1px solid var(--line); }
-    .bar { max-width: 1680px; margin: 0 auto; padding: 14px 28px; display: flex; gap: 12px 18px; align-items: center; flex-wrap: wrap; }
-    .bar .title { display: grid; gap: 2px; min-width: 0; }
-    .bar h1 { font-size: 24px; margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .bar .spacer { flex: 1; }
-    .toolbar { max-width: 1680px; margin: 0 auto; padding: 0 28px 14px; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
-    .toolbar a { text-decoration: none; }
-    .toolbar button { padding: 7px 13px; font-size: 14px; }
-    .toolbar .sep { width: 1px; align-self: stretch; background: var(--line); margin: 4px 4px; }
-    main { padding: 26px 28px 40px; display: grid; gap: 22px; max-width: 1680px; margin: 0 auto; }
+    /* ---- shell: sidebar + content ---- */
+    .shell { display: grid; grid-template-columns: 248px minmax(0, 1fr); min-height: 100vh; }
+    .side { position: sticky; top: 0; height: 100vh; box-sizing: border-box; display: flex; flex-direction: column; gap: 4px; padding: 18px 14px; border-right: 1px solid var(--line); background: var(--bg2); }
+    .side .brand { font-size: 15px; padding: 2px 8px 0; }
+    .side .event { font-family: var(--font-display); font-weight: 800; font-size: 19px; letter-spacing: -.02em; line-height: 1.15; padding: 6px 8px 14px; overflow-wrap: anywhere; }
+    .side nav { display: grid; gap: 2px; }
+    .side nav a { display: flex; align-items: center; gap: 10px; padding: 9px 10px; border-radius: 10px; color: var(--fg2); text-decoration: none; font-size: 15px; }
+    .side nav a:hover { background: var(--bg3); color: var(--fg); }
+    .side nav a.on { background: var(--primary-bg); color: var(--primary-fg); font-weight: 700; }
+    .side nav a .n { margin-left: auto; font-size: 12px; font-weight: 700; padding: 0 7px; border-radius: 99px; background: var(--bad); color: #fff; }
+    .side nav .sep { height: 1px; background: var(--line); margin: 8px 6px; }
+    .side .foot { margin-top: auto; display: grid; gap: 10px; padding: 8px 4px 0; }
+    .lockbtn { display: flex; align-items: center; gap: 10px; width: 100%; text-align: left; padding: 11px 12px; border-radius: 12px; font-size: 14px; }
+    .lockbtn b { display: block; font-size: 14px; }
+    .lockbtn small { display: block; font-size: 12px; color: var(--fg2); font-weight: 400; }
+    .lockbtn.on { background: var(--primary-bg); border-color: var(--primary-bg); color: var(--primary-fg); }
+    .lockbtn.on small { color: inherit; opacity: .75; }
+    .lockbtn svg.i { width: 20px; height: 20px; }
+    @media (max-width: 900px) {
+      .shell { grid-template-columns: minmax(0, 1fr); }
+      .side { min-width: 0; }
+      .side { position: static; height: auto; border-right: 0; border-bottom: 1px solid var(--line); padding: 12px 16px; }
+      .side .event { padding: 2px 8px 8px; font-size: 17px; }
+      .side nav { display: flex; overflow-x: auto; gap: 4px; padding-bottom: 4px; }
+      .side nav a { white-space: nowrap; padding: 7px 10px; }
+      .side nav .sep { display: none; }
+      .side .foot { margin-top: 8px; grid-template-columns: minmax(0, 1fr) auto; align-items: center; }
+    }
+    .content { min-width: 0; padding: 22px 32px 48px; display: grid; gap: 20px; align-content: start; max-width: 1500px; }
+    @media (max-width: 560px) { .content { padding: 16px; } }
+    .topbar { display: flex; gap: 10px 14px; align-items: center; flex-wrap: wrap; }
+    .topbar h1 { font-size: 30px; margin: 0; flex: 1; min-width: 0; }
+    .view { display: none; gap: 20px; align-content: start; min-width: 0; }
+    .view.on { display: grid; }
+    .view > .lede { margin: -8px 0 0; color: var(--fg2); max-width: 760px; font-size: 16px; }
+    h2.sec { font-size: 20px; margin: 6px 0 -6px; }
+    .lockedbar { display: flex; gap: 12px; align-items: center; padding: 12px 16px; border-radius: 14px; background: var(--bg3); font-size: 14px; }
+    .lockedbar svg.i { width: 20px; height: 20px; flex: none; }
+    .lockedbar span { flex: 1; }
+    .muted-note { font-size: 13px; color: var(--fg2); }
+
     /* KPIs */
-    .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
-    .kpi { background: var(--bg2); border: 1px solid var(--line); border-radius: 14px; padding: 14px 16px; display: grid; gap: 4px; font-size: 12px; font-weight: 700; color: var(--fg2); letter-spacing: .02em; box-shadow: var(--shadow-sm); }
+    .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; }
+    .kpi { background: var(--bg2); border: 1px solid var(--line); border-radius: 14px; padding: 14px 16px; display: grid; gap: 4px; font-size: 12px; font-weight: 700; color: var(--fg2); box-shadow: var(--shadow-sm); }
     .kpi b { font-family: var(--font-display); font-weight: 800; font-size: 26px; color: var(--fg); letter-spacing: -.02em; font-variant-numeric: tabular-nums; line-height: 1.1; }
-    .kpi.sys { background: transparent; box-shadow: none; }
-    .kpi.sys b { font-size: 20px; }
-    /* Rooms */
-    .section-h { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin: 6px 0 -6px; }
-    .section-h h2 { font-size: 22px; margin: 0; }
-    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 16px; }
-    .stage { display: grid; gap: 12px; align-content: start; padding: 20px; }
+
+    /* Live room cards */
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)); gap: 16px; }
+    @media (max-width: 400px) { .grid { grid-template-columns: minmax(0, 1fr); } }
+    .stage { display: grid; gap: 12px; align-content: start; padding: 20px; min-width: 0; }
     .stage.alert { border-color: color-mix(in srgb, var(--bad) 55%, var(--line)); box-shadow: 0 0 0 3px color-mix(in srgb, var(--bad) 12%, transparent); }
+    .stage.over { border-color: color-mix(in srgb, var(--warn) 60%, var(--line)); }
     .stage .top { display: flex; gap: 10px; align-items: center; }
     .stage h3 { margin: 0; font-size: 21px; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .stage .talkline { font-size: 15px; font-weight: 700; margin-top: -6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .stage .talkline.none { font-weight: 400; color: var(--fg2); }
-    .stage .sub { font-size: 13px; color: var(--fg2); }
-    .stage .said { font-size: 15px; line-height: 1.45; color: var(--fg); background: var(--bg); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; min-height: 2.9em; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    .stage .next { font-size: 13px; color: var(--fg2); }
+    .stage .next.over { font-weight: 700; color: var(--warn); }
+    .stage .said { font-size: 15px; line-height: 1.45; background: var(--bg); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; min-height: 2.9em; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
     .stage .said:empty::before { content: '…'; color: var(--fg2); }
+    .stage .meter { height: 6px; border-radius: 6px; background: var(--bg3); position: relative; overflow: hidden; }
+    .stage .meter i { position: absolute; inset: 0 auto 0 0; background: var(--fg); border-radius: 6px; transition: width .2s; }
+    .stage .meter b { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--fg2); }
     .stage .stats { display: flex; gap: 6px 16px; flex-wrap: wrap; font-size: 13px; color: var(--fg2); }
     .stage .stats span { display: inline-flex; align-items: center; gap: 6px; }
     .stage .stats b { color: var(--fg); font-variant-numeric: tabular-nums; }
@@ -53,7 +87,8 @@
     .stage.open .actions .more svg { transform: rotate(180deg); }
     .stage .details { display: none; gap: 12px; border-top: 1px solid var(--line); padding-top: 14px; }
     .stage.open .details { display: grid; }
-    .stage .metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+    .stage .sub { font-size: 13px; color: var(--fg2); }
+    .stage .metrics { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
     .stage .metrics div { background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 7px 9px; font-size: 11px; color: var(--fg2); min-width: 0; }
     .stage .metrics b { display: block; font-size: 15px; color: var(--fg); font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .stage .preview { display: grid; gap: 5px; font-size: 13px; }
@@ -63,19 +98,69 @@
     .empty-rooms { grid-column: 1 / -1; display: grid; justify-items: center; gap: 14px; text-align: center; padding: 30px 20px 40px; }
     .empty-rooms img { width: 220px; border-radius: 20px; }
     .empty-rooms h3 { font-size: 22px; margin: 0; }
-    #logs { font-family: var(--mono); font-size: 12px; max-height: 260px; overflow: auto; display: grid; gap: 2px; }
+    details.log summary { cursor: pointer; font-weight: 700; }
+    #logs { font-family: var(--mono); font-size: 12px; max-height: 280px; overflow: auto; display: grid; gap: 2px; margin-top: 10px; }
     #logs .warn { color: var(--warn); } #logs .error { color: var(--bad); }
-    .qrrow { display: grid; grid-template-columns: 150px 1fr; gap: 14px; align-items: center; }
-    .qrrow img { width: 150px; background: #fff; border-radius: 10px; padding: 4px; border: 1px solid var(--line); }
-    .copy { display: flex; gap: 6px; } .copy input { flex: 1; font-family: var(--mono); font-size: 12px; }
-    table { width: 100%; border-collapse: collapse; font-size: 13px; } td, th { padding: 8px 4px; border-bottom: 1px solid var(--line); text-align: left; }
-    .langs-check { display: flex; gap: 10px; flex-wrap: wrap; }
-    section.card > .row b { font-family: var(--font-display); font-weight: 800; font-size: 17px; letter-spacing: -.01em; }
-    /* First-run guide, with an illustration */
-    #onboard { padding: 0; overflow: hidden; display: grid; grid-template-columns: minmax(0, 1fr) minmax(300px, 46%); }
+
+    /* tables and lists */
+    .table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    .table th { text-align: left; font-size: 12px; color: var(--fg2); font-weight: 700; padding: 10px; border-bottom: 1px solid var(--line); }
+    .table td { padding: 12px 10px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+    .table tr:last-child td { border-bottom: 0; }
+    .table td.r { text-align: right; white-space: nowrap; }
+    .table td.r button { padding: 6px 11px; font-size: 13px; }
+    .table .chip { margin: 2px 2px 2px 0; }
+    .card.flush { padding: 0; overflow: hidden; }
+    .card.flush .table th:first-child, .card.flush .table td:first-child { padding-left: 18px; }
+    .card.flush .table th:last-child, .card.flush .table td:last-child { padding-right: 18px; }
+    @media (max-width: 760px) { .table .hide-sm { display: none; } }
+    .rowbar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+    .rowbar .spacer { flex: 1; }
+    .empty { padding: 22px 18px; color: var(--fg2); font-size: 14px; }
+
+    /* agenda */
+    .diff { display: grid; gap: 6px; font-size: 14px; }
+    .diff .add { color: var(--ok); } .diff .del { color: var(--bad); }
+    textarea.paste { width: 100%; box-sizing: border-box; font-family: var(--mono); font-size: 12px; min-height: 160px; }
+
+    /* glossary */
+    .terms { display: flex; flex-wrap: wrap; gap: 6px; }
+    .terms .chip { font-size: 13px; padding: 3px 4px 3px 11px; }
+    .terms .chip button { border: 0; background: none; box-shadow: none; padding: 0 5px; font-size: 15px; line-height: 1; color: var(--fg2); }
+    .reps td { padding: 6px 4px; }
+    .reps input, .reps select { width: 100%; box-sizing: border-box; }
+
+    /* screens */
+    .links { display: grid; gap: 12px; }
+    .copy { display: flex; gap: 6px; } .copy input { flex: 1; min-width: 0; font-family: var(--mono); font-size: 12px; }
+    .qrrow { display: grid; grid-template-columns: 140px minmax(0, 1fr); gap: 16px; align-items: center; }
+    .qrrow img { width: 140px; background: #fff; border-radius: 10px; padding: 4px; border: 1px solid var(--line); }
+    @media (max-width: 600px) { .qrrow { grid-template-columns: minmax(0, 1fr); } }
+    .tools { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
+    .tool { display: grid; gap: 4px; text-decoration: none; color: inherit; font: inherit; }
+    .tool b { display: flex; align-items: center; gap: 8px; }
+    .tool span { font-size: 13px; color: var(--fg2); font-weight: 400; }
+
+    /* history */
+    .change { display: grid; grid-template-columns: 38px minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 12px 18px; border-bottom: 1px solid var(--line); }
+    .change:last-child { border-bottom: 0; }
+    .change .ic { width: 36px; height: 36px; border-radius: 10px; background: var(--bg3); display: grid; place-items: center; }
+    .change .ic svg.i { width: 18px; height: 18px; }
+    .change small { display: block; color: var(--fg2); font-size: 12px; margin-top: 2px; }
+    .change.undone > div:nth-child(2) { opacity: .55; }
+    .change button { padding: 6px 11px; font-size: 13px; }
+
+    /* settings */
+    .setting { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px 24px; align-items: center; }
+    .setting h3 { margin: 0 0 4px; font-size: 17px; }
+    .setting p { margin: 0; font-size: 14px; color: var(--fg2); max-width: 640px; }
+    @media (max-width: 700px) { .setting { grid-template-columns: minmax(0, 1fr); } }
+
+    /* first-run guide */
+    #onboard { padding: 0; overflow: hidden; display: grid; grid-template-columns: minmax(0, 1fr) minmax(260px, 40%); }
     #onboard .ob-body { padding: 22px 24px; }
-    #onboard .ob-art { background: #FAF8F3 center / contain no-repeat; border-left: 1px solid var(--line); min-height: 220px; }
-    @media (max-width: 900px) { #onboard { grid-template-columns: 1fr; } #onboard .ob-art { border-left: 0; border-top: 1px solid var(--line); min-height: 160px; order: -1; } }
+    #onboard .ob-art { background: #FAF8F3 center / contain no-repeat; border-left: 1px solid var(--line); min-height: 200px; }
+    @media (max-width: 900px) { #onboard { grid-template-columns: minmax(0, 1fr); } #onboard .ob-art { border-left: 0; border-top: 1px solid var(--line); min-height: 150px; order: -1; } }
     #onboard h2 { font-size: 22px; margin: 0; }
     #onboard ol { list-style: none; padding: 0; margin: 14px 0 0; display: grid; gap: 2px; font-size: 14px; }
     #onboard li { display: flex; gap: 10px; align-items: baseline; padding: 6px 0; }
@@ -83,108 +168,221 @@
     #onboard li.done b { text-decoration: line-through; text-decoration-thickness: 1px; }
     #onboard a { color: inherit; font-weight: 700; }
     .ck { flex: none; width: 18px; height: 18px; border-radius: 50%; border: 1.5px solid var(--line-strong); position: relative; top: 3px; }
+    .ck.on { background: var(--primary-bg); border-color: var(--primary-bg); }
+    .ck.on::after { content: ''; position: absolute; left: 5px; top: 2px; width: 4px; height: 8px; border: solid var(--primary-fg); border-width: 0 2px 2px 0; transform: rotate(45deg); }
+
+    /* banners, dialogs, toasts */
     .netbar { display: flex; gap: 14px; align-items: center; padding: 14px 18px; border-radius: 16px; border: 1px solid color-mix(in srgb, var(--warn) 35%, var(--line)); background: color-mix(in srgb, var(--warn) 9%, var(--bg2)); }
     .netbar.bad { border-color: color-mix(in srgb, var(--bad) 40%, var(--line)); background: color-mix(in srgb, var(--bad) 8%, var(--bg2)); }
     .netbar svg.i { width: 26px; height: 26px; flex: none; }
     .netbar p { margin: 2px 0 0; font-size: 14px; color: var(--fg2); }
-    .netbar .spacer { flex: 1; }
-    #ai-mode { font-size: 13px; padding-top: 5px; padding-bottom: 5px; }
-    .ck.on { background: var(--primary-bg); border-color: var(--primary-bg); }
-    .ck.on::after { content: ''; position: absolute; left: 5px; top: 2px; width: 4px; height: 8px; border: solid var(--primary-fg); border-width: 0 2px 2px 0; transform: rotate(45deg); }
-</style>
+    dialog .dlg-actions { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; margin-top: 18px; }
+    dialog p { line-height: 1.5; }
+    .langs-check { display: flex; gap: 10px; flex-wrap: wrap; }
+    .notes { position: fixed; left: 50%; bottom: 22px; translate: -50% 0; display: grid; gap: 8px; z-index: 50; width: min(520px, calc(100vw - 32px)); }
+    .note { display: flex; gap: 12px; align-items: center; padding: 12px 14px 12px 16px; border-radius: 14px; background: var(--ink); color: var(--paper); box-shadow: var(--shadow-lg); font-size: 14px; animation: oc-note .25s var(--ease); }
+    .note span { flex: 1; }
+    .note button { background: var(--lime); color: var(--ink); border-color: var(--lime); padding: 5px 12px; font-weight: 700; font-size: 13px; }
+    .note.err { background: var(--bad); color: #fff; }
+    html[data-theme='dark'] .note:not(.err) { border: 1px solid #3A3940; }
+    @media (prefers-color-scheme: dark) { html:not([data-theme='light']) .note:not(.err) { border: 1px solid #3A3940; } }
+    @keyframes oc-note { from { opacity: 0; translate: 0 10px; } }
+  </style>
 </head>
 <body>
-  <header>
-    <div class="bar">
-      <div class="title"><div class="brand" style="font-size:14px">OpenCaptions</div><h1 id="event">Producción</h1></div>
-      <span class="chip" id="engine"></span>
-      <select id="ai-mode" class="hidden" aria-label="Motor de IA" title="Qué IA genera los subtítulos. Automática: Gemini, y esta computadora si se corta internet.">
-        <option value="auto">IA automática · respaldo sin internet</option>
-        <option value="cloud">Siempre Gemini (nube)</option>
-        <option value="local">Siempre esta computadora</option>
-      </select>
-      <span class="spacer"></span>
-      <span id="prefs-slot"></span>
-    </div>
-    <nav class="toolbar">
-      <button id="add" class="primary" data-icon="plus">Nueva sala</button>
-      <button id="agenda" data-icon="calendar">Agenda</button>
-      <button id="gloss" data-icon="book">Glosario</button>
-      <a href="/welcome.html#name"><button data-icon="wand" tabindex="-1">Asistente de configuración</button></a>
-      <span class="sep"></span>
-      <a href="/kit.html" target="_blank"><button data-icon="qr" tabindex="-1">Kit de QR</button></a>
-      <a href="/talks.html" target="_blank"><button data-icon="doc" tabindex="-1">Transcripciones</button></a>
-      <a href="/style.html" target="_blank"><button data-icon="palette" tabindex="-1">Estilo de subtítulos</button></a>
-      <a href="/demo.html?mode=mic" target="_blank"><button data-icon="mic" tabindex="-1">Prueba de sonido</button></a>
-      <button id="float" class="hidden" data-icon="pin" title="Todas las salas en una ventana siempre visible, encima de OBS o vMix">Ventana flotante</button>
-    </nav>
-  </header>
-  <main>
-    <section class="netbar hidden" id="netbar" role="status"></section>
-    <section class="kpis">
-      <div class="kpi">Salas en vivo<b id="k-live">–</b></div>
-      <div class="kpi">Espectadores<b id="k-viewers">–</b></div>
-      <div class="kpi">Costo estimado<b id="k-cost">–</b></div>
-      <div class="kpi">Sesiones IA<b id="k-sessions">–</b></div>
-      <div class="kpi">Uptime<b id="k-up">–</b></div>
-      <div class="kpi sys" title="CPU del proceso (100 % = 1 núcleo) · carga del host">CPU<b id="k-cpu">–</b></div>
-      <div class="kpi sys" title="Memoria del proceso (RSS) · % RAM del host">Memoria<b id="k-mem">–</b></div>
-      <div class="kpi sys" title="Retraso del event loop (p99). > 50 ms afecta el tiempo real">Event loop<b id="k-lag">–</b></div>
-    </section>
-    <section class="card hidden" id="onboard">
-      <div class="ob-body">
-        <div class="row" style="justify-content:space-between"><h2>Primeros pasos</h2><button id="ob-hide" class="muted" style="padding:3px 12px;font-size:13px;box-shadow:none">Ocultar</button></div>
-        <ol id="ob-steps" data-no-i18n></ol>
+  <div class="shell">
+    <aside class="side">
+      <div class="brand">OpenCaptions</div>
+      <div class="event" id="event" data-no-i18n>…</div>
+      <nav id="nav">
+        <a href="#live" data-view="live" data-icon="play">En vivo</a>
+        <a href="#rooms" data-view="rooms" data-icon="dashboard">Salas</a>
+        <a href="#agenda" data-view="agenda" data-icon="calendar">Agenda</a>
+        <a href="#glossary" data-view="glossary" data-icon="book">Glosario</a>
+        <a href="#screens" data-view="screens" data-icon="qr">Pantallas y QR</a>
+        <a href="#transcripts" data-view="transcripts" data-icon="doc">Transcripciones</a>
+        <span class="sep"></span>
+        <a href="#history" data-view="history" data-icon="refresh">Historial</a>
+        <a href="#settings" data-view="settings" data-icon="gear">Ajustes</a>
+      </nav>
+      <div class="foot">
+        <button type="button" class="lockbtn" id="lockbtn"></button>
+        <span id="prefs-slot"></span>
       </div>
-      <div class="ob-art" style="background-image:url(/art/setup.webp)" role="img" aria-label=""></div>
-    </section>
-    <div class="section-h"><h2>Salas</h2></div>
-    <div class="grid" id="grid"></div>
-    <section class="card">
-      <div class="row" style="justify-content:space-between;margin-bottom:8px"><b>Eventos</b><select id="logfilter"><option value="">Todas las salas</option></select></div>
-      <div id="logs" data-no-i18n></div>
-    </section>
-  </main>
+    </aside>
 
+    <div class="content">
+      <div class="topbar"><h1 id="view-title">En vivo</h1><span class="chip" id="engine"></span></div>
+      <section class="netbar hidden" id="netbar" role="status"></section>
+      <div class="lockedbar hidden" id="lockedbar"></div>
+
+      <!-- LIVE -->
+      <section class="view" data-view="live">
+        <div class="kpis">
+          <div class="kpi">Salas en vivo<b id="k-live">–</b></div>
+          <div class="kpi">Espectadores<b id="k-viewers">–</b></div>
+          <div class="kpi">Costo estimado<b id="k-cost">–</b></div>
+          <div class="kpi">Sesiones IA<b id="k-sessions">–</b></div>
+        </div>
+        <section class="card hidden" id="onboard">
+          <div class="ob-body">
+            <div class="row" style="justify-content:space-between"><h2>Primeros pasos</h2><button id="ob-hide" class="muted" style="padding:3px 12px;font-size:13px;box-shadow:none">Ocultar</button></div>
+            <ol id="ob-steps" data-no-i18n></ol>
+          </div>
+          <div class="ob-art" style="background-image:url(/art/setup.webp)" role="img" aria-label=""></div>
+        </section>
+        <div class="grid" id="grid"></div>
+        <details class="card log"><summary>Registro de eventos</summary>
+          <div class="row" style="margin-top:10px"><select id="logfilter"><option value="">Todas las salas</option></select></div>
+          <div id="logs" data-no-i18n></div>
+        </details>
+      </section>
+
+      <!-- ROOMS -->
+      <section class="view" data-view="rooms">
+        <p class="lede">Cada sala tiene su QR, su pantalla y su overlay. Cada cambio queda en el Historial y se puede deshacer.</p>
+        <div class="rowbar"><button class="primary" id="add" data-icon="plus">Nueva sala</button></div>
+        <div class="card flush"><table class="table"><thead><tr><th>Sala</th><th class="hide-sm">Idiomas</th><th class="hide-sm">Audio</th><th></th></tr></thead><tbody id="rooms-body" data-no-i18n></tbody></table></div>
+        <div id="trash-box" class="hidden" style="display:grid;gap:14px">
+          <h2 class="sec">Salas eliminadas</h2>
+          <p class="muted-note" style="margin:0">Sus transcripciones se conservan. Restaurá una sala para tenerla de nuevo tal como estaba.</p>
+          <div class="card flush" id="trash-list" data-no-i18n></div>
+        </div>
+      </section>
+
+      <!-- AGENDA -->
+      <section class="view" data-view="agenda">
+        <p class="lede">Con la agenda, cada sala nombra sola sus charlas sin cortar a quien se pasa de tiempo, y los nombres de speakers ayudan a la IA a escribirlos bien.</p>
+        <div id="agenda-current" data-no-i18n></div>
+        <section class="card" style="display:grid;gap:12px">
+          <h2 style="margin:0;font-size:20px">Reemplazar la agenda</h2>
+          <p class="muted-note" style="margin:0">Desde Swapcard, Sessionize o una planilla: exportá las sesiones, seleccioná todo (con la fila de títulos), copiá y pegá acá. O una charla por línea: sala, hora, título, speaker.</p>
+          <textarea id="agenda-text" class="paste" placeholder="main,10:00,Keynote de apertura,Equipo del evento&#10;room-a,10:30,Diseñar ciudades para todos,María José Fernández"></textarea>
+          <div class="rowbar"><button id="agenda-preview" data-icon="eye">Ver qué cambia</button><span class="spacer"></span></div>
+          <div id="agenda-diff" class="hidden" data-no-i18n></div>
+        </section>
+      </section>
+
+      <!-- GLOSSARY -->
+      <section class="view" data-view="glossary">
+        <p class="lede">Nombres y términos que la IA tiene que escribir bien, y correcciones que se aplican a todos los subtítulos al instante.</p>
+        <section class="card" style="display:grid;gap:12px">
+          <h2 style="margin:0;font-size:20px">Nombres y términos</h2>
+          <p class="muted-note" style="margin:0">Speakers, marcas, siglas y palabras técnicas. Ayudan al reconocimiento de voz y a la traducción.</p>
+          <div class="terms" id="terms" data-no-i18n></div>
+          <form class="rowbar" id="term-form"><input id="term-in" placeholder="Ej: María José Fernández" style="flex:1;min-width:200px" maxlength="80" /><button data-icon="plus">Agregar</button></form>
+        </section>
+        <section class="card" style="display:grid;gap:12px">
+          <h2 style="margin:0;font-size:20px">Correcciones</h2>
+          <p class="muted-note" style="margin:0">Cuando la IA escribe algo mal siempre igual, corregilo acá. Podés poner varias variantes separadas por una barra vertical.</p>
+          <table class="table reps"><thead><tr><th>Si dice</th><th>Escribir</th><th class="hide-sm">Idioma</th><th></th></tr></thead><tbody id="reps"></tbody></table>
+          <div><button id="rep-add" data-icon="plus">Agregar corrección</button></div>
+        </section>
+        <div class="rowbar"><span class="spacer"></span><button class="primary" id="gloss-save" data-icon="check">Guardar glosario</button></div>
+      </section>
+
+      <!-- SCREENS -->
+      <section class="view" data-view="screens">
+        <p class="lede">Lo que va en cada pantalla del lugar: el QR para el público, la pantalla del escenario y el overlay del streaming.</p>
+        <div class="tools">
+          <a class="card tool" href="/kit.html" target="_blank"><b data-icon="qr">Kit de QR</b><span>Un cartel A4 por sala, para imprimir.</span></a>
+          <a class="card tool" href="/style.html" target="_blank"><b data-icon="palette">Estilo de subtítulos</b><span>Tipografía, colores y posición del overlay y la pantalla.</span></a>
+          <a class="card tool" href="/demo.html?mode=mic" target="_blank"><b data-icon="mic">Prueba de sonido</b><span>Hablá al micrófono y mirá los subtítulos.</span></a>
+          <button class="card tool hidden" id="float" type="button" style="text-align:left"><b data-icon="pin">Ventana flotante</b><span>Todas las salas en una ventana siempre visible, encima de OBS o vMix.</span></button>
+        </div>
+        <div class="rowbar"><label class="row">Sala <select id="screens-room"></select></label></div>
+        <section class="card links" id="screens-links"></section>
+      </section>
+
+      <!-- TRANSCRIPTS -->
+      <section class="view" data-view="transcripts">
+        <p class="lede">Todo lo que se dijo en cada charla, para leer, buscar y descargar en cada idioma.</p>
+        <div class="rowbar"><label class="row">Sala <select id="tx-room"></select></label><span class="spacer"></span><a href="/talks.html" target="_blank"><button data-icon="doc" tabindex="-1">Abrir la biblioteca pública</button></a></div>
+        <div class="card flush" id="tx-list"></div>
+      </section>
+
+      <!-- HISTORY -->
+      <section class="view" data-view="history">
+        <p class="lede">Cada cambio en la configuración del evento queda acá. Deshacé cualquiera para volver a como estaba.</p>
+        <div class="card flush" id="history-list" data-no-i18n></div>
+      </section>
+
+      <!-- SETTINGS -->
+      <section class="view" data-view="settings">
+        <section class="card setting">
+          <div><h3>Modo evento</h3><p>Durante el evento, bloqueá la configuración: nadie puede borrar ni cambiar salas, agenda o glosario por error. Las acciones en vivo (siguiente charla, reconectar una sala) siguen funcionando.</p></div>
+          <button id="lock2" type="button"></button>
+        </section>
+        <section class="card setting">
+          <div><h3>Nombre del evento</h3><p>Aparece en los celulares, en la pantalla del escenario y en los carteles.</p></div>
+          <form class="rowbar" id="name-form"><input id="name-in" maxlength="80" style="min-width:220px" /><button data-icon="check">Guardar</button></form>
+        </section>
+        <section class="card">
+          <h3 style="margin:0 0 4px;font-size:17px">Gemini (la IA en la nube)</h3>
+          <p class="muted-note" style="margin:0 0 14px">La API key con la que OpenCaptions usa Gemini. Se guarda en este servidor y nunca se muestra completa.</p>
+          <div id="key-panel" data-no-i18n></div>
+        </section>
+        <section class="card">
+          <h3 style="margin:0 0 4px;font-size:17px">Dirección pública</h3>
+          <p class="muted-note" style="margin:0 0 14px">La dirección a la que apuntan los QR y los links.</p>
+          <div id="tunnel-panel" data-no-i18n></div>
+        </section>
+        <section class="card setting hidden" id="ai-setting">
+          <div><h3>IA y respaldo sin internet</h3><p id="ai-desc"></p></div>
+          <select id="ai-mode" aria-label="Motor de IA">
+            <option value="auto">Automática: Gemini, y esta computadora si se corta internet</option>
+            <option value="cloud">Siempre Gemini (nube)</option>
+            <option value="local">Siempre esta computadora</option>
+          </select>
+        </section>
+        <section class="card setting">
+          <div><h3>Asistente de configuración</h3><p>Volvé a responder las preguntas del primer día: nombre, salas e idiomas. Antes de aplicar, muestra exactamente qué va a cambiar.</p></div>
+          <a href="/welcome.html#name" id="wizard-link"><button data-icon="wand" tabindex="-1">Abrir el asistente</button></a>
+        </section>
+        <section class="card setting">
+          <div><h3>Servidor</h3><p id="sys" data-no-i18n></p></div>
+          <span></span>
+        </section>
+      </section>
+    </div>
+  </div>
+
+  <!-- dialogs -->
   <dialog id="dlg-edit"><form method="dialog" id="f-edit" style="display:grid;gap:12px">
     <h3 style="margin:0" id="edit-title">Sala</h3>
     <div class="row" style="align-items:stretch">
       <label class="field" style="flex:1">ID<input name="id" required pattern="[a-z0-9_-]+" /></label>
       <label class="field" style="flex:2">Nombre<input name="name" required /></label>
     </div>
-    <label class="field">Charla actual (título)<input name="title" placeholder="Ej: Diseñar ciudades para todos — María José Fernández" /></label>
     <label class="field">Idioma de la charla<select name="source"><option value="auto">Detectar automáticamente</option></select></label>
     <div class="field">Traducir a<div class="langs-check" id="edit-targets"></div></div>
     <label class="field">Modo de traducción de subtítulos<select name="translation">
       <option value="">Por defecto del servidor</option>
-      <option value="text">Texto (clause a clause · menor latencia · 1 sesión Live por sala)</option>
+      <option value="text">Texto (frase a frase · menor latencia · 1 sesión Live por sala)</option>
       <option value="live">Live (speech-to-speech de Gemini · 1 sesión por idioma)</option>
-      <option value="hybrid">Híbrido (subtítulos por texto + voz traducida 🎧 en todos los idiomas)</option>
+      <option value="hybrid">Híbrido (subtítulos por texto + voz traducida en todos los idiomas)</option>
     </select></label>
     <label class="field">Pull de audio (opcional): SRT/RTMP/HLS/HTTP o archivo — el server lo toma con ffmpeg<input name="pull" placeholder="rtmp://0.0.0.0:1935/live/sala1 (OBS/vMix → Custom)  ·  srt://0.0.0.0:9001?mode=listener  ·  https://…/stream.m3u8" /></label>
     <label class="row muted"><input type="checkbox" name="loop" /> Repetir en loop (archivos de prueba)</label>
-    <div class="row" style="justify-content:space-between">
-      <button type="button" class="danger" id="edit-del">Eliminar sala</button>
-      <div class="row"><button value="cancel" formnovalidate>Cancelar</button><button class="primary" value="ok">Guardar</button></div>
-    </div>
+    <div class="dlg-actions"><button value="cancel" formnovalidate>Cancelar</button><button class="primary" value="ok">Guardar</button></div>
   </form></dialog>
 
-  <dialog id="dlg-links"><div style="display:grid;gap:14px" id="links-body"></div><form method="dialog" style="text-align:right;margin-top:12px"><button>Cerrar</button></form></dialog>
+  <dialog id="dlg-confirm"><form method="dialog">
+    <h3 style="margin:0" id="cf-title"></h3>
+    <div id="cf-body"></div>
+    <div class="dlg-actions"><button value="cancel">Cancelar</button><button value="ok" id="cf-ok"></button></div>
+  </form></dialog>
+
+  <dialog id="dlg-talk"><form method="dialog" style="display:grid;gap:12px">
+    <h3 style="margin:0" id="talk-title"></h3>
+    <p class="muted-note" style="margin:0" id="talk-note"></p>
+    <label class="field">Título<input id="talk-name" maxlength="200" /></label>
+    <label class="field">Speaker<input id="talk-speaker" maxlength="120" /></label>
+    <div class="dlg-actions"><button value="cancel" formnovalidate>Cancelar</button><button class="primary" value="ok" id="talk-ok"></button></div>
+  </form></dialog>
+
   <dialog id="dlg-export"><div id="export-body"></div><form method="dialog" style="text-align:right;margin-top:12px"><button>Cerrar</button></form></dialog>
-  <dialog id="dlg-agenda"><form method="dialog" style="display:grid;gap:10px">
-    <h3 style="margin:0">📅 Agenda del evento</h3>
-    <p class="muted" style="margin:0;font-size:13px"><b>Desde Swapcard, Sessionize o una planilla:</b> exportá las sesiones a Excel o Google Sheets, seleccioná todo (con la fila de títulos), copiá y pegá acá. Se reconocen las columnas (título, inicio, sala/ubicación, speakers) y las salas por su nombre; las filas de salas sin subtítulos se ignoran.<br>O a mano, una charla por línea: <code>sala,hora,título,speaker</code> (hora <code>14:30</code> = hoy).</p>
-    <p class="muted" style="margin:0;font-size:13px">Para qué sirve: cada sala nombra sola sus charlas (pantallas, transcripciones y descargas) sin cortar a un speaker que se pasa de tiempo, y los nombres de speakers y títulos ayudan a la IA a escribirlos bien.</p>
-    <textarea id="agenda-text" rows="14" style="font-family:var(--mono);font-size:12px" placeholder="main,10:00,Keynote de apertura,Equipo del evento&#10;room-a,10:30,Diseñar ciudades para todos,María José Fernández"></textarea>
-    <div id="agenda-msg" class="muted" style="font-size:13px"></div>
-    <div class="row" style="justify-content:flex-end"><button value="cancel">Cancelar</button><button class="primary" value="ok" id="agenda-save">Guardar</button></div>
-  </form></dialog>
-  <dialog id="dlg-gloss"><form method="dialog" style="display:grid;gap:10px">
-    <h3 style="margin:0">Glosario</h3>
-    <p class="muted" style="margin:0;font-size:13px"><b>vocabulary</b>: nombres y términos que se le pasan al reconocimiento de voz. <b>replacements</b>: correcciones que se aplican a todos los subtítulos (se aplican al instante, sin reiniciar).</p>
-    <textarea id="gloss-text" rows="18" style="font-family:var(--mono);font-size:12px"></textarea>
-    <div class="row" style="justify-content:flex-end"><button value="cancel">Cancelar</button><button class="primary" value="ok">Guardar</button></div>
-  </form></dialog>
+  <div class="notes" id="toasts" aria-live="polite"></div>
 
   <script type="module" src="/pages/admin.js"></script>
 </body>

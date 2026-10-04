@@ -1,4 +1,5 @@
-# OpenCaptions server image (Linux, amd64/arm64).
+# syntax=docker/dockerfile:1
+# OpenCaptions server image (Linux, amd64/arm64). Published as ghcr.io/carraroesteban/opencaptions (.github/workflows/docker.yml).
 #   docker build -t opencaptions .
 #   docker build --build-arg WITH_YTDLP=1 -t opencaptions .   # + yt-dlp for YouTube demos / latency tests
 FROM node:22-bookworm-slim
@@ -14,6 +15,11 @@ RUN apt-get update \
     fi \
  && rm -rf /var/lib/apt/lists/*
 
+# cloudflared: the dashboard's one-click public HTTPS address (src/tunnel.js). The container's filesystem is
+# read-only, so it can't be downloaded on demand like outside Docker. TARGETARCH (amd64 | arm64) comes from BuildKit.
+ARG TARGETARCH
+ADD --chmod=755 https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-${TARGETARCH} /usr/local/bin/cloudflared
+
 WORKDIR /app
 COPY package*.json ./
 # System ffmpeg is installed above, so the optional ffmpeg-static binary is not needed.
@@ -21,7 +27,8 @@ RUN npm ci --omit=dev --omit=optional && npm cache clean --force
 COPY --chown=node:node . .
 RUN mkdir -p /app/data && chown -R node:node /app/data /app/config
 
-ENV NODE_ENV=production PORT=8080 HOST=0.0.0.0
+# OC_DOCKER: the startup message prints a dashboard link with the token (in a container, localhost isn't trusted).
+ENV NODE_ENV=production PORT=8080 HOST=0.0.0.0 OC_DOCKER=1
 USER node
 EXPOSE 8080
 VOLUME ["/app/data"]
