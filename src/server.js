@@ -12,6 +12,9 @@ import { config, normalizeStage, ROOT, langName, setEngine } from './config.js';
 import { Failover } from './failover.js';
 import { checkKey, saveKey, keyInfo, looksLikeKey, readSecret, saveSecret } from './aikey.js';
 import { Tunnel, tunnelOrigin } from './tunnel.js';
+import * as tty from './tty.js';
+import { identify, allows, sameOrigin, actor, roleFor, createSession, clearCookie, cookieValue, listSessions, endSessions, changePassword, passwordFromEnv, twoFactorOn, twoFactorSecret, checkCode, startTwoFactor, confirmTwoFactor, disableTwoFactor, cleanDevice } from './auth.js';
+import { oidc, oidcEnabled, roleForEmail, startFlow, finishFlow, redirectFor } from './oidc.js';
 import { resetClient } from './genai.js';
 import { Glossary } from './glossary.js';
 import { Stage } from './stage.js';
@@ -23,7 +26,7 @@ import { Schedule, parseSchedule } from './schedule.js';
 import { History } from './history.js';
 import { asrInfo, asrReachable } from './local/asr.js';
 import { llmInfo, llmHealth, chat as localChat } from './local/llm.js';
-import { authMode, tokens, canAdmin, canIngest, noteAuthFailure, securityHeaders, apiRateLimit, originAllowed, wsAllowed, checkPullUrl, clientIp } from './security.js';
+import { authMode, tokens, noteAuthFailure, securityHeaders, apiRateLimit, originAllowed, wsAllowed, checkPullUrl, clientIp } from './security.js';
 
 const MAX_STAGES = Number(process.env.MAX_STAGES || 60);
 const MAX_VIEWERS = Number(process.env.MAX_VIEWERS || 5000);
@@ -104,7 +107,8 @@ function saveSetup(patch) {
 // Every setup change is recorded with what it replaced, so it can be undone (src/history.js).
 const history = new History(path.join(config.dataDir, 'history.jsonl'));
 const clone = (v) => (v == null ? v : JSON.parse(JSON.stringify(v)));
-const recordChange = (c) => { const e = history.record(c); broadcastAdmin({ type: 'history', change: { ...e, before: undefined, after: undefined } }); return e; };
+const recordChange = (c) => { const e = history.record({ ...c, by: actor.getStore()?.label }); // `by`: who, from src/auth.js
+  broadcastAdmin({ type: 'history', change: { ...e, before: undefined, after: undefined } }); return e; };
 
 // ---------------- http ----------------
 const app = express();
@@ -116,11 +120,20 @@ app.use('/api', apiRateLimit);
 app.use(express.json({ limit: '256kb' }));
 
 const reqUrl = (req) => new URL(req.originalUrl, 'http://x');
-const admin = (req, res, next) => {
-  if (canAdmin(req, reqUrl(req))) return next();
-  if (!noteAuthFailure(req)) return res.set('Retry-After', '600').status(429).json({ error: 'too many failed attempts' });
-  res.status(401).json({ error: 'admin token required' });
+// Who may do what (src/auth.js): `crew` = the live controls and reading; `admin` = everything, including the setup.
+const need = (role) => (req, res, next) => {
+  const who = identify(req, reqUrl(req));
+  if (!allows(who, role)) {
+    if (who) return res.status(403).json({ error: 'this needs the admin password: the crew password only runs the live controls', role: who.role });
+    if (!noteAuthFailure(req)) return res.set('Retry-After', '600').status(429).json({ error: 'too many failed attempts' });
+    return res.status(401).json({ error: 'sign-in required', ...(twoFactorOn() ? { twoFactor: true } : {}) });
+  }
+  if (!sameOrigin(req, who)) return res.status(403).json({ error: 'refused: this request came from another website' });
+  req.who = who;
+  actor.run(who, next);
 };
+const admin = need('admin');
+const crew = need('crew');
 const getStage = (req, res, next) => {
   req.stage = stages.get(req.params.id);
   return req.stage ? next() : res.status(404).json({ error: 'unknown stage' });
@@ -173,7 +186,7 @@ app.get('/api/event', (req, res) => {
   });
 });
 
-app.get('/api/status', admin, (req, res) => res.json(snapshot()));
+app.get('/api/status', crew, (req, res) => res.json(snapshot()));
 
 app.post('/api/stages', admin, unlocked, async (req, res) => {
   try {
@@ -185,7 +198,7 @@ app.post('/api/stages', admin, unlocked, async (req, res) => {
   } catch (e) { res.status(400).json({ error: e.message }); }
 });
 
-app.patch('/api/stages/:id', admin, getStage, async (req, res) => {
+app.patch('/api/stages/:id', crew, getStage, async (req, res) => {
   const st = req.stage;
   const b = req.body || {};
   const def = normalizeStage({ ...st.def, ...b, id: st.id });
@@ -195,6 +208,7 @@ app.patch('/api/stages/:id', admin, getStage, async (req, res) => {
   } catch (e) { return res.status(400).json({ error: e.message }); }
   const old = st.def;
   const setupKeys = Object.keys(b).filter((k) => k !== 'title');
+  if (setupKeys.length && req.who.role !== 'admin') return res.status(403).json({ error: 'the crew can rename the current talk, not change the room', role: req.who.role });
   if (setup.locked && setupKeys.length) return res.status(423).json(LOCKED);
   // Only a real change touches the room: saving the dialog must not restart audio or clear viewers' screens.
   if ('title' in b && (b.title || '') !== (st.talk.title || '')) st.setTitle(b.title || '');
@@ -221,7 +235,7 @@ app.delete('/api/stages/:id', admin, unlocked, getStage, (req, res) => {
   res.json({ ok: true, change: deleteRoom(req.stage).id });
 });
 
-app.post('/api/stages/:id/talk', admin, getStage, (req, res) => {
+app.post('/api/stages/:id/talk', crew, getStage, (req, res) => {
   req.stage.newTalk(String(req.body?.title || '').slice(0, 200), String(req.body?.speaker || '').slice(0, 120));
   res.json(req.stage.status());
 });
@@ -245,16 +259,16 @@ app.post('/api/stages/:id/youtube', admin, getStage, async (req, res) => {
   }
 });
 
-app.delete('/api/stages/:id/pull', admin, getStage, (req, res) => {
+app.delete('/api/stages/:id/pull', crew, getStage, (req, res) => {
   stopPull(req.stage.id);
   res.json({ ok: true });
 });
-app.post('/api/stages/:id/pull/stop', admin, getStage, (req, res) => { // sendBeacon-friendly
+app.post('/api/stages/:id/pull/stop', crew, getStage, (req, res) => { // sendBeacon-friendly
   stopPull(req.stage.id);
   res.json({ ok: true });
 });
 
-app.post('/api/stages/:id/restart', admin, getStage, (req, res) => {
+app.post('/api/stages/:id/restart', crew, getStage, (req, res) => {
   req.stage.restartEngines();
   res.json({ ok: true });
 });
@@ -264,9 +278,9 @@ app.post('/api/stages/:id/restart', admin, getStage, (req, res) => {
 // conferences that publish their videos anyway), 'none' makes all admin-only.
 const PUBLIC_TRANSCRIPTS = (process.env.PUBLIC_TRANSCRIPTS || config.event.publicTranscripts || 'current').toLowerCase();
 const isCurrent = (st, talkId) => !talkId || talkId === st.talk.id;
-const canReadTalk = (req, st, talkId) => PUBLIC_TRANSCRIPTS === 'all' || (PUBLIC_TRANSCRIPTS === 'current' && isCurrent(st, talkId)) || canAdmin(req, reqUrl(req));
-const talkAccess = (req, res, next) => (canReadTalk(req, req.stage, req.query.talk || req.params.talk) ? next() : admin(req, res, next));
-const listAccess = (req, res, next) => (PUBLIC_TRANSCRIPTS === 'all' ? next() : admin(req, res, next));
+const canReadTalk = (req, st, talkId) => PUBLIC_TRANSCRIPTS === 'all' || (PUBLIC_TRANSCRIPTS === 'current' && isCurrent(st, talkId)) || allows(identify(req, reqUrl(req)), 'crew');
+const talkAccess = (req, res, next) => (canReadTalk(req, req.stage, req.query.talk || req.params.talk) ? next() : crew(req, res, next));
+const listAccess = (req, res, next) => (PUBLIC_TRANSCRIPTS === 'all' ? next() : crew(req, res, next));
 
 /** All final segments of a talk: from disk, or from memory when STORE_TRANSCRIPTS=false (current talk only). */
 function talkSegs(st, talkId) {
@@ -290,7 +304,7 @@ app.get('/api/stages/:id/talks', getStage, listAccess, (req, res) => res.json(st
 
 // Public library of talks (what the audience may read): used by /talks.html.
 app.get('/api/talks', (req, res) => {
-  const all = PUBLIC_TRANSCRIPTS === 'all' || canAdmin(req, reqUrl(req));
+  const all = PUBLIC_TRANSCRIPTS === 'all' || allows(identify(req, reqUrl(req)), 'crew');
   if (PUBLIC_TRANSCRIPTS === 'none' && !all) return res.status(401).json({ error: 'admin token required' });
   const out = [];
   for (const st of stages.values()) {
@@ -355,7 +369,96 @@ app.post('/api/stages/:id/ask', getStage, async (req, res) => {
 });
 
 // Agenda: names talks automatically (see src/schedule.js). Public read = the event's program.
-app.get('/api/setup', admin, (req, res) => {
+// ---------------- sign-in (src/auth.js, src/oidc.js) ----------------
+// What the sign-in screen offers. Public: it reveals nothing but which ways in exist.
+app.get('/api/auth/config', (req, res) => res.json({ password: !oidc.only, sso: oidcEnabled ? oidc.label : null }));
+// Who this browser is signed in as ({ role: null } when it isn't).
+app.get('/api/auth/me', (req, res) => {
+  const who = identify(req, reqUrl(req));
+  if (!who || who.role === 'ingest') return res.json({ role: null, sso: oidcEnabled ? oidc.label : null });
+  res.json({ role: who.role, via: who.via, label: who.label, session: who.session?.pid || null, expiresAt: who.session?.expiresAt || null, twoFactor: twoFactorOn(), sso: oidcEnabled ? oidc.label : null });
+});
+app.post('/api/auth/login', (req, res) => {
+  if (!originAllowed(req)) return res.status(403).json({ error: 'refused: this request came from another website' });
+  if (oidc.only) return res.status(403).json({ error: `sign in with ${oidc.label}` });
+  const b = req.body || {};
+  const role = roleFor(String(b.password || ''));
+  const failed = (body) => (noteAuthFailure(req) ? res.status(401).json(body) : res.set('Retry-After', '600').status(429).json({ error: 'too many failed attempts: wait 10 minutes' }));
+  if (!role) return failed({ error: 'wrong password' });
+  if (role === 'admin' && twoFactorOn()) {
+    if (!b.code) return res.status(401).json({ need: 'code' });
+    if (!checkCode(twoFactorSecret(), b.code)) return failed({ need: 'code', error: 'wrong code' });
+  }
+  const { session, cookie } = createSession({ role, device: String(b.device || ''), via: 'password' }, req);
+  res.set('Set-Cookie', cookie).json({ ok: true, role, device: session.device });
+});
+app.post('/api/auth/logout', (req, res) => {
+  const who = identify(req, reqUrl(req));
+  if (who?.session) endSessions((s) => s === who.session);
+  res.set('Set-Cookie', clearCookie(req)).json({ ok: true });
+});
+// Signed-in devices: see them, sign one out, or every other one (a lost laptop, a volunteer who left).
+app.get('/api/auth/sessions', admin, (req, res) => res.json(listSessions(req.who.session)));
+app.delete('/api/auth/sessions/:id', admin, (req, res) => {
+  const gone = listSessions().find((s) => s.id === req.params.id);
+  if (!gone || !endSessions((s) => s.pid === req.params.id)) return res.status(404).json({ error: 'not signed in' });
+  recordChange({ kind: 'auth.signout', summary: `Signed out "${gone.device}"` });
+  res.json({ ok: true });
+});
+app.post('/api/auth/sessions/sign-out-others', admin, (req, res) => {
+  const n = endSessions((s) => s !== req.who.session);
+  if (n) recordChange({ kind: 'auth.signout', summary: `Signed out ${n} other device${n === 1 ? '' : 's'}` });
+  res.json({ ok: true, signedOut: n });
+});
+// Passwords: which exist and whether .env sets them (never their values); change a generated one.
+app.get('/api/auth/passwords', admin, (req, res) => res.json(['admin', 'crew', 'ingest'].map((which) => ({ which, fromEnv: passwordFromEnv(which) }))));
+app.post('/api/auth/passwords/:which', admin, (req, res) => {
+  const which = req.params.which;
+  if (!['admin', 'crew', 'ingest'].includes(which)) return res.status(404).json({ error: 'unknown password' });
+  try {
+    const r = changePassword(/** @type {'admin' | 'crew' | 'ingest'} */ (which), req.who.session || null);
+    recordChange({ kind: 'auth.password', summary: `${which[0].toUpperCase()}${which.slice(1)} password changed${r.signedOut ? ` (${r.signedOut} device${r.signedOut === 1 ? '' : 's'} signed out)` : ''}` });
+    res.json({ ok: true, password: r.value, signedOut: r.signedOut });
+  } catch (e) { res.status(e.status || 400).json({ error: e.message }); }
+});
+// Two-factor sign-in for the admin password: start (QR code for the app), confirm with a code, turn off.
+app.post('/api/auth/2fa/start', admin, async (req, res) => {
+  const t = startTwoFactor();
+  res.json({ ...t, qr: await QRCode.toString(t.uri, { type: 'svg', margin: 1 }) });
+});
+app.post('/api/auth/2fa/confirm', admin, (req, res) => {
+  try { confirmTwoFactor(req.body?.code); } catch (e) { return res.status(400).json({ error: e.message }); }
+  recordChange({ kind: 'auth.2fa', summary: 'Two-factor sign-in turned on' });
+  res.json({ ok: true, twoFactor: true });
+});
+app.post('/api/auth/2fa/disable', admin, (req, res) => {
+  try { disableTwoFactor(req.body?.code); } catch (e) { return res.status(400).json({ error: e.message }); }
+  recordChange({ kind: 'auth.2fa', summary: 'Two-factor sign-in turned off' });
+  res.json({ ok: true, twoFactor: false });
+});
+// Company sign-in: off to the provider, and back.
+app.get('/auth/oidc/start', async (req, res) => {
+  if (!oidcEnabled) return res.status(404).send('Company sign-in is not set up (OIDC_ISSUER, OIDC_CLIENT_ID).');
+  try {
+    const { url, binding } = await startFlow(redirectFor(req), cleanDevice(String(req.query.device || '')));
+    res.set('Set-Cookie', `oc_oidc=${binding}; Path=/auth/oidc; HttpOnly; SameSite=Lax; Max-Age=600${req.secure ? '; Secure' : ''}`).redirect(url);
+  } catch (e) { res.redirect(`/admin.html?signin=${encodeURIComponent(e.message)}`); }
+});
+app.get('/auth/oidc/callback', async (req, res) => {
+  const back = (msg) => res.append('Set-Cookie', 'oc_oidc=; Path=/auth/oidc; HttpOnly; SameSite=Lax; Max-Age=0').redirect(`/admin.html${msg ? `?signin=${encodeURIComponent(msg)}` : ''}`);
+  if (req.query.error) return back(String(req.query.error_description || req.query.error));
+  try {
+    const u = await finishFlow({ state: req.query.state, code: req.query.code, binding: cookieValue(req, 'oc_oidc') });
+    const role = roleForEmail(u.email);
+    if (!role) { noteAuthFailure(req); return back(`${u.email} isn't allowed to open this dashboard: ask an admin to add it to OIDC_ADMINS or OIDC_CREW`); }
+    const { cookie } = createSession({ role, device: `${u.email}${u.device && u.device !== 'A browser' ? ` · ${u.device}` : ''}`, via: 'sso' }, req);
+    res.append('Set-Cookie', cookie);
+    actor.run({ role, via: 'session', label: u.email }, () => recordChange({ kind: 'auth.signin', summary: `${u.email} signed in with ${oidc.label}` }));
+    back('');
+  } catch (e) { back(e.message); }
+});
+
+app.get('/api/setup', crew, (req, res) => {
   res.json({
     done: !!setup.done,
     locked: !!setup.locked,
@@ -404,7 +507,7 @@ app.post('/api/lock', admin, (req, res) => {
   res.json({ locked: !!setup.locked });
 });
 
-app.get('/api/history', admin, (req, res) => {
+app.get('/api/history', crew, (req, res) => {
   res.json({ locked: !!setup.locked, changes: history.recent({ limit: Math.min(500, Number(req.query.limit) || 200) }), trash: history.trash((id) => stages.has(id)) });
 });
 
@@ -458,7 +561,7 @@ app.post('/api/history/:id/undo', admin, unlocked, async (req, res) => {
 });
 
 // Offline backup: which engine the rooms use (auto | cloud | local). Only with Gemini as the main engine.
-app.post('/api/engine', admin, (req, res) => {
+app.post('/api/engine', crew, (req, res) => {
   if (!failover) return res.status(400).json({ error: 'the offline backup needs Gemini as the main engine (see docs/local.md)' });
   const before = failover.mode;
   try { failover.setMode(String(req.body?.mode || '')); } catch (e) { return res.status(400).json({ error: e.message }); }
@@ -560,7 +663,7 @@ app.get('/api/qr.svg', async (req, res) => {
   res.type('image/svg+xml').set('Cache-Control', 'public, max-age=3600').send(svg);
 });
 
-app.get('/metrics', admin, (req, res) => { // Prometheus: send `Authorization: Bearer <ADMIN_TOKEN>`
+app.get('/metrics', crew, (req, res) => { // Prometheus: send `Authorization: Bearer <ADMIN_TOKEN>`
   const lines = [];
   for (const s of stages.values()) {
     const st = s.status();
@@ -706,7 +809,7 @@ let lastTunnelLine = '';
 tunnel.on('change', (st) => {
   config.publicUrl = st.state === 'on' && st.url ? st.url : configuredPublicUrl;
   broadcastAdmin({ type: 'tunnel', ...st });
-  const line = st.state === 'on' && st.url ? `  ✓ Public address: ${st.url}` : st.state === 'error' ? `  ⚠ Public address: ${st.error}` : '';
+  const line = st.state === 'on' && st.url ? `${tty.sym.ok} Public address: ${tty.c.bold(st.url)}` : st.state === 'error' ? `${tty.sym.warn} Public address: ${st.error}` : '';
   if (line && line !== lastTunnelLine) console.log(line);
   lastTunnelLine = line;
 });
@@ -728,7 +831,7 @@ server.on('upgrade', (req, socket, head) => {
   if (!wsAllowed(req)) return reject(socket, 429, 'Too Many Requests');
   if (kind !== 'view' && !originAllowed(req)) return reject(socket, 403, 'Forbidden');
   if (kind === 'view' && viewerCount >= MAX_VIEWERS) return reject(socket, 503, 'Service Unavailable');
-  const ok = kind === 'ingest' ? canIngest(req, url) : kind === 'admin' ? canAdmin(req, url) : true;
+  const ok = kind === 'ingest' ? allows(identify(req, url), 'ingest') : kind === 'admin' ? allows(identify(req, url), 'crew') : true;
   if (!ok && !noteAuthFailure(req)) return reject(socket, 429, 'Too Many Requests');
   wss.handleUpgrade(req, socket, head, (ws) => {
     // Protocol violations (oversized frame, invalid UTF-8…) emit 'error' on the socket: log, never crash.
@@ -876,47 +979,57 @@ server.listen(config.port, config.host, () => {
   // Public address turned on from the dashboard (or TUNNEL=quick): bring it back after a restart.
   const savedTunnel = process.env.TUNNEL ? { mode: process.env.TUNNEL, host: process.env.TUNNEL_HOST || '' } : setup.tunnel;
   if (savedTunnel && ['quick', 'token'].includes(savedTunnel.mode)) startTunnel(savedTunnel.mode, savedTunnel.host || '');
-  const base = config.publicUrl || `${tls ? 'https' : 'http'}://localhost:${config.port}`;
-  console.log(`\n  OpenCaptions · ${config.event.name}`);
-  console.log(`  engine: ${config.engine}${config.engine === 'gemini' ? ` (${config.model})` : config.engine === 'local' ? ` (${engineLabel()}, nothing leaves this machine)` : ' (no GEMINI_API_KEY → simulated captions)'}`);
+  const local = `${tls ? 'https' : 'http'}://localhost:${config.port}`;
+  const shared = config.publicUrl || lanUrl() || local;
+  const version = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8')).version;
+  console.log(`\n${tty.title(config.event.named ? config.event.name : '')} ${tty.c.gray(`v${version}`)}\n`);
+  tty.ok(`Ready on ${tty.c.bold(local)}`);
+  console.log('');
+  const ai = config.engine === 'gemini' ? `Gemini ${tty.c.gray(`· ${config.model}`)}`
+    : config.engine === 'local' ? `This computer ${tty.c.gray(`· ${engineLabel()} · nothing leaves it`)}`
+    : `${tty.c.yellow('Simulated captions')} ${tty.c.gray('· paste a Gemini API key in Dashboard → Settings')}`;
+  tty.table([
+    ['Dashboard', `${local}/admin.html`],
+    ['Audience', `${shared}/`],
+    ['Rooms', `${[...stages.values()].map((x) => x.def.name).join(', ')} ${tty.c.gray(`(${stages.size})`)}`],
+    ['AI', ai],
+  ]);
   if (config.engine === 'local') {
-    console.log(`  speech:  ${asrInfo().url}\n  text:    ${config.localLlmOff ? 'off' : `${llmInfo().url} · ${localModels()}`}`);
+    tty.table([['  speech', tty.c.gray(asrInfo().url)], ['  text', tty.c.gray(config.localLlmOff ? 'off' : `${llmInfo().url} · ${localModels()}`)]]);
     checkLocal().then(async ({ asr, llm }) => {
-      if (!asr) console.log(`  ⚠ speech server not reachable at ${asrInfo().url} — start everything with: npm run local`);
-      if (llm.off) console.log('  transcription only (LOCAL_LLM=off): no translations or AI summaries');
-      else if (!llm.ok) console.log(`  ⚠ text model not reachable at ${llmInfo().url} — translations and summaries won't work (npm run local starts Ollama)`);
+      if (!asr) tty.warn(`speech server not reachable at ${asrInfo().url} — start everything with: npm run local`);
+      if (llm.off) tty.info('transcription only (LOCAL_LLM=off): no translations or AI summaries');
+      else if (!llm.ok) tty.warn(`text model not reachable at ${llmInfo().url} — translations and summaries won't work (npm run local starts Ollama)`);
       else if (!llm.hasModel) {
-        for (const m of llm.missing) console.log(llmInfo().api === 'ollama' ? `  ⚠ model "${m}" is not installed — run: ollama pull ${m}` : `  ⚠ the text model server doesn't list "${m}" (it has: ${llm.models.slice(0, 5).join(', ')}) — check LOCAL_LLM_MODEL / LOCAL_MT_MODEL`);
+        for (const m of llm.missing) tty.warn(llmInfo().api === 'ollama' ? `model "${m}" is not installed — run: ollama pull ${m}` : `the text model server doesn't list "${m}" (it has: ${llm.models.slice(0, 5).join(', ')}) — check LOCAL_LLM_MODEL / LOCAL_MT_MODEL`);
       } else {
         // Load the models now, not at the first caption.
         for (const model of new Set([llmInfo().model, llmInfo().mtModel])) localChat({ model, user: 'Reply with OK.', maxTokens: 4, priority: 0 }).catch(() => {});
       }
     }).catch(() => {});
   }
-  console.log(`  stages: ${[...stages.keys()].join(', ')}`);
-  console.log(`\n  Audience     ${base}/`);
-  console.log(`  Production   ${base}/admin.html`);
-  console.log(`  Stage ingest ${base}/ingest.html`);
-  console.log(`  Live demo    ${base}/demo.html?mode=mic\n`);
+  console.log('');
   if (authMode === 'off') {
-    console.log('  ⚠ AUTH=off — anyone who can reach this server can administer it and inject audio. Lab use only.\n');
+    tty.warn(tty.c.yellow('AUTH=off — anyone who can reach this server can run the dashboard and send audio. Lab use only.'));
   } else {
-    console.log(`  Auth: ${authMode === 'auto' ? 'this machine (localhost) is trusted; other devices need a token' : 'token required everywhere'}`);
-    const remote = config.publicUrl || '<this-server>';
-    console.log(`  Admin token  ${tokens.admin}${tokens.adminGenerated ? '  (generated, stored in data/secrets.json — set ADMIN_TOKEN to choose your own)' : ''}`);
-    console.log(`  Ingest token ${tokens.ingest}${tokens.ingestGenerated ? '  (generated)' : ''}`);
-    console.log(`  From another device: ${remote}/admin.html?token=… · ${remote}/ingest.html?token=…\n`);
+    console.log(`  ${tty.c.bold('Passwords')} ${tty.c.gray(authMode === 'auto' ? '· this computer needs none; other devices do' : '· required on every device, this one too')}`);
+    tty.table([
+      ['Admin token', `${tokens.admin}  ${tty.c.gray(`dashboard, everything${twoFactorOn() ? ' · plus a two-factor code' : ''}${tokens.adminGenerated ? ' · generated, kept in data/secrets.json' : ''}`)}`],
+      ['Crew token', `${tokens.crew}  ${tty.c.gray('dashboard, live controls only: for the crew')}`],
+      ['Ingest token', `${tokens.ingest}  ${tty.c.gray('room computers sending audio')}`],
+    ]);
     // Docker: the browser on the host counts as another device, so hand over a link that signs in directly.
-    if (process.env.OC_DOCKER) console.log(`  ➜ Open the dashboard: ${config.publicUrl || 'http://localhost:8080'}/admin.html?token=${tokens.admin}\n`);
+    if (process.env.OC_DOCKER) console.log(`\n${tty.sym.arrow} Open the dashboard: ${config.publicUrl || 'http://localhost:8080'}/admin.html?token=${tokens.admin}`);
   }
+  if (!tls && !config.publicUrl && config.host !== '127.0.0.1' && config.host !== 'localhost') {
+    console.log(`\n  ${tty.c.gray('Plain HTTP: fine on the venue Wi-Fi. For phones on any network, turn on Dashboard → Settings → Public address.')}`);
+  }
+  console.log(`  ${tty.c.gray('Press Ctrl+C to stop.')}\n`);
   // --open (the double-click starter): show the dashboard. On this computer it needs no password.
   if (process.argv.includes('--open') && !process.env.OC_DOCKER) {
     const url = `${tls ? 'https' : 'http'}://localhost:${config.port}/admin.html`;
     const [cmd, args] = process.platform === 'darwin' ? ['open', [url]] : process.platform === 'win32' ? ['cmd', ['/c', 'start', '""', url]] : ['xdg-open', [url]];
     try { spawn(cmd, args, { stdio: 'ignore', detached: true, windowsHide: true }).unref(); } catch { /* the address is printed above */ }
-  }
-  if (!tls && !config.publicUrl && config.host !== '127.0.0.1' && config.host !== 'localhost') {
-    console.log('  Note: plain HTTP. Put HTTPS in front (Cloudflare Tunnel / Caddy) before exposing this beyond a trusted LAN — see docs/deployment.md\n');
   }
 });
 

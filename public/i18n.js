@@ -82,6 +82,7 @@ const DICTS = {
     "hace": "",
     'Todas las salas': 'All rooms', 'Modo simulado (sin API key)': 'Simulated mode (no API key)',
     'Asistente de configuración': 'Setup wizard', 'Motor de IA': 'AI engine',
+    'Acceso': 'Access', 'Quién puede entrar a este panel, y desde qué dispositivos.': 'Who can open this dashboard, and from which devices.',
     'Gemini (la IA en la nube)': 'Gemini (the AI in the cloud)', 'Conectar Gemini en Ajustes': 'Connect Gemini in Settings', 'Dirección pública': 'Public address',
     'La API key con la que OpenCaptions usa Gemini. Se guarda en este servidor y nunca se muestra completa.': 'The API key OpenCaptions uses for Gemini. It’s kept on this server and never shown in full.',
     'La dirección a la que apuntan los QR y los links.': 'The address the QR codes and links point to.',

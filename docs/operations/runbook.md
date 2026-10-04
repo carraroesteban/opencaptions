@@ -22,6 +22,7 @@ A shorter Spanish version for venue crews is in [event-day.es.md](event-day.es.m
 - [ ] Choose a topology and deploy the server ([Deployment](../deployment.md)).
 - [ ] Set up HTTPS: **Settings → Public address** (use your own domain for the event: a quick address changes on every restart), or your own proxy with `PUBLIC_URL` set to the final address.
 - [ ] Set `ADMIN_TOKEN` and `INGEST_TOKEN` to long random values (`openssl rand -base64 24`). Store them in the team's password manager.
+- [ ] Give volunteers and technicians the **crew password** (live controls only), not the admin one. Turn on **two-factor sign-in** in Settings → Access.
 - [ ] Walk through the [hardening checklist](../security-guide.md#hardening-checklist).
 - [ ] Enable billing on the Gemini project and set a budget alert.
 - [ ] Check the concurrent Live session limit for your tier. Run a full-scale test with `npm run multi -- --rooms <N> --minutes 3 --playlist <url>`.

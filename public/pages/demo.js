@@ -8,8 +8,8 @@ document.querySelector('header').append(prefsControls());
 localize();
 const $ = (id) => document.getElementById(id);
 const ev = await getEvent();
-const token = store.get('admin.token', '');
-const headers = { 'content-type': 'application/json', 'x-admin-token': token };
+// Admin calls (the YouTube demo) ride on the dashboard's session cookie, or need none on the server itself.
+const headers = { 'content-type': 'application/json' };
 
 $('stage').innerHTML = ev.stages.map((s) => `<option value="${s.id}">${esc(s.name)}</option>`).join('');
 $('stage').value = qs.get('stage') || store.get('demo.stage', 'main');

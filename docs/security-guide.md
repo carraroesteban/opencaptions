@@ -59,24 +59,25 @@ flowchart LR
 |---|---|
 | Anyone | Read room names, captions, the glossary, the current talk's transcript (configurable), QR codes and `/healthz` |
 | Holder of `INGEST_TOKEN` | Send audio to any room |
-| Holder of `ADMIN_TOKEN` | Everything, including sending audio |
+| Holder of `CREW_TOKEN`, or a crew account (company sign-in) | The live controls and reading the dashboard; never the setup |
+| Holder of `ADMIN_TOKEN` (plus a two-factor code, when on), or an admin account | Everything, including sending audio |
 | A process on the server host (`AUTH=auto`) | Everything, without a token. Anyone who can run code on the host can already read `.env`. |
 
 ## Threats and controls (STRIDE)
 
 | Threat | Example | Control |
 |---|---|---|
-| **Spoofing** an operator | Someone on venue Wi-Fi opens `/admin.html` | Tokens are required for admin and ingest from every non-local device. Tokens are compared in constant time. After 20 failures in 10 minutes, a client IP is locked out with HTTP 429. |
+| **Spoofing** an operator | Someone on venue Wi-Fi opens `/admin.html` | Sign-in is required from every non-local device; passwords are compared in constant time. After 20 failures in 10 minutes, a client IP is locked out with HTTP 429. Optional two-factor codes or company sign-in. |
 | Spoofing "localhost" | A request sent through a tunnel or proxy on the same machine, or DNS rebinding | Local trust requires a loopback socket, a `localhost`/`127.0.0.1` Host header **and** no proxy headers (`X-Forwarded-For`, `CF-Connecting-IP`, `Forwarded`…). Set `AUTH=token` to disable local trust. |
 | **Tampering** with captions | Injecting audio into a room | Ingest needs `INGEST_TOKEN`. A new ingest replaces the previous one, which is visible on the dashboard. |
-| Cross-site WebSocket hijacking | A malicious page drives the admin socket using a token stored in the operator's browser | Browser `Origin` must match the server's host, `PUBLIC_URL` or `ALLOWED_ORIGINS` for `/ws/admin` and `/ws/ingest` |
-| Cross-site request forgery | A form on another site posts to the admin API | Admin HTTP calls need a header token (`Authorization` or `x-admin-token`). A token in the URL is only accepted on GET. No CORS is enabled. |
+| Cross-site WebSocket hijacking | A malicious page drives the admin socket with the operator's session | Browser `Origin` must match the server's host, `PUBLIC_URL` or `ALLOWED_ORIGINS` for `/ws/admin` and `/ws/ingest`; the session cookie is `SameSite=Strict` |
+| Cross-site request forgery | A form on another site posts to the admin API | The session cookie is `SameSite=Strict`, and changes made with it must carry this server's `Origin`. Scripts send a header (`Authorization`); a password in the URL is only accepted on GET. No CORS is enabled. |
 | Stored cross-site scripting | A room name or caption containing `<script>` | All dynamic text is HTML-escaped before rendering. Content-Security-Policy restricts script, frame and connection sources. Room fields are validated (id `[a-z0-9_-]{1,40}`, language codes, length limits). |
 | Clickjacking | Embedding the dashboard in a hidden frame | `frame-ancestors 'self'` and `X-Frame-Options: SAMEORIGIN`. Overlays load as vMix/OBS browser inputs, not frames. |
-| **Repudiation** | "Who changed the room?" | Admin actions are logged to the dashboard event log and stdout. There is no per-user identity (shared token). See [known gaps](#known-gaps). |
-| **Information disclosure**: tokens | Tokens leaking through URLs, history or Referer | Pages move `?token=` into local storage and remove it from the address bar. `Referrer-Policy: no-referrer`. The agent and scripts send tokens in headers. |
+| **Repudiation** | "Who changed the room?" | Every setup change in the History says who made it: the signed-in device's name or the work account. Company sign-in gives each person their own identity. See [known gaps](#known-gaps). |
+| **Information disclosure**: passwords | Passwords leaking through URLs, browser storage, history or Referer | The dashboard swaps a password for an `HttpOnly` session cookie and keeps nothing in `localStorage`; a `?token=` link is exchanged and removed from the address bar. `Referrer-Policy: no-referrer`. The History never contains a password. The agent and scripts send passwords in headers. |
 | Information disclosure: transcripts | Downloading past talks | Only the talk in progress is public (`PUBLIC_TRANSCRIPTS=current`). Listing and past talks need admin. `none` makes everything private. |
-| Information disclosure: internals | Stack traces, versions | Errors return `{ "error": "internal error" }`. `X-Powered-By` is disabled. `/metrics` and `/api/status` need admin. |
+| Information disclosure: internals | Stack traces, versions | Errors return `{ "error": "internal error" }`. `X-Powered-By` is disabled. `/metrics` and `/api/status` need the crew or admin password. |
 | Server-side request forgery | Admin pull of `http://169.254.169.254/…` or a LAN service | Pull URLs are validated: allowed schemes only; cloud metadata and link-local addresses always blocked; HTTP(S) to private or loopback addresses blocked unless `PULL_ALLOW_PRIVATE=1`; local files only from `samples/` or `MEDIA_DIR`. ffmpeg gets a network-only `-protocol_whitelist` for URLs. |
 | **Denial of service** | Flooding APIs or sockets, huge messages | State-changing API calls are rate-limited per client IP. WebSocket upgrades are rate-limited. JSON bodies max 256 KB. WebSocket messages max 256 KB, and audio frames over 64 KB are dropped. `MAX_STAGES` and `MAX_VIEWERS` caps apply. |
 | DoS on budget | Creating many rooms to burn Gemini credit | Admin only, plus the `MAX_STAGES` cap. Set a budget alert in Google Cloud or AI Studio. |
@@ -113,17 +114,54 @@ Set with `AUTH`:
 | `token` | A token is required everywhere, including localhost. | Shared hosts, multi-user machines, the strictest setups |
 | `off` | No authentication. The server prints a warning. | Isolated lab networks only |
 
-If `ADMIN_TOKEN` or `INGEST_TOKEN` isn't set, a random 24-character token is generated on first start, stored in `data/secrets.json` (file mode 600) and printed in the startup banner. An exposed server is never left open by accident. For events, set your own tokens (`openssl rand -base64 24`) so they survive a wiped `data/` folder.
+### Passwords and roles
 
-**Presenting a token:**
+Three passwords, each with its own job:
 
-- **Sign-in screen:** the dashboard and the welcome wizard ask for the admin token when the browser isn't on the server itself (with Docker, even the host's own browser), check it with the server and store it. In Docker, the startup log has a link that signs in directly (`docker compose logs opencaptions | grep "Open the dashboard"`); treat it like the token.
-- **Browsers:** open `…/admin.html?token=<ADMIN_TOKEN>` or `…/ingest.html?token=<INGEST_TOKEN>` once. The page stores it and cleans the URL.
-- **Scripts, the agent and Prometheus:** send `Authorization: Bearer <token>`.
+| Password | Opens | Give it to |
+|---|---|---|
+| **Admin** (`ADMIN_TOKEN`) | The whole dashboard, setup included | The organizers |
+| **Crew** (`CREW_TOKEN`) | The dashboard's live controls only: start the next talk, rename the current one, reconnect a room, stop a pull, the offline-backup switch; reading the status, transcripts and history. Never the setup, Settings or Event mode. | Volunteers and technicians |
+| **Ingest** (`INGEST_TOKEN`) | Sending a room's audio. It doesn't open the dashboard. | Room computers |
 
-The admin token is also accepted wherever the ingest token is.
+Any that isn't set is generated on first start (24 random characters), stored in `data/secrets.json` (file mode 600) and printed in the startup screen. **Settings → Access → Passwords** changes a generated one: the new value is shown once, the old one stops working, and every device signed in with it is signed out. One set in `.env` is changed there, followed by a restart.
 
-For single sign-on and per-person access, put an identity-aware proxy in front of `/admin.html`, `/api/*` (except the public endpoints) and `/ws/admin` and `/ws/ingest`. Google IAP, Cloudflare Access and oauth2-proxy all work. The public caption pages can stay open.
+### Signing in
+
+The dashboard and the welcome wizard show a sign-in screen on any device other than the server itself. The password is sent once; the server answers with a **session cookie** (`HttpOnly`, `SameSite=Strict`, `Secure` over HTTPS). The page never keeps the password: nothing goes into `localStorage`, and a `?token=` link (like the one Docker prints) is exchanged for a session and removed from the address bar. Scripts on the page can't read the cookie, so even an injected script couldn't steal the sign-in.
+
+- **Sessions expire** after `SESSION_HOURS` (24 by default). The server stores only a hash of each session.
+- **Each device has a name** ("Stage left tablet"), shown in **Settings → Access → Signed-in devices**, where any session can be signed out, or every other one at once. The History records who made each change.
+- **Changes from other websites are refused:** a signed-in browser's requests must come from the dashboard itself (the cookie is `SameSite=Strict`, and the server checks the `Origin`).
+- **Wrong passwords** count towards the lockout (20 per 10 minutes per address).
+
+Scripts, the room agent and Prometheus send a password as `Authorization: Bearer <password>`. The crew password is enough for `/metrics`.
+
+### Two-factor sign-in
+
+**Settings → Access → Two-factor sign-in** adds a 6-digit code from an authenticator app (Google Authenticator, 1Password, Authy… standard TOTP) to the admin password. Each code works once. While it's on, the admin password alone opens nothing: not the sign-in screen, and not a script's `Authorization` header either. Scripts that need the admin password (`npm run loadtest`, `subtitle`, `multi`) then run on the server computer, which needs no password. The crew password is unaffected. Lost the phone? On the server computer, open the dashboard (no sign-in there) and turn it off, or delete `totpSecret` from `data/secrets.json` and restart.
+
+### Company sign-in
+
+Each person signs in with their own work account (Google Workspace, Microsoft Entra ID, Okta, Auth0, Keycloak or any OpenID Connect provider), with your provider's own two-factor rules. OpenCaptions uses the authorization code flow with PKCE and checks the ID token's signature, issuer, audience, expiry and nonce.
+
+1. **Register an app** with your provider, type "Web application", with this redirect address: `https://<your public address>/auth/oidc/callback`. Use a fixed address: a quick `trycloudflare.com` address changes on every restart.
+   - **Google:** Google Cloud console → APIs & Services → Credentials → Create credentials → OAuth client ID. Issuer: `https://accounts.google.com`.
+   - **Microsoft:** Entra admin center → App registrations → New registration, then Certificates & secrets → New client secret. Issuer: `https://login.microsoftonline.com/<tenant id>/v2.0`.
+2. **Set it in `.env`** and restart:
+
+   ```bash
+   OIDC_ISSUER=https://accounts.google.com
+   OIDC_CLIENT_ID=<client id>
+   OIDC_CLIENT_SECRET=<client secret>
+   OIDC_ADMINS=ana@example.org,ben@example.org   # or a whole domain: @example.org
+   OIDC_CREW=@volunteers.example.org            # optional: these get the crew role
+   ```
+
+   `OIDC_REDIRECT_URI` sets the redirect address when it can't be worked out (a proxy that hides the public address). `OIDC_LABEL` changes the button's name. `OIDC_ONLY=1` turns off password sign-in in the browser, so only work accounts get in (scripts with a password in a header still work).
+3. The sign-in screen shows **Sign in with Google** (or your provider). Accounts not listed in `OIDC_ADMINS` or `OIDC_CREW` are turned away.
+
+Keep password sign-in on at events unless you're sure of the venue's internet: if the provider can't be reached, nobody can sign in with it.
 
 ## Security headers
 
@@ -189,7 +227,9 @@ Before exposing a server for an event:
 
 - [ ] HTTPS in front: **Settings → Public address** (Cloudflare Tunnel), Caddy or built-in TLS. With your own proxy, `PUBLIC_URL` set to the HTTPS address. A quick `trycloudflare.com` address is public to anyone who has the link, like any other public address: the dashboard and ingest still need their tokens through it. Turning it off and on is locked in Event mode.
 - [ ] No router port forwarding to any venue PC. The app port (8080) is not reachable from the internet (`BIND_ADDR=127.0.0.1` or `HOST=127.0.0.1` behind a proxy).
-- [ ] `ADMIN_TOKEN` and `INGEST_TOKEN` set to long random values, different from each other, and shared only with the people and PCs that need them.
+- [ ] The admin password only for organizers, the **crew password** for volunteers, the ingest password only on room computers. Set your own (`openssl rand -base64 24`) if `data/` may be wiped.
+- [ ] **Two-factor sign-in** on (Settings → Access), or company sign-in with your provider's two-factor.
+- [ ] After the event, sign out every other device and change the crew password (Settings → Access).
 - [ ] `AUTH` is `auto` or `token`, never `off`.
 - [ ] `.env` has file mode 600 and isn't committed.
 - [ ] A budget alert is configured in Google Cloud or AI Studio. A dedicated API key or project is used for the event.
@@ -199,12 +239,12 @@ Before exposing a server for an event:
 - [ ] `npm audit --omit=dev` is clean, or its findings are reviewed.
 - [ ] You know how to rotate tokens (below).
 
-### Responding to a leaked token
+### Responding to a leaked password or a lost device
 
-1. Change `ADMIN_TOKEN` and/or `INGEST_TOKEN` in `.env`, or delete `data/secrets.json` if they were generated.
-2. Restart the server. Existing sockets are dropped and must reconnect with the new token.
-3. Update the agents' service configuration and re-open the dashboard with the new `?token=`.
-4. Check the dashboard event log and the Gemini usage page for unexpected activity.
+1. **Settings → Access → Signed-in devices:** sign out the lost device, or every other device.
+2. **Settings → Access → Passwords → Change** the leaked one. Devices signed in with it are signed out at once; the new value is shown once. (Set in `.env`? Change it there and restart.)
+3. If it was the ingest password, update the agents' service configuration and each room's audio page.
+4. Check the History (who changed what), the event log and the Gemini usage page for unexpected activity.
 
 To rotate the Gemini API key, create a new key in AI Studio, update `.env`, restart the server, then delete the old key.
 
@@ -214,10 +254,10 @@ These are accepted risks today, listed so you can decide whether they matter for
 
 | Gap | Impact | Mitigation now | Planned |
 |---|---|---|---|
-| Shared tokens, no user accounts or roles | No per-person audit trail. Revoking one person means rotating the token. | Identity-aware proxy (IAP, Cloudflare Access) | Optional OIDC login |
-| Browsers send tokens as `?token=` on WebSocket URLs, because browsers can't set WebSocket headers | Tokens may appear in reverse-proxy access logs | Disable query logging in your proxy. TLS protects them in transit. | Short-lived session tickets |
+| Password sign-in shares one password per role | The History knows the device's name, not a verified person | Company sign-in gives each person their own account; name devices clearly | — |
+| Room computers send the ingest password as `?token=` on the WebSocket URL, because browsers can't set WebSocket headers | It may appear in reverse-proxy access logs | Disable query logging in your proxy. TLS protects it in transit. The dashboard uses a session cookie instead. | Short-lived session tickets |
 | CSP allows inline *styles* (`style-src 'unsafe-inline'`) | Injected CSS could change how a page looks. It can't run code: scripts are strict (files from this server only, no inline scripts or `on…=` handlers) | All dynamic text is escaped. A test fails if a page or template adds an inline script or handler. | Move `style=""` attributes to classes |
 | Rate limits and lockouts are in memory, per process | They reset on restart and aren't shared across shards | Put a CDN or WAF in front for large public events | — |
-| Audit log only on stdout and the dashboard | No tamper-evident history | Ship stdout to your log platform | Structured JSON logs |
+| The History (`data/history.jsonl`) records who changed the setup, but it isn't tamper-evident | Someone with disk access could edit it | Ship stdout to your log platform | Structured JSON logs |
 | Stored transcripts aren't encrypted by the app | Anyone with disk access can read them | Encrypted volume or disk | — |
 | DNS rebinding between pull validation and connection (time-of-check to time-of-use) | Narrow SSRF window for admins | Admin-only feature. Keep `PULL_ALLOW_PRIVATE` off. | Pin the resolved IP |

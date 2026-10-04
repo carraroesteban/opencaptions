@@ -22,6 +22,20 @@ All notable changes to this project are documented in this file. The format foll
 - **Published Docker image:** `ghcr.io/carraroesteban/opencaptions` (amd64, arm64), built by `.github/workflows/docker.yml` on every push to `main` and every `v*` tag. Runs with `docker run` and two named volumes, nothing to clone or build.
 - The setup checklist and the "Simulated mode" badge now lead to Settings instead of `.env`.
 
+### Added — safer dashboard sign-in
+
+- **Sessions instead of a password in the browser:** signing in exchanges the password for an `HttpOnly`, `SameSite=Strict` session cookie that expires (`SESSION_HOURS`, 24 by default). Nothing is kept in `localStorage`; an old `?token=` link is exchanged and removed from the address bar. Changes made with a session must come from the dashboard's own `Origin`.
+- **A crew role:** a third password, `CREW_TOKEN` (generated if unset), opens only the live controls (next talk, rename the current talk, reconnect a room, stop a pull, the offline-backup switch) and read-only views. Everything else answers `403`.
+- **Settings → Access:** signed-in devices with their names and last activity (sign out one, or every other one), changing generated passwords (shown once; devices signed in with the old one are signed out), two-factor sign-in, and company sign-in status. The History now records who made each change.
+- **Two-factor sign-in:** a 6-digit authenticator code on top of the admin password (standard TOTP; each code works once). While on, the admin password alone opens nothing, not even in a script's header.
+- **Company sign-in (OpenID Connect):** Google Workspace, Microsoft Entra ID, Okta, Auth0, Keycloak… with PKCE and full ID-token checks, no new dependencies. `OIDC_ISSUER`, `OIDC_CLIENT_ID`, `OIDC_CLIENT_SECRET`, `OIDC_ADMINS`, `OIDC_CREW`, `OIDC_ONLY`. See [Security](docs/security-guide.md#company-sign-in).
+- New sign-in screen in Spanish and English, with the device's name and the code step; `/api/auth/*` endpoints (see the [API reference](docs/reference/api.md#sign-in)).
+
+### Changed — terminal and website
+
+- **A friendlier terminal:** the server's startup screen shows the brand badge, a "Ready" line and what matters (dashboard, the address phones use, rooms, AI, passwords). `npm run local` shows spinners while servers load and progress bars with speed and time left for model downloads; the double-click starter shows a spinner instead of npm's output. Plain text when the output isn't a terminal, or with `NO_COLOR`. Shared code in `src/tty.js`, with no dependencies.
+- **Website copy in Spanish rewritten** so it reads naturally instead of translated ("Gobierno y sesiones públicas" instead of "Sesiones públicas y concejos", "Preguntá sobre la charla", "Pantalla junto al escenario"…), and its event-day button now opens the Spanish guide. A few English sentences polished. The "Read the documentation" button pointed to a missing anchor.
+
 ### Changed — a new install starts blank
 
 - `config/event.json` now ships with no event name and one room ("Main stage"); the welcome wizard asks for the rest. `config/glossary.json` ships empty, so no example names are sent to the AI as vocabulary. The old example glossary is in `config/glossary.example.json`.

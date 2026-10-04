@@ -96,7 +96,7 @@ Contributions are especially welcome here:
 - **Local mode** ([docs/local.md](docs/local.md)): measurements on GPUs and Apple's Neural Engine, several rooms per speech server, per-room speech servers, and a local translated voice.
 - **Streaming translation in local mode** ([Latency](docs/latency.md#ideas-not-implemented-yet)), and speculative translation of stable prefixes.
 - **Strict styles in the CSP:** move `style=""` attributes to classes, so `style-src` can drop `'unsafe-inline'` too.
-- **OIDC login** as an alternative to shared tokens.
+- **Short-lived tickets** for room computers instead of the ingest password in the WebSocket URL.
 - More **end-to-end fixtures**: a Spanish talk, local mode, a room with three languages.
 - **Type checking the pages** (`public/`) as well as the server.
 - Speaker diarization in captions.

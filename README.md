@@ -86,7 +86,7 @@ Conferences and summits · universities and schools · places of worship · town
 - **Printable QR posters** for every room, in one click.
 - **Glossary** so names, brands and specialist terms are spelled right.
 - **Offline backup:** if the venue loses internet, captions switch to AI running on your laptop and come back to the cloud on their own.
-- **Secure by default:** access tokens, rate limits, and no inbound ports needed.
+- **Secure by default:** signed-in sessions, a crew role for volunteers, optional two-factor or company sign-in, and no inbound ports needed.
 
 </td>
 </tr>
@@ -282,7 +282,7 @@ For example, a 40-minute talk captioned from English into Spanish costs about **
 ## Privacy and security
 
 - **Self-hosted:** transcripts stay on your server. In local mode, audio never leaves the building.
-- **Access tokens** for the dashboard and for audio sources; the audience pages are read-only.
+- **Sign-in for the dashboard** with expiring sessions, an admin and a crew role, signed-in devices you can sign out, two-factor codes, and company sign-in (Google, Microsoft, any OpenID Connect provider). The audience pages are read-only.
 - **No inbound ports, rate limits and strict security headers** by default. Details in the [security guide](docs/security-guide.md).
 
 ## Documentation

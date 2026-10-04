@@ -151,6 +151,13 @@
     .change button { padding: 6px 11px; font-size: 13px; }
 
     /* settings */
+    .role-crew [data-admin], .role-crew [data-setup] { display: none !important; }
+    .me { grid-column: 1 / -1; display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 14px; background: var(--bg3); font-size: 13px; }
+    .me svg { width: 18px; height: 18px; flex: none; }
+    .me span { flex: 1; min-width: 0; display: grid; }
+    .me b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .me small { color: var(--fg2); }
+    .me button { padding: 4px 10px; font-size: 13px; }
     .setting { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px 24px; align-items: center; }
     .setting h3 { margin: 0 0 4px; font-size: 17px; }
     .setting p { margin: 0; font-size: 14px; color: var(--fg2); max-width: 640px; }
@@ -196,17 +203,18 @@
       <div class="event" id="event" data-no-i18n>…</div>
       <nav id="nav">
         <a href="#live" data-view="live" data-icon="play">En vivo</a>
-        <a href="#rooms" data-view="rooms" data-icon="dashboard">Salas</a>
-        <a href="#agenda" data-view="agenda" data-icon="calendar">Agenda</a>
-        <a href="#glossary" data-view="glossary" data-icon="book">Glosario</a>
+        <a href="#rooms" data-admin data-view="rooms" data-icon="dashboard">Salas</a>
+        <a href="#agenda" data-admin data-view="agenda" data-icon="calendar">Agenda</a>
+        <a href="#glossary" data-admin data-view="glossary" data-icon="book">Glosario</a>
         <a href="#screens" data-view="screens" data-icon="qr">Pantallas y QR</a>
         <a href="#transcripts" data-view="transcripts" data-icon="doc">Transcripciones</a>
         <span class="sep"></span>
         <a href="#history" data-view="history" data-icon="refresh">Historial</a>
-        <a href="#settings" data-view="settings" data-icon="gear">Ajustes</a>
+        <a href="#settings" data-admin data-view="settings" data-icon="gear">Ajustes</a>
       </nav>
       <div class="foot">
-        <button type="button" class="lockbtn" id="lockbtn"></button>
+        <div class="me" id="me" data-no-i18n></div>
+        <button type="button" class="lockbtn" id="lockbtn" data-admin></button>
         <span id="prefs-slot"></span>
       </div>
     </aside>
@@ -316,6 +324,11 @@
         <section class="card setting">
           <div><h3>Nombre del evento</h3><p>Aparece en los celulares, en la pantalla del escenario y en los carteles.</p></div>
           <form class="rowbar" id="name-form"><input id="name-in" maxlength="80" style="min-width:220px" /><button data-icon="check">Guardar</button></form>
+        </section>
+        <section class="card">
+          <h3 style="margin:0 0 4px;font-size:17px">Acceso</h3>
+          <p class="muted-note" style="margin:0 0 14px">Quién puede entrar a este panel, y desde qué dispositivos.</p>
+          <div id="access-panel" data-no-i18n></div>
         </section>
         <section class="card">
           <h3 style="margin:0 0 4px;font-size:17px">Gemini (la IA en la nube)</h3>

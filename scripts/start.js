@@ -1,16 +1,17 @@
 #!/usr/bin/env node
 // What "Start OpenCaptions" (the double-click file for macOS and Windows) runs: installs what's missing the first
 // time, starts the server and opens the dashboard in the browser. If OpenCaptions is already running, it only opens
-// the dashboard. Uses Node's built-in modules only, because it runs before `npm install`.
+// the dashboard. Uses Node's built-in modules only (and src/tty.js, which has no dependencies): it runs before
+// `npm install`.
 //
 //   node scripts/start.js            (also: npm run app)
 import fs from 'node:fs';
 import path from 'node:path';
-import { spawn, spawnSync } from 'node:child_process';
+import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import * as tty from '../src/tty.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const say = (s = '') => console.log(s);
 const win = process.platform === 'win32';
 
 function openUrl(url) {
@@ -18,12 +19,12 @@ function openUrl(url) {
   try { spawn(cmd, args, { stdio: 'ignore', detached: true, windowsHide: true }).unref(); } catch { /* the address is printed anyway */ }
 }
 
-say('\n  OpenCaptions\n');
+console.log(`\n${tty.title()}\n`);
 
 const major = Number(process.versions.node.split('.')[0]);
 if (major < 20) {
-  say(`  OpenCaptions needs Node.js 20 or later (this computer has ${process.versions.node}).`);
-  say('  Opening the download page: install the LTS version, then start OpenCaptions again.\n');
+  tty.fail(`OpenCaptions needs Node.js 20 or later (this computer has ${process.versions.node}).`);
+  console.log('  Opening the download page: install the LTS version, then start OpenCaptions again.\n');
   openUrl('https://nodejs.org/en/download');
   process.exit(1);
 }
@@ -32,13 +33,21 @@ if (major < 20) {
 const lock = path.join(ROOT, 'package-lock.json');
 const installed = path.join(ROOT, 'node_modules', '.package-lock.json');
 if (!fs.existsSync(installed) || (fs.existsSync(lock) && fs.statSync(lock).mtimeMs > fs.statSync(installed).mtimeMs)) {
-  say('  Installing what OpenCaptions needs (the first time only, about a minute)…\n');
-  const r = spawnSync(win ? 'npm.cmd' : 'npm', ['install', '--omit=dev', '--no-audit', '--no-fund'], { cwd: ROOT, stdio: 'inherit', shell: win });
-  if (r.status !== 0) {
-    say('\n  The installation didn\'t finish. Check this computer\'s internet connection and start OpenCaptions again.');
+  const sp = tty.spinner('Installing what OpenCaptions needs (the first time only, about a minute)');
+  const r = await new Promise((resolve) => {
+    const p = spawn(win ? 'npm.cmd' : 'npm', ['install', '--omit=dev', '--no-audit', '--no-fund', '--loglevel=error'], { cwd: ROOT, shell: win, windowsHide: true });
+    let log = '';
+    p.stdout.on('data', (d) => { log += d; });
+    p.stderr.on('data', (d) => { log += d; });
+    p.on('error', (e) => resolve({ code: 1, log: e.message }));
+    p.on('close', (code) => resolve({ code, log }));
+  });
+  if (r.code !== 0) {
+    sp.fail('The installation didn\'t finish. Check this computer\'s internet connection and start OpenCaptions again.');
+    console.log(tty.c.gray(r.log.trim().split('\n').slice(-15).map((l) => `  ${l}`).join('\n')));
     process.exit(1);
   }
-  say('');
+  sp.succeed('Installed what OpenCaptions needs');
 }
 
 // The port: PORT in the environment or in .env, else 8080.
@@ -51,12 +60,12 @@ const dashboard = `http://localhost:${port}/admin.html`;
 /** @type {any} */
 const running = await fetch(`http://127.0.0.1:${port}/healthz`, { signal: AbortSignal.timeout(1500) }).then((r) => r.json()).catch(() => null);
 if (running?.ok) {
-  say(`  OpenCaptions is already running. Opening ${dashboard}\n`);
+  tty.ok(`OpenCaptions is already running. Opening ${tty.c.bold(dashboard)}\n`);
   openUrl(dashboard);
   process.exit(0);
 }
 
-say('  Keep this window open while you use OpenCaptions. To stop it, close the window (or press Ctrl+C).\n');
+tty.info(`Keep this window open while you use OpenCaptions. To stop it, close the window ${tty.c.gray('(or press Ctrl+C)')}.`);
 const server = spawn(process.execPath, [path.join(ROOT, 'src', 'server.js'), '--open', ...process.argv.slice(2)], { cwd: ROOT, stdio: 'inherit' });
 for (const sig of ['SIGINT', 'SIGTERM']) process.on(sig, () => server.kill(/** @type {NodeJS.Signals} */ (sig)));
 server.on('exit', (code) => process.exit(code ?? 0));

@@ -4,22 +4,27 @@
 // Safety model: every setup change is recorded on the server and can be undone (History, and an Undo button
 // right after each change); deleted rooms go to a trash; Event mode locks the setup on the server, so nothing
 // here can delete or change the event's configuration by accident while it's live.
-import { qs, esc, store, wsUrl, Socket, langLabel, takeUrlToken, setAccent } from '/common.js';
+import { qs, esc, store, wsUrl, Socket, langLabel, setAccent } from '/common.js';
 import { localize, prefsControls, tr, LANG } from '/i18n.js';
 import { icon, mountIcons } from '/illustrations.js';
-import { adminSignIn } from '/signin.js';
+import { ensureSignedIn, signInScreen, signOut } from '/signin.js';
+import { accessPanel } from '/access.js';
 import { keyPanel, tunnelPanel } from '/connect.js';
 
 const $ = (id) => document.getElementById(id);
 $('prefs-slot').append(prefsControls());
 mountIcons();
-const token = takeUrlToken('admin.token');
+// Signed in with a session cookie (public/signin.js): no password is kept on this page.
+localize(); // the page behind the sign-in screen, in the right language
+const me = await ensureSignedIn();
+const isCrew = me.role === 'crew';
+document.body.classList.toggle('role-crew', isCrew); // the crew sees the live controls only
 let ev = await (await fetch('/api/event')).json();
 setAccent(ev.accent);
 let last = null;
 let locked = false;
 const logs = [];
-const VIEWS = ['live', 'rooms', 'agenda', 'glossary', 'screens', 'transcripts', 'history', 'settings'];
+const VIEWS = isCrew ? ['live', 'screens', 'transcripts', 'history'] : ['live', 'rooms', 'agenda', 'glossary', 'screens', 'transcripts', 'history', 'settings'];
 let view = 'live';
 let screensRoom = null;
 let txRoom = null;
@@ -112,8 +117,8 @@ function roomDiff(c, lang) {
 
 // ---------- server ----------
 const api = async (method, url, body, { quiet = false } = {}) => {
-  const r = await fetch(url, { method, headers: { 'content-type': 'application/json', 'x-admin-token': token }, body: body ? JSON.stringify(body) : undefined });
-  if (r.status === 401) { askToken(); throw new Error('token'); }
+  const r = await fetch(url, { method, headers: { 'content-type': 'application/json' }, body: body ? JSON.stringify(body) : undefined });
+  if (r.status === 401) { askToken(); throw new Error('signed out'); }
   const j = await r.json().catch(() => ({}));
   if (r.status === 423) { setLocked(true); toast(t.lockedToast, { error: true }); throw new Error('locked'); }
   if (!r.ok) { if (!quiet) toast(tr(j.error || r.statusText), { error: true }); throw Object.assign(new Error(j.error || r.statusText), { body: j }); }
@@ -122,18 +127,18 @@ const api = async (method, url, body, { quiet = false } = {}) => {
 // First run: the welcome wizard asks for the event name, rooms and languages before showing the dashboard.
 try {
   const setup = await api('GET', '/api/setup', null, { quiet: true });
-  if (!setup.done && !qs.has('dashboard')) { location.replace('/welcome.html'); await new Promise(() => {}); }
+  if (!setup.done && !qs.has('dashboard') && !isCrew) { location.replace('/welcome.html'); await new Promise(() => {}); }
   setLocked(!!setup.locked);
-} catch { /* no token yet: the dashboard asks for it */ }
-// Wrong or missing token: one sign-in screen (several requests can fail at once), then start over with it.
+} catch { /* signed out meanwhile: askToken() shows the sign-in */ }
+// Signed out (expired, or signed out from another device): one sign-in screen, then start over.
 let signingIn = false;
 function askToken() {
   if (signingIn) return;
   signingIn = true;
-  adminSignIn().then(() => location.reload());
+  signInScreen().then(() => location.reload());
 }
 
-new Socket(() => wsUrl('/ws/admin', { token }), {
+new Socket(() => wsUrl('/ws/admin', {}), {
   message(m) {
     if (m.type === 'status') render(m);
     else if (m.type === 'log') { logs.push(m); if (logs.length > 400) logs.shift(); renderLogs(); }
@@ -184,7 +189,7 @@ function setLocked(on) {
   $('lockedbar').classList.toggle('hidden', !showBar);
   $('lockedbar').innerHTML = `${icon('lock')}<span>${esc(t.lockedBar)}</span><button type="button" id="unlock-now">${esc(t.unlock)}</button>`;
   $('unlock-now').onclick = toggleLock;
-  for (const el of document.querySelectorAll('[data-setup]')) el.disabled = on;
+  for (const el of document.querySelectorAll('[data-setup]')) el.disabled = on || isCrew;
 }
 async function toggleLock() {
   const turnOn = !locked;
@@ -287,7 +292,7 @@ function localDetail(s) {
   return ob.localReady(esc(s.model));
 }
 function renderOnboard(s) {
-  if (store.get('admin.obHidden', false) || s.locked) return $('onboard').classList.add('hidden');
+  if (store.get('admin.obHidden', false) || s.locked || isCrew) return $('onboard').classList.add('hidden'); // setup tasks: admins only
   const withAudio = s.stages.filter((x) => x.ingest).length;
   const steps = [
     s.engine === 'local' ? [localOk(s.local), ob.engineLocal, localDetail(s)] : [s.engine === 'gemini', ob.engineGemini, s.engine === 'gemini' ? ob.ready(esc(s.model)) : ob.noKey],
@@ -726,7 +731,7 @@ async function renderTranscripts() {
   if (!st) { $('tx-list').innerHTML = ''; return; }
   const talks = await api('GET', `/api/stages/${encodeURIComponent(st.id)}/talks`);
   $('tx-list').innerHTML = talks.length ? `<table class="table">${talks.map((x) => `<tr><td><b>${esc(x.title || tr('Sin título'))}</b><div class="muted-note">${esc(when(x.startedAt))} · ${esc(t.segs(x.segments))}</div></td>
-    <td class="hide-sm">${st.languages.map((l) => `<div class="muted-note"><b>${esc(langLabel(l, ev.languages))}</b>: ${['srt', 'vtt', 'txt'].map((f) => `<a href="/api/stages/${st.id}/export.${f}?lang=${l}&talk=${encodeURIComponent(x.id)}${token ? `&token=${encodeURIComponent(token)}` : ''}">${f}</a>`).join(' · ')}</div>`).join('')}</td>
+    <td class="hide-sm">${st.languages.map((l) => `<div class="muted-note"><b>${esc(langLabel(l, ev.languages))}</b>: ${['srt', 'vtt', 'txt'].map((f) => `<a href="/api/stages/${st.id}/export.${f}?lang=${l}&talk=${encodeURIComponent(x.id)}">${f}</a>`).join(' · ')}</div>`).join('')}</td>
     <td class="r"><a href="/talk.html?stage=${encodeURIComponent(st.id)}&talk=${encodeURIComponent(x.id)}" target="_blank"><button tabindex="-1">${icon('doc')} ${esc(t.read)}</button></a></td></tr>`).join('')}</table>` : `<p class="empty">${esc(t.noTalks)}</p>`;
 }
 $('tx-room').onchange = () => { txRoom = $('tx-room').value; renderTranscripts(); };
@@ -755,13 +760,18 @@ $('history-list').onclick = async (e) => {
 
 // ---------- Settings ----------
 // API key and public address (public/connect.js): set up here instead of in .env.
+// Who is signed in, in the sidebar, with Sign out (not on the server computer itself: it needs no sign-in).
+$('me').innerHTML = `${icon(isCrew ? 'headphones' : 'shield')}<span><b>${esc(me.label)}</b><small>${esc(isCrew ? (LANG === 'es' ? 'Equipo · controles en vivo' : 'Crew · live controls') : (LANG === 'es' ? 'Administración' : 'Admin'))}</small></span>${me.via === 'session' ? `<button type="button" id="signout">${esc(LANG === 'es' ? 'Salir' : 'Sign out')}</button>` : ''}`;
+$('signout')?.addEventListener('click', signOut);
 $('engine').onclick = () => { if (last?.engine === 'mock') location.hash = '#settings'; };
 const quietApi = (m, u, b) => api(m, u, b, { quiet: true });
 const askFirst = (msg) => { const i = msg.indexOf('?') + 1; return confirmDialog({ title: msg.slice(0, i) || msg, body: msg.slice(i).trim(), ok: LANG === 'es' ? 'Continuar' : 'Continue', danger: true }); };
 const keyP = keyPanel($('key-panel'), { api: quietApi, confirm: askFirst });
 const tunnelP = tunnelPanel($('tunnel-panel'), { api: quietApi, confirm: askFirst });
+const accessP = isCrew ? null : accessPanel($('access-panel'), { api: quietApi, confirm: askFirst, toast, me });
 let settingsSetup = null;
 async function loadSettings() {
+  accessP?.load();
   const s = await api('GET', '/api/setup');
   settingsSetup = s;
   keyP.update(s);

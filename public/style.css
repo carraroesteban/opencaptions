@@ -160,3 +160,19 @@ button:has(> svg.i), .btn-i { display: inline-flex; align-items: center; gap: 7p
 .connect .cx-own summary { cursor: pointer; font-size: 14px; color: var(--fg2); }
 .connect .cx-own[open] summary { margin-bottom: 10px; }
 .connect .cx-grid { display: grid; gap: 10px; }
+
+/* Settings → Access (public/access.js) */
+.access h4 { margin: 10px 0 0; font-size: 15px; }
+.access h4:first-child { margin-top: 0; }
+.access .ax-list { display: grid; gap: 8px; }
+.access .ax-row { display: grid; grid-template-columns: 20px minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 10px 12px; border-radius: 12px; border: 1px solid var(--line); background: var(--bg2); }
+.access .ax-row svg { width: 18px; height: 18px; }
+.access .ax-row span { display: grid; min-width: 0; }
+.access .ax-row b { overflow-wrap: anywhere; }
+.access .ax-row small { color: var(--fg2); font-size: 13px; }
+.access .ax-secret { font-size: 15px; padding: 6px 10px; overflow-wrap: anywhere; user-select: all; }
+.access .ax-tfa { display: grid; grid-template-columns: 168px minmax(0, 1fr); gap: 16px; align-items: start; }
+.access .ax-qr { background: #fff; border-radius: 12px; padding: 8px; }
+.access .ax-qr svg { display: block; width: 100%; height: auto; }
+@media (max-width: 600px) { .access .ax-tfa { grid-template-columns: minmax(0, 1fr); } .access .ax-qr { max-width: 200px; } }
+dialog.signin button.sso { width: 100%; justify-content: center; }

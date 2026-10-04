@@ -24,30 +24,39 @@ Auth is controlled by `AUTH` (`src/security.js`):
 | `token` | A token is required for every request, even from localhost. |
 | `off` | No authentication at all. The server prints a warning on startup. Lab/local use only. |
 
-There are two tokens, `ADMIN_TOKEN` and `INGEST_TOKEN` (auto-generated and printed on first start if unset,
-then persisted in `data/secrets.json`). **The admin token also works for ingest.** A token is presented as:
+There are three passwords (`src/auth.js`), auto-generated and printed on first start if unset, then persisted in
+`data/secrets.json`: `ADMIN_TOKEN` (everything), `CREW_TOKEN` (the live controls, see below) and `INGEST_TOKEN`
+(sending audio). **The admin and crew passwords also work for ingest.** Requests are authenticated by, in order:
 
-- `Authorization: Bearer <token>` (preferred), or
-- `x-admin-token` / `x-ingest-token` header, or
-- `?token=` query parameter — accepted for admin **HTTP GET requests only** (not `POST`/`PATCH`/`DELETE`),
-  and for all three WebSocket upgrade requests (browsers cannot set custom headers on a WebSocket handshake).
+1. **A session cookie** (`oc_session`): what the dashboard uses. `POST /api/auth/login` (or [company sign-in](#sign-in))
+   sets it; it's `HttpOnly`, `SameSite=Strict`, expires after `SESSION_HOURS`, and changes (`POST`/`PUT`/`PATCH`/`DELETE`)
+   made with it must carry an allowed `Origin`.
+2. **A password**: `Authorization: Bearer <password>` (preferred), an `x-admin-token` / `x-ingest-token` header, or
+   `?token=` — accepted on HTTP **GET** only, and on the WebSocket upgrades (browsers can't set headers there). While
+   [two-factor sign-in](#sign-in) is on, the admin password is **refused** this way; use a session, or the server
+   computer itself.
+
+Roles: **admin** can call everything below. **crew** can call `GET /api/status`, `GET /api/setup`, `GET /api/history`,
+`GET /metrics`, `POST /api/stages/:id/talk`, `PATCH /api/stages/:id` with only `title`, `POST /api/stages/:id/restart`,
+`DELETE /api/stages/:id/pull` and `POST …/pull/stop`, `POST /api/engine`, the transcripts, and `WS /ws/admin`; anything
+else answers `403` with `{ "role": "crew" }`. Unauthenticated calls answer `401`.
 
 | Endpoint group | Who can call it |
 |---|---|
-| `GET /healthz`, `GET /api/event`, `GET /api/glossary`, `GET /api/schedule`, `GET /api/qr.svg`, `GET /s/:id`, `GET /manifest.webmanifest`, static pages | Public — no auth |
-| `GET /api/talks`, `GET /api/stages/:id/talks`, `GET /api/stages/:id/talks/:talk`, `GET /api/stages/:id/export.:fmt` | Depends on `PUBLIC_TRANSCRIPTS` — see [Transcripts & exports](#transcripts--exports) |
+| `GET /healthz`, `GET /api/event`, `GET /api/glossary`, `GET /api/schedule`, `GET /api/qr.svg`, `GET /s/:id`, `GET /manifest.webmanifest`, `GET /api/auth/config`, `GET /api/auth/me`, `POST /api/auth/login`, static pages | Public — no auth |
+| `GET /api/talks`, `GET /api/stages/:id/talks`, `GET /api/stages/:id/talks/:talk`, `GET /api/stages/:id/export.:fmt` | Depends on `PUBLIC_TRANSCRIPTS` — see [Transcripts & exports](#transcripts--exports); crew or admin otherwise |
 | `GET /api/stages/:id/summary`, `POST /api/stages/:id/ask` | Depends on `PUBLIC_TRANSCRIPTS` — see [Audience AI](#audience-ai-summaries--ask) |
-| `GET /api/status`, `POST/PATCH/DELETE /api/stages*`, `PUT /api/glossary`, `PUT /api/schedule`, `GET /metrics` | Admin token |
-| `WS /ws/ingest` | Ingest token **or** admin token |
+| The live controls listed above, `GET /metrics`, `WS /ws/admin` | Crew or admin |
+| Everything else: rooms, agenda, glossary, setup, Event mode, undo, AI key, public address, `/api/auth/sessions`, `/api/auth/passwords`, `/api/auth/2fa/*` | Admin |
+| `WS /ws/ingest` | Ingest, crew or admin password, or a session |
 | `WS /ws/view` | Public — no auth |
-| `WS /ws/admin` | Admin token |
 
 ```bash
-# Admin call from a remote machine (AUTH=auto trusts localhost only; use a token everywhere else)
+# Admin call from a remote machine (AUTH=auto trusts localhost only; use a password everywhere else)
 curl -H "Authorization: Bearer $ADMIN_TOKEN" https://subs.example.com/api/status
 
-# Same, with the query-string form (GET only)
-curl "https://subs.example.com/api/status?token=$ADMIN_TOKEN"
+# The crew password is enough for reading the status and for /metrics
+curl -H "Authorization: Bearer $CREW_TOKEN" https://subs.example.com/metrics
 ```
 
 WebSocket origin check (`ws/ingest`, `ws/admin` only — not `ws/view`): if the browser sends an `Origin`
@@ -402,20 +411,39 @@ curl -X POST http://localhost:8080/api/stages/main/ask \
   -d '{"question":"What database did they mention for the control plane?","lang":"en"}'
 ```
 
+### Sign-in
+
+| Method | Path | Auth | Description |
+|---|---|---|---|
+| `GET` | `/api/auth/config` | public | What the sign-in screen offers: `{ "password": bool, "sso": "Google" \| null }` (`password: false` with `OIDC_ONLY=1`). |
+| `GET` | `/api/auth/me` | public | Who this browser is: `{ role: "admin" \| "crew" \| null, via: "local" \| "session" \| "token" \| "off", label, session, expiresAt, twoFactor, sso }`. |
+| `POST` | `/api/auth/login` | public | Body `{ "password", "device"?: "Stage left tablet", "code"?: "123456" }`. Sets the session cookie and returns `{ ok, role, device }`. `401 { "error": "wrong password" }`; with two-factor on and no code, `401 { "need": "code" }`; wrong code, `401 { "need": "code", "error": "wrong code" }`. Failures count towards the lockout (`429`). `403` from another website's `Origin`. |
+| `POST` | `/api/auth/logout` | public | Ends this browser's session and clears the cookie. |
+| `GET` | `/api/auth/sessions` | admin | Signed-in devices, most recently active first: `{ id, role, device, via: "password" \| "sso", createdAt, lastSeen, expiresAt, current }`. Never the cookie. |
+| `DELETE` | `/api/auth/sessions/:id` | admin | Sign that device out. Recorded in the history (`auth.signout`). |
+| `POST` | `/api/auth/sessions/sign-out-others` | admin | Sign out every device but this one: `{ ok, signedOut }`. |
+| `GET` | `/api/auth/passwords` | admin | `[{ which: "admin" \| "crew" \| "ingest", fromEnv }]` (never the values). |
+| `POST` | `/api/auth/passwords/:which` | admin | Replace a generated password with a new random one: `{ ok, password, signedOut }`. The value is returned only here; sessions signed in with the old one are ended (not this one). `409` if it's set in `.env`. Recorded (`auth.password`, without the value). |
+| `POST` | `/api/auth/2fa/start` | admin | Start turning on two-factor sign-in: `{ secret, uri, qr }` (`uri` is an `otpauth://` link, `qr` an SVG of it). Valid for 10 minutes. |
+| `POST` | `/api/auth/2fa/confirm` | admin | Body `{ "code" }` from the app: from now on the admin password needs a code. `400` if the code is wrong. |
+| `POST` | `/api/auth/2fa/disable` | admin | Body `{ "code" }`: turn it off. |
+| `GET` | `/auth/oidc/start?device=` | public | Company sign-in: redirects to the provider (PKCE, `state`, `nonce`, and a short-lived `oc_oidc` cookie binding the flow to this browser). `404` if `OIDC_ISSUER` isn't set. |
+| `GET` | `/auth/oidc/callback` | public | The provider's redirect target. On success sets the session cookie and redirects to `/admin.html`; otherwise to `/admin.html?signin=<reason>` (expired, other browser, not allowed, bad token…). |
+
 ### Setup and engine
 
 | Method | Path | Auth | Description |
 |---|---|---|---|
-| `GET` | `/api/setup` | admin | First-run state for the welcome wizard: `done`, `locked`, event `name` and `named` (`false` until someone names the event), `languages`, `defaultTargets`, `stages` (`id`, `name`, `source`, `targets`), `engine`, `primaryEngine`, `failover`, `ai` (see below), `tunnel` (see below), `tunnelTokenSaved`, `publicUrl` (the address QR codes use for this request), `publicUrlSource` (`config` = `PUBLIC_URL` / `publicUrl`, `tunnel`, or `auto` = the address the page was opened with, or this computer's Wi-Fi address instead of `localhost`), `lanUrl` and `port`. |
+| `GET` | `/api/setup` | crew | First-run state for the welcome wizard: `done`, `locked`, event `name` and `named` (`false` until someone names the event), `languages`, `defaultTargets`, `stages` (`id`, `name`, `source`, `targets`), `engine`, `primaryEngine`, `failover`, `ai` (see below), `tunnel` (see below), `tunnelTokenSaved`, `publicUrl` (the address QR codes use for this request), `publicUrlSource` (`config` = `PUBLIC_URL` / `publicUrl`, `tunnel`, or `auto` = the address the page was opened with, or this computer's Wi-Fi address instead of `localhost`), `lanUrl` and `port`. |
 | `PUT` | `/api/setup` | admin | Body `{ "name"?: string, "done"?: boolean }`. Renames the event (1–80 characters) and marks the wizard as finished. Saved in `data/setup.json`; the name overrides `eventName` from `config/event.json`. |
 | `POST` | `/api/lock` | admin | Event mode. Body `{ "locked": true \| false }`. While locked, the setup endpoints below answer `423 Locked` with `{ "locked": true }`: creating, changing (except the current talk's `title`) and deleting rooms, `PUT /api/schedule`, `PUT /api/glossary`, renaming the event and undoing changes. Live operations keep working: `POST /api/stages/:id/talk`, `/restart`, `/youtube`, the pull controls and `POST /api/engine`. Recorded in the history. |
-| `GET` | `/api/history` | admin | `{ "locked", "changes": [...], "trash": [...] }`. `changes` are the latest setup changes, newest first: `{ id, at, kind, target, summary, before, after, undoes?, undone }` (`kind`: `room.create`, `room.update`, `room.delete`, `agenda.set`, `glossary.set`, `event.rename`, `engine.mode`, `event.lock`, `ai.key`, `tunnel`; agenda and glossary snapshots are summarized as counts). `trash` lists deleted rooms that haven't been restored: `{ id, at, room }`. |
+| `GET` | `/api/history` | crew | `{ "locked", "changes": [...], "trash": [...] }`. `changes` are the latest setup changes, newest first: `{ id, at, kind, target, summary, before, after, undoes?, undone }` (`kind`: `room.create`, `room.update`, `room.delete`, `agenda.set`, `glossary.set`, `event.rename`, `engine.mode`, `event.lock`, `ai.key`, `tunnel`, `auth.signin`, `auth.signout`, `auth.password`, `auth.2fa`; `by` is who made it: the signed-in device's name, the work account, `this computer` or `admin password (script)`; agenda and glossary snapshots are summarized as counts). `trash` lists deleted rooms that haven't been restored: `{ id, at, room }`. |
 | `POST` | `/api/history/:id/undo` | admin | Put back what that change replaced: a deleted room comes back exactly as it was, a changed room returns to its old settings, the agenda or glossary to the previous version, and so on. The undo is recorded as a new change. `409` if already undone; `423` in Event mode. |
 | `POST` | `/api/ai/key/check` | admin | Body `{ "key": "AIza…" }`. Asks Google whether the key works, without saving it: `{ ok, code }` with `code` `ok`, `quota` (a real key with no free quota left right now, `ok: true`), `invalid`, `forbidden` (the key can't use Gemini), `offline` (Google unreachable) or `error`, plus Google's `detail`. `400 { code: "format" }` if it doesn't look like a Gemini key. |
 | `PUT` | `/api/ai/key` | admin | Body `{ "key": "AIza…", "force"?: true }`. Checks the key (skipped with `force`, for when Google can't be reached), saves it in `data/secrets.json` and uses it right away: rooms on simulated captions switch to Gemini. Wins over `GEMINI_API_KEY`. Returns `{ ok, check, engine, key }`; `400` with the check's `code` if Google rejects it. Allowed in Event mode (a key that runs out of quota mid-event must be replaceable). Recorded in the history (`ai.key`, not undoable, without the key). |
 | `DELETE` | `/api/ai/key` | admin | Removes the saved key: back to `GEMINI_API_KEY` from `.env`, or to simulated captions without one. `423` in Event mode. |
 | `POST` | `/api/tunnel` | admin | Public HTTPS address through Cloudflare Tunnel. Body `{ "mode": "quick" }` (a random `https://….trycloudflare.com` address, no account), `{ "mode": "token", "token"?: string, "host": "captions.example.com" }` (a tunnel on your own domain; the token is saved in `data/secrets.json`, leave it out to reuse the saved one) or `{ "mode": "off" }`. Answers right away with the `tunnel` status; the address follows over the admin feed. While it's on, its address is the public URL (QR codes, links, allowed origins). Comes back on by itself after a restart. `423` in Event mode. Recorded in the history (`tunnel`). |
-| `POST` | `/api/engine` | admin | Offline backup. Body `{ "mode": "auto" \| "cloud" \| "local" }`. `auto` switches by itself, `cloud` always uses Gemini, `local` always uses this computer (refused with `400` while the local engine isn't reachable). Only when Gemini is the main engine. Returns the `failover` status. |
+| `POST` | `/api/engine` | crew | Offline backup. Body `{ "mode": "auto" \| "cloud" \| "local" }`. `auto` switches by itself, `cloud` always uses Gemini, `local` always uses this computer (refused with `400` while the local engine isn't reachable). Only when Gemini is the main engine. Returns the `failover` status. |
 
 The dashboard feed (`/api/status` and `WS /ws/admin`) includes `failover`: `{ mode, active, online, localReady, since, reason }`, or `null` when Gemini isn't the main engine. A `failover` message is also pushed when it changes.
 

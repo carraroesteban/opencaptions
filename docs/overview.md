@@ -90,11 +90,12 @@ The design details are in [Architecture](architecture.md), and the reasons behin
 
 ## Roadmap
 
-1. Streaming translation to reduce delay by a further 0.2–0.5 s.
-2. Local mode: measure GPU and Neural Engine backends, several rooms per machine, and a local translated voice.
-3. SSO login and per-person audit trail. Today an identity-aware proxy does this.
-4. Speaker identification in captions.
-5. An end-to-end test harness with recorded model responses.
+1. **Installers:** `npx opencaptions`, a Homebrew tap and a Windows package manager entry, then signed installers for macOS and Windows.
+2. Speaker identification in captions.
+3. Local mode: measure GPU and Neural Engine backends, several rooms per machine, and a local translated voice.
+4. Short-lived tickets for room computers, so the ingest password never travels in a URL.
+
+Done recently: dashboard sessions with an admin and a crew role, two-factor and company sign-in (OpenID Connect), streaming translation, the end-to-end test harness, the welcome wizard with the API key and a one-click public address, the offline backup, and Event mode with undo.
 
 ## License
 

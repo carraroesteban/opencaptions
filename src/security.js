@@ -22,7 +22,7 @@ function loadSecrets() {
   let s = {};
   try { s = JSON.parse(fs.readFileSync(file, 'utf8')); } catch { /* first run */ }
   let dirty = false;
-  for (const k of ['adminToken', 'ingestToken']) {
+  for (const k of ['adminToken', 'ingestToken', 'crewToken']) {
     if (!s[k]) { s[k] = crypto.randomBytes(18).toString('base64url'); dirty = true; }
   }
   if (dirty) {
@@ -32,12 +32,15 @@ function loadSecrets() {
   return s;
 }
 
-const generated = authMode === 'off' || (config.adminToken && config.ingestToken) ? {} : loadSecrets();
+const generated = authMode === 'off' || (config.adminToken && config.ingestToken && config.crewToken) ? {} : loadSecrets();
+/** The three passwords. Mutable: Settings → Access can change the generated ones (src/auth.js). */
 export const tokens = {
   admin: authMode === 'off' ? '' : config.adminToken || generated.adminToken,
   ingest: authMode === 'off' ? '' : config.ingestToken || generated.ingestToken,
+  crew: authMode === 'off' ? '' : config.crewToken || generated.crewToken,
   adminGenerated: !config.adminToken && authMode !== 'off',
   ingestGenerated: !config.ingestToken && authMode !== 'off',
+  crewGenerated: !config.crewToken && authMode !== 'off',
 };
 
 export function safeEqual(a, b) {

@@ -1,8 +1,8 @@
 // welcome.html: page script (kept out of the HTML so the Content-Security-Policy can forbid inline scripts).
-import { takeUrlToken, esc } from '/common.js';
+import { esc } from '/common.js';
 import { prefsControls, LANG } from '/i18n.js';
 import { icon } from '/illustrations.js';
-import { adminSignIn } from '/signin.js';
+import { ensureSignedIn, signInScreen } from '/signin.js';
 import { keyPanel, tunnelPanel } from '/connect.js';
 const $ = (id) => document.getElementById(id);
 $('prefs-slot').append(prefsControls());
@@ -79,11 +79,12 @@ for (const el of document.querySelectorAll('[data-t]')) el.textContent = t[el.da
 $('name').placeholder = t.namePh;
 
 // ---------- server ----------
-let token = takeUrlToken('admin.token');
+// The wizard changes the setup: admins only (the crew goes to the live dashboard).
+if ((await ensureSignedIn()).role !== 'admin') location.replace('/admin.html');
 const api = async (method, url, body) => {
-  const r = await fetch(url, { method, headers: { 'content-type': 'application/json', 'x-admin-token': token || '' }, body: body ? JSON.stringify(body) : undefined });
+  const r = await fetch(url, { method, headers: { 'content-type': 'application/json' }, body: body ? JSON.stringify(body) : undefined });
   if (r.status === 401) {
-    token = await adminSignIn();
+    await signInScreen();
     return api(method, url, body);
   }
   const j = await r.json().catch(() => ({}));

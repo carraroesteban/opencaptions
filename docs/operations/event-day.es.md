@@ -42,6 +42,8 @@ Objetivo: **cero operadores dedicados durante las charlas**. Una persona de prod
    - el **panel** desde otra PC: abrir una vez `https://<server>/admin.html?token=<ADMIN_TOKEN>` (el token se guarda en ese navegador y se borra de la barra de direcciones);
    - cada **mini PC**: `--token <INGEST_TOKEN>` en el agente, o `?token=` la primera vez en `/ingest.html`;
    - el público, el proyector y el overlay **no** necesitan token.
+   - **Contraseña del equipo** (`Crew token`): dásela a voluntarios y técnicos. Solo maneja los controles en vivo (siguiente charla, renombrar, reconectar); no puede cambiar ni borrar la configuración.
+   - **Ajustes → Acceso**: ver qué dispositivos tienen sesión iniciada y cerrarlas, cambiar contraseñas y activar la verificación en dos pasos.
 3. **Facturación y cuotas**: billing activo en Google AI Studio (el free tier limita traducciones por minuto). Configurá una **alerta de presupuesto**. Revisá en AI Studio → *Rate limits* las sesiones Live concurrentes de tu tier; si hay más salas que el límite, repartí salas entre 2 API keys/proyectos (`STAGES=…` por instancia, ver README → Scaling).
 4. **Salas** en `config/event.json` (o desde el panel → *+ Sala*):
    - `source`: `"auto"` si los hosts o speakers cambian de idioma (presentación en español de una charla en inglés, Q&A bilingüe). Fijalo (`"en"`/`"es"`) solo si toda la charla es en un idioma. En los dos casos, si el speaker cambia de idioma cada pista lo sigue: quien lee en español ve español y quien lee en inglés ve inglés.

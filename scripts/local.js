@@ -23,6 +23,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import dotenv from 'dotenv';
+import * as tty from '../src/tty.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 dotenv.config({ path: path.join(ROOT, '.env'), quiet: true });
@@ -37,12 +38,8 @@ const opt = (k, d) => { const i = argv.indexOf(`--${k}`); return i >= 0 && argv[
 const win = process.platform === 'win32';
 const appleSilicon = process.platform === 'darwin' && process.arch === 'arm64';
 const cores = os.availableParallelism?.() || os.cpus().length;
-const tty = process.stdout.isTTY;
-const c = (code, s) => (tty ? `\x1b[${code}m${s}\x1b[0m` : s);
-const ok = (s) => console.log(`${c(32, '✓')} ${s}`);
-const info = (s) => console.log(`${c(36, '•')} ${s}`);
-const warn = (s) => console.log(`${c(33, '⚠')} ${s}`);
-const die = (s) => { console.log(`${c(31, '✗')} ${s}`); cleanup(); process.exit(1); };
+const { ok, info, warn } = tty;
+const die = (s) => { tty.fail(s); cleanup(); process.exit(1); };
 fs.mkdirSync(MODELS, { recursive: true });
 fs.mkdirSync(LOGS, { recursive: true });
 
@@ -61,17 +58,16 @@ async function reachable(url, ms = 2500) {
   try { await fetch(new URL(url).origin + '/', { signal: AbortSignal.timeout(ms) }); return true; } catch { return false; }
 }
 
-/** Wait until check() passes. Gives up at once if the server we started (proc) has exited. */
+/** Wait until check() passes, with a spinner. Gives up at once if the server we started (proc) has exited. */
 async function waitFor(check, ms, label, proc = null) {
   const t0 = Date.now();
-  let shown = 0;
+  const sp = tty.spinner(label);
   while (Date.now() - t0 < ms) {
     if (proc && (proc.exitCode !== null || proc.signalCode !== null)) break;
-    if (await check()) { if (shown) process.stdout.write('\n'); return true; }
-    if (Date.now() - t0 > 3000 && Date.now() - shown > 15000) { process.stdout.write(`${shown ? '\n' : ''}  … ${label} (${Math.round((Date.now() - t0) / 1000)} s)`); shown = Date.now(); }
+    if (await check()) { sp.stop(); return true; }
     await new Promise((r) => setTimeout(r, 500));
   }
-  if (shown) process.stdout.write('\n');
+  sp.stop();
   return false;
 }
 
@@ -115,7 +111,7 @@ function npm(args, label) {
 
 async function download(url, dest, label) {
   if (fs.existsSync(dest)) return;
-  info(`downloading ${label} (once)…`);
+  const bar = tty.progress(`Downloading ${label} ${tty.c.gray('(once)')}`);
   const tmp = `${dest}.part`;
   let f = null;
   try {
@@ -123,22 +119,19 @@ async function download(url, dest, label) {
     if (!res.ok || !res.body) throw new Error(`HTTP ${res.status}`);
     const total = Number(res.headers.get('content-length')) || 0;
     f = fs.createWriteStream(tmp);
-    let got = 0, last = 0;
+    let got = 0;
     for await (const chunk of res.body) {
       got += chunk.length;
       if (!f.write(chunk)) await new Promise((r) => f.once('drain', r));
-      if (tty && Date.now() - last > 500) {
-        last = Date.now();
-        process.stdout.write(`\r  ${(got / 1e6).toFixed(0)} MB${total ? ` / ${(total / 1e6).toFixed(0)} MB (${Math.round((got / total) * 100)} %)` : ''}   `);
-      }
+      bar.update(got, total);
     }
     await new Promise((r) => f.end(r));
-    if (tty) process.stdout.write('\n');
     if (total && fs.statSync(tmp).size !== total) throw new Error('incomplete download');
+    bar.succeed(`Downloaded ${label}`);
   } catch (e) {
     // Node's fetch ignores HTTPS_PROXY (corporate networks); curl doesn't, and resumes what was downloaded.
     if (f && !f.writableFinished) await new Promise((r) => f.end(r));
-    if (tty) process.stdout.write('\n');
+    bar.fail(`Download of ${label} interrupted`);
     if (!which('curl')) die(`download failed (${e.cause?.code || e.message}) — ${url}\n  Download it by hand and save it as ${path.relative(ROOT, dest)}`);
     warn(`download failed (${e.cause?.code || e.message}); retrying with curl`);
     const r = spawnSync('curl', ['-fL', '--retry', '3', '-C', '-', '-o', tmp, url], { stdio: 'inherit' });
@@ -298,10 +291,10 @@ async function prepareText() {
 }
 
 async function pull(origin, model) {
-  info(`downloading the translation model ${model} with Ollama (once, a few GB)…`);
+  const bar = tty.progress(`Downloading the translation model ${model} ${tty.c.gray('(once, a few GB)')}`);
   const res = await fetch(`${origin}/api/pull`, { method: 'POST', body: JSON.stringify({ model, stream: true }) });
-  if (!res.ok || !res.body) die(`ollama pull ${model} failed (${res.status})`);
-  let buf = '', last = 0;
+  if (!res.ok || !res.body) { bar.fail(); die(`ollama pull ${model} failed (${res.status})`); }
+  let buf = '';
   for await (const chunk of res.body) {
     buf += Buffer.from(chunk).toString();
     let i;
@@ -309,11 +302,13 @@ async function pull(origin, model) {
       const line = buf.slice(0, i); buf = buf.slice(i + 1);
       if (!line.trim()) continue;
       const j = JSON.parse(line);
-      if (j.error) die(`ollama pull ${model}: ${j.error}`);
-      if (tty && j.total && Date.now() - last > 500) { last = Date.now(); process.stdout.write(`\r  ${j.status} ${Math.round(((j.completed || 0) / j.total) * 100)} % of ${(j.total / 1e9).toFixed(1)} GB   `); }
+      if (j.error) { bar.fail(); die(`ollama pull ${model}: ${j.error}`); }
+      // Ollama downloads in layers: show the big one's progress, and its other steps as the label.
+      if (j.total) bar.update(j.completed || 0, j.total, `Downloading ${model}`);
+      else if (j.status) bar.update(0, 0, `${model}: ${j.status}`);
     }
   }
-  if (tty) process.stdout.write('\n');
+  bar.succeed(`Downloaded ${model}`);
 }
 
 // ---------- go ----------
@@ -321,8 +316,8 @@ async function pull(origin, model) {
 const fallback = flag('fallback') && !flag('check');
 if (fallback && !env.GEMINI_API_KEY && !/^(1|true)$/i.test(env.GOOGLE_GENAI_USE_VERTEXAI || '')) die('--fallback keeps Gemini as the main engine: set GEMINI_API_KEY in .env first (npm run setup)');
 console.log(fallback
-  ? `\n${c(1, 'OpenCaptions · Gemini + offline backup')} — if the internet goes down, captions keep running on this computer\n`
-  : `\n${c(1, 'OpenCaptions · local mode')} — speech recognition and translation on this computer\n`);
+  ? `\n${tty.title('Gemini + offline backup')} ${tty.c.gray('· if the internet goes down, captions keep running on this computer')}\n`
+  : `\n${tty.title('local mode')} ${tty.c.gray('· speech recognition and translation on this computer')}\n`);
 const speech = await prepareSpeech();
 const text = await prepareText();
 const childEnv = {

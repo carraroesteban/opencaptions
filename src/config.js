@@ -66,6 +66,8 @@ export const config = {
   model: env.GEMINI_MODEL || event.model || 'gemini-3.5-live-translate-preview',
   ingestToken: env.INGEST_TOKEN || '',
   adminToken: env.ADMIN_TOKEN || '',
+  // The crew's password: the dashboard's live controls only (next talk, restart a room…), never the setup.
+  crewToken: env.CREW_TOKEN || '',
   dataDir,
   // Stop streaming audio to the model after this many seconds of silence (saves cost between talks).
   silenceGateSec: Number(env.SILENCE_GATE_SEC ?? event.silenceGateSec ?? 30),
