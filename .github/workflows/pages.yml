@@ -6,7 +6,7 @@ name: Site
 on:
   push:
     branches: [main]
-    paths: [site/**, public/tokens.css, public/style.css, public/brand/**, public/favicon.ico, public/apple-touch-icon.png, docs/images/**, scripts/site.js, .github/workflows/pages.yml]
+    paths: [site/**, public/tokens.css, public/style.css, public/brand/**, public/art/**, public/favicon.ico, public/apple-touch-icon.png, docs/images/**, scripts/site.js, .github/workflows/pages.yml]
   workflow_dispatch:
 
 permissions:

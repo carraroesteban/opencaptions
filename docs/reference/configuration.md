@@ -212,7 +212,7 @@ Each entry in `stages` (and the body of `POST /api/stages` / `PATCH /api/stages/
 
 ```json
 {
-  "eventName": "Nerdearla 2026",
+  "eventName": "Horizon Summit 2026",
   "accent": "#D4FF3A",
   "publicUrl": "",
   "publicTranscripts": "all",
@@ -224,10 +224,10 @@ Each entry in `stages` (and the body of `POST /api/stages` / `PATCH /api/stages/
   "silenceGateSec": 30,
   "idleCloseSec": 300,
   "stages": [
-    { "id": "main",   "name": "Escenario Principal", "source": "auto", "targets": ["es", "en"] },
-    { "id": "sala-a", "name": "Sala A", "source": "en", "targets": ["es", "pt"], "translation": "hybrid" },
-    { "id": "sala-b", "name": "Sala B", "source": "es", "targets": ["en"], "pull": "srt://0.0.0.0:9001?mode=listener" },
-    { "id": "sala-c", "name": "Sala C", "source": "auto", "targets": ["es", "en"], "vocabulary": ["Nerdearla", "Kubernetes"] }
+    { "id": "main",   "name": "Main Stage", "source": "auto", "targets": ["es", "en"] },
+    { "id": "room-a", "name": "Room A", "source": "en", "targets": ["es", "pt"], "translation": "hybrid" },
+    { "id": "room-b", "name": "Room B", "source": "es", "targets": ["en"], "pull": "srt://0.0.0.0:9001?mode=listener" },
+    { "id": "room-c", "name": "Room C", "source": "auto", "targets": ["es", "en"], "vocabulary": ["Ngozi Okafor", "telehealth"] }
   ]
 }
 ```
@@ -241,23 +241,21 @@ Loaded from the path in `glossary`/`GLOSSARY` (default `config/glossary.json`). 
 | `vocabulary` | string[] | up to 500 entries, each ≤100 chars | Biases speech recognition — sent to Gemini as `customVocabulary`, merged with each stage's own `vocabulary`. |
 | `replacements` | array of `{ from, to, lang? }` | up to 500 entries; `from` ≤300 chars, `to` ≤300 chars, `lang` ≤12 chars | Deterministic text fixes applied to every finalized caption. |
 
-`replacements[].from` is **not a regex** — it's one or more literal alternatives separated by `|` (e.g. `"cube control|cube ctl"`), matched case-insensitively as whole words (Unicode-aware word boundaries, so accented text works). Each match is replaced with `to`. `lang`, if set, restricts the rule to one caption channel (`"orig"`, or a target language code like `"es"`); omitted, it applies to every channel.
+`replacements[].from` is **not a regex** — it's one or more literal alternatives separated by `|` (e.g. `"open captions|open caption"`), matched case-insensitively as whole words (Unicode-aware word boundaries, so accented text works). Each match is replaced with `to`. `lang`, if set, restricts the rule to one caption channel (`"orig"`, or a target language code like `"es"`); omitted, it applies to every channel.
 
 ### Example
 
 ```json
 {
   "vocabulary": [
-    "Nerdearla", "SysArmy", "Kubernetes", "kubectl", "Terraform", "OpenTelemetry",
-    "Prometheus", "Grafana", "PostgreSQL", "Gemini", "DevOps", "SRE", "on-call",
-    "pull request", "CI/CD", "TypeScript"
+    "Horizon Summit", "OpenCaptions", "keynote", "Q&A", "breakout session",
+    "María José Fernández", "Ngozi Okafor", "Hiroshi Tanaka", "UNESCO", "net zero"
   ],
   "replacements": [
-    { "from": "nerd earla|nerdear la|nerdiarla|nerdle", "to": "Nerdearla" },
-    { "from": "cubernetes|kubernete|kuber netes", "to": "Kubernetes" },
-    { "from": "cube control|cube ctl|kube control", "to": "kubectl" },
-    { "from": "solicitud de extracción|solicitud de incorporación", "to": "pull request", "lang": "es" },
-    { "from": "de guardia", "to": "on-call", "lang": "es" }
+    { "from": "horizons summit|horizon sumit", "to": "Horizon Summit" },
+    { "from": "open captions|open caption", "to": "OpenCaptions" },
+    { "from": "q and a|q n a", "to": "Q&A" },
+    { "from": "tele salud|tele-salud", "to": "telesalud", "lang": "es" }
   ]
 }
 ```
@@ -279,10 +277,10 @@ The file is a JSON array of entries:
 
 ```csv
 stage,start,title,speaker
-main,10:00,Keynote de apertura,Organización Nerdearla
-main,10:45,Observabilidad en Kubernetes sin morir en el intento,Ana Pérez
-sala-a,10:45,Rust para gente que viene de Go,Juan Gómez
-sala-b,11:30,"IA en producción: costos, latencia y calidad",María López
+main,10:00,Opening keynote,Event team
+main,10:45,Designing cities for everyone,María José Fernández
+room-a,10:45,From idea to community in twelve months,Ngozi Okafor
+room-b,11:30,"Health care at a distance: what we learned",Hiroshi Tanaka
 ```
 
 **How a room follows the agenda** (`Stage#applySchedule` in `src/stage.js`, checked roughly every 15 status ticks):

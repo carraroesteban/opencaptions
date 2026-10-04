@@ -234,7 +234,7 @@ export class Stage extends EventEmitter {
   }
 
   /**
-   * The model reports a language per fragment, and a single English word ("Kubernetes") inside a Spanish
+   * The model reports a language per fragment, and a single English word ("smartphone") inside a Spanish
    * sentence must not flip every caption track. Fragments in a new language are held back (from the
    * translated tracks only; the original track already has them) until ~15 characters confirm the switch,
    * then routed as a block, so no words land in the wrong language on either side of the switch.

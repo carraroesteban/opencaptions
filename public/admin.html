@@ -13,27 +13,56 @@
   <link rel="stylesheet" href="/style.css" />
   <style>
     body { min-height: 100vh; }
-    header { position: sticky; top: 0; z-index: 5; background: color-mix(in srgb, var(--bg) 88%, transparent); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border-bottom: 1px solid var(--line); padding: 14px 24px; display: flex; gap: 14px 20px; align-items: center; flex-wrap: wrap; }
-    header h1 { font-size: 22px; margin: 2px 0 0; }
-    .kpis { display: flex; gap: 6px 22px; flex-wrap: wrap; margin-left: auto; }
-    .kpi { display: grid; font-size: 10.5px; font-weight: 700; color: var(--fg2); text-transform: uppercase; letter-spacing: .08em; }
-    .kpi b { font-size: 20px; color: var(--fg); letter-spacing: -.01em; text-transform: none; font-variant-numeric: tabular-nums; }
-    main { padding: 24px; display: grid; gap: 20px; max-width: 1680px; margin: 0 auto; }
-    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(380px, 1fr)); gap: 16px; }
-    .stage { display: grid; gap: 12px; align-content: start; }
+    header { position: sticky; top: 0; z-index: 5; background: color-mix(in srgb, var(--bg) 90%, transparent); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); border-bottom: 1px solid var(--line); }
+    .bar { max-width: 1680px; margin: 0 auto; padding: 14px 28px; display: flex; gap: 12px 18px; align-items: center; flex-wrap: wrap; }
+    .bar .title { display: grid; gap: 2px; min-width: 0; }
+    .bar h1 { font-size: 24px; margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .bar .spacer { flex: 1; }
+    .toolbar { max-width: 1680px; margin: 0 auto; padding: 0 28px 14px; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+    .toolbar a { text-decoration: none; }
+    .toolbar button { padding: 7px 13px; font-size: 14px; }
+    .toolbar .sep { width: 1px; align-self: stretch; background: var(--line); margin: 4px 4px; }
+    main { padding: 26px 28px 40px; display: grid; gap: 22px; max-width: 1680px; margin: 0 auto; }
+    /* KPIs */
+    .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+    .kpi { background: var(--bg2); border: 1px solid var(--line); border-radius: 14px; padding: 14px 16px; display: grid; gap: 4px; font-size: 12px; font-weight: 700; color: var(--fg2); letter-spacing: .02em; box-shadow: var(--shadow-sm); }
+    .kpi b { font-family: var(--font-display); font-weight: 800; font-size: 26px; color: var(--fg); letter-spacing: -.02em; font-variant-numeric: tabular-nums; line-height: 1.1; }
+    .kpi.sys { background: transparent; box-shadow: none; }
+    .kpi.sys b { font-size: 20px; }
+    /* Rooms */
+    .section-h { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin: 6px 0 -6px; }
+    .section-h h2 { font-size: 22px; margin: 0; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 16px; }
+    .stage { display: grid; gap: 12px; align-content: start; padding: 20px; }
     .stage.alert { border-color: color-mix(in srgb, var(--bad) 55%, var(--line)); box-shadow: 0 0 0 3px color-mix(in srgb, var(--bad) 12%, transparent); }
-    .stage .top { display: flex; gap: 8px; align-items: center; }
-    .stage h3 { margin: 0; font-size: 20px; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .stage .top { display: flex; gap: 10px; align-items: center; }
+    .stage h3 { margin: 0; font-size: 21px; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .stage .talkline { font-size: 15px; font-weight: 700; margin-top: -6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .stage .talkline.none { font-weight: 400; color: var(--fg2); }
     .stage .sub { font-size: 13px; color: var(--fg2); }
+    .stage .said { font-size: 15px; line-height: 1.45; color: var(--fg); background: var(--bg); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; min-height: 2.9em; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    .stage .said:empty::before { content: '…'; color: var(--fg2); }
+    .stage .stats { display: flex; gap: 6px 16px; flex-wrap: wrap; font-size: 13px; color: var(--fg2); }
+    .stage .stats span { display: inline-flex; align-items: center; gap: 6px; }
+    .stage .stats b { color: var(--fg); font-variant-numeric: tabular-nums; }
+    .stage .actions { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+    .stage .actions button { padding: 6px 11px; font-size: 13px; }
+    .stage .actions .more { margin-left: auto; box-shadow: none; border-color: transparent; background: transparent; color: var(--fg2); }
+    .stage .actions .more:hover { color: var(--fg); background: var(--bg3); }
+    .stage .actions .more svg { transition: transform var(--dur) var(--ease); }
+    .stage.open .actions .more svg { transform: rotate(180deg); }
+    .stage .details { display: none; gap: 12px; border-top: 1px solid var(--line); padding-top: 14px; }
+    .stage.open .details { display: grid; }
     .stage .metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
-    .stage .metrics div { background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 7px 9px; font-size: 11px; color: var(--fg2); }
-    .stage .metrics b { display: block; font-size: 16px; color: var(--fg); font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .stage .preview { display: grid; gap: 5px; font-size: 13px; background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 9px 11px; }
+    .stage .metrics div { background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 7px 9px; font-size: 11px; color: var(--fg2); min-width: 0; }
+    .stage .metrics b { display: block; font-size: 15px; color: var(--fg); font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .stage .preview { display: grid; gap: 5px; font-size: 13px; }
     .stage .preview div { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .stage .preview div + div { color: var(--translation); }
     .stage .preview span.l { display: inline-block; min-width: 38px; font-size: 10px; font-weight: 700; color: var(--fg2); letter-spacing: .06em; text-transform: uppercase; }
-    .stage .actions { display: flex; gap: 6px; flex-wrap: wrap; padding-top: 2px; }
-    .stage .actions button { padding: 5px 10px; font-size: 13px; }
+    .empty-rooms { grid-column: 1 / -1; display: grid; justify-items: center; gap: 14px; text-align: center; padding: 30px 20px 40px; }
+    .empty-rooms img { width: 220px; border-radius: 20px; }
+    .empty-rooms h3 { font-size: 22px; margin: 0; }
     #logs { font-family: var(--mono); font-size: 12px; max-height: 260px; overflow: auto; display: grid; gap: 2px; }
     #logs .warn { color: var(--warn); } #logs .error { color: var(--bad); }
     .qrrow { display: grid; grid-template-columns: 150px 1fr; gap: 14px; align-items: center; }
@@ -42,9 +71,13 @@
     table { width: 100%; border-collapse: collapse; font-size: 13px; } td, th { padding: 8px 4px; border-bottom: 1px solid var(--line); text-align: left; }
     .langs-check { display: flex; gap: 10px; flex-wrap: wrap; }
     section.card > .row b { font-family: var(--font-display); font-weight: 800; font-size: 17px; letter-spacing: -.01em; }
-    /* First-run guide */
-    #onboard { padding: 20px 22px; }
-    #onboard ol { list-style: none; padding: 0; margin: 12px 0 0; display: grid; gap: 4px; font-size: 14px; }
+    /* First-run guide, with an illustration */
+    #onboard { padding: 0; overflow: hidden; display: grid; grid-template-columns: minmax(0, 1fr) minmax(300px, 46%); }
+    #onboard .ob-body { padding: 22px 24px; }
+    #onboard .ob-art { background: #FAF8F3 center / contain no-repeat; border-left: 1px solid var(--line); min-height: 220px; }
+    @media (max-width: 900px) { #onboard { grid-template-columns: 1fr; } #onboard .ob-art { border-left: 0; border-top: 1px solid var(--line); min-height: 160px; order: -1; } }
+    #onboard h2 { font-size: 22px; margin: 0; }
+    #onboard ol { list-style: none; padding: 0; margin: 14px 0 0; display: grid; gap: 2px; font-size: 14px; }
     #onboard li { display: flex; gap: 10px; align-items: baseline; padding: 6px 0; }
     #onboard li.done { opacity: .5; }
     #onboard li.done b { text-decoration: line-through; text-decoration-thickness: 1px; }
@@ -56,34 +89,43 @@
 </head>
 <body>
   <header>
-    <div><div class="brand" style="font-size:13px">OpenCaptions</div><h1 id="event">Producción</h1></div>
-    <span class="chip" id="engine"></span>
-    <div class="kpis">
-      <div class="kpi">Salas en vivo<b id="k-live">–</b></div>
-      <div class="kpi">Sesiones IA<b id="k-sessions">–</b></div>
-      <div class="kpi">Espectadores<b id="k-viewers">–</b></div>
-      <div class="kpi">Costo estimado<b id="k-cost">–</b></div>
-      <div class="kpi">Uptime<b id="k-up">–</b></div>
-      <div class="kpi" title="CPU del proceso (100 % = 1 núcleo) · carga del host">CPU<b id="k-cpu">–</b></div>
-      <div class="kpi" title="Memoria del proceso (RSS) · % RAM del host">Memoria<b id="k-mem">–</b></div>
-      <div class="kpi" title="Retraso del event loop (p99). > 50 ms afecta el tiempo real">Event loop<b id="k-lag">–</b></div>
+    <div class="bar">
+      <div class="title"><div class="brand" style="font-size:14px">OpenCaptions</div><h1 id="event">Producción</h1></div>
+      <span class="chip" id="engine"></span>
+      <span class="spacer"></span>
+      <span id="prefs-slot"></span>
     </div>
-    <div class="row">
-      <button id="add">+ Sala</button>
-      <button id="agenda">📅 Agenda</button>
-      <button id="gloss">Glosario</button>
-      <a href="/kit.html" target="_blank"><button>🖨 Kit de QR</button></a>
-      <a href="/talks.html" target="_blank"><button>📚 Transcripciones</button></a>
-      <a href="/style.html" target="_blank"><button>🎨 Estilo</button></a>
-      <a href="/demo.html?mode=mic" target="_blank"><button>🎙 Prueba de sonido</button></a>
-      <button id="float" class="hidden" title="Todas las salas en una ventana siempre visible, encima de OBS o vMix">📌 Flotante</button>
-    </div>
+    <nav class="toolbar">
+      <button id="add" class="primary" data-icon="plus">Nueva sala</button>
+      <button id="agenda" data-icon="calendar">Agenda</button>
+      <button id="gloss" data-icon="book">Glosario</button>
+      <span class="sep"></span>
+      <a href="/kit.html" target="_blank"><button data-icon="qr" tabindex="-1">Kit de QR</button></a>
+      <a href="/talks.html" target="_blank"><button data-icon="doc" tabindex="-1">Transcripciones</button></a>
+      <a href="/style.html" target="_blank"><button data-icon="palette" tabindex="-1">Estilo de subtítulos</button></a>
+      <a href="/demo.html?mode=mic" target="_blank"><button data-icon="mic" tabindex="-1">Prueba de sonido</button></a>
+      <button id="float" class="hidden" data-icon="pin" title="Todas las salas en una ventana siempre visible, encima de OBS o vMix">Ventana flotante</button>
+    </nav>
   </header>
   <main>
-    <section class="card hidden" id="onboard">
-      <div class="row" style="justify-content:space-between"><b>🚀 Primeros pasos</b><button id="ob-hide" class="muted" style="padding:3px 12px;font-size:13px;box-shadow:none">Ocultar</button></div>
-      <ol id="ob-steps"></ol>
+    <section class="kpis">
+      <div class="kpi">Salas en vivo<b id="k-live">–</b></div>
+      <div class="kpi">Espectadores<b id="k-viewers">–</b></div>
+      <div class="kpi">Costo estimado<b id="k-cost">–</b></div>
+      <div class="kpi">Sesiones IA<b id="k-sessions">–</b></div>
+      <div class="kpi">Uptime<b id="k-up">–</b></div>
+      <div class="kpi sys" title="CPU del proceso (100 % = 1 núcleo) · carga del host">CPU<b id="k-cpu">–</b></div>
+      <div class="kpi sys" title="Memoria del proceso (RSS) · % RAM del host">Memoria<b id="k-mem">–</b></div>
+      <div class="kpi sys" title="Retraso del event loop (p99). > 50 ms afecta el tiempo real">Event loop<b id="k-lag">–</b></div>
     </section>
+    <section class="card hidden" id="onboard">
+      <div class="ob-body">
+        <div class="row" style="justify-content:space-between"><h2>Primeros pasos</h2><button id="ob-hide" class="muted" style="padding:3px 12px;font-size:13px;box-shadow:none">Ocultar</button></div>
+        <ol id="ob-steps" data-no-i18n></ol>
+      </div>
+      <div class="ob-art" style="background-image:url(/art/setup.webp)" role="img" aria-label=""></div>
+    </section>
+    <div class="section-h"><h2>Salas</h2></div>
     <div class="grid" id="grid"></div>
     <section class="card">
       <div class="row" style="justify-content:space-between;margin-bottom:8px"><b>Eventos</b><select id="logfilter"><option value="">Todas las salas</option></select></div>
@@ -97,7 +139,7 @@
       <label class="field" style="flex:1">ID<input name="id" required pattern="[a-z0-9_-]+" /></label>
       <label class="field" style="flex:2">Nombre<input name="name" required /></label>
     </div>
-    <label class="field">Charla actual (título)<input name="title" placeholder="Ej: Observabilidad en Kubernetes — Ana García" /></label>
+    <label class="field">Charla actual (título)<input name="title" placeholder="Ej: Diseñar ciudades para todos — María José Fernández" /></label>
     <label class="field">Idioma de la charla<select name="source"><option value="auto">Detectar automáticamente</option></select></label>
     <div class="field">Traducir a<div class="langs-check" id="edit-targets"></div></div>
     <label class="field">Modo de traducción de subtítulos<select name="translation">
@@ -120,22 +162,24 @@
     <h3 style="margin:0">📅 Agenda del evento</h3>
     <p class="muted" style="margin:0;font-size:13px"><b>Desde Swapcard, Sessionize o una planilla:</b> exportá las sesiones a Excel o Google Sheets, seleccioná todo (con la fila de títulos), copiá y pegá acá. Se reconocen las columnas (título, inicio, sala/ubicación, speakers) y las salas por su nombre; las filas de salas sin subtítulos se ignoran.<br>O a mano, una charla por línea: <code>sala,hora,título,speaker</code> (hora <code>14:30</code> = hoy).</p>
     <p class="muted" style="margin:0;font-size:13px">Para qué sirve: cada sala nombra sola sus charlas (pantallas, transcripciones y descargas) sin cortar a un speaker que se pasa de tiempo, y los nombres de speakers y títulos ayudan a la IA a escribirlos bien.</p>
-    <textarea id="agenda-text" rows="14" style="font-family:var(--mono);font-size:12px" placeholder="main,10:00,Keynote de apertura,Organización&#10;sala-a,10:30,Observabilidad en Kubernetes,Ana Pérez"></textarea>
+    <textarea id="agenda-text" rows="14" style="font-family:var(--mono);font-size:12px" placeholder="main,10:00,Keynote de apertura,Equipo del evento&#10;room-a,10:30,Diseñar ciudades para todos,María José Fernández"></textarea>
     <div id="agenda-msg" class="muted" style="font-size:13px"></div>
     <div class="row" style="justify-content:flex-end"><button value="cancel">Cancelar</button><button class="primary" value="ok" id="agenda-save">Guardar</button></div>
   </form></dialog>
   <dialog id="dlg-gloss"><form method="dialog" style="display:grid;gap:10px">
-    <h3 style="margin:0">Glosario técnico</h3>
-    <p class="muted" style="margin:0;font-size:13px"><b>vocabulary</b>: términos que se le pasan al reconocimiento de voz. <b>replacements</b>: correcciones que se aplican a todos los subtítulos (se aplican al instante, sin reiniciar).</p>
+    <h3 style="margin:0">Glosario</h3>
+    <p class="muted" style="margin:0;font-size:13px"><b>vocabulary</b>: nombres y términos que se le pasan al reconocimiento de voz. <b>replacements</b>: correcciones que se aplican a todos los subtítulos (se aplican al instante, sin reiniciar).</p>
     <textarea id="gloss-text" rows="18" style="font-family:var(--mono);font-size:12px"></textarea>
     <div class="row" style="justify-content:flex-end"><button value="cancel">Cancelar</button><button class="primary" value="ok">Guardar</button></div>
   </form></dialog>
 
   <script type="module">
     import { qs, esc, store, wsUrl, Socket, langLabel, takeUrlToken, setAccent } from '/common.js';
-    import { localize, prefsControls, tr } from '/i18n.js';
-    document.querySelector('header > .row:last-child').append(prefsControls());
+    import { localize, prefsControls, tr, LANG } from '/i18n.js';
+    import { icon, mountIcons } from '/illustrations.js';
     const $ = (id) => document.getElementById(id);
+    $('prefs-slot').append(prefsControls());
+    mountIcons();
     let token = takeUrlToken('admin.token');
     let ev = await (await fetch('/api/event')).json();
     setAccent(ev.accent);
@@ -184,26 +228,59 @@
     refreshSchedule();
     // Local engine (npm run local): speech server + text model health, checked by the server every 15 s.
     const localOk = (l) => !!l && l.asr !== false && (l.llmOff || l.llm !== false);
+    // First-run guide. Its sentences mix text and links/code, so they're written per language here instead of
+    // going through the word-by-word page translator.
+    const OB = {
+      es: {
+        localNoAsr: (u) => `no responde el servidor de voz (<code>${u}</code>): corré <code>npm run local</code>`,
+        localLlmOff: (m) => `solo transcripción, sin traducciones ni resúmenes · ${m}`,
+        localNoLlm: (u) => `no responde el modelo de traducción (<code>${u}</code>): corré <code>npm run local</code> o abrí Ollama`,
+        localMissing: (m) => `falta el modelo <code>${m}</code>: <code>ollama pull ${m}</code>`,
+        localReady: (m) => `listo · ${m} · el audio no sale de esta computadora`,
+        engineLocal: 'Motor de IA local', engineGemini: 'Conectar Gemini', ready: (m) => `listo · ${m}`,
+        noKey: 'agregá <code>GEMINI_API_KEY</code> al archivo <code>.env</code> y reiniciá, o usá <code>npm run local</code> para correr la IA en esta computadora. Mientras tanto, los subtítulos son simulados.',
+        rooms: 'Crear las salas', roomsD: (n) => `${n} ${n === 1 ? 'sala' : 'salas'} · <a href="#" data-ob="add">nueva sala</a>`,
+        audio: 'Conectar el audio de cada sala', audioD: (a, n) => `${a} de ${n} con audio · agente, navegador o stream (<a href="https://github.com/carraroesteban/opencaptions/blob/main/docs/operations/runbook.md" target="_blank">cómo</a>)`,
+        agenda: 'Cargar la agenda', agendaD: (n) => (n ? `${n} ${n === 1 ? 'charla cargada' : 'charlas cargadas'}` : '<a href="#" data-ob="agenda">pegar la agenda</a> para que las charlas tomen su título (opcional)'),
+        kit: 'Imprimir los QR de cada sala', kitD: '<a href="/kit.html" target="_blank" data-ob="kit">abrir el kit de QR</a>',
+        sound: 'Prueba de sonido en cada sala', soundD: '<a href="/demo.html?mode=mic" target="_blank" data-ob="sound">abrir la prueba de sonido</a>',
+      },
+      en: {
+        localNoAsr: (u) => `the speech server isn't responding (<code>${u}</code>): run <code>npm run local</code>`,
+        localLlmOff: (m) => `transcription only, no translations or summaries · ${m}`,
+        localNoLlm: (u) => `the translation model isn't responding (<code>${u}</code>): run <code>npm run local</code> or open Ollama`,
+        localMissing: (m) => `model <code>${m}</code> is missing: <code>ollama pull ${m}</code>`,
+        localReady: (m) => `ready · ${m} · audio never leaves this computer`,
+        engineLocal: 'Local AI engine', engineGemini: 'Connect Gemini', ready: (m) => `ready · ${m}`,
+        noKey: 'add <code>GEMINI_API_KEY</code> to the <code>.env</code> file and restart, or use <code>npm run local</code> to run the AI on this computer. Until then, captions are simulated.',
+        rooms: 'Create your rooms', roomsD: (n) => `${n} ${n === 1 ? 'room' : 'rooms'} · <a href="#" data-ob="add">new room</a>`,
+        audio: 'Connect each room’s audio', audioD: (a, n) => `${a} of ${n} with audio · agent, browser or stream (<a href="https://github.com/carraroesteban/opencaptions/blob/main/docs/operations/runbook.md" target="_blank">how</a>)`,
+        agenda: 'Load the agenda', agendaD: (n) => (n ? `${n} ${n === 1 ? 'talk' : 'talks'} loaded` : '<a href="#" data-ob="agenda">paste your agenda</a> so talks get their titles (optional)'),
+        kit: 'Print each room’s QR code', kitD: '<a href="/kit.html" target="_blank" data-ob="kit">open the QR kit</a>',
+        sound: 'Sound check in every room', soundD: '<a href="/demo.html?mode=mic" target="_blank" data-ob="sound">open the sound check</a>',
+      },
+    };
+    const ob = OB[LANG] || OB.en;
     function localDetail(s) {
       const l = s.local || {};
-      if (l.asr === false) return `no responde el servidor de voz (<code>${esc(l.asrUrl || '')}</code>) — corré <code>npm run local</code>`;
-      if (l.llmOff) return `solo transcripción (sin traducciones ni resúmenes) · ${esc(s.model)}`;
-      if (l.llm === false) return `no responde el modelo de traducción (<code>${esc(l.llmUrl || '')}</code>) — corré <code>npm run local</code> o abrí Ollama`;
-      if (l.modelInstalled === false) { const m = esc((l.missing || [])[0] || l.llmModel || ''); return `falta el modelo <code>${m}</code> — <code>ollama pull ${m}</code>`; }
-      return `listo · ${esc(s.model)} · el audio no sale de esta computadora`;
+      if (l.asr === false) return ob.localNoAsr(esc(l.asrUrl || ''));
+      if (l.llmOff) return ob.localLlmOff(esc(s.model));
+      if (l.llm === false) return ob.localNoLlm(esc(l.llmUrl || ''));
+      if (l.modelInstalled === false) return ob.localMissing(esc((l.missing || [])[0] || l.llmModel || ''));
+      return ob.localReady(esc(s.model));
     }
     function renderOnboard(s) {
       if (store.get('admin.obHidden', false)) return $('onboard').classList.add('hidden');
       const withAudio = s.stages.filter((x) => x.ingest).length;
       const steps = [
         s.engine === 'local'
-          ? [localOk(s.local), 'Motor de IA local', localDetail(s)]
-          : [s.engine === 'gemini', 'Conectar Gemini', s.engine === 'gemini' ? `listo · ${esc(s.model)}` : 'poné <code>GEMINI_API_KEY</code> en <code>.env</code> y reiniciá, o corré <code>npm run local</code> para usar IA en esta computadora (hoy corre en modo simulado)'],
-        [s.stages.length > 0, 'Crear las salas', `${s.stages.length} sala(s) · <a href="#" data-ob="add">+ Sala</a>`],
-        [withAudio === s.stages.length && s.stages.length > 0, 'Conectar el audio de cada sala', `${withAudio}/${s.stages.length} con audio · agente, navegador o stream (ver <a href="https://github.com/carraroesteban/opencaptions/blob/main/docs/operations/runbook.md" target="_blank">runbook</a>)`],
-        [scheduleCount > 0, 'Cargar la agenda (títulos automáticos)', scheduleCount ? `${scheduleCount} charla(s) cargadas` : '<a href="#" data-ob="agenda">📅 pegar agenda</a> (opcional)'],
-        [store.get('admin.kitDone', false), 'Imprimir los QR de cada sala', '<a href="/kit.html" target="_blank" data-ob="kit">🖨 abrir kit</a>'],
-        [store.get('admin.soundDone', false), 'Prueba de sonido en cada sala', '<a href="/demo.html?mode=mic" target="_blank" data-ob="sound">🎙 abrir</a>'],
+          ? [localOk(s.local), ob.engineLocal, localDetail(s)]
+          : [s.engine === 'gemini', ob.engineGemini, s.engine === 'gemini' ? ob.ready(esc(s.model)) : ob.noKey],
+        [s.stages.length > 0, ob.rooms, ob.roomsD(s.stages.length)],
+        [withAudio === s.stages.length && s.stages.length > 0, ob.audio, ob.audioD(withAudio, s.stages.length)],
+        [scheduleCount > 0, ob.agenda, ob.agendaD(scheduleCount)],
+        [store.get('admin.kitDone', false), ob.kit, ob.kitD],
+        [store.get('admin.soundDone', false), ob.sound, ob.soundD],
       ];
       $('ob-steps').innerHTML = steps.map(([ok, title, detail]) => `<li class="${ok ? 'done' : ''}"><span class="ck${ok ? ' on' : ''}" role="img" aria-label="${ok ? '✓' : '·'}"></span><span><b>${title}</b> <span class="muted">— ${detail}</span></span></li>`).join('');
       $('onboard').classList.toggle('hidden', steps.every(([ok]) => ok));
@@ -242,6 +319,8 @@
       const grid = $('grid');
       const ids = new Set(s.stages.map((x) => x.id));
       for (const el of [...grid.children]) if (!ids.has(el.dataset.id)) el.remove();
+      if (!s.stages.length && !grid.querySelector('.empty-rooms')) grid.innerHTML = `<div class="empty-rooms"><img src="/art/waiting.webp" alt="" /><h3>${esc(tr('Todavía no hay salas'))}</h3><p class="muted" style="margin:0">${esc(tr('Creá una sala por cada escenario o aula: cada una tiene su QR, su pantalla y su overlay.'))}</p><button class="primary" data-ob-add>${icon('plus')}${esc(tr('Nueva sala'))}</button></div>`;
+      if (s.stages.length) grid.querySelector('.empty-rooms')?.remove();
       for (const st of s.stages) {
         let el = grid.querySelector(`[data-id="${st.id}"]`);
         if (!el) {
@@ -250,26 +329,40 @@
           el.dataset.id = st.id;
           el.innerHTML = `
             <div class="top"><h3></h3><span data-f="state"></span></div>
-            <div class="sub" data-f="sub"></div>
+            <div class="talkline" data-f="talkline"></div>
             <div class="sub muted" data-f="next" data-no-i18n></div>
             <div class="meter"><i data-f="lvl"></i><b data-f="pk"></b></div>
-            <div class="sub" data-f="ingest"></div>
-            <div class="row" data-f="engines"></div>
-            <div class="metrics" data-f="metrics"></div>
-            <div class="preview" data-f="preview" data-no-i18n></div>
+            <div class="said" data-f="said" data-no-i18n></div>
+            <div class="stats" data-f="stats"></div>
             <div class="row" data-f="alerts"></div>
             <div class="actions">
-              <button data-a="links">🔗 Links / QR</button>
-              <button data-a="talk">＋ Nueva charla</button>
-              <button data-a="export">⬇ Transcripciones</button>
-              <button data-a="restart" title="Reconectar sesiones de IA">↻</button>
-              <button data-a="edit">⚙︎</button>
+              <button data-a="links">${icon('qr')}Links y QR</button>
+              <button data-a="talk">${icon('newtalk')}Nueva charla</button>
+              <button data-a="details" class="more" aria-expanded="false"><span>Ver detalles</span>${icon('chevron')}</button>
+            </div>
+            <div class="details">
+              <div class="sub" data-f="sub"></div>
+              <div class="sub" data-f="ingest"></div>
+              <div class="row" data-f="engines"></div>
+              <div class="metrics" data-f="metrics"></div>
+              <div class="preview" data-f="preview" data-no-i18n></div>
+              <div class="actions">
+                <button data-a="export">${icon('download')}Transcripciones</button>
+                <button data-a="restart" title="Reconectar sesiones de IA">${icon('refresh')}Reconectar IA</button>
+                <button data-a="edit">${icon('gear')}Ajustes de la sala</button>
+              </div>
             </div>`;
           grid.append(el);
           if (![...$('logfilter').options].some((o) => o.value === st.id)) $('logfilter').append(new Option(st.name, st.id));
         }
         const f = (k) => el.querySelector(`[data-f="${k}"]`);
         el.querySelector('h3').textContent = st.name;
+        const tl = f('talkline');
+        tl.textContent = st.talk.title || tr('Sin charla anunciada');
+        tl.classList.toggle('none', !st.talk.title);
+        f('said').textContent = (st.preview.orig ?? Object.values(st.preview)[0] ?? '').slice(-220);
+        const lat = Math.max(st.latency.asr || 0, ...Object.values(st.latency.tr).filter((v) => v != null));
+        f('stats').innerHTML = `<span title="${esc(tr('Público'))}">${icon('eye')}<b>${st.viewers}</b></span><span title="${esc(tr('Latencia'))}">${icon('clock')}<b>${lat ? sec(lat) : '—'}</b></span><span title="${esc(tr('Costo estimado'))}">${icon('coin')}<b>US$ ${st.costUsd.toFixed(2)}</b></span>`;
         el.classList.toggle('alert', st.alerts.some((a) => a !== 'no-ingest'));
         f('state').innerHTML = stateChip(st);
         const tgt = st.targets.filter((x) => x !== st.source).join(', ');
@@ -351,11 +444,18 @@
 
     // ---------- actions ----------
     $('grid').onclick = async (e) => {
+      if (e.target.closest('[data-ob-add]')) return openEdit(null);
       const b = e.target.closest('[data-a]');
       if (!b) return;
       const id = b.closest('[data-id]').dataset.id;
       const st = last.stages.find((x) => x.id === id);
       const a = b.dataset.a;
+      if (a === 'details') {
+        const card = b.closest('.stage'), open = card.classList.toggle('open');
+        b.setAttribute('aria-expanded', open);
+        b.querySelector('span').textContent = tr(open ? 'Ocultar detalles' : 'Ver detalles');
+        return;
+      }
       if (a === 'talk') {
         const title = prompt(tr('Título de la nueva charla (opcional). La transcripción actual queda guardada.'), '');
         if (title != null) await api('POST', `/api/stages/${id}/talk`, { title });

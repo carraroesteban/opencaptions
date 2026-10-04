@@ -1,8 +1,8 @@
 # systemd template: one agent per stage PC.  Install:
 #   sudo cp deploy/opencaptions-agent@.service /etc/systemd/system/
-#   sudo systemctl edit opencaptions-agent@sala-a   # set OC_SERVER / INGEST_TOKEN / DEVICE if needed
-#   sudo systemctl enable --now opencaptions-agent@sala-a
-#   journalctl -u opencaptions-agent@sala-a -f
+#   sudo systemctl edit opencaptions-agent@room-a   # set OC_SERVER / INGEST_TOKEN / DEVICE if needed
+#   sudo systemctl enable --now opencaptions-agent@room-a
+#   journalctl -u opencaptions-agent@room-a -f
 [Unit]
 Description=OpenCaptions stage agent (%i)
 After=network-online.target sound.target

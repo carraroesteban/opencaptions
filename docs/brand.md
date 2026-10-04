@@ -53,11 +53,16 @@ Both load from Google Fonts, with system fonts as fallback, so pages still work 
 
 Both are turned off for people who ask for reduced motion.
 
+## Illustrations
+
+Friendly line illustrations live in [`public/art/`](../public/art/) as WebP: `hero`, `audience`, `stage`, `organizer`, `local`, `setup` and `waiting`. They were generated with Higgsfield (GPT Image 2.5) from one shared style prompt: ink lines on paper, warm-grey fills, and lime only on dark screens, so they follow the colour rule. They are drawn on paper, so pages frame them like prints (a rounded paper card) and they work in both themes. To add one, reuse the same style prompt so the set stays consistent.
+
 ## Where things live
 
 | Path | What |
 |---|---|
 | `public/tokens.css` | Palette, fonts and semantic tokens (light + dark). |
 | `public/style.css` | Shared components: buttons, pills, chips, cards, sheets, logo, highlighter. |
-| `public/illustrations.js` | Line illustrations as inline SVG, so they follow the theme. |
+| `public/illustrations.js` | Small inline SVG illustrations and the button icon set (`icon()`, `mountIcons()`). |
+| `public/art/` | The illustration set (WebP). |
 | `site/` | The landing page (EN at `/`, ES at `/es/`). `npm run site` copies the tokens, styles, brand assets and screenshots next to it and serves it on port 8081. The `Site` workflow deploys it to GitHub Pages at opencaptions.kvza.ar. |

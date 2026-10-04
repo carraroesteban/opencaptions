@@ -60,7 +60,7 @@ export async function translateText({ text, from, to, context = [], vocabulary =
     partial
       ? 'The sentence is still being spoken and may be cut off: translate exactly what is there, do not complete it.'
       : 'Translate the sentence naturally and faithfully, as a professional subtitler would.',
-    'Keep technical terms, product names, commands and people names as software engineers usually write them (e.g. Kubernetes, pull request, deploy, on-call, embeddings, OpenTelemetry).',
+    'Keep people\'s names, brand and product names, acronyms and specialist terms the way people in the speaker\'s field usually write them; do not translate names.',
     'Output only the translation — no quotes, notes or explanations.',
     vocabulary.length ? `Glossary / proper nouns: ${vocabulary.slice(0, 80).join(', ')}.` : '',
   ].filter(Boolean).join('\n');
@@ -109,7 +109,7 @@ async function translateLocal({ text, from, to, context, vocabulary, partial }) 
   const system = [
     `You are a professional live-caption translator. Translate the user's text from ${from ? langName(from) : 'the speaker\'s language'} into ${langName(to)}.`,
     partial ? 'The sentence is still being spoken and may be cut off: translate only what is there, do not complete it.' : '',
-    'Keep technical terms, product names, commands and people names as software engineers write them (Kubernetes, pull request, deploy, on-call, OpenTelemetry).',
+    'Keep people\'s names, brand and product names, acronyms and specialist terms the way people in the speaker\'s field write them; do not translate names.',
     vocabulary.length ? `Names and terms to keep as written: ${vocabulary.slice(0, 40).join(', ')}.` : '',
     `Reply with the ${langName(to)} translation only: no quotes, no notes, no explanations, no original text.`,
   ].filter(Boolean).join('\n');

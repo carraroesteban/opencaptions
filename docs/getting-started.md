@@ -98,10 +98,10 @@ npm run feed -- --stage main   --input samples/talk-en.wav
 ```
 
 ```bash
-npm run feed -- --stage sala-b --input samples/talk-es.wav
+npm run feed -- --stage room-b --input samples/talk-es.wav
 ```
 
-Room `main` receives English and shows Spanish captions. Room `sala-b` receives Spanish and shows English captions. The dashboard shows both rooms, their latency and the estimated cost so far.
+Room `main` receives English and shows Spanish captions. Room `room-b` receives Spanish and shows English captions. The dashboard shows both rooms, their latency and the estimated cost so far.
 
 ## 6. Catch up and ask
 

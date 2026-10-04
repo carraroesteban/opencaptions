@@ -3,8 +3,8 @@
 // config/schedule.json holds [{ stage, start, title, speaker? }]. Organizers can also paste the agenda in the
 // dashboard: a Swapcard/Sessionize export copied from Excel or Sheets (columns found by their header, room
 // names matched to rooms), or plain CSV without a header:   stage,start,title,speaker
-//   main,10:00,Observabilidad en Kubernetes,Ana Pérez          ← HH:MM = today, server's local time
-//   sala-a,2026-09-26 14:30,Rust para gente de Go,John Doe     ← or a full date/time (ISO also works)
+//   main,10:00,Designing cities for everyone,María José         ← HH:MM = today, server's local time
+//   room-a,2026-09-26 14:30,Opening keynote,Event team        ← or a full date/time (ISO also works)
 //
 // A room switches to the next talk when that talk's slot has started AND the room is quiet (silence gate),
 // so a speaker running late is never cut in half. See Stage#applySchedule.
@@ -83,7 +83,7 @@ function headerMap(row) {
   return map.title != null && map.start != null ? map : null;
 }
 
-/** Maps an agenda's room label ("Sala A", "sala-a", "Sala A - Planta baja") to a room id, or null. */
+/** Maps an agenda's room label ("Sala A", "room-a", "Sala A - Planta baja") to a room id, or null. */
 function roomMatcher(rooms) {
   if (!rooms) return null;
   const list = rooms.map((r) => ({ id: r.id, keys: [norm(r.id), norm(r.name)].filter(Boolean) }));

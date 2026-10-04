@@ -8,6 +8,11 @@
 */
 @import url('https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible+Next:ital,wght@0,400;0,700;1,400&family=Bricolage+Grotesque:opsz,wght@12..96,800&display=swap');
 
+/* Digits: Atkinson Hyperlegible Next only ships a slashed zero, which reads as "Ø" in prices, times and counts.
+   Numerals come from the system UI font instead; every other character stays Atkinson. */
+@font-face { font-family: 'OC Digits'; font-weight: 100 500; unicode-range: U+0030-0039; src: local('Helvetica Neue'), local('HelveticaNeue'), local('Segoe UI'), local('SegoeUI'), local('Roboto'), local('Arial'); }
+@font-face { font-family: 'OC Digits'; font-weight: 600 900; unicode-range: U+0030-0039; src: local('Helvetica Neue Bold'), local('HelveticaNeue-Bold'), local('Segoe UI Bold'), local('SegoeUI-Bold'), local('Roboto Bold'), local('Roboto-Bold'), local('Arial Bold'), local('Arial-BoldMT'); }
+
 :root {
   /* ---- brand palette (fixed) ---- */
   --ink: #111014;
@@ -18,7 +23,7 @@
 
   /* ---- type ---- */
   --font-display: 'Bricolage Grotesque', ui-rounded, 'Avenir Next', 'Segoe UI', system-ui, sans-serif;
-  --font: 'Atkinson Hyperlegible Next', 'Atkinson Hyperlegible', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font: 'OC Digits', 'Atkinson Hyperlegible Next', 'Atkinson Hyperlegible', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   --mono: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
 
   /* ---- shape, depth, motion ---- */
@@ -57,6 +62,7 @@
   --shadow-lg: 0 24px 60px -18px rgba(17, 16, 20, .28);
   --scrim: rgba(17, 16, 20, .38);
   --logo: url(/brand/mark-ink.svg);
+  --chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5l5 5 5-5' fill='none' stroke='%23111014' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
   color-scheme: light;
 }
 
@@ -70,6 +76,7 @@
     --shadow-sm: 0 1px 2px rgba(0, 0, 0, .4); --shadow: 0 1px 2px rgba(0, 0, 0, .4), 0 10px 30px -10px rgba(0, 0, 0, .6);
     --shadow-lg: 0 30px 70px -20px rgba(0, 0, 0, .8); --scrim: rgba(0, 0, 0, .6);
     --logo: url(/brand/mark-dark.svg);
+    --chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5l5 5 5-5' fill='none' stroke='%23FAF8F3' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
     color-scheme: dark;
   }
 }
@@ -81,5 +88,6 @@
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, .4); --shadow: 0 1px 2px rgba(0, 0, 0, .4), 0 10px 30px -10px rgba(0, 0, 0, .6);
   --shadow-lg: 0 30px 70px -20px rgba(0, 0, 0, .8); --scrim: rgba(0, 0, 0, .6);
   --logo: url(/brand/mark-dark.svg);
+  --chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5l5 5 5-5' fill='none' stroke='%23FAF8F3' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
   color-scheme: dark;
 }

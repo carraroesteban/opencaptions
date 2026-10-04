@@ -14,7 +14,7 @@ Real Gemini sessions, conference talks as input, server on a MacBook in Argentin
 | Translation, `text` mode (speech → first translated words) | about 4.6–5.7 s |
 | Translation, `live` mode (Live Translate's own translation) | Starts close to the original, then **drifts later** on long, fast talks. This is why `text` is the default. |
 
-**30 rooms at once** (`npm run multi -- --rooms 30`, real Gemini, 30 Nerdearla 2025 talks streamed from YouTube in real time, one server on a MacBook Pro, 25 September 2026):
+**30 rooms at once** (`npm run multi -- --rooms 30`, real Gemini, 30 recorded conference talks streamed from YouTube in real time, one server on a MacBook Pro, 25 September 2026):
 
 | Metric (dashboard: speech onset → first caption) | p50 | p90 |
 |---|---|---|

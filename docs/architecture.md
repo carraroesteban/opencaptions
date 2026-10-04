@@ -78,10 +78,10 @@ sequenceDiagram
   Stage->>MT: translate in-progress sentence (every 1.5 s)
   MT-->>Stage: "Hoy hablamos de"
   Stage-->>View: caption es (partial)
-  Live-->>Stage: inputTranscription "Kubernetes." (sentence end)
+  Live-->>Stage: inputTranscription "accessible cities." (sentence end)
   Stage-->>View: caption orig (final)
   Stage->>MT: translate full sentence (with context and glossary)
-  MT-->>Stage: "Hoy hablamos de Kubernetes."
+  MT-->>Stage: "Hoy hablamos de ciudades accesibles."
   Stage-->>View: caption es (final)
 ```
 

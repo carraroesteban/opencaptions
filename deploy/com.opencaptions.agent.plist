@@ -11,7 +11,7 @@
   <array>
     <string>/usr/local/bin/node</string>
     <string>/Users/YOU/opencaptions/scripts/agent.js</string>
-    <string>--stage</string><string>sala-a</string>
+    <string>--stage</string><string>room-a</string>
     <string>--device</string><string>0</string>
     <string>--server</string><string>wss://subs.example.com</string>
     <string>--token</string><string>change-me</string>

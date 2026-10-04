@@ -210,16 +210,16 @@ node scripts/agent.js --list-devices
 Test in the foreground:
 
 ```bash
-node scripts/agent.js --stage sala-a --device 1 --server wss://subs.example.com --token <INGEST_TOKEN>
+node scripts/agent.js --stage room-a --device 1 --server wss://subs.example.com --token <INGEST_TOKEN>
 ```
 
 The agent sends the token in an `Authorization` header, never in the URL. Then install it as a service:
 
 | OS | How |
 |---|---|
-| Linux | `deploy/opencaptions-agent@.service`: one systemd instance per room, such as `opencaptions-agent@sala-a`. The steps are in the file header. |
+| Linux | `deploy/opencaptions-agent@.service`: one systemd instance per room, such as `opencaptions-agent@room-a`. The steps are in the file header. |
 | macOS | `deploy/com.opencaptions.agent.plist`: a launchd agent. Grant microphone access to `node` under **System Settings → Privacy & Security → Microphone**. |
-| Windows | `nssm install OpenCaptionsAgent "C:\Program Files\nodejs\node.exe" scripts\agent.js --stage sala-a --device "<device name>" --server wss://subs.example.com`. Set `INGEST_TOKEN` in the service environment. |
+| Windows | `nssm install OpenCaptionsAgent "C:\Program Files\nodejs\node.exe" scripts\agent.js --stage room-a --device "<device name>" --server wss://subs.example.com`. Set `INGEST_TOKEN` in the service environment. |
 
 ## Capacity and sharding
 

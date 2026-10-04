@@ -25,6 +25,11 @@ select, input, textarea {
   background: var(--bg2); border: 1px solid var(--line-strong); border-radius: 10px; padding: 8px 10px; min-width: 0;
   transition: border-color var(--dur) var(--ease), box-shadow var(--dur) var(--ease);
 }
+select {
+  -webkit-appearance: none; appearance: none; cursor: pointer; padding-right: 34px; text-overflow: ellipsis;
+  background-image: var(--chevron); background-repeat: no-repeat; background-position: right 12px center; background-size: 11px 8px;
+}
+select::-ms-expand { display: none; }
 input::placeholder, textarea::placeholder { color: color-mix(in srgb, var(--fg2) 75%, transparent); }
 input[type='checkbox'], input[type='radio'], input[type='range'] { accent-color: var(--fg); }
 input:focus, select:focus, textarea:focus { outline: none; border-color: var(--focus); box-shadow: 0 0 0 3px color-mix(in srgb, var(--focus) 18%, transparent); }
@@ -81,7 +86,9 @@ dialog::backdrop { background: var(--scrim); backdrop-filter: blur(3px); -webkit
 dialog h3 { font-size: 20px; }
 label.field { display: grid; gap: 5px; font-size: 13px; color: var(--fg2); }
 label.field > * { color: var(--fg); }
-.prefs select { padding: 4px 6px; font-size: 13px; } .prefs button { padding: 4px 9px; }
+.prefs { gap: 6px; flex-wrap: nowrap; }
+.prefs select { padding: 5px 28px 5px 10px; font-size: 13px; background-position: right 10px center; border-radius: 9px; }
+.prefs button { padding: 5px 10px; border-radius: 9px; }
 .toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); background: var(--fg); color: var(--bg); padding: 10px 18px; border-radius: 12px; z-index: 50; box-shadow: var(--shadow-lg); font-weight: 700; animation: oc-rise .24s var(--ease); }
 @keyframes oc-rise { from { opacity: 0; transform: translate(-50%, 8px); } }
 .empty-state { display: grid; justify-items: center; gap: 14px; text-align: center; color: var(--fg2); }
@@ -118,3 +125,5 @@ mark { background: var(--hl); color: var(--hl-ink); border-radius: 3px; padding:
 @media (prefers-reduced-motion: reduce) {
   * { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
 }
+svg.i { width: 16px; height: 16px; flex: none; vertical-align: -3px; }
+button:has(> svg.i), .btn-i { display: inline-flex; align-items: center; gap: 7px; }

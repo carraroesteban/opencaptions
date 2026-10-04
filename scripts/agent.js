@@ -4,8 +4,8 @@
 // service on each stage PC (systemd / launchd / Windows service), reconnecting on its own forever.
 //
 //   node scripts/agent.js --list-devices
-//   node scripts/agent.js --stage sala-a --device 1 --server wss://subs.example.com --token XXXX
-//   node scripts/agent.js --stage sala-a --device "USB Audio CODEC" --channel left
+//   node scripts/agent.js --stage room-a --device 1 --server wss://subs.example.com --token XXXX
+//   node scripts/agent.js --stage room-a --device "USB Audio CODEC" --channel left
 //
 // Options: --stage, --server (ws[s]://host[:port], default ws://localhost:8080), --token (or INGEST_TOKEN),
 //          --device (index or name; default = system default input), --channel mix|left|right, --gain <x>,

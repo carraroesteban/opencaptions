@@ -12,6 +12,14 @@ All notable changes to this project are documented in this file. The format foll
 - The default caption font in the overlay and on the projector is now Atkinson Hyperlegible Next 700 (it was Inter 600), and the projector's default background is ink (`#111014`) instead of pure black. Existing URLs that set `font`, `weight` or `bg` look the same as before.
 - The default `accent` is now lime (`#D4FF3A`). Text on an event's accent colour switches between ink and paper automatically.
 
+### Changed — ready for any event
+
+- **Event-neutral defaults:** the example event, rooms, agenda, glossary and demo captions no longer refer to a specific conference or to tech talks, and the AI prompts no longer assume a software audience, so summaries, answers and translations fit any field.
+- **Dashboard:** a cleaner header with icon buttons, KPI cards, a first-run guide with an illustration, and compact room cards (status, talk, audio level, latest line, audience, delay and cost) with a **See details** toggle for engines, metrics and per-language previews. The first-run guide is now fully translated.
+- **Presenter screen:** captions fill the whole screen from the bottom up instead of a fixed three lines (set `lines` to keep a fixed height), and **F** or a double-click toggles full screen. In the style editor, unchecking *Also show the original* now also removes it from the preview, and *Lines* has an *Auto (fill the screen)* setting.
+- **Polish:** custom select arrows with proper padding; numbers use the system font's digits (Atkinson Hyperlegible Next only has a slashed zero).
+- **Illustrations** for the room list, dashboard, style editor and website.
+
 ### Added — website
 
 - **[opencaptions.kvza.ar](https://opencaptions.kvza.ar)** in English and Spanish, built from `site/` and deployed to GitHub Pages by the new `Site` workflow. Preview it with `npm run site`.

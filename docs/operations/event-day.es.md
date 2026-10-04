@@ -2,7 +2,7 @@
 
 > Versión en inglés y más detallada: [runbook.md](runbook.md). Seguridad: [../security-guide.md](../security-guide.md). Problemas: [troubleshooting.md](troubleshooting.md).
 
-Guía para operar OpenCaptions en una conferencia con varias salas en paralelo (pensada para Nerdearla).
+Guía para operar OpenCaptions en una conferencia con varias salas en paralelo (congresos, universidades, eventos corporativos y similares).
 Objetivo: **cero operadores dedicados durante las charlas**. Una persona de producción mira el panel y actúa solo si aparece una alerta.
 
 ```
@@ -30,8 +30,8 @@ Objetivo: **cero operadores dedicados durante las charlas**. Una persona de prod
    ```
 2. **HTTPS (obligatorio para usar micrófonos desde otras máquinas).** Los navegadores solo permiten capturar audio en `localhost` o `https://`. Opciones, de la más rápida a la más prolija:
    - **Cloudflare Tunnel** (sin abrir puertos, sirve también para el celu del público):
-     `cloudflared tunnel --url http://localhost:8080` → te da `https://xxxx.trycloudflare.com`. Para el evento usá un *named tunnel* con dominio propio (ej. `subs.nerdearla.com`).
-   - **Caddy** con dominio propio delante del server: `caddy reverse-proxy --from subs.nerdearla.com --to localhost:8080` (certificado automático, WebSockets incluidos).
+     `cloudflared tunnel --url http://localhost:8080` → te da `https://xxxx.trycloudflare.com`. Para el evento usá un *named tunnel* con dominio propio (ej. `subs.tuevento.com`).
+   - **Caddy** con dominio propio delante del server: `caddy reverse-proxy --from subs.tuevento.com --to localhost:8080` (certificado automático, WebSockets incluidos).
    - **Red local sin internet**: `mkcert` → `HTTPS_CERT=… HTTPS_KEY=… npm start` (hay que instalar la CA de mkcert en cada mini PC).
    - Último recurso para una mini PC: lanzar Chrome con
      `--unsafely-treat-insecure-origin-as-secure=http://IP-DEL-SERVER:8080 --user-data-dir=/tmp/oc`.
@@ -66,9 +66,9 @@ Hay tres formas de llevar el audio de cada sala al server; elegí una por sala:
 **B. Agente nativo** (sin navegador, arranca solo, reconecta solo):
 ```bash
 node scripts/agent.js --list-devices                       # ver entradas de audio
-node scripts/agent.js --stage sala-a --device 1 --server wss://<server> --token <INGEST_TOKEN>
+node scripts/agent.js --stage room-a --device 1 --server wss://<server> --token <INGEST_TOKEN>
 ```
-Como servicio: Linux → `deploy/opencaptions-agent@.service` (systemd, uno por sala); macOS → `deploy/com.opencaptions.agent.plist` (launchd); Windows → `nssm install OpenCaptionsAgent node scripts\agent.js --stage sala-a --device "Nombre de la placa"`. Cada 5 s imprime vúmetro, estado de la sesión y latencia (`journalctl -u opencaptions-agent@sala-a -f`). Opciones: `--channel left|right` si la consola manda cosas distintas por cada canal, `--gain 1.5`.
+Como servicio: Linux → `deploy/opencaptions-agent@.service` (systemd, uno por sala); macOS → `deploy/com.opencaptions.agent.plist` (launchd); Windows → `nssm install OpenCaptionsAgent node scripts\agent.js --stage room-a --device "Nombre de la placa"`. Cada 5 s imprime vúmetro, estado de la sesión y latencia (`journalctl -u opencaptions-agent@room-a -f`). Opciones: `--channel left|right` si la consola manda cosas distintas por cada canal, `--gain 1.5`.
 
 **C. Página de ingesta en Chrome:**
 

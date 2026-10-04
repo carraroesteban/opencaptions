@@ -110,7 +110,7 @@ Response:
 
 ```json
 {
-  "name": "Nerdearla 2026",
+  "name": "Horizon Summit 2026",
   "accent": "#D4FF3A",
   "publicUrl": "https://subs.example.com",
   "languages": { "es": "Español", "en": "English", "pt": "Português" },
@@ -119,7 +119,7 @@ Response:
   "timezone": "America/Argentina/Buenos_Aires",
   "stages": [
     {
-      "id": "main", "name": "Auditorio", "title": "Observability in Kubernetes",
+      "id": "main", "name": "Auditorio", "title": "Designing cities for everyone",
       "speaker": "Ana Pérez", "next": { "title": "Rust for Go developers", "speaker": "John Doe", "start": 1758728530441 },
       "talk": "2026-09-24T14-02-10-441Z",
       "source": "auto", "detectedLang": "en", "languages": ["orig", "en", "es"],
@@ -183,12 +183,12 @@ actually changed, so re-saving the same dialog is a no-op:
 # Create a room
 curl -X POST http://localhost:8080/api/stages \
   -H "Authorization: Bearer $ADMIN_TOKEN" -H "Content-Type: application/json" \
-  -d '{"id":"sala-b","name":"Sala B","source":"auto","targets":["es","en"]}'
+  -d '{"id":"room-b","name":"Room B","source":"auto","targets":["es","en"]}'
 
 # Rename the current talk and add Portuguese
-curl -X PATCH http://localhost:8080/api/stages/sala-b \
+curl -X PATCH http://localhost:8080/api/stages/room-b \
   -H "Authorization: Bearer $ADMIN_TOKEN" -H "Content-Type: application/json" \
-  -d '{"title":"Observability in Kubernetes","targets":["es","en","pt"]}'
+  -d '{"title":"Designing cities for everyone","targets":["es","en","pt"]}'
 ```
 
 `POST /api/stages/:id/talk` — start a **new** talk: flushes any pending captions and opens a fresh transcript
@@ -262,7 +262,7 @@ caption:
   "publicTranscripts": "current",
   "talks": [
     { "stage": "main", "stageName": "Auditorio", "id": "2026-09-24T14-02-10-441Z",
-      "title": "Observability in Kubernetes", "speaker": "Ana Pérez", "startedAt": 1758724930441,
+      "title": "Designing cities for everyone", "speaker": "Ana Pérez", "startedAt": 1758724930441,
       "languages": ["orig", "en", "es"], "channels": ["orig", "es"], "segments": 214,
       "durationMs": 1820000, "live": true, "current": true }
   ]
@@ -295,7 +295,7 @@ recent first:
 
 ```json
 [
-  { "stage": "main", "id": "2026-09-24T14-02-10-441Z", "title": "Observability in Kubernetes",
+  { "stage": "main", "id": "2026-09-24T14-02-10-441Z", "title": "Designing cities for everyone",
     "speaker": "Ana Pérez", "startedAt": 1758724930441, "languages": ["orig", "en", "es"], "segments": 214 }
 ]
 ```
@@ -354,9 +354,9 @@ Response:
 {
   "scope": "recent", "lang": "es", "generatedAt": 1758724938000, "fromMs": 1520000, "toMs": 1820000,
   "segments": 42, "ai": true,
-  "headline": "Cómo escalar el control plane de Kubernetes",
+  "headline": "Cómo diseñar ciudades para todas las personas",
   "bullets": ["…", "…", "…"],
-  "terms": ["etcd", "OpenTelemetry"]
+  "terms": ["accesibilidad", "transporte público"]
 }
 ```
 
@@ -418,7 +418,7 @@ to press "New talk" between sessions — see the `nextTalk`/`next` fields on the
 ```json
 [
   { "stage": "main", "start": 1758715200000, "startIso": "2026-09-24T13:00:00.000Z",
-    "title": "Observability in Kubernetes", "speaker": "Ana Pérez" }
+    "title": "Designing cities for everyone", "speaker": "Ana Pérez" }
 ]
 ```
 
@@ -434,7 +434,7 @@ At most 2000 entries; `stage` must look like a room id, `start` must parse, and 
 is optional). Any single bad row rejects the **whole** update (`400`, nothing is changed). Response:
 
 ```json
-{ "ok": true, "count": 48, "unknownRooms": ["sala-c"] }
+{ "ok": true, "count": 48, "unknownRooms": ["room-c"] }
 ```
 
 `unknownRooms` lists room ids used in the agenda that don't exist as stages yet — not an error, just a
@@ -443,7 +443,7 @@ heads-up (rooms are often created from the dashboard after the agenda spreadshee
 ```bash
 curl -X PUT http://localhost:8080/api/schedule \
   -H "Authorization: Bearer $ADMIN_TOKEN" -H "Content-Type: application/json" \
-  -d '{"csv":"stage,start,title,speaker\nmain,10:00,Observabilidad en Kubernetes,Ana Pérez"}'
+  -d '{"csv":"stage,start,title,speaker\nmain,10:00,Diseñar ciudades para todos,Ana Pérez"}'
 ```
 
 ### Glossary
@@ -462,7 +462,7 @@ chars, optional `lang` ≤ 12 chars (restricts the replacement to one caption ch
 ```bash
 curl -X PUT http://localhost:8080/api/glossary \
   -H "Authorization: Bearer $ADMIN_TOKEN" -H "Content-Type: application/json" \
-  -d '{"vocabulary":["Kubernetes","OpenTelemetry"],"replacements":[{"from":"cubernetes","to":"Kubernetes"}]}'
+  -d '{"vocabulary":["Horizon Summit","Ngozi Okafor"],"replacements":[{"from":"horizons summit","to":"Horizon Summit"}]}'
 ```
 
 ### Utilities
@@ -591,7 +591,7 @@ Server → client:
 // once, right after connecting
 {
   "type": "hello",
-  "stage": { "id": "main", "name": "Auditorio", "title": "Observability in Kubernetes",
+  "stage": { "id": "main", "name": "Auditorio", "title": "Designing cities for everyone",
              "speaker": "Ana Pérez", "next": { "title": "Rust for Go developers", "speaker": "John Doe", "start": 1758728530441 },
              "languages": ["orig", "en", "es"], "source": "auto", "audioLangs": ["es"], "mode": "text" },
   "languages": { "en": "English", "es": "Español" },
@@ -616,7 +616,7 @@ Server → client:
 ```json
 // the operator renamed the CURRENT talk (PATCH .../:id with a new title/speaker) — same talk.id, captions
 // are kept, this is just a re-label
-{ "type": "title", "talk": "2026-09-24T14-02-10-441Z", "title": "Observability in Kubernetes, revisited", "speaker": "Ana Pérez" }
+{ "type": "title", "talk": "2026-09-24T14-02-10-441Z", "title": "Designing cities for everyone, revisited", "speaker": "Ana Pérez" }
 ```
 
 - **Binary frames**: translated speech audio — raw PCM16LE mono **24 kHz** — sent only while `audio=<lang>`
@@ -673,7 +673,7 @@ Server → client:
 
 ```json
 // broadcast to every connected admin socket every 1000 ms
-{ "type": "status", "engine": "gemini", "model": "gemini-3.5-live-translate-preview", "event": "Nerdearla 2026",
+{ "type": "status", "engine": "gemini", "model": "gemini-3.5-live-translate-preview", "event": "Horizon Summit 2026",
   "uptimeSec": 5412, "system": { "cpuPct": 6.1, "rssMB": 132, "loopLagMs": { "p50": 0.4, "p99": 1.9, "max": 4.2 } },
   "totals": { "stages": 3, "live": 2, "sessions": 4, "viewers": 128, "costUsd": 1.84,
               "assist": { "requests": 340, "cacheHits": 210, "errors": 2, "usd": 0.04 } },

@@ -1,4 +1,4 @@
-// Technical glossary: biases recognition (vocabulary) and fixes captions deterministically (replacements).
+// Glossary (names and specialist terms): biases recognition (vocabulary) and fixes captions deterministically (replacements).
 import fs from 'node:fs';
 import { config, loadGlossary } from './config.js';
 

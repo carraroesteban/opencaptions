@@ -5,33 +5,33 @@ import { rms } from '../audio.js';
 
 const CORPUS = [
   {
-    en: 'Welcome to Nerdearla, today we are going to talk about observability in Kubernetes.',
-    es: 'Bienvenidos a Nerdearla, hoy vamos a hablar de observabilidad en Kubernetes.',
-    pt: 'Bem-vindos ao Nerdearla, hoje vamos falar sobre observabilidade no Kubernetes.',
+    en: 'Good morning everyone, and thank you for joining us today.',
+    es: 'Buenos días a todos, y gracias por acompañarnos hoy.',
+    pt: 'Bom dia a todos, e obrigado por estarem conosco hoje.',
   },
   {
-    en: 'The first thing you need is good metrics, logs and traces with OpenTelemetry.',
-    es: 'Lo primero que necesitás son buenas métricas, logs y trazas con OpenTelemetry.',
-    pt: 'A primeira coisa que você precisa são boas métricas, logs e traces com OpenTelemetry.',
+    en: 'Today I want to share how a small team turned a simple idea into a global community.',
+    es: 'Hoy quiero contarles cómo un equipo pequeño convirtió una idea simple en una comunidad global.',
+    pt: 'Hoje quero contar como uma pequena equipe transformou uma ideia simples em uma comunidade global.',
   },
   {
-    en: 'When the pager goes off at three in the morning, context is everything.',
-    es: 'Cuando suena el pager a las tres de la mañana, el contexto lo es todo.',
-    pt: 'Quando o pager toca às três da manhã, o contexto é tudo.',
+    en: 'It all started with one question: what if everyone in the room could follow along?',
+    es: 'Todo empezó con una pregunta: ¿y si todas las personas de la sala pudieran seguir la charla?',
+    pt: 'Tudo começou com uma pergunta: e se todas as pessoas na sala pudessem acompanhar?',
   },
   {
-    en: 'So we built a small pipeline that sends every pull request through a preview environment.',
-    es: 'Entonces armamos un pipeline chico que manda cada pull request a un entorno de preview.',
-    pt: 'Então construímos um pequeno pipeline que envia cada pull request para um ambiente de preview.',
+    en: 'We learned that listening carefully is the fastest way to build something people love.',
+    es: 'Aprendimos que escuchar con atención es la forma más rápida de crear algo que la gente ame.',
+    pt: 'Aprendemos que ouvir com atenção é o caminho mais rápido para criar algo que as pessoas amem.',
   },
   {
-    en: 'Open source communities make conferences like this one possible.',
-    es: 'Las comunidades open source hacen posibles conferencias como esta.',
-    pt: 'As comunidades open source tornam possíveis conferências como esta.',
+    en: 'Great events are made by volunteers, speakers and an audience that cares.',
+    es: 'Los grandes eventos los hacen los voluntarios, los oradores y un público que se compromete.',
+    pt: 'Grandes eventos são feitos por voluntários, palestrantes e um público que se importa.',
   },
   {
-    en: 'Any questions? Remember you can follow these captions from your phone by scanning the QR code.',
-    es: '¿Preguntas? Recuerden que pueden seguir estos subtítulos desde el celular escaneando el código QR.',
+    en: 'Any questions? Remember you can follow these captions on your phone by scanning the QR code.',
+    es: '¿Preguntas? Recuerden que pueden seguir estos subtítulos en el celular escaneando el código QR.',
     pt: 'Perguntas? Lembrem que podem acompanhar estas legendas pelo celular escaneando o QR code.',
   },
 ];

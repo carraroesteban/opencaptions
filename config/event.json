@@ -1,5 +1,5 @@
 {
-  "eventName": "Nerdearla 2026",
+  "eventName": "Horizon Summit 2026",
   "accent": "#D4FF3A",
   "publicUrl": "",
   "publicTranscripts": "all",
@@ -11,9 +11,9 @@
   "silenceGateSec": 30,
   "idleCloseSec": 300,
   "stages": [
-    { "id": "main",   "name": "Escenario Principal", "source": "auto", "targets": ["es", "en"] },
-    { "id": "sala-a", "name": "Sala A",               "source": "auto", "targets": ["es", "en", "pt"] },
-    { "id": "sala-b", "name": "Sala B",               "source": "auto", "targets": ["es", "en"] },
-    { "id": "sala-c", "name": "Sala C",               "source": "auto", "targets": ["es", "en"] }
+    { "id": "main",   "name": "Main Stage", "source": "auto", "targets": ["es", "en"] },
+    { "id": "room-a", "name": "Room A",     "source": "auto", "targets": ["es", "en", "pt"] },
+    { "id": "room-b", "name": "Room B",     "source": "auto", "targets": ["es", "en"] },
+    { "id": "room-c", "name": "Room C",     "source": "auto", "targets": ["es", "en"] }
   ]
 }

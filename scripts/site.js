@@ -16,6 +16,7 @@ const COPY = [
   ['public/tokens.css', 'tokens.css'],
   ['public/style.css', 'style.css'],
   ['public/brand', 'brand'],
+  ['public/art', 'art'],
   ['public/favicon.ico', 'favicon.ico'],
   ['public/apple-touch-icon.png', 'apple-touch-icon.png'],
   ['docs/images', 'images'],

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Feed any audio/video file, URL or YouTube link into a stage, in real time.
 //   node scripts/feed.js --stage main --input samples/talk-en.mp3
-//   node scripts/feed.js --stage sala-a --youtube https://www.youtube.com/watch?v=XXXX --start 120
+//   node scripts/feed.js --stage room-a --youtube https://www.youtube.com/watch?v=XXXX --start 120
 //   node scripts/feed.js --stage main --input srt://0.0.0.0:9000?mode=listener
 import { execFileSync } from 'node:child_process';
 import WebSocket from 'ws';

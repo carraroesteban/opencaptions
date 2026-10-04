@@ -5,7 +5,7 @@
 
 ## Context
 
-At Nerdearla, audio goes from each sound desk through a 3.5 mm cable into a mini PC. Venue networks usually block inbound connections, and we don't want venue PCs reachable from the internet. Some rooms already produce an SRT, RTMP or HLS stream from vMix or OBS.
+At a typical conference venue, audio goes from each sound desk through a 3.5 mm cable into a mini PC. Venue networks usually block inbound connections, and we don't want venue PCs reachable from the internet. Some rooms already produce an SRT, RTMP or HLS stream from vMix or OBS.
 
 ## Options considered
 

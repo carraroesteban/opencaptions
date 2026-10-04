@@ -24,11 +24,8 @@
     .presets { display: flex; gap: 6px; flex-wrap: wrap; }
     .presets button { font-size: 13px; padding: 6px 10px; }
     .stagebox { position: relative; width: 100%; aspect-ratio: 16 / 9; border-radius: 16px; overflow: hidden; border: 1px solid var(--line); box-shadow: var(--shadow); }
-    /* Stand-in for the program feed (camera / slides): neutral, so the caption style is what you judge. */
-    .stagebox .bgimg { position: absolute; inset: 0; background:
-      radial-gradient(ellipse at 28% 32%, #4A4852 0%, transparent 58%), radial-gradient(ellipse at 78% 64%, #3A3940 0%, transparent 55%),
-      linear-gradient(135deg, #2B2A31, #111014); }
-    .stagebox .bgimg::after { content: 'Programa (cámara / slides)'; position: absolute; left: 3%; top: 4%; color: #FAF8F366; font: 700 14px var(--font); }
+    /* Stand-in for the program feed (camera / slides), so you judge the captions over a real-looking picture. */
+    .stagebox .bgimg { position: absolute; inset: 0; background: #FAF8F3 url(/art/hero.webp) center 30% / cover no-repeat; }
     .stagebox iframe { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; border: 0; transform-origin: 0 0; background: transparent; color-scheme: normal; /* same scheme as the embedded page → transparent */ }
     .out { display: flex; gap: 6px; } .out input { flex: 1; font-family: var(--mono); font-size: 12px; }
     .val { float: right; color: var(--fg); font-variant-numeric: tabular-nums; }
@@ -43,7 +40,7 @@
       <button class="pill" data-target="overlay" aria-pressed="true">🎬 Overlay vMix / OBS</button>
       <button class="pill" data-target="screen" aria-pressed="false">🖥️ Pantalla / proyector</button>
     </div>
-    <span class="muted" style="font-size:13px">Diseñá el estilo, copiá la URL y pegala en vMix (Web Browser input), OBS (Browser Source) o el navegador del proyector.</span>
+    <span class="muted" style="font-size:13px;flex:1 1 320px;min-width:0">Diseñá el estilo, copiá la URL y pegala en vMix (Web Browser input), OBS (Browser Source) o el navegador del proyector.</span>
   </header>
   <main>
     <section class="card controls">
@@ -107,11 +104,10 @@
 
     const DEFAULTS = {
       overlay: { font: 'atkinsonnext', size: 46, weight: 700, lines: 2, align: 'center', color: '#ffffff', style: 'box', box: '#000000', alpha: 78, upper: false, pos: 'bottom', width: 78, bgmode: 'transparent', also: '' },
-      screen: { font: 'atkinsonnext', size: 6.4, weight: 700, lines: 3, align: 'left', color: '#ffffff', style: 'none', box: '#000000', alpha: 0, upper: false, sbg: '#111014', accent: (ev.accent || '#d4ff3a').toLowerCase(), orig: true, qr: true },
+      screen: { font: 'atkinsonnext', size: 6.4, weight: 700, lines: 0, align: 'left', color: '#ffffff', style: 'none', box: '#000000', alpha: 0, upper: false, sbg: '#111014', accent: (ev.accent || '#d4ff3a').toLowerCase(), orig: true, qr: true },
     };
     const PRESETS = {
       'OpenCaptions': { font: 'atkinsonnext', weight: 700, color: '#faf8f3', style: 'box', box: '#111014', alpha: 88, upper: false, align: 'center', accent: '#d4ff3a', sbg: '#111014' },
-      'Nerdearla': { font: 'lexend', weight: 700, color: '#ffffff', style: 'box', box: '#1a1033', alpha: 85, accent: '#8b5cf6', sbg: '#0b0716' },
       'TV clásico': { font: 'roboto', weight: 500, color: '#ffffff', style: 'box', box: '#000000', alpha: 80, upper: false, align: 'center' },
       'Alto contraste': { font: 'atkinson', weight: 700, color: '#ffe600', style: 'box', box: '#000000', alpha: 100, sbg: '#000000' },
       'Minimal': { font: 'inter', weight: 700, color: '#ffffff', style: 'outline', box: '#000000', alpha: 0 },
@@ -139,7 +135,10 @@
       document.querySelectorAll('[data-target]').forEach((b) => b.setAttribute('aria-pressed', b.dataset.target === t));
       const size = $('size');
       if (t === 'overlay') { size.min = 24; size.max = 90; size.step = 1; } else { size.min = 3; size.max = 12; size.step = 0.2; }
-      write({ ...DEFAULTS[t], ...store.get(`style.${t}`, {}) });
+      $('lines').min = t === 'screen' ? 0 : 1; $('lines').max = t === 'screen' ? 8 : 4; // screen: 0 = fill the screen
+      const saved = store.get(`style.${t}`, {});
+      if (t === 'screen' && !saved.v2) { delete saved.lines; saved.v2 = true; } // older versions saved a fixed 3 lines
+      write({ ...DEFAULTS[t], ...saved });
       update();
     }
 
@@ -170,15 +169,15 @@
     let t;
     function update() {
       const v = read();
-      store.set(`style.${target}`, v);
+      store.set(`style.${target}`, target === 'screen' ? { ...v, v2: true } : v);
       $('v-size').textContent = target === 'overlay' ? `${v.size}px` : `${v.size}vh`;
-      $('v-weight').textContent = v.weight; $('v-lines').textContent = v.lines; $('v-alpha').textContent = v.alpha + '%'; $('v-width').textContent = v.width + '%';
+      $('v-weight').textContent = v.weight; $('v-lines').textContent = Number(v.lines) === 0 ? tr('Auto (llenar pantalla)') : v.lines; $('v-alpha').textContent = v.alpha + '%'; $('v-width').textContent = v.width + '%';
       const page = target === 'overlay' ? 'overlay.html' : 'screen.html';
       const url = `${ev.publicUrl}/${page}?${params(v, false)}`;
       $('url').value = url; $('open').href = url;
       $('hint').textContent = target === 'overlay'
         ? 'vMix: Add Input → Web Browser → 1920×1080 → pegá la URL. OBS: Fuente → Navegador → 1920×1080.'
-        : 'Abrila en el navegador de la mini PC conectada al proyector, en pantalla completa (F11).';
+        : 'Abrila en el navegador de la PC conectada al proyector y tocá F (o doble clic) para pantalla completa.';
       $('bgimg').style.display = target === 'overlay' && v.bgmode === 'transparent' ? '' : 'none';
       clearTimeout(t);
       t = setTimeout(() => { $('frame').src = `/${page}?${params(v, true)}`; }, 250);

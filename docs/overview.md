@@ -4,7 +4,7 @@ OpenCaptions is open-source software (MIT license) that captions and translates 
 
 ## The problem
 
-At a conference like Nerdearla, talks run in parallel across several rooms, in Spanish and English. People who don't speak the talk's language, who are deaf or hard of hearing, or who watch the stream remotely miss content.
+At conferences, universities, public meetings and festivals, sessions often run in parallel across several rooms and in more than one language. People who don't speak the talk's language, who are deaf or hard of hearing, or who watch the stream remotely miss content.
 
 Commercial captioning services are priced per room and per hour, and they are closed. They're also hard to connect to the setup venues already use: a sound desk, a mini PC per room, projectors, and vMix for the stream.
 
@@ -85,18 +85,9 @@ The design details are in [Architecture](architecture.md), and the reasons behin
 4. Speaker identification in captions.
 5. An end-to-end test harness with recorded model responses.
 
-## Origin and license
+## License
 
-The first version was built for the [Nerdearla 2026 Vibeathon](https://nerdearla.devpost.com/) (September 24–25, 2026) to meet its challenge:
-
-- live audio in;
-- captions in the original language;
-- English ↔ Spanish translation;
-- at least two simultaneous rooms;
-- an open-source license with a deployment guide;
-- an audience view to pick room and language.
-
-It's released under the [MIT license](../LICENSE). Contributions are welcome: see [CONTRIBUTING.md](../CONTRIBUTING.md).
+OpenCaptions is released under the [MIT license](../LICENSE): free for any event, commercial or not. Contributions are welcome: see [CONTRIBUTING.md](../CONTRIBUTING.md).
 
 ## Glossary
 

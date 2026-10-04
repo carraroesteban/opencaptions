@@ -24,7 +24,7 @@
     main { max-width: 780px; margin: 0 auto; padding: 22px 20px 64px; }
     .bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
     .hero { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 24px; align-items: end; margin: 52px 0 8px; }
-    .hero .illo { width: 210px; color: var(--fg); }
+    .hero .art { width: 300px; aspect-ratio: 4 / 3; object-fit: cover; border-radius: 20px; border: 1px solid var(--line); background: #FAF8F3; box-shadow: var(--shadow); }
     h1 { font-size: clamp(34px, 7vw, 52px); margin: 0 0 8px; }
     #subtitle { font-size: 18px; margin: 0; }
     .stages { display: grid; gap: 12px; margin-top: 32px; }
@@ -36,7 +36,7 @@
     .lib { margin-top: 12px; background: transparent; border-style: dashed; border-color: var(--line-strong); box-shadow: none; }
     .lib .illo { width: 52px; color: var(--fg); }
     footer { margin-top: 48px; padding-top: 18px; border-top: 1px solid var(--line); font-size: 13px; gap: 12px; }
-    @media (max-width: 560px) { .hero { grid-template-columns: 1fr; margin-top: 32px; } .hero .illo { width: 170px; order: -1; } }
+    @media (max-width: 560px) { .hero { grid-template-columns: 1fr; margin-top: 28px; } .hero .art { width: 100%; order: -1; } }
   </style>
 </head>
 <body>
@@ -44,7 +44,7 @@
     <div class="bar"><a class="brand" href="/" title="Salas" style="font-size:17px">OpenCaptions</a></div>
     <section class="hero">
       <div><h1 id="event">…</h1><p class="muted" id="subtitle"></p></div>
-      <span id="illo"></span>
+      <img class="art" src="/art/audience.webp" alt="" />
     </section>
     <div class="stages" id="stages" data-no-i18n></div>
     <a class="card stage lib" href="/talks.html" id="lib"><h2 id="lib-h"></h2><span id="lib-illo"></span><div class="title" id="lib-p"></div></a>
@@ -56,9 +56,8 @@
   <script type="module">
     import { getEvent, t, esc, langLabel } from '/common.js';
     import { prefsControls } from '/i18n.js';
-    import { stage, library } from '/illustrations.js';
+    import { library } from '/illustrations.js';
     document.querySelector('footer').append(prefsControls());
-    document.getElementById('illo').innerHTML = stage;
     document.getElementById('lib-illo').innerHTML = library;
     document.getElementById('subtitle').textContent = t('chooseStage');
     document.getElementById('powered').textContent = t('poweredBy');
