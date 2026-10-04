@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# Download a few minutes of real Nerdearla talks from YouTube as 16 kHz WAV test audio.
+# Download a few minutes of a talk from YouTube as 16 kHz WAV test audio (use videos you have the right to use).
 # Requires yt-dlp + ffmpeg (macOS: brew install yt-dlp ffmpeg).
 #   ./scripts/fetch-samples.sh <youtube-url> <name> [start-seconds] [duration-seconds]
-#   ./scripts/fetch-samples.sh https://www.youtube.com/watch?v=XXXX nerdearla-en 300 180
+#   ./scripts/fetch-samples.sh https://www.youtube.com/watch?v=XXXX my-talk 300 180
 set -euo pipefail
 url="${1:?youtube url}"; name="${2:?output name}"; start="${3:-120}"; dur="${4:-180}"
 mkdir -p samples

@@ -103,6 +103,11 @@ function roomMatcher(rooms) {
  * With `rooms` ([{ id, name }]), room labels are matched by id or name and rows for other rooms (workshops,
  * breaks without a room…) are skipped and listed in `entries.skipped` instead of failing the import.
  */
+/**
+ * @param {string | any[]} input  rows ({ stage, start, title, speaker }) or CSV/TSV text
+ * @param {Date} [now]
+ * @param {{ rooms?: Array<{ id: string, name: string }> }} [opts]
+ */
 export function parseSchedule(input, now = new Date(), { rooms } = {}) {
   let rows = input;
   if (typeof input === 'string') {

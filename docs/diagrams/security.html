@@ -1,0 +1,38 @@
+<!doctype html><html><head><meta charset="utf-8"><title>Trust zones</title><link rel="stylesheet" href="diagram.css">
+<style>
+  .grid { grid-template-columns: 250px 140px 320px 120px 230px; grid-template-rows: auto auto; row-gap: 30px; }
+  #pub { grid-column: 1; grid-row: 1; } #ops { grid-column: 1; grid-row: 2; }
+  #host { grid-column: 3; grid-row: 1 / 3; } #gem { grid-column: 5; grid-row: 1 / 3; }
+  #host .stack { gap: 18px; }
+  .x .ic { background: color-mix(in srgb, var(--bad) 14%, var(--d-well)); color: var(--bad); }
+</style></head><body>
+<div class="d">
+  <p class="eyebrow">Who can do what</p>
+  <div class="grid">
+    <div class="g stack" id="pub"><span class="gl">Untrusted · the public</span>
+      <div class="n small" id="viewers" data-screen><b>Viewers</b><span>read captions, ask questions</span></div>
+      <div class="n small x" id="attacker" data-icon="alert"><b>Anyone else</b><span>rate-limited, no token, no access</span></div>
+    </div>
+    <div class="g stack" id="ops"><span class="gl">Trusted with tokens</span>
+      <div class="n small" id="team" data-icon="key"><b>Production team</b><span>ADMIN_TOKEN</span></div>
+      <div class="n small" id="pcs" data-icon="laptop"><b>Venue PCs</b><span>INGEST_TOKEN</span></div>
+    </div>
+    <div class="g" id="host"><span class="gl">Server host</span>
+      <div class="stack">
+        <div class="n hero" id="oc"><b>OpenCaptions</b><span>CSP, rate limits, escaped output</span></div>
+        <div class="n small" id="lp" data-icon="server"><b>Local processes</b><span>trusted on localhost (AUTH=auto)</span></div>
+      </div>
+    </div>
+    <div class="n ai" id="gem" data-icon="cloud"><b>Google Gemini</b><span>API key or Vertex AI (IAM)</span></div>
+  </div>
+</div>
+<script src="diagram.js"></script>
+<script>draw([
+  { from: 'viewers', to: 'oc', fs: 'r', ts: 'l', toff: -40, mid: 405, label: 'captions only' },
+  { from: 'attacker', to: 'oc', fs: 'r', ts: 'l', toff: -14, dash: true, soft: true, label: 'blocked', mid: 350 },
+  { from: 'team', to: 'oc', fs: 'r', ts: 'l', toff: 14, label: 'admin API', mid: 350 },
+  { from: 'pcs', to: 'oc', fs: 'r', ts: 'l', toff: 40, mid: 405, label: 'audio' },
+  { from: 'lp', to: 'oc', fs: 't', ts: 'b' },
+  { from: 'oc', to: 'gem', fs: 'r', ts: 'l', toff: 0, label: 'key / IAM' },
+]);</script>
+</body></html>

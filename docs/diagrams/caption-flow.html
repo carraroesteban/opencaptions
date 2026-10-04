@@ -1,0 +1,64 @@
+<!doctype html><html><head><meta charset="utf-8"><title>One sentence, end to end</title><link rel="stylesheet" href="diagram.css">
+<style>
+  .lanes { position: relative; display: grid; grid-template-columns: repeat(6, 190px); }
+  .lanes .n { margin: 0 12px; min-width: 0; z-index: 2; }
+  .life { position: absolute; top: 74px; bottom: 0; width: 0; border-left: 1.5px dashed var(--d-line); z-index: 0; }
+  .rows { position: relative; height: 640px; }
+  .msg { position: absolute; height: 0; }
+  .msg .t { position: absolute; bottom: 7px; left: 50%; transform: translateX(-50%); white-space: nowrap; font-size: 12.5px; font-weight: 700; color: var(--fg); background: var(--d-bg); padding: 1px 6px; border-radius: 6px; }
+  html[data-theme='dark'] .msg .t { color: var(--paper); }
+  .msg .t em { font-style: normal; font-weight: 400; color: var(--d-muted); }
+  .msg svg { position: absolute; left: 0; top: -6px; overflow: visible; }
+  .msg path { stroke: var(--d-edge); stroke-width: 1.8; fill: none; stroke-linecap: round; stroke-linejoin: round; }
+  .msg.ret path.l { stroke-dasharray: 5 5; }
+  .loop { position: absolute; border: 1.5px dashed var(--d-line); border-radius: 14px; }
+  .loop span { position: absolute; top: -10px; left: 12px; background: var(--d-bg); padding: 0 6px; font-size: 11px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--d-muted); }
+  .final .t { background: var(--lime) !important; color: var(--ink) !important; }
+</style></head><body>
+<div class="d">
+  <p class="eyebrow">One sentence, from the microphone to every phone</p>
+  <div style="position:relative" id="wrap">
+    <div class="lanes" id="lanes">
+      <div class="n small" data-icon="desk"><b>Sound desk</b></div>
+      <div class="n small" data-icon="laptop"><b>Venue agent</b></div>
+      <div class="n hero" style="padding:10px 14px"><b style="font-size:17px">Stage</b></div>
+      <div class="n small ai" data-icon="speech"><b>Gemini Live</b></div>
+      <div class="n small ai" data-icon="translate"><b>Flash-Lite</b></div>
+      <div class="n small" data-screen><b>Viewers</b></div>
+    </div>
+    <div class="rows" id="rows"></div>
+  </div>
+</div>
+<script src="diagram.js"></script>
+<script>
+  const M = [
+    [0, 1, 'analog audio'],
+    [1, 2, 'PCM 16 kHz <em>· 100 ms chunks</em>'],
+    [2, 3, 'audio stream'],
+    [3, 2, '“Today we talk about” <em>· en</em>', 'ret'],
+    [2, 5, 'original <em>· provisional</em>'],
+    [2, 4, 'sentence so far <em>· every 1.5 s</em>'],
+    [4, 2, '“Hoy hablamos de”', 'ret'],
+    [2, 5, 'Spanish <em>· provisional</em>'],
+    [3, 2, '“…accessible cities.” <em>· sentence ends</em>', 'ret'],
+    [2, 5, 'original <em>· final</em>'],
+    [2, 4, 'whole sentence <em>+ context + glossary</em>'],
+    [4, 2, 'streams the translation', 'ret'],
+    [2, 5, 'Spanish · final', 'final'],
+  ];
+  const COL = 190, ROW = 46, rows = document.getElementById('rows');
+  for (let c = 0; c < 6; c++) { const l = document.createElement('div'); l.className = 'life'; l.style.left = `${c * COL + COL / 2}px`; document.getElementById('wrap').append(l); }
+  const loop = document.createElement('div'); loop.className = 'loop'; loop.innerHTML = '<span>every 100 ms</span>';
+  Object.assign(loop.style, { left: `${COL + 30}px`, width: `${COL * 2 + 50}px`, top: `${ROW * 2 - 34}px`, height: `${ROW + 44}px` }); rows.append(loop);
+  M.forEach(([a, b, label, kind], i) => {
+    const x1 = a * COL + COL / 2, x2 = b * COL + COL / 2, y = (i + 1) * ROW;
+    const left = Math.min(x1, x2), w = Math.abs(x2 - x1), dir = x2 > x1 ? 1 : -1;
+    const m = document.createElement('div');
+    m.className = `msg ${kind || ''}`; Object.assign(m.style, { left: `${left}px`, top: `${y}px`, width: `${w}px` });
+    const s = dir > 0 ? 6 : w - 6, e = dir > 0 ? w - 8 : 8;
+    m.innerHTML = `<svg width="${w}" height="12"><path class="l" d="M${s},6 L${e},6"/><path d="M${e - 7 * dir},1.5 L${e},6 L${e - 7 * dir},10.5"/></svg><span class="t">${label}</span>`;
+    rows.append(m);
+  });
+  draw([]);
+</script>
+</body></html>

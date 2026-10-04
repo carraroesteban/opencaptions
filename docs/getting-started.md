@@ -2,6 +2,8 @@
 
 In this tutorial you run OpenCaptions on your own computer, watch simulated captions, then connect it to Gemini and caption two rooms at once. It takes about 10 minutes.
 
+<p align="center"><img src="../public/art/ob-welcome.webp" width="640" alt="An organizer opening the doors of an empty event hall, with captions on the stage screen" /></p>
+
 **You need:**
 
 - A computer running macOS, Linux or Windows.
@@ -33,6 +35,8 @@ Open these pages in your browser:
 |---|---|
 | http://localhost:8080/ | The audience page. Pick a room and a language. |
 | http://localhost:8080/admin.html | The production dashboard with every room's status. |
+
+The first time you open the dashboard, a short welcome wizard asks for your event's name, its rooms and languages, and shows how captions are made and how to connect the sound. Every question can be skipped, and you can reopen it from **Setup wizard** in the dashboard toolbar. To follow this guide as written, keep the example rooms (**Skip, keep these rooms**).
 
 Nothing is captioned yet, because no room is receiving audio.
 

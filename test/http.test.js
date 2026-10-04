@@ -41,7 +41,7 @@ after(() => {
 });
 
 test('every page has an icon, and the icons are served', async () => {
-  for (const page of ['/', '/watch.html', '/talk.html', '/talks.html', '/admin.html', '/kit.html', '/style.html', '/ingest.html', '/demo.html', '/screen.html', '/overlay.html']) {
+  for (const page of ['/', '/watch.html', '/talk.html', '/talks.html', '/admin.html', '/kit.html', '/style.html', '/ingest.html', '/demo.html', '/screen.html', '/overlay.html', '/welcome.html']) {
     const { status, body } = await get(base + page);
     assert.equal(status, 200, page);
     assert.match(body, /rel="icon" href="\/brand\/icon\.svg"/, page);
@@ -79,4 +79,35 @@ test('security headers are present', async () => {
   const r = await fetch(`${base}/`);
   assert.match(r.headers.get('content-security-policy') || '', /default-src 'self'/);
   assert.equal(r.headers.get('x-content-type-options'), 'nosniff');
+});
+
+test('first-run setup: starts not done and saves the event name', async () => {
+  const h = { 'content-type': 'application/json', 'x-admin-token': 't' };
+  const s0 = await (await fetch(`${base}/api/setup`, { headers: h })).json();
+  assert.equal(s0.done, false);
+  assert.ok(s0.stages.length > 0);
+  assert.equal(s0.failover, null); // mock engine: no offline backup
+  assert.equal((await fetch(`${base}/api/setup`, { method: 'PUT', headers: h, body: JSON.stringify({ name: '  ' }) })).status, 400);
+  const r = await (await fetch(`${base}/api/setup`, { method: 'PUT', headers: h, body: JSON.stringify({ name: 'Harbour Talks', done: true }) })).json();
+  assert.deepEqual([r.name, r.done], ['Harbour Talks', true]);
+  assert.equal((await (await fetch(`${base}/api/event`)).json()).name, 'Harbour Talks');
+  assert.equal(JSON.parse(fs.readFileSync(path.join(dataDir, 'setup.json'), 'utf8')).name, 'Harbour Talks');
+  assert.equal((await fetch(`${base}/api/engine`, { method: 'POST', headers: h, body: JSON.stringify({ mode: 'local' }) })).status, 400);
+});
+
+test('strict CSP: scripts only from files, no inline scripts or handlers anywhere', async () => {
+  const csp = (await fetch(`${base}/`)).headers.get('content-security-policy');
+  const scriptSrc = csp.split(';').map((d) => d.trim()).find((d) => d.startsWith('script-src '));
+  assert.doesNotMatch(scriptSrc, /unsafe-inline|unsafe-eval/);
+  assert.match(csp, /script-src-attr 'none'/);
+  const pub = path.join(process.cwd(), 'public');
+  for (const f of fs.readdirSync(pub).filter((x) => x.endsWith('.html'))) {
+    const html = fs.readFileSync(path.join(pub, f), 'utf8');
+    for (const [, attrs] of html.matchAll(/<script\b([^>]*)>/g)) assert.match(attrs, /\bsrc=/, `${f}: inline <script>`);
+    assert.doesNotMatch(html, /\son[a-z]+=["']/, `${f}: inline event handler`);
+  }
+  // Page scripts build HTML from templates: no handlers there either.
+  for (const f of fs.readdirSync(path.join(pub, 'pages'))) {
+    assert.doesNotMatch(fs.readFileSync(path.join(pub, 'pages', f), 'utf8'), /\son[a-z]+=["'\\]/, `pages/${f}: inline event handler in a template`);
+  }
 });

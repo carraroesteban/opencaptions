@@ -10,6 +10,18 @@ cd opencaptions
 npm install
 npm run mock          # full system with simulated captions, no API key needed
 npm test              # unit tests
+npm run lint          # ESLint
+npm run typecheck     # TypeScript checks the JSDoc types in src/ and scripts/ (nothing is compiled)
+```
+
+### End-to-end test
+
+`test/e2e.test.js` runs the real server with Gemini replaced by a recording (`test/fixtures/talk-en.json`): audio goes in through the ingest WebSocket and the test checks the captions the audience receives, the stored transcript, the SRT/VTT exports, the summary and a question. It needs no API key and runs in about 15 seconds.
+
+When a change alters what OpenCaptions asks the model (prompts, models, the Live config), record the fixture again with a real key:
+
+```bash
+npm run record        # 30 s of samples/talk-en.wav against Gemini → test/fixtures/talk-en.json (a couple of cents)
 ```
 
 - **Node.js:** 20 or later.
@@ -21,7 +33,7 @@ npm test              # unit tests
 See the [architecture](docs/architecture.md#components) doc for what each module does. In short:
 
 - `src/`: the server.
-- `public/`: the pages.
+- `public/`: the pages. Each page's script is in `public/pages/<page>.js`: no inline scripts or `onclick=` handlers, because the Content-Security-Policy blocks them.
 - `scripts/`: command-line tools.
 - `test/`: unit tests.
 - `docs/`: documentation.
@@ -33,8 +45,8 @@ See the [architecture](docs/architecture.md#components) doc for what each module
 2. Create a branch from `main`: `feat/<topic>`, `fix/<topic>` or `docs/<topic>`.
 3. Keep pull requests focused. One logical change per PR.
 4. Add or update tests for behaviour changes. Security-relevant code (`src/security.js`, input validation, anything that handles tokens or URLs) must have tests.
-5. Update the docs in the same PR: reference tables, how-to steps, and `CHANGELOG.md` under **Unreleased**.
-6. Make sure `npm test` passes. CI runs it on Linux, macOS and Windows.
+5. Update the docs in the same PR: reference tables, how-to steps, diagrams (see [Diagrams in the docs](docs/brand.md#diagrams-in-the-docs)), and `CHANGELOG.md` under **Unreleased**.
+6. Make sure `npm test`, `npm run lint` and `npm run typecheck` pass. CI runs the tests on Linux, macOS and Windows, and lint and types once.
 
 ### Commit messages
 
@@ -54,6 +66,7 @@ Types: `feat`, `fix`, `docs`, `test`, `refactor`, `perf`, `chore`, `ci`, `securi
 - Few dependencies. Adding a runtime dependency needs a reason in the PR description.
 - Never log secrets, tokens or audio content.
 - Escape all dynamic text rendered as HTML (`esc()` in `public/common.js`).
+- Document function parameters with JSDoc (`@param {string} name`): `npm run typecheck` checks them.
 - User-facing strings in pages are written in Spanish and translated in `public/i18n.js`. Add the English entry when you add a string.
 
 ## Documentation standards
@@ -81,11 +94,11 @@ Checklist for doc changes:
 Contributions are especially welcome here:
 
 - **Local mode** ([docs/local.md](docs/local.md)): measurements on GPUs and Apple's Neural Engine, several rooms per speech server, per-room speech servers, and a local translated voice.
-- **Streaming translation** for lower latency ([Latency](docs/latency.md#ideas-not-implemented-yet)).
-- **Strict CSP:** move inline scripts to files.
+- **Streaming translation in local mode** ([Latency](docs/latency.md#ideas-not-implemented-yet)), and speculative translation of stable prefixes.
+- **Strict styles in the CSP:** move `style=""` attributes to classes, so `style-src` can drop `'unsafe-inline'` too.
 - **OIDC login** as an alternative to shared tokens.
-- An **end-to-end test harness** with recorded model responses.
-- Linting and type checking (ESLint, `// @ts-check` with JSDoc).
+- More **end-to-end fixtures**: a Spanish talk, local mode, a room with three languages.
+- **Type checking the pages** (`public/`) as well as the server.
 - Speaker diarization in captions.
 
 ## Code of conduct

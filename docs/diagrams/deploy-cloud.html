@@ -1,0 +1,31 @@
+<!doctype html><html><head><meta charset="utf-8"><title>Deployment: server in the cloud</title><link rel="stylesheet" href="diagram.css">
+<style>
+  .grid { grid-template-columns: auto 130px 300px 120px 260px; grid-template-rows: auto auto; row-gap: 30px; }
+  #venue { grid-column: 1; grid-row: 1 / 3; display: grid; grid-template-columns: 200px 70px 210px; row-gap: 22px; align-items: center; }
+  #d1 { grid-column: 1; grid-row: 1; } #d2 { grid-column: 1; grid-row: 2; } #a1 { grid-column: 3; grid-row: 1; } #a2 { grid-column: 3; grid-row: 2; }
+  #vm { grid-column: 3; grid-row: 1 / 3; }
+  #gem { grid-column: 5; grid-row: 1; } #ph { grid-column: 5; grid-row: 2; }
+</style></head><body>
+<div class="d">
+  <p class="eyebrow">Option B · the server runs in the cloud</p>
+  <div class="grid">
+    <div class="g" id="venue"><span class="gl">Venue</span>
+      <div class="n small" id="d1" data-icon="desk"><b>Sound desk</b><span>room 1</span></div>
+      <div class="n small" id="d2" data-icon="desk"><b>Sound desk</b><span>room 2</span></div>
+      <div class="n small" id="a1" data-icon="laptop"><b>Venue PC</b><span>agent</span></div>
+      <div class="n small" id="a2" data-icon="laptop"><b>Venue PC</b><span>agent</span></div>
+    </div>
+    <div class="n hero" id="vm"><b>OpenCaptions</b><span>a cloud VM or Cloud Run</span></div>
+    <div class="n ai" id="gem" data-icon="cloud"><b>Gemini</b><span>speech + translation</span></div>
+    <div class="n" id="ph" data-screen><b>Phones, projectors, vMix</b><span>from anywhere</span></div>
+  </div>
+  <div class="note"><span>Venue PCs only make <b>outbound</b> connections (WSS 443).</span><span>Simplest for many rooms or several venues; needs the venue's internet.</span></div>
+</div>
+<script src="diagram.js"></script>
+<script>draw([
+  { from: 'd1', to: 'a1', label: 'line out' }, { from: 'd2', to: 'a2', label: 'line out' },
+  { from: 'a1', to: 'vm', toff: -26, label: 'WSS 443' }, { from: 'a2', to: 'vm', toff: 26 },
+  { from: 'vm', to: 'gem', fs: 'r', ts: 'l', off: -30, toff: 0, label: 'HTTPS 443' },
+  { from: 'vm', to: 'ph', fs: 'r', ts: 'l', off: 30, toff: 0, label: 'captions' },
+]);</script>
+</body></html>

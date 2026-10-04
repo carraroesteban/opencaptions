@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#FAF8F3" media="(prefers-color-scheme: light)" />
+  <meta name="theme-color" content="#111014" media="(prefers-color-scheme: dark)" />
+  <link rel="icon" href="/favicon.ico" sizes="32x32" />
+  <link rel="icon" href="/brand/icon.svg" type="image/svg+xml" />
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+  <title>Welcome · OpenCaptions</title>
+  <link rel="stylesheet" href="/style.css" />
+  <style>
+    body { min-height: 100dvh; display: grid; grid-template-rows: auto 1fr; }
+    header { display: flex; align-items: center; gap: 16px; padding: 18px 28px; }
+    header .spacer { flex: 1; }
+    header .brand { font-size: 18px; }
+    .wiz { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr); gap: 56px; align-items: center; max-width: 1240px; width: 100%; margin: 0 auto; padding: 12px 28px 48px; }
+    @media (max-width: 900px) { .wiz { grid-template-columns: 1fr; gap: 24px; padding-top: 0; } .art { order: -1; max-width: 520px; } .art img { aspect-ratio: 2 / 1; object-fit: contain; } }
+
+    .progress { display: flex; gap: 6px; margin-bottom: 30px; }
+    .progress span { height: 4px; flex: 1; border-radius: 4px; background: var(--line-strong); transition: background var(--dur) var(--ease); }
+    .progress span.on { background: var(--fg); }
+    .kicker { font-size: 13px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--fg2); margin: 0 0 10px; }
+    h1 { font-size: clamp(34px, 4.6vw, 54px); line-height: 1.02; letter-spacing: -.035em; margin: 0 0 16px; }
+    .lede { font-size: 18px; color: var(--fg2); margin: 0 0 28px; max-width: 520px; line-height: 1.55; }
+    .step { display: none; }
+    .step.on { display: block; animation: wz-in .45s var(--ease); }
+    @keyframes wz-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+
+    .big { font-size: 22px; padding: 14px 16px; border-radius: 14px; width: 100%; max-width: 520px; }
+    .hint { font-size: 14px; color: var(--fg2); margin: 10px 0 0; max-width: 520px; }
+    .actions { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-top: 32px; }
+    .actions button { padding: 11px 20px; font-size: 16px; border-radius: 12px; }
+    .skip { background: none; border: 0; box-shadow: none; color: var(--fg2); text-decoration: underline; text-underline-offset: 3px; padding: 11px 6px !important; }
+    .skip:hover { background: none; color: var(--fg); }
+    .back { margin-right: auto; }
+
+    .rooms { display: grid; gap: 10px; max-width: 520px; }
+    .room { display: flex; gap: 8px; align-items: center; }
+    .room input { flex: 1; font-size: 17px; padding: 11px 14px; border-radius: 12px; }
+    .room button { width: 44px; height: 44px; padding: 0; border-radius: 12px; font-size: 20px; line-height: 1; }
+    .presets { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 16px; }
+
+    .q { font-weight: 700; margin: 0 0 10px; }
+    .pills { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 24px; }
+    .pill { font-size: 15px; padding: 8px 15px; cursor: pointer; }
+
+    .opts { display: grid; gap: 12px; max-width: 560px; }
+    .opt { display: grid; grid-template-columns: 40px minmax(0, 1fr); gap: 14px; align-items: start; padding: 16px 18px; border-radius: 16px; border: 1px solid var(--line); background: var(--bg2); text-decoration: none; color: inherit; transition: border-color var(--dur), transform var(--dur) var(--ease); }
+    a.opt:hover { border-color: var(--line-strong); transform: translateY(-1px); }
+    .opt .ic { width: 40px; height: 40px; border-radius: 12px; background: var(--bg3); display: grid; place-items: center; }
+    .opt .ic svg { width: 21px; height: 21px; }
+    .opt b { display: block; font-size: 16px; }
+    .opt span { font-size: 14px; color: var(--fg2); }
+    .opt.good .ic { background: var(--primary-bg); color: var(--primary-fg); }
+    pre.cmd { margin: 8px 0 0; background: var(--ink); color: var(--paper); border-radius: 10px; padding: 9px 12px; font-size: 13px; overflow-x: auto; }
+    pre.cmd code { background: none; color: inherit; padding: 0; font-size: inherit; } /* the shared inline-code chip is light in light mode */
+
+    .summary { display: grid; gap: 8px; margin: 0 0 4px; max-width: 520px; }
+    .summary div { display: flex; gap: 12px; padding: 12px 16px; border-radius: 14px; background: var(--bg2); border: 1px solid var(--line); font-size: 15px; }
+    .summary div b { min-width: 110px; color: var(--fg2); font-weight: 400; }
+
+    /* illustrations are drawn on paper: frame them like prints so they sit well in both themes */
+    .art { margin: 0; justify-self: center; width: 100%; }
+    .art img { display: block; width: 100%; height: auto; border-radius: 26px; border: 1px solid var(--line); background: #FAF8F3; box-shadow: var(--shadow-lg); transition: opacity .3s var(--ease); }
+    .art img.fade { opacity: 0; }
+    .err { color: var(--bad); font-size: 14px; margin-top: 12px; min-height: 1em; }
+    @media (prefers-reduced-motion: reduce) { .step.on { animation: none; } }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="brand">OpenCaptions</div>
+    <span class="spacer"></span>
+    <span id="prefs-slot"></span>
+  </header>
+  <main class="wiz" data-no-i18n>
+    <section>
+      <div class="progress" id="progress" aria-hidden="true"></div>
+
+      <div class="step" data-step="welcome" data-art="ob-welcome">
+        <p class="kicker" data-t="k0"></p>
+        <h1 data-t="welcomeH"></h1>
+        <p class="lede" data-t="welcomeP"></p>
+        <div class="actions"><button class="primary" data-next data-t="start"></button><button class="skip" data-finish data-t="skipAll"></button></div>
+      </div>
+
+      <div class="step" data-step="name" data-art="ob-name">
+        <p class="kicker" data-t="k1"></p>
+        <h1 data-t="nameH"></h1>
+        <input class="big" id="name" maxlength="80" autocomplete="off" />
+        <p class="hint" data-t="nameHint"></p>
+        <div class="actions"><button class="back" data-back data-t="back"></button><button class="skip" data-skip data-t="skipName"></button><button class="primary" data-next data-t="next"></button></div>
+      </div>
+
+      <div class="step" data-step="rooms" data-art="ob-rooms">
+        <p class="kicker" data-t="k2"></p>
+        <h1 data-t="roomsH"></h1>
+        <p class="lede" data-t="roomsP"></p>
+        <div class="presets" id="presets"></div>
+        <div class="rooms" id="rooms"></div>
+        <div class="actions" style="margin-top:14px"><button id="add-room" data-t="addRoom"></button></div>
+        <div class="actions"><button class="back" data-back data-t="back"></button><button class="skip" data-skip data-t="skipRooms"></button><button class="primary" data-next data-t="next"></button></div>
+      </div>
+
+      <div class="step" data-step="langs" data-art="ob-langs">
+        <p class="kicker" data-t="k3"></p>
+        <h1 data-t="langsH"></h1>
+        <p class="q" data-t="spokenQ"></p>
+        <div class="pills" id="spoken" role="radiogroup"></div>
+        <p class="q" data-t="captionsQ"></p>
+        <div class="pills" id="targets"></div>
+        <p class="hint" data-t="langsHint"></p>
+        <div class="actions"><button class="back" data-back data-t="back"></button><button class="skip" data-skip data-t="notSure"></button><button class="primary" data-next data-t="next"></button></div>
+      </div>
+
+      <div class="step" data-step="ai" data-art="local">
+        <p class="kicker" data-t="k4"></p>
+        <h1 data-t="aiH"></h1>
+        <div class="opts" id="ai"></div>
+        <div class="actions"><button class="back" data-back data-t="back"></button><button class="skip" data-skip data-t="later"></button><button class="primary" data-next data-t="next"></button></div>
+      </div>
+
+      <div class="step" data-step="audio" data-art="ob-audio">
+        <p class="kicker" data-t="k5"></p>
+        <h1 data-t="audioH"></h1>
+        <p class="lede" data-t="audioP"></p>
+        <div class="opts" id="audio"></div>
+        <div class="actions"><button class="back" data-back data-t="back"></button><button class="skip" data-skip data-t="later"></button><button class="primary" data-next data-t="next"></button></div>
+      </div>
+
+      <div class="step" data-step="done" data-art="ob-share">
+        <p class="kicker" data-t="k6"></p>
+        <h1 data-t="doneH"></h1>
+        <div class="summary" id="summary"></div>
+        <div class="actions"><button class="primary" data-finish data-t="openDash"></button><button id="open-kit" data-t="printQr"></button><button class="skip" id="open-audience" data-t="seeAudience"></button></div>
+      </div>
+      <div class="err" id="err" role="alert"></div>
+    </section>
+    <figure class="art"><img id="art" alt="" width="1200" height="900" src="/art/ob-welcome.webp" /></figure>
+  </main>
+
+  <script type="module" src="/pages/welcome.js"></script>
+</body>
+</html>

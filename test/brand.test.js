@@ -24,12 +24,13 @@ test('every page uses the shared tokens', () => {
 });
 
 test('lime is never used as a text colour', () => {
-  // Lime is a fill only (ink on lime). The one exception: the $ prompt in the website's code block, which sits on ink.
+  // Lime is a fill only (ink on lime). The exceptions are prompts that sit on ink: the $ in the website's code block
+  // and the ❯ in its announcement ticker.
   const css = (f) => (f.endsWith('.html') ? [...read(f).matchAll(/<style>([\s\S]*?)<\/style>/g)].map((m) => m[1]).join('\n') : read(f)).replace(/\/\*[\s\S]*?\*\//g, '');
   const files = [...pages.map((f) => `public/${f}`), 'public/style.css', 'public/tokens.css', 'site/site.css'];
   for (const f of files) {
     for (const line of css(f).split('\n')) {
-      if (/^pre \.p \{/.test(line.trim()) && f === 'site/site.css') continue;
+      if (/^(pre|\.ticker) \.p \{/.test(line.trim()) && f === 'site/site.css') continue;
       for (const [, prop, val] of line.matchAll(/(?<![-\w])(color|stroke)\s*:\s*([^;}]+)/g)) assert.doesNotMatch(val, /lime|d4ff3a|212,\s*255,\s*58/i, `${f}: ${prop}: ${val}`);
     }
   }

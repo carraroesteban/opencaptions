@@ -29,7 +29,7 @@ export const assistStats = { requests: 0, errors: 0, cacheHits: 0, usd: 0 };
 const cache = new Map(); // key → { at, value, pending }
 const RECENT_MS = 5 * 60_000;
 // ≈ 15k tokens ≈ a long talk; older text is trimmed from the start. Local models get what fits their context window.
-const MAX_CONTEXT_CHARS = config.engine === 'local' ? Math.max(4000, Math.round(config.localLlmContext * 2.6)) : 60_000;
+const maxContextChars = () => (config.engine === 'local' ? Math.max(4000, Math.round(config.localLlmContext * 2.6)) : 60_000);
 
 const fmt = (ms) => { const s = Math.max(0, Math.round(ms / 1000)); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; };
 
@@ -38,9 +38,9 @@ function pickText(segs, lang, { sinceMs = 0 } = {}) {
   const byCh = (ch) => segs.filter((s) => s.channel === ch && s.final !== false && s.end >= sinceMs);
   let list = lang ? byCh(lang) : [];
   if (!list.length) list = byCh('orig');
-  let lines = list.map((s) => `[${fmt(s.start)}] ${s.text}`);
+  const lines = list.map((s) => `[${fmt(s.start)}] ${s.text}`);
   let text = lines.join('\n');
-  if (text.length > MAX_CONTEXT_CHARS) text = text.slice(-MAX_CONTEXT_CHARS);
+  if (text.length > maxContextChars()) text = text.slice(-maxContextChars());
   return { text, list };
 }
 
@@ -105,10 +105,12 @@ function extractiveAnswer(list, question) {
 // ---------- public API ----------
 /**
  * @param {object} o
- * @param {object[]} o.segs   all final segments of the talk (any channel)
+ * @param {Array<{ channel: string, text: string, start: number, end: number }>} o.segs  all final segments of the talk (any channel)
  * @param {string} o.key      cache key prefix (stage/talk)
- * @param {'recent'|'full'} o.scope
- * @param {boolean} o.live    talk in progress (short cache) or finished (long cache)
+ * @param {string} o.lang     the reader's language
+ * @param {'recent'|'full'} [o.scope]
+ * @param {boolean} [o.live]  talk in progress (short cache) or finished (long cache)
+ * @param {string} [o.title]  the talk's title, if known
  */
 export async function summarize({ segs, key, lang, scope = 'full', live = true, title = '' }) {
   const now = Date.now();

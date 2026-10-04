@@ -96,7 +96,9 @@ function decodeWav(buf) {
 }
 
 // One decode at a time: the CPU is the bottleneck, parallel decodes only make every request slower.
+/** @type {Promise<unknown>} */
 let chain = Promise.resolve();
+/** @type {<T>(fn: () => Promise<T> | T) => Promise<T>} one recognition at a time */
 const serial = (fn) => { const p = chain.then(fn, fn); chain = p.catch(() => {}); return p; };
 
 async function handleTranscription(req, res) {

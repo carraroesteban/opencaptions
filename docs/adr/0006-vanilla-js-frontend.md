@@ -20,5 +20,5 @@ Option 2. Shared helpers live in `public/common.js` (sockets with auto-reconnect
 
 - Good: no toolchain, instant reloads, pages are easy to read and fork, and they're small.
 - Good: overlays work in vMix and OBS without polyfills.
-- Bad: inline module scripts require `'unsafe-inline'` in the CSP. Follow-up: move them to files and tighten the CSP.
-- Bad: no type checking in the front end. Mitigated by keeping pages small and escaping all dynamic text.
+- ~~Bad: inline module scripts require `'unsafe-inline'` in the CSP.~~ Done: each page's script lives in `public/pages/<page>.js`, and the CSP allows no inline scripts or handlers.
+- Bad: no type checking in the front end (the server and scripts are type-checked with `npm run typecheck`). Mitigated by ESLint on every page script, small pages, and escaping all dynamic text.

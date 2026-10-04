@@ -27,7 +27,7 @@ ff.on('error', (e) => { console.error('✗', e.message); process.exit(1); });
 ff.on('data', (b) => { for (const ws of sockets) if (ws.readyState === 1) ws.send(b, { binary: true }); });
 
 setInterval(async () => {
-  const s = await (await fetch(`${http}/api/status`, { headers })).json();
+  const s = /** @type {any} */ (await (await fetch(`${http}/api/status`, { headers })).json());
   const load = s.stages.filter((x) => ids.includes(x.id));
   const live = load.filter((x) => x.engines.every((e) => e.state === 'live')).length;
   const lat = load.map((x) => x.latency.asr).filter(Boolean);

@@ -29,6 +29,19 @@ jobs:
         run: for f in src/*.js src/engines/*.js src/local/*.js scripts/*.js; do node --check "$f"; done
       - run: npm test
 
+  lint:
+    name: lint + types
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run typecheck
+
   audit:
     runs-on: ubuntu-latest
     steps:

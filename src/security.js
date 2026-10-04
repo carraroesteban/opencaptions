@@ -122,8 +122,11 @@ export const wsAllowed = (req) => wsLimit(clientIp(req));
 const FRAME_ANCESTORS = env.FRAME_ANCESTORS || "'self'";
 const CSP = [
   "default-src 'self'",
-  // Pages are small static files with inline module scripts; no user content is ever rendered as HTML.
-  "script-src 'self' 'unsafe-inline' https://www.youtube.com https://s.ytimg.com",
+  // Strict for scripts: only files served by this server (public/pages/*.js), never inline code or handlers, so
+  // an injected <script> or onclick= can't run. YouTube's player API is allowed for the live demo page.
+  "script-src 'self' https://www.youtube.com https://s.ytimg.com",
+  "script-src-attr 'none'",
+  // Styles stay relaxed: pages and their templates use style="" attributes, and CSS can't run code.
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
   "font-src 'self' https://fonts.gstatic.com data:",
   "img-src 'self' data: https://i.ytimg.com",

@@ -17,7 +17,7 @@ function fakeLive(closeWith) {
 
 test('network drops before setup do not strip the session config', async () => {
   _setClient(fakeLive({ code: 1006, reason: '' }));
-  const e = new GeminiEngine({ label: 't', target: 'es', vocabulary: ['Kubernetes'] });
+  const e = new GeminiEngine({ label: 't', target: 'es', vocabulary: ['Horizon Summit'] });
   e.on('error', () => {});
   e.start();
   await sleep(1300);
@@ -27,7 +27,7 @@ test('network drops before setup do not strip the session config', async () => {
 
 test('an explicit config rejection steps down to a smaller config', async () => {
   _setClient(fakeLive({ code: 1007, reason: 'Invalid argument: customVocabulary' }));
-  const e = new GeminiEngine({ label: 't', target: 'es', vocabulary: ['Kubernetes'] });
+  const e = new GeminiEngine({ label: 't', target: 'es', vocabulary: ['Horizon Summit'] });
   e.on('error', () => {});
   e.on('log', () => {});
   e.start();
@@ -107,7 +107,7 @@ test('bilingual speaker: captions switch cleanly between passthrough and transla
   };
   await say('Hola a todos, bienvenidos a la charla de hoy.'.split(' '), 'es');
   // One English word inside Spanish speech must not flip the tracks.
-  await say(['Usamos', 'mucho'], 'es', false); await say(['Kubernetes'], 'en', false); await say(['en', 'producción', 'todos', 'los', 'días.'], 'es');
+  await say(['Usamos', 'mucho'], 'es', false); await say(['feedback'], 'en', false); await say(['en', 'todos', 'los', 'talleres.'], 'es');
   await say('Now I will switch to English for the live demo part.'.split(' '), 'en');
   await say('Y ahora volvemos al español para las preguntas.'.split(' '), 'es');
   await sleep(300);
@@ -115,7 +115,7 @@ test('bilingual speaker: captions switch cleanly between passthrough and transla
   const es = finals.es.join(' | ');
   const en = finals.en.join(' | ');
   assert.match(es, /^Hola a todos, bienvenidos a la charla de hoy\./, es);
-  assert.match(es, /Usamos mucho Kubernetes en producción/, `short English word kept in the Spanish passthrough: ${es}`);
+  assert.match(es, /Usamos mucho feedback en todos los talleres/, `short English word kept in the Spanish passthrough: ${es}`);
   assert.match(es, /\(es\) Now I will switch to English/, `English speech translated into the Spanish track: ${es}`);
   assert.match(es, /Y ahora volvemos al español/, es);
   assert.match(en, /\(en\) Hola a todos/, en);

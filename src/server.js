@@ -6,7 +6,8 @@ import path from 'node:path';
 import express from 'express';
 import { WebSocketServer } from 'ws';
 import QRCode from 'qrcode';
-import { config, normalizeStage, ROOT, langName } from './config.js';
+import { config, normalizeStage, ROOT, langName, setEngine } from './config.js';
+import { Failover } from './failover.js';
 import { Glossary } from './glossary.js';
 import { Stage } from './stage.js';
 import { Store, toSRT, toVTT, toTXT } from './store.js';
@@ -84,6 +85,15 @@ if (!process.env.STAGES && fs.existsSync(STAGES_FILE) && fs.statSync(STAGES_FILE
 }
 fs.mkdirSync(config.dataDir, { recursive: true });
 for (const def of initial) addStage(def);
+
+// First-run setup (the dashboard's welcome wizard): what the organizer chose is kept in data/setup.json.
+const SETUP_FILE = path.join(config.dataDir, 'setup.json');
+const setup = (() => { try { return JSON.parse(fs.readFileSync(SETUP_FILE, 'utf8')); } catch { return { done: false }; } })();
+if (setup.name) config.event.name = setup.name;
+function saveSetup(patch) {
+  Object.assign(setup, patch, { updatedAt: new Date().toISOString() });
+  fs.writeFileSync(SETUP_FILE, JSON.stringify(setup, null, 2));
+}
 
 // ---------------- http ----------------
 const app = express();
@@ -308,13 +318,46 @@ app.post('/api/stages/:id/ask', getStage, async (req, res) => {
 });
 
 // Agenda: names talks automatically (see src/schedule.js). Public read = the event's program.
+app.get('/api/setup', admin, (req, res) => {
+  res.json({
+    done: !!setup.done,
+    name: config.event.name,
+    languages: config.event.languages,
+    defaultTargets: config.event.defaultTargets,
+    stages: [...stages.values()].map((s) => ({ id: s.id, name: s.def.name, source: s.def.source, targets: s.def.targets })),
+    engine: config.engine,
+    primaryEngine: config.primaryEngine,
+    failover: failover?.status() || null,
+    publicUrl: publicUrl(req),
+  });
+});
+app.put('/api/setup', admin, (req, res) => {
+  const b = req.body || {};
+  const patch = {};
+  if ('name' in b) {
+    const name = String(b.name || '').trim().slice(0, 80);
+    if (!name) return res.status(400).json({ error: 'name required' });
+    patch.name = config.event.name = name;
+  }
+  if ('done' in b) patch.done = !!b.done;
+  saveSetup(patch);
+  res.json({ ok: true, done: !!setup.done, name: config.event.name });
+});
+
+// Offline backup: which engine the rooms use (auto | cloud | local). Only with Gemini as the main engine.
+app.post('/api/engine', admin, (req, res) => {
+  if (!failover) return res.status(400).json({ error: 'the offline backup needs Gemini as the main engine (see docs/local.md)' });
+  try { failover.setMode(String(req.body?.mode || '')); } catch (e) { return res.status(400).json({ error: e.message }); }
+  res.json(failover.status());
+});
+
 app.get('/api/schedule', (req, res) => res.json(schedule.entries.map((e) => ({ ...e, startIso: new Date(e.start).toISOString() }))));
 app.put('/api/schedule', admin, (req, res) => {
   try {
     const csv = typeof req.body?.csv === 'string' ? req.body.csv : null;
     // Pasted text is matched to the rooms that exist (by id or name); rows for other rooms are skipped.
     const rooms = csv != null ? [...stages.values()].map((s) => ({ id: s.id, name: s.def.name })) : undefined;
-    const entries = schedule.set(csv ?? req.body?.entries ?? req.body, { rooms });
+    const entries = /** @type {any} */ (schedule.set(csv ?? req.body?.entries ?? req.body, { rooms }));
     const unknown = [...new Set(entries.map((e) => e.stage))].filter((id) => !stages.has(id));
     const skipped = entries.skipped || [];
     res.json({ ok: true, count: entries.length, unknownRooms: unknown, skipped: { count: skipped.length, rooms: [...new Set(skipped.map((x) => x.room))].slice(0, 20) } });
@@ -408,17 +451,41 @@ const localHealth = { asr: null, llm: null, modelInstalled: null, missing: [], c
 const localModels = () => [...new Set([llmInfo().model, config.localMtModel].filter(Boolean))].join(' + ');
 const engineLabel = () => (config.engine === 'gemini' ? config.model : config.engine === 'local' ? (config.localLlmOff ? asrInfo().label : `${asrInfo().label} + ${localModels()}`) : 'mock');
 async function checkLocal() {
-  const [asr, llm] = await Promise.all([asrReachable(), config.localLlmOff ? { ok: false, hasModel: false, models: [], off: true } : llmHealth()]);
+  const [asr, llm] = /** @type {[boolean, any]} */ (await Promise.all([asrReachable(), config.localLlmOff ? { ok: false, hasModel: false, models: [], off: true } : llmHealth()]));
   Object.assign(localHealth, { asr, llm: llm.ok, modelInstalled: llm.hasModel, missing: llm.missing || [], checkedAt: Date.now() });
   return { asr, llm };
 }
 if (config.engine === 'local') setInterval(() => checkLocal().catch(() => {}), 15_000).unref();
+
+// Offline backup (FALLBACK=local, or a manual switch from the dashboard): Gemini normally, the local engine
+// when the internet goes down. Switching restarts each room's AI session; captions resume in a few seconds.
+const failover = config.primaryEngine === 'gemini' ? new Failover({
+  mode: config.fallback === 'local' ? 'auto' : 'cloud',
+  localReady: async () => {
+    const { asr, llm } = await checkLocal();
+    return !!asr && (llm.ok || !!llm.off);
+  },
+  apply: (engine, reason) => {
+    setEngine(engine);
+    for (const st of stages.values()) {
+      st.log('warn', engine === 'local' ? `${reason}: captions now run on this computer` : `${reason}: back to Gemini`);
+      st.reconfigure(st.def);
+    }
+    console.log(`  ${engine === 'local' ? '⚠' : '✓'} ${reason} → engine: ${engine}`);
+  },
+}) : null;
+if (failover) {
+  failover.on('change', (st) => broadcastAdmin({ type: 'failover', ...st }));
+  failover.start().catch(() => {});
+}
 
 function snapshot() {
   const list = [...stages.values()].map((s) => s.status());
   return {
     engine: config.engine,
     model: engineLabel(),
+    failover: failover?.status() || null,
+    setupDone: !!setup.done,
     local: config.engine === 'local' ? { asrUrl: asrInfo().url, llmUrl: llmInfo().url, llmModel: llmInfo().model, mtModel: llmInfo().mtModel, llmOff: config.localLlmOff, ...localHealth } : undefined,
     event: config.event.name,
     uptimeSec: Math.round(process.uptime()),
@@ -465,7 +532,7 @@ server.on('upgrade', (req, socket, head) => {
       if (!ok) return ws.close(4001, `bad ${kind} token`);
       if (kind === 'ingest') onIngest(ws, url);
       else if (kind === 'view') onView(ws, url);
-      else onAdmin(ws, url);
+      else onAdmin(ws);
     } catch (e) {
       ws.close(1011, e.message);
     }
@@ -593,7 +660,7 @@ function broadcastAdmin(obj) {
 
 setInterval(() => broadcastAdmin({ type: 'status', ...snapshot() }), 1000);
 
-server.on('error', (e) => {
+server.on('error', (/** @type {NodeJS.ErrnoException} */ e) => {
   if (e.code === 'EADDRINUSE') console.error(`✗ Port ${config.port} is already in use — stop the other process or set PORT=…`);
   else if (e.code === 'EACCES') console.error(`✗ No permission to listen on port ${config.port} — use a port above 1024 or a reverse proxy`);
   else console.error('✗', e.message);
@@ -638,7 +705,7 @@ server.listen(config.port, config.host, () => {
 });
 
 // Event-day safety net: one bad input must never take every room down. Log loudly and keep serving.
-process.on('unhandledRejection', (e) => console.error('✗ unhandled rejection:', e?.stack || e));
+process.on('unhandledRejection', (/** @type {any} */ e) => console.error('✗ unhandled rejection:', e?.stack || e));
 process.on('uncaughtException', (e) => console.error('✗ uncaught exception (server kept running):', e?.stack || e));
 
 for (const sig of ['SIGINT', 'SIGTERM']) {

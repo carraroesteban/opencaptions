@@ -47,12 +47,25 @@ function withTimeout(promise, ms) {
   return Promise.race([promise, new Promise((_, rej) => { t = setTimeout(() => rej(new Error(`timeout after ${ms} ms`)), ms); })]).finally(() => clearTimeout(t));
 }
 
+const EMA = (prev, v) => (prev == null ? v : Math.round(prev * 0.7 + v * 0.3));
 const isQuota = (e) => e?.status === 429 || /429|RESOURCE_EXHAUSTED|quota|rate/i.test(e?.message || '');
 
 // Gemini 3.5 Flash-Lite paid tier (Sept 2026 pricing page): $0.30 / 1M input tokens, $2.50 / 1M output tokens.
 const USD_IN = 0.30 / 1e6, USD_OUT = 2.5 / 1e6;
 
-export async function translateText({ text, from, to, context = [], vocabulary = [], partial = false, stats = null }) {
+/**
+ * @param {object} o
+ * @param {string} o.text
+ * @param {string | null} o.from
+ * @param {string} o.to
+ * @param {string[]} [o.context]     previous sentences, for context only
+ * @param {string[]} [o.vocabulary]
+ * @param {boolean} [o.partial]      the sentence is still being spoken
+ * @param {{ usd?: number, firstChunkMs?: number | null } | null} [o.stats]  cost and timing counters to update
+ * @param {(soFar: string) => void} [o.onChunk]  streaming: called with the translation so far as it arrives (Gemini only)
+ * @returns {Promise<string>}
+ */
+export async function translateText({ text, from, to, context = [], vocabulary = [], partial = false, stats = null, onChunk = null }) {
   if (config.engine === 'mock') return `(${to}) ${text}`;
   if (config.engine === 'local') return translateLocal({ text, from, to, context, vocabulary, partial });
   const sys = [
@@ -69,10 +82,26 @@ export async function translateText({ text, from, to, context = [], vocabulary =
     limiter.take();
     const cfg = { systemInstruction: sys, temperature: 0.1, maxOutputTokens: 512, abortSignal: AbortSignal.timeout(config.mtTimeoutMs) };
     if (thinking) cfg.thinkingConfig = { thinkingLevel: 'MINIMAL' }; // captions need speed, not reasoning
-    const res = await withTimeout(client().models.generateContent({ model: config.textModel, contents: `${ctx}Translate:\n${text}`, config: cfg }), config.mtTimeoutMs + 500);
-    const u = res.usageMetadata || {};
+    const req = { model: config.textModel, contents: `${ctx}Translate:\n${text}`, config: cfg };
+    let out = '', u = {};
+    if (onChunk) {
+      // Streaming: show the translation as the model writes it (the words appear a few hundred ms sooner).
+      const t0 = Date.now();
+      const stream = await withTimeout(client().models.generateContentStream(req), config.mtTimeoutMs + 500);
+      for await (const chunk of stream) {
+        if (chunk.usageMetadata) u = chunk.usageMetadata;
+        if (!chunk.text) continue;
+        if (!out && stats) stats.firstChunkMs = EMA(stats.firstChunkMs, Date.now() - t0);
+        out += chunk.text;
+        onChunk(out.trimStart().replace(/^["“]/, ''));
+      }
+    } else {
+      const res = await withTimeout(client().models.generateContent(req), config.mtTimeoutMs + 500);
+      out = res.text || '';
+      u = res.usageMetadata || {};
+    }
     if (stats) stats.usd = (stats.usd || 0) + (u.promptTokenCount || 0) * USD_IN + ((u.candidatesTokenCount || 0) + (u.thoughtsTokenCount || 0)) * USD_OUT;
-    return (res.text || '').trim().replace(/^["“]|["”]$/g, '');
+    return out.trim().replace(/^["“]|["”]$/g, '');
   };
   try {
     return await call(thinkingSupported);
@@ -129,11 +158,29 @@ const SENTENCE_END = /[.?!…]["')\]»]?(?=\s|$)/g;
 /** Sentence-level translator for one (room, target language). */
 export class SentenceTranslator {
   /**
+   * @param {object} o
+   * @param {string | null} o.from  the talk's language, or null when it's detected
+   * @param {string} o.to  caption language
+   * @param {string[]} [o.vocabulary]  glossary and agenda terms
+   * @param {(text: string, id?: number) => void} o.onPartial  provisional translation of the sentence in progress
+   * @param {(text: string, id?: number) => void} o.onFinal  final translation of a sentence
+   * @param {(message: string) => void} [o.onError]
    * @param {() => boolean} [o.canFallback] true when a Live session already produces this language, so on
    *   quota errors we hand over to it instead of retrying (see Stage#onOutput).
+   * @param {(on: boolean) => void} [o.onDegraded]  the Live fallback starts or stops covering this language
    */
-  constructor({ from, to, vocabulary = [], onPartial, onFinal, onError, canFallback = () => false, onDegraded }) {
-    Object.assign(this, { from, to, vocabulary, onPartial, onFinal, onError, canFallback, onDegraded });
+  constructor({ from, to, vocabulary = [], onPartial, onFinal, onError = () => {}, canFallback = () => false, onDegraded }) {
+    this.from = from;
+    this.to = to;
+    this.vocabulary = vocabulary;
+    this.onPartial = onPartial;
+    this.onFinal = onFinal;
+    this.onError = onError;
+    this.canFallback = canFallback;
+    this.onDegraded = onDegraded;
+    /** @type {object | null} a caption parked by Stage when the speaker switched to this language */
+    this.detached = null;
+    this.detachedTimer = undefined;
     this.degradedUntil = 0;
     this.buf = '';
     this.spoken = from;
@@ -143,7 +190,8 @@ export class SentenceTranslator {
     this.partialInFlight = false;
     this.lastPartialAt = 0;
     this.context = [];
-    this.stats = { requests: 0, errors: 0, quotaErrors: 0, avgMs: null, dropped: 0, usd: 0 };
+    this.stats = { requests: 0, errors: 0, quotaErrors: 0, avgMs: null, firstChunkMs: null, dropped: 0, usd: 0 };
+    this.shown = { id: 0, len: 0 }; // the provisional translation on screen: sentence id and length
   }
 
   /** Rate-limited and a Live fallback exists → the Stage shows Live Translate's own captions meanwhile. */
@@ -159,7 +207,11 @@ export class SentenceTranslator {
     return true;
   }
 
-  feed(text, { finished = false, spoken } = {}) {
+  /**
+   * @param {string} text  newly transcribed words
+   * @param {{ finished?: boolean, spoken?: string | null }} [opts]  end of the speaker's turn; the language heard
+   */
+  feed(text, { finished = false, spoken = null } = {}) {
     if (spoken) this.spoken = spoken;
     if (this.degraded()) { this.buf = ''; clearTimeout(this.idle); return; } // Live fallback is covering this language
     this.buf += text;
@@ -205,7 +257,11 @@ export class SentenceTranslator {
       const t0 = Date.now();
       try {
         this.stats.requests++;
-        out = await translateText({ text: item.text, from: item.from, to: this.to, context: this.context, vocabulary: this.vocabulary, stats: this.stats });
+        // Stream the sentence into its caption, but only once it has caught up with the provisional translation
+        // already on screen: a caption must never shrink and grow again.
+        const shown = this.shown.id === item.id ? this.shown.len : 0;
+        const onChunk = config.mtStream ? (soFar) => { if (soFar.length >= shown) { this.shown = { id: item.id, len: soFar.length }; this.onPartial(soFar, item.id); } } : null;
+        out = await translateText({ text: item.text, from: item.from, to: this.to, context: this.context, vocabulary: this.vocabulary, stats: this.stats, onChunk });
         this.stats.avgMs = this.stats.avgMs == null ? Date.now() - t0 : Math.round(this.stats.avgMs * 0.7 + (Date.now() - t0) * 0.3);
       } catch (e) {
         this.stats.errors++;
@@ -248,7 +304,7 @@ export class SentenceTranslator {
     try {
       this.stats.requests++;
       const out = await translateText({ text, from: this.spoken, to: this.to, context: this.context, vocabulary: this.vocabulary, partial: true, stats: this.stats });
-      if (out && id === this.openId && this.buf.trim().startsWith(text.slice(0, 10))) this.onPartial(out, id);
+      if (out && id === this.openId && this.buf.trim().startsWith(text.slice(0, 10))) { this.shown = { id, len: out.length }; this.onPartial(out, id); }
     } catch (e) {
       this.stats.errors++;
       if (isQuota(e)) { this.stats.quotaErrors++; limiter.backoff(10000); this.#degrade(45000); }

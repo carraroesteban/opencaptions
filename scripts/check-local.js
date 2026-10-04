@@ -38,14 +38,14 @@ if (!asrUp) process.exit(1);
 
 // ---- 2. stream the talk in real time ----
 console.log('\nstreaming (committed text in cyan, provisional in grey)…\n');
-const engine = new LocalEngine({ label: 'check', target, source, vocabulary: ['Nerdearla', 'Kubernetes', 'OpenTelemetry', 'on-call', 'RAG', 'embeddings'], languages: ['es', 'en', 'pt'] });
-let committed = '', firstText = 0, firstCommit = 0, interims = 0, t0 = 0, lang = null;
+const engine = new LocalEngine({ label: 'check', target, source, vocabulary: ['Horizon Summit', 'María José Fernández', 'Hiroshi Tanaka', 'telehealth'], languages: ['es', 'en', 'pt'] });
+let committed = '', firstText = 0, firstCommit = 0, t0 = 0, lang = null;
 const lags = [];
 const refWords = words(reference);
 const wordsPerSec = refWords.length / (fs.statSync(input).size / 32000);
 engine.on('log', (m) => console.log(`  log: ${m}`));
 engine.on('error', (m) => console.log(`  error: ${m}`));
-engine.on('interim', ({ text }) => { interims++; firstText ||= Date.now(); process.stdout.write(`\x1b[90m…${text.slice(-50)}\x1b[0m\n`); });
+engine.on('interim', ({ text }) => { firstText ||= Date.now(); process.stdout.write(`\x1b[90m…${text.slice(-50)}\x1b[0m\n`); });
 engine.on('input', ({ text, lang: l }) => {
   if (!text) return;
   firstText ||= Date.now();
@@ -55,7 +55,7 @@ engine.on('input', ({ text, lang: l }) => {
   process.stdout.write(`\x1b[36m${text}\x1b[0m\n`);
 });
 engine.start();
-await new Promise((r) => { const w = setInterval(() => { if (engine.state === 'live') { clearInterval(w); r(); } }, 50); });
+await new Promise((r) => { const w = setInterval(() => { if (engine.state === 'live') { clearInterval(w); r(undefined); } }, 50); });
 
 const audio = openAudio(input, { realtime: true });
 const chunker = new Chunker((c) => engine.sendAudio(c));

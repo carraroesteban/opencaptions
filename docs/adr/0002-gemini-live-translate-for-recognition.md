@@ -5,7 +5,7 @@
 
 ## Context
 
-We need streaming speech recognition with language detection, low latency and good handling of technical vocabulary and English–Spanish code-switching. The Vibeathon recommends Gemini audio models. Gemini 3.5 Live Translate returns, in one streaming session, the input transcription (with detected language), a translation transcript and translated speech.
+We need streaming speech recognition with language detection, low latency and good handling of specialist vocabulary and English–Spanish code-switching. Gemini 3.5 Live Translate returns, in one streaming session, the input transcription (with detected language), a translation transcript and translated speech.
 
 ## Options considered
 

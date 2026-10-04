@@ -1,0 +1,33 @@
+<!doctype html><html><head><meta charset="utf-8"><title>Deployment: server at the venue</title><link rel="stylesheet" href="diagram.css">
+<style>
+  .grid { grid-template-columns: auto 120px 270px; grid-template-rows: auto auto auto; row-gap: 34px; }
+  #venue { grid-column: 1; grid-row: 1 / 4; display: grid; grid-template-columns: 200px 70px 210px 70px 250px; grid-template-rows: auto auto; row-gap: 22px; align-items: center; }
+  #d1 { grid-column: 1; grid-row: 1; } #d2 { grid-column: 1; grid-row: 2; } #a1 { grid-column: 3; grid-row: 1; } #a2 { grid-column: 3; grid-row: 2; }
+  #srv { grid-column: 5; grid-row: 1 / 3; }
+  #gem { grid-column: 3; grid-row: 1; } #cf { grid-column: 3; grid-row: 2; } #ph { grid-column: 3; grid-row: 3; }
+</style></head><body>
+<div class="d">
+  <p class="eyebrow">Option A · the server runs at the venue</p>
+  <div class="grid">
+    <div class="g" id="venue"><span class="gl">Venue network</span>
+      <div class="n small" id="d1" data-icon="desk"><b>Sound desk</b><span>room 1</span></div>
+      <div class="n small" id="d2" data-icon="desk"><b>Sound desk</b><span>room 2</span></div>
+      <div class="n small" id="a1" data-icon="laptop"><b>Venue PC</b><span>agent</span></div>
+      <div class="n small" id="a2" data-icon="laptop"><b>Venue PC</b><span>agent</span></div>
+      <div class="n hero" id="srv"><b>OpenCaptions</b><span>on a laptop or mini PC</span></div>
+    </div>
+    <div class="n ai" id="gem" data-icon="cloud"><b>Gemini</b><span>speech + translation</span></div>
+    <div class="n" id="cf" data-icon="tunnel"><b>Cloudflare Tunnel</b><span>outbound only, HTTPS</span></div>
+    <div class="n" id="ph" data-screen><b>Phones, remote admin</b><span>the public URL</span></div>
+  </div>
+  <div class="note"><span><b>No inbound ports</b> at the venue: everything leaves on 443.</span><span>Works with the <b>offline backup</b>: phones on the venue Wi-Fi keep their captions.</span></div>
+</div>
+<script src="diagram.js"></script>
+<script>draw([
+  { from: 'd1', to: 'a1', label: 'line out' }, { from: 'd2', to: 'a2', label: 'line out' },
+  { from: 'a1', to: 'srv', toff: -26, label: 'LAN' }, { from: 'a2', to: 'srv', toff: 26 },
+  { from: 'srv', to: 'gem', fs: 'r', ts: 'l', off: -40, toff: 0, label: 'HTTPS 443' },
+  { from: 'srv', to: 'cf', fs: 'r', ts: 'l', off: 30, toff: 0, label: 'tunnel' },
+  { from: 'cf', to: 'ph', fs: 'b', ts: 't' },
+]);</script>
+</body></html>

@@ -2,6 +2,8 @@
 
 OpenCaptions is open-source software for live captions and translation at conferences with many rooms running at the same time. These docs cover how to install it, run it at an event, operate it safely and change it.
 
+<p align="center"><img src="../public/art/hero.webp" width="640" alt="An audience following live captions on their phones while a speaker presents on stage" /></p>
+
 The docs follow the [Diátaxis](https://diataxis.fr/) framework. Each page has one job: teach, solve a task, describe facts or explain a decision. If you're new, start at the top of the table.
 
 ## Start here

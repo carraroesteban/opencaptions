@@ -2,6 +2,8 @@
 
 This runbook takes a production team from the day before the event to the end of each day. The goal is **no dedicated operator per room**: one person watches the dashboard and acts only when an alert appears.
 
+<p align="center"><img src="../../public/art/stage.webp" width="640" alt="A speaker on stage with captions on the screen behind them" /></p>
+
 A shorter Spanish version for venue crews is in [event-day.es.md](event-day.es.md). For specific symptoms, see [Troubleshooting](troubleshooting.md).
 
 ## Roles
@@ -22,7 +24,7 @@ A shorter Spanish version for venue crews is in [event-day.es.md](event-day.es.m
 - [ ] Set `ADMIN_TOKEN` and `INGEST_TOKEN` to long random values (`openssl rand -base64 24`). Store them in the team's password manager.
 - [ ] Walk through the [hardening checklist](../security-guide.md#hardening-checklist).
 - [ ] Enable billing on the Gemini project and set a budget alert.
-- [ ] Check the concurrent Live session limit for your tier. Run a full-scale test with `npm run multi -- --rooms <N> --minutes 3`.
+- [ ] Check the concurrent Live session limit for your tier. Run a full-scale test with `npm run multi -- --rooms <N> --minutes 3 --playlist <url>`.
 - [ ] If the limit is below your room count, shard rooms across projects ([Deployment](../deployment.md#capacity-and-sharding)).
 
 ### Rooms and glossary

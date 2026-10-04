@@ -33,6 +33,7 @@ if (!input) {
 }
 
 
+let lastLat = 0; // when latency was last printed
 function connect() {
   const url = `${server}/ws/ingest?stage=${encodeURIComponent(stage)}&kind=cli&label=${encodeURIComponent(args.label || String(args.youtube || input).slice(0, 60))}`;
   const ws = new WebSocket(url, { headers: token ? { authorization: `Bearer ${token}` } : {} });
@@ -52,8 +53,8 @@ function connect() {
       const line = Object.entries(m.preview || {}).map(([k, v]) => `[${k}] ${v.slice(-70)}`).join('  ');
       if (line && line !== lastPrint) { console.log(line); lastPrint = line; }
     }
-    if (m.type === 'status' && m.latency && Date.now() - (connect.lastLat || 0) > 5000) {
-      connect.lastLat = Date.now();
+    if (m.type === 'status' && m.latency && Date.now() - (lastLat) > 5000) {
+      lastLat = Date.now();
       const tr = Object.entries(m.latency.tr || {}).map(([k, v]) => `${k} ${(v / 1000).toFixed(1)}s`).join(' · ');
       if (m.latency.asr != null) console.log(`\x1b[35m⏱  latency (speech → caption): orig ${(m.latency.asr / 1000).toFixed(1)}s${tr ? ' · ' + tr : ''}\x1b[0m`);
     }

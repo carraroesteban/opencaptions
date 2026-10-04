@@ -12,7 +12,7 @@ const llm = await import('../src/local/llm.js');
 const { translateText } = await import('../src/translate.js');
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-const SCRIPT = 'welcome everyone to nerdearla today we talk about observability in kubernetes and why your oncall rotation should never depend on luck at three in the morning the pager went off and our database was running out of connections'.split(' ');
+const SCRIPT = 'welcome everyone to horizon summit today we talk about care at a distance and why the best technology is the one patients barely notice a few years ago a nurse in a small town had to drive two hours to show a test result'.split(' ');
 
 // Speech chunk k carries the value 1000 + 10k in every sample (loud enough to count as speech); silence is 0.
 const speech = (k) => { const b = Buffer.alloc(3200); for (let i = 0; i < 1600; i++) b.writeInt16LE(1000 + 10 * k, i * 2); return b; };
@@ -129,19 +129,19 @@ test('local: continuation and overlap helpers', () => {
   assert.equal(continuation(w('hello world how are you'), w('hello world')), 2);
   assert.equal(continuation(w('Hello, world! How are you'), w('hello world')), 2, 'punctuation and case are ignored');
   assert.equal(continuation(w('so hello world how are'), w('hello world')), 3, 'Whisper added a word in front');
-  assert.equal(overlap(w('we talk about observability'), w('observability in kubernetes')), 1);
+  assert.equal(overlap(w('we talk about telehealth'), w('telehealth in clinics')), 1);
   assert.equal(overlap(w('this is it'), w('it is')), 0, 'a single short word is not enough');
-  assert.equal(overlap(w('the pager went off'), w('went off and our database')), 2);
+  assert.equal(overlap(w('the nurse drove off'), w('drove off to the clinic')), 2);
 });
 
 test('local: transcript cleaning drops Whisper hallucinations, not real words', () => {
   assert.equal(asr.cleanTranscript('Hola a todos. Subtítulos realizados por la comunidad de Amara.org'), 'Hola a todos.');
   assert.equal(asr.cleanTranscript('Thanks for watching!'), '');
   assert.equal(asr.cleanTranscript('¿Preguntas? Gracias por venir.'), '¿Preguntas? Gracias por venir.');
-  assert.equal(asr.cleanTranscript('[Música] Bienvenidos (risas) a Nerdearla ♪'), 'Bienvenidos a Nerdearla');
+  assert.equal(asr.cleanTranscript('[Música] Bienvenidos (risas) a Horizon Summit ♪'), 'Bienvenidos a Horizon Summit');
   assert.equal(asr.cleanTranscript('no no no no no no vamos'), 'no no no vamos');
   // Real speech that only contains a stock word or phrase is kept.
-  for (const real of ['So the consumer will subscribe to the orders topic and process each event', 'nos vemos en el próximo slide', 'www.nerdearla.com es la web', 'Nos vemos en el próximo Nerdearla.']) {
+  for (const real of ['So the consumer will subscribe to the orders topic and process each event', 'nos vemos en el próximo slide', 'www.horizonsummit.org es la web', 'Nos vemos en el próximo Horizon Summit.']) {
     assert.equal(asr.cleanTranscript(real), real);
   }
   assert.equal(asr.cleanTranscript('¡Suscríbete al canal! Gracias por ver el video.'), '');
@@ -168,11 +168,11 @@ async function fakeServer(handler) {
 test('local: speech client speaks whisper.cpp\'s /inference dialect', async () => {
   const srv = await fakeServer(() => ({ body: { task: 'transcribe', language: 'spanish', duration: 1, text: ' Hola a todos. Gracias por ver el video.', segments: [{ id: 0, text: 'x', no_speech_prob: 0.05 }] } }));
   config.localAsrUrl = `${srv.url}/inference`;
-  const r = await asr.transcribe(Buffer.alloc(32000), { language: null, prompt: 'Nerdearla', final: false });
+  const r = await asr.transcribe(Buffer.alloc(32000), { language: null, prompt: 'Horizon Summit', final: false });
   srv.close();
   const form = srv.reqs[0].body.toString('latin1');
   assert.equal(srv.reqs[0].url, '/inference');
-  for (const [k, v] of [['language', 'auto'], ['response_format', 'verbose_json'], ['temperature_inc', '0'], ['prompt', 'Nerdearla']]) {
+  for (const [k, v] of [['language', 'auto'], ['response_format', 'verbose_json'], ['temperature_inc', '0'], ['prompt', 'Horizon Summit']]) {
     assert.match(form, new RegExp(`name="${k}"\\r\\n\\r\\n${v}\\r\\n`), k);
   }
   assert.match(form, /RIFF.{4}WAVE/s, 'audio is sent as WAV');
@@ -233,11 +233,11 @@ test('local: caption translation with a local model is cleaned of labels and not
   const prev = config.engine;
   config.engine = 'local';
   try {
-    const out = await translateText({ text: 'Hi everyone, welcome.', from: 'en', to: 'es', vocabulary: ['Nerdearla'] });
+    const out = await translateText({ text: 'Hi everyone, welcome.', from: 'en', to: 'es', vocabulary: ['Horizon Summit'] });
     assert.equal(out, 'Hola a todos, bienvenidos.');
     const sent = JSON.parse(srv.reqs[0].body);
     assert.match(sent.messages[0].content, /Spanish/);
-    assert.match(sent.messages[0].content, /Nerdearla/);
+    assert.match(sent.messages[0].content, /Horizon Summit/);
   } finally {
     config.engine = prev;
     srv.close();
@@ -257,7 +257,7 @@ test('local: TranslateGemma gets its own prompt, as a single user message, when 
   const prev = config.engine;
   config.engine = 'local';
   try {
-    assert.equal(await translateText({ text: 'Hola a todos.', from: 'es', to: 'en', vocabulary: ['Nerdearla'], context: ['Bienvenidos.'] }), 'Hello everyone.');
+    assert.equal(await translateText({ text: 'Hola a todos.', from: 'es', to: 'en', vocabulary: ['Horizon Summit'], context: ['Bienvenidos.'] }), 'Hello everyone.');
     const sent = JSON.parse(srv.reqs[0].body);
     assert.equal(sent.model, 'translategemma');
     assert.deepEqual(sent.messages, [{ role: 'user', content: translateGemmaPrompt({ text: 'Hola a todos.', from: 'es', to: 'en' }) }]);

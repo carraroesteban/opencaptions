@@ -2,6 +2,8 @@
 
 This page lists every connection OpenCaptions makes, then gives a plan for venues where part of the network is blocked.
 
+<p align="center"><img src="../public/art/offline.webp" width="640" alt="A technician relaxed next to a laptop that keeps showing captions while the Wi-Fi is down" /></p>
+
 ## Connections
 
 All traffic uses TLS on port 443 once HTTPS is configured. Nothing at the venue needs to accept inbound connections.

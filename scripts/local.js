@@ -15,6 +15,7 @@
 //   npm run local -- --mt-model translategemma  a separate model just for caption translation (+3.3 GB)
 //   npm run local -- --build-whisper      build whisper.cpp from source first (GPU on Apple Silicon; git + cmake)
 //   npm run local -- --no-llm             transcription only (no translations or summaries)
+//   npm run local -- --fallback           Gemini as usual, this computer as the backup when the internet goes down
 // Details: docs/local.md
 import { spawn, spawnSync } from 'node:child_process';
 import fs from 'node:fs';
@@ -88,6 +89,7 @@ function start(name, cmd, args, extraEnv = {}) {
   const file = path.join(LOGS, `${name}.log`);
   const out = fs.openSync(file, 'a');
   fs.writeSync(out, `\n--- ${new Date().toISOString()} ${cmd} ${args.join(' ')}\n`);
+  /** @type {import('node:child_process').ChildProcess & { ready?: boolean }} set ready once it answers */
   const p = spawn(cmd, args, { cwd: ROOT, env: { ...env, ...extraEnv }, stdio: ['ignore', out, out], windowsHide: true });
   // Failures while starting are reported by the caller; this is for a server that stops later.
   p.on('exit', (code) => { if (code && !p.killed && p.ready) warn(`${name} stopped (code ${code}) — see ${path.relative(ROOT, file)}:\n${logTail(file)}`); });
@@ -158,7 +160,7 @@ async function prepareSpeech() {
   const defaultUrl = `http://127.0.0.1:${DEFAULT_PORT}/inference`;
   if (await reachable(defaultUrl)) {
     if (asrPref !== 'auto') die(`port ${DEFAULT_PORT} is already in use (a speech server from an earlier run?). Stop that program, or run npm run local without --asr to use it.`);
-    const h = await fetch(`http://127.0.0.1:${DEFAULT_PORT}/health`).then((r) => r.json()).catch(() => ({}));
+    const h = /** @type {any} */ (await fetch(`http://127.0.0.1:${DEFAULT_PORT}/health`).then((r) => r.json()).catch(() => ({})));
     ok(`speech server already running on port ${DEFAULT_PORT}${h.model ? ` (${h.model})` : ''}`);
     return { url: defaultUrl, api: 'whispercpp', label: h.model || 'whisper' };
   }
@@ -279,7 +281,7 @@ async function prepareText() {
     if (!(await waitFor(() => reachable(origin), 30_000, 'starting Ollama', s.process))) die(`Ollama didn't start — see ${path.relative(ROOT, s.log)}:\n${logTail(s.log)}`);
     s.process.ready = true;
   }
-  const tags = await fetch(`${origin}/api/tags`).then((r) => r.json()).catch(() => ({ models: [] }));
+  const tags = /** @type {any} */ (await fetch(`${origin}/api/tags`).then((r) => r.json()).catch(() => ({ models: [] })));
   const names = (tags.models || []).map((m) => m.name);
   for (const m of new Set([model, mtModel].filter(Boolean))) {
     if (!names.some((n) => n === m || n === `${m}:latest`)) await pull(origin, m);
@@ -315,11 +317,16 @@ async function pull(origin, model) {
 }
 
 // ---------- go ----------
-console.log(`\n${c(1, 'OpenCaptions · local mode')} — speech recognition and translation on this computer\n`);
+// --fallback: Gemini stays the main engine; the local servers wait on standby for an internet outage.
+const fallback = flag('fallback') && !flag('check');
+if (fallback && !env.GEMINI_API_KEY && !/^(1|true)$/i.test(env.GOOGLE_GENAI_USE_VERTEXAI || '')) die('--fallback keeps Gemini as the main engine: set GEMINI_API_KEY in .env first (npm run setup)');
+console.log(fallback
+  ? `\n${c(1, 'OpenCaptions · Gemini + offline backup')} — if the internet goes down, captions keep running on this computer\n`
+  : `\n${c(1, 'OpenCaptions · local mode')} — speech recognition and translation on this computer\n`);
 const speech = await prepareSpeech();
 const text = await prepareText();
 const childEnv = {
-  ENGINE: 'local',
+  ...(fallback ? { ENGINE: 'gemini', FALLBACK: 'local' } : { ENGINE: 'local' }),
   LOCAL_ASR_URL: speech.url,
   LOCAL_ASR_API: speech.api || '',
   LOCAL_ASR_LABEL: speech.label,
@@ -329,8 +336,8 @@ const childEnv = {
 console.log('');
 const script = flag('check') ? path.join(ROOT, 'scripts', 'check-local.js') : path.join(ROOT, 'src', 'server.js');
 const own = ['--asr', '--asr-model', '--llm-model', '--mt-model']; // flags with a value
-const extra = flag('check') ? argv.filter((a, i) => ![...own, '--check', '--build-whisper', '--no-llm'].includes(a) && !own.includes(argv[i - 1])) : [];
-info(flag('check') ? 'running the end-to-end check…' : 'starting OpenCaptions — nothing leaves this computer');
+const extra = flag('check') ? argv.filter((a, i) => ![...own, '--check', '--build-whisper', '--no-llm', '--fallback'].includes(a) && !own.includes(argv[i - 1])) : [];
+info(flag('check') ? 'running the end-to-end check…' : fallback ? 'starting OpenCaptions — Gemini first, this computer as the backup' : 'starting OpenCaptions — nothing leaves this computer');
 const app = spawn(process.execPath, [script, ...extra], { cwd: ROOT, env: { ...env, ...childEnv }, stdio: 'inherit' });
 children.push(app); // stopping the launcher (Ctrl+C, kill <pid>) stops OpenCaptions too
 app.on('exit', (code) => { cleanup(); process.exit(code ?? 0); });

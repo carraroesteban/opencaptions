@@ -29,13 +29,24 @@ const DEFAULT_TARGETS = event.defaultTargets || ['es', 'en'];
 const vertex = /^(1|true)$/i.test(env.GOOGLE_GENAI_USE_VERTEXAI || '');
 // gemini (cloud) | local (Whisper + a local text model, see docs/local.md) | mock (simulated, no AI at all)
 const engine = flag('mock') ? 'mock' : flag('local') ? 'local' : (env.ENGINE || (env.GEMINI_API_KEY || vertex ? 'gemini' : 'mock'));
-const local = engine === 'local';
+// Settings whose default depends on the engine. Recomputed when the offline backup switches engines.
+const engineDefaults = (eng) => ({
+  // Give up on (and retry) a translation request after this long.
+  mtTimeoutMs: Number(env.MT_TIMEOUT_MS ?? event.mtTimeoutMs ?? (eng === 'local' ? 30000 : 5000)),
+  // Show the model's low-latency interim transcription as provisional text on the original channel.
+  useInterim: (env.USE_INTERIM ?? String(event.useInterim ?? (eng === 'local' ? '1' : '0'))) === '1', // local: on (Whisper's provisional words)
+});
 
 export const config = {
   port: Number(env.PORT || 8080),
   host: env.HOST || '0.0.0.0',
   publicUrl: (env.PUBLIC_URL || event.publicUrl || '').replace(/\/$/, ''),
   engine,
+  // The engine chosen at start. `engine` itself can change at runtime (offline backup, see src/failover.js).
+  primaryEngine: engine,
+  // Offline backup: 'local' = when the internet goes down, switch rooms from Gemini to the local engine
+  // (Whisper + Ollama on this machine) and back when it returns. `npm run local -- --fallback` sets it up.
+  fallback: (env.FALLBACK || event.fallback || '').toLowerCase(),
   geminiApiKey: env.GEMINI_API_KEY || '',
   // Enterprise: use Vertex AI in your own Google Cloud project instead of an API key.
   vertex,
@@ -60,14 +71,13 @@ export const config = {
   // Text-translation request budget per minute across the whole server (0 = unlimited; set it to your
   // AI Studio limit on the free tier, e.g. 15). Provisional translations use at most 60% of it.
   mtRpm: Number(env.MT_RPM ?? event.mtRpm ?? 0),
+  // Stream each sentence's translation into the caption as the model writes it (Gemini). 0 = wait for the whole answer.
+  mtStream: !/^(0|false|no|off)$/i.test(env.MT_STREAM ?? String(event.mtStream ?? '1')),
   // How often the in-progress sentence is re-translated as a provisional caption (ms).
   mtPartialMs: Number(env.MT_PARTIAL_MS ?? event.mtPartialMs ?? 1500),
-  // Give up on (and retry) a translation request after this long.
-  mtTimeoutMs: Number(env.MT_TIMEOUT_MS ?? event.mtTimeoutMs ?? (local ? 30000 : 5000)),
   textModel: env.TEXT_MODEL || event.textModel || 'gemini-3.5-flash-lite',
+  ...engineDefaults(engine),
   // Optional: shorten the model's end-of-speech wait (ms) to cut caption latency, e.g. 300.
-  // Show the model's low-latency interim transcription as provisional text on the original channel.
-  useInterim: (env.USE_INTERIM ?? String(event.useInterim ?? (local ? '1' : '0'))) === '1', // local: on (Whisper's provisional words)
   vadSilenceMs: Number(env.VAD_SILENCE_MS ?? event.vadSilenceMs ?? 0),
   transcriptionMode: env.TRANSCRIPTION_MODE || event.transcriptionMode || '', // '' | 'VERBATIM' | 'SMART'
   // ---- Local engine (ENGINE=local): nothing leaves this machine. See docs/local.md. ----
@@ -106,6 +116,12 @@ export const config = {
   glossaryPath: path.resolve(ROOT, env.GLOSSARY || event.glossary || 'config/glossary.json'),
   // Stages can also be defined with env STAGES="main:Principal,sala2:Sala 2" (handy for sharding across hosts).
 };
+
+/** Switch the engine at runtime (offline backup). Rooms must be reconfigured to pick it up. */
+export function setEngine(eng) {
+  config.engine = eng;
+  Object.assign(config, engineDefaults(eng));
+}
 
 export function normalizeStage(s) {
   return {

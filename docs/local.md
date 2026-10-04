@@ -2,6 +2,8 @@
 
 In local mode, speech recognition and translation run on your own computer, or on a machine on your network. There's no API key and no cost per hour, and the room's audio never leaves the building. It works without internet once the models are downloaded.
 
+<p align="center"><img src="../public/art/local.webp" width="640" alt="A laptop inside a small building captioning the room, with the cloud drifting away" /></p>
+
 Everything else stays the same: the audience page, the projector, the overlay, transcripts, the agenda and the dashboard.
 
 | | Gemini (default) | Local mode |
@@ -54,6 +56,42 @@ The dashboard shows a 🔒 chip with the models in use. `Ctrl+C` stops the serve
 
 `npm start` still uses Gemini when a key is configured. To make local mode the default for `npm start` too, set `ENGINE=local` in `.env` (the setup wizard asks). Then keep the two servers running yourself, for example as services: Ollama, and a speech server such as `node scripts/local-asr-server.js --model local/models/sherpa-onnx-whisper-small`.
 
+## Offline backup
+
+Use Gemini for its quality and keep this computer ready in case the venue's internet goes down:
+
+```bash
+npm run local -- --fallback
+```
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="images/diagrams/offline-backup-dark.png" />
+  <img src="images/diagrams/offline-backup-light.png" alt="Offline backup: OpenCaptions uses Gemini while the internet is up and switches every room to Whisper and Ollama on this computer when it goes down; phones on the venue Wi-Fi keep their captions." />
+</picture>
+
+This prepares the speech server and the text model exactly as `npm run local` does, then starts OpenCaptions with Gemini as the main engine (it needs `GEMINI_API_KEY` in `.env`). The server checks every 5 seconds whether Google's API is reachable:
+
+- **Internet goes down:** after about 15 seconds without a connection, every room switches to the local engine. Captions pause for a few seconds while the rooms restart, then continue. The dashboard shows a *No internet* banner.
+- **Internet comes back:** after a minute of stable connection, the rooms switch back to Gemini on their own.
+- **Manual control:** the AI selector in the dashboard header switches between *Automatic*, *Always Gemini* and *Always this computer*. `POST /api/engine` with `{"mode": "auto" | "cloud" | "local"}` does the same.
+
+To set it up without the launcher, run Ollama and a speech server yourself (see [Use your own servers](#use-your-own-servers)) and set `FALLBACK=local` in `.env`, or `"fallback": "local"` in `config/event.json`.
+
+### What keeps working without internet
+
+The backup only covers the AI. Whether the audience still sees captions depends on how they reach the server:
+
+| | Without internet |
+|---|---|
+| Captions and translations | ✅ From this computer, a couple of seconds slower than with Gemini. |
+| Audience phones on the venue Wi-Fi, projector, overlay, dashboard | ✅ If they reach this computer through the local network (its IP address, or a local name). Fonts fall back to system fonts. |
+| Audience phones on mobile data, or a public URL through a tunnel or the cloud | ❌ They can't reach a laptop inside the venue. For an event that must survive outages, print the QR codes with the local address (`PUBLIC_URL=http://192.168.1.20:8080`) and ask people to join the Wi-Fi. |
+| Room audio | ✅ If it reaches the server over the local network (agent, browser, or RTMP/SRT from OBS on the same network). |
+| Translated voice 🎧 | ❌ It needs Gemini. The headphone option disappears until the connection returns. |
+| *What did I miss?* and questions | ✅ Answered by the local model, a little slower. |
+
+If OpenCaptions itself runs in the cloud (Cloud Run, a VPS), there's nothing to switch: when the venue loses internet, the audio can't reach the server. Run it on a computer inside the venue to use the backup.
+
 ## What `npm run local` does
 
 1. **Speech server.** It uses the first of these that's available:
@@ -76,6 +114,7 @@ Models go in `local/models` and the servers' logs in `local/logs`. Both folders 
 | `--llm-model <name>` | Text model for translation, summaries and questions. Default `gemma3:4b`. |
 | `--mt-model <name>` | A separate model just for caption translation, for example `translategemma`. |
 | `--no-llm` | Transcription only: captions in the spoken language, without translations or AI summaries. |
+| `--fallback` | Keep Gemini as the main engine and use this computer only when the internet goes down. See [Offline backup](#offline-backup). |
 
 ## Choosing models
 
@@ -113,6 +152,13 @@ With the TranslateGemma prompt, the glossary's vocabulary isn't sent to the tran
 
 Whisper transcribes recordings, not live streams. OpenCaptions makes it stream:
 
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="images/diagrams/local-streaming-dark.png" />
+  <img src="images/diagrams/local-streaming-light.png" alt="Local mode: a speech detector splits utterances, Whisper re-reads the utterance about once a second, words that two passes agree on are committed and translated, the rest is shown as provisional." />
+</picture>
+
+<details><summary>Text version of this diagram</summary>
+
 ```mermaid
 flowchart LR
   A[Room audio] --> V["Speech detector<br/>splits utterances at pauses"]
@@ -126,6 +172,8 @@ flowchart LR
   P --> S
   T --> S
 ```
+
+</details>
 
 - **Utterances.** A speech detector cuts the audio at pauses of 0.7 s (`LOCAL_END_SILENCE_MS`). A speaker who never pauses is cut after 12 s (`LOCAL_MAX_UTTERANCE_SEC`), at the quietest moment. The words on both sides of the cut are matched, so none are lost or repeated.
 - **Words appear while the speaker talks.** About once a second (`LOCAL_STEP_MS`), the utterance so far is transcribed again. Words that two passes in a row agree on are committed; the rest are shown as provisional. When the utterance ends, one final pass completes it.
@@ -170,23 +218,22 @@ Keep these servers on a trusted network: they have no authentication of their ow
 
 ## Measured results
 
-`npm run local -- --check` with the bundled samples, 30 seconds of a talk streamed in real time, bundled speech server on the CPU. *Behind the speaker* is how far the committed words trail the audio, averaged over the run.
+`npm run local -- --check` streams 30 seconds of a bundled sample in real time through the speech server, then translates a few sentences. *Behind the speaker* is how far the committed words trail the audio, averaged over the run.
 
-| Machine | Whisper | Talk | Word error rate | First words (provisional) | Committed words behind the speaker | Time per pass |
-|---|---|---|---|---|---|---|
-| MacBook Pro, Apple Silicon (4 cores, in a Linux VM) | small | English | 9.2 % | 1.5 s | about 4 s | 1.7 s |
-| MacBook Pro, Apple Silicon (4 cores, in a Linux VM) | small | Spanish | 17.6 % | 1.7 s | about 5 s | 1.2 s |
-| MacBook Pro, Apple Silicon (4 cores, in a Linux VM) | base | English | 23.7 % | 2.2 s | about 2 s | 0.4 s |
-| MacBook Pro, Apple Silicon (4 cores, in a Linux VM) | base | Spanish | 48.5 % | 2.2 s | too many errors to measure | 0.8 s |
-| Cloud VM, 2 x86 vCPUs | base | English | 11–18 % | 2.4 s | about 4.5 s | 1.9 s |
+The bundled samples ([`samples/`](../samples/)) are fictional talks read by a synthetic voice (rebuild them with `scripts/make-samples.sh`). Clean, evenly paced speech is the best case for Whisper, so use them to check delay and speed, and expect more mistakes on real speakers.
+
+| Machine | Whisper | Talk | Word error rate | First words (provisional) | Committed words behind the speaker | Time per pass | Translation per sentence |
+|---|---|---|---|---|---|---|---|
+| MacBook Pro, Apple M3 Pro (11 cores), bundled server on the CPU | small | English sample | 1.0 % | 1.4 s | about 3.9 s | 1.0 s | 0.6 s (gemma3:4b) |
+| MacBook Pro, Apple M3 Pro (11 cores), bundled server on the CPU | small | Spanish sample | 0.0 % | 1.5 s | about 3.4 s | 1.3 s | 0.7 s (gemma3:4b) |
+
+On real recorded talks (room microphones, accents, applause), `small` made about 9 % word errors in English and 18 % in Spanish on a 4-core Linux VM, about 4–5 s behind the speaker. `base` was faster but made more than twice as many mistakes, too many for Spanish.
 
 What this tells you:
 
-- On a laptop CPU, `small` gives usable captions in English and Spanish, about 4–5 s behind the speaker. `base` is faster but makes too many mistakes in Spanish.
-- A pass takes most of the delay: words are committed after two passes agree. A GPU or the Neural Engine makes each pass several times faster. We haven't measured those backends yet; run the check on your machine and compare.
-- Native macOS runs with more cores than the VM used here, so expect somewhat better numbers than the table.
-
-Translation speed depends on the text model and the machine, and we haven't measured it on a Mac yet: a 4B model on Apple Silicon should take around a second per sentence. The check prints your number.
+- On a laptop CPU, `small` gives usable captions in English and Spanish, about 4 s behind the speaker.
+- A pass takes most of the delay: words are committed after two passes agree. A GPU or the Neural Engine makes each pass several times faster. Run the check on your machine and compare.
+- For accuracy you can trust, run the check on a recording of your own event: `npm run local -- --check --input your-talk.wav` (it reports a word error rate when a `your-talk.txt` script sits next to it).
 
 ## Limits
 

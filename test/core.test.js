@@ -6,7 +6,7 @@ import { ffmpegArgs } from '../src/pull.js';
 import { rms, Chunker } from '../src/audio.js';
 
 const fakeGlossary = {
-  apply: (t) => t.replace(/cubernetes/gi, 'Kubernetes'),
+  apply: (t) => t.replace(/tele health/gi, 'telehealth'),
 };
 
 test('caption track finalizes on sentence end and applies glossary', () => {
@@ -14,10 +14,10 @@ test('caption track finalizes on sentence end and applies glossary', () => {
   const tr = new CaptionTrack({ channel: 'orig', glossary: fakeGlossary, clock: () => now, idleMs: 10_000 });
   const out = [];
   tr.on('caption', (s) => out.push(s));
-  for (const w of ['Today', ' we', ' talk', ' about', ' cubernetes', ' in', ' production.', ' Next']) { now += 300; tr.push(w); }
+  for (const w of ['Today', ' we', ' talk', ' about', ' tele', ' health', ' in', ' clinics.', ' Next']) { now += 300; tr.push(w); }
   const finals = out.filter((s) => s.final);
   assert.equal(finals.length, 1);
-  assert.equal(finals[0].text, 'Today we talk about Kubernetes in production.');
+  assert.equal(finals[0].text, 'Today we talk about telehealth in clinics.');
   assert.equal(tr.cur.raw, 'Next');
   tr.flush();
 });

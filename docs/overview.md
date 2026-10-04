@@ -2,6 +2,8 @@
 
 OpenCaptions is open-source software (MIT license) that captions and translates talks live, for conferences with many rooms at the same time. This page is the one-page summary for organizers, sponsors, judges and new contributors. For hands-on steps, start with [Getting started](getting-started.md).
 
+<p align="center"><img src="../public/art/audience.webp" width="640" alt="Three people in the audience reading captions in different languages on their phones" /></p>
+
 ## The problem
 
 At conferences, universities, public meetings and festivals, sessions often run in parallel across several rooms and in more than one language. People who don't speak the talk's language, who are deaf or hard of hearing, or who watch the stream remotely miss content.
@@ -22,6 +24,13 @@ It runs unattended. Each room pauses itself when there's silence (nothing is bil
 
 ## How it works
 
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="images/diagrams/how-it-works-dark.png" />
+  <img src="images/diagrams/how-it-works-light.png" alt="How it works: room audio (sound desk, browser tab, OBS or vMix) goes to the OpenCaptions server, which sends it to a speech model and each sentence to a translation model, then delivers captions to phones, the presenter screen, the livestream and the dashboard." />
+</picture>
+
+<details><summary>Text version of this diagram</summary>
+
 ```mermaid
 flowchart LR
   D[Sound desk] --> A[Room PC<br/>agent or browser]
@@ -33,6 +42,8 @@ flowchart LR
   S --> O[Stream overlay]
   S --> M[Production dashboard]
 ```
+
+</details>
 
 1. Each room's audio reaches the server in one of three ways: the headless agent on the room PC, a browser page, or the stream vMix or OBS already produces.
 2. **Gemini 3.5 Live Translate** transcribes the speech in real time and detects the language.

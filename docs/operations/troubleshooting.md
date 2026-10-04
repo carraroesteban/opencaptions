@@ -2,6 +2,8 @@
 
 Find the symptom, then follow the steps in order. Server logs are printed to the terminal, `docker compose logs -f` or `journalctl -u opencaptions -f`. The dashboard's event log shows the same messages per room.
 
+<p align="center"><img src="../../public/art/waiting.webp" width="640" alt="A calm waiting screen with the OpenCaptions logo" /></p>
+
 ## Server won't start
 
 | Message | Cause | Fix |

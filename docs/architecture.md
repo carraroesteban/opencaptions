@@ -14,6 +14,13 @@ This page describes how OpenCaptions is built, how data moves through it, how it
 
 ## System context
 
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="images/diagrams/architecture-dark.png" />
+  <img src="images/diagrams/architecture-light.png" alt="Components: room agents and streams send audio to one OpenCaptions process (HTTP API, WebSocket hub, one Stage per room, data folder); each Stage talks to Gemini Live Translate and Flash-Lite (or local models) and sends captions to viewers and status to the dashboard." />
+</picture>
+
+<details><summary>Text version of this diagram</summary>
+
 ```mermaid
 flowchart LR
   subgraph Rooms
@@ -35,6 +42,8 @@ flowchart LR
   WS -- /ws/admin status --> A[Production dashboard]
   ST --> FS[(data/: transcripts, rooms, secrets)]
 ```
+
+</details>
 
 ## Components
 
@@ -59,6 +68,13 @@ flowchart LR
 | `scripts/` | Headless agent, feed, load test, multi-room latency test, Gemini check, local mode launcher (`local.js`), bundled speech server (`local-asr-server.js`) and local check |
 
 ## Data flow for one sentence
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="images/diagrams/caption-flow-dark.png" />
+  <img src="images/diagrams/caption-flow-light.png" alt="One sentence end to end: the agent streams 100 ms audio chunks to the Stage, Gemini Live returns the words, the Stage sends provisional captions, asks Flash-Lite for provisional and then final translations, and viewers get the original and the Spanish caption." />
+</picture>
+
+<details><summary>Text version of this diagram</summary>
 
 ```mermaid
 sequenceDiagram
@@ -85,6 +101,8 @@ sequenceDiagram
   Stage-->>View: caption es (final)
 ```
 
+</details>
+
 Key points:
 
 - **One Live session per room** (in the default `text` mode) produces the original transcription with the detected language.
@@ -93,6 +111,13 @@ Key points:
 - **Glossary** replacements are applied to every caption right before it's emitted.
 
 ## Room lifecycle
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="images/diagrams/lifecycle-dark.png" />
+  <img src="images/diagrams/lifecycle-light.png" alt="Room lifecycle: Idle, then Live when speech is detected; Paused after 30 s of silence; back to Live on speech; Idle after 5 minutes without speech. Nothing is billed while paused or idle." />
+</picture>
+
+<details><summary>Text version of this diagram</summary>
 
 ```mermaid
 stateDiagram-v2
@@ -103,6 +128,8 @@ stateDiagram-v2
   Paused --> Idle: 5 min without speech (sessions closed)
   Idle --> Live: speech again → a new talk transcript starts
 ```
+
+</details>
 
 ## Failure handling
 

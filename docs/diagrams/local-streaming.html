@@ -1,0 +1,29 @@
+<!doctype html><html><head><meta charset="utf-8"><title>Streaming Whisper</title><link rel="stylesheet" href="diagram.css">
+<style>
+  .grid { grid-template-columns: 200px 80px 240px 80px 250px 80px 240px; grid-template-rows: auto 70px auto; }
+  #audio { grid-column: 1; grid-row: 1; } #vad { grid-column: 3; grid-row: 1; } #whisper { grid-column: 5; grid-row: 1; }
+  #same { grid-column: 5; grid-row: 3; } #commit { grid-column: 7; grid-row: 3; } #prov { grid-column: 3; grid-row: 3; }
+  #mt { grid-column: 7; grid-row: 1; }
+  #same { justify-self: center; min-width: 0; }
+</style></head><body>
+<div class="d">
+  <p class="eyebrow">Local mode · how Whisper streams</p>
+  <div class="grid">
+    <div class="n" id="audio" data-icon="mic"><b>Room audio</b><span>16 kHz</span></div>
+    <div class="n" id="vad" data-icon="wave"><b>Speech detector</b><span>splits utterances at pauses</span></div>
+    <div class="n ai" id="whisper" data-icon="speech"><b>Whisper <i class="tag">AI</i></b><span>re-reads the utterance so far, about once a second</span></div>
+    <div class="n noic" id="same"><b>Same words as the last pass?</b></div>
+    <div class="n" id="prov" data-screen><b>Provisional words</b><span>shown in grey</span></div>
+    <div class="n" id="commit" data-icon="check"><b>Committed words</b><span>captions, transcript</span></div>
+    <div class="n ai" id="mt" data-icon="translate"><b>Text model <i class="tag">AI</i></b><span>translates each sentence</span></div>
+  </div>
+  <div class="note"><span>A pause ends the utterance: one <b>final pass</b> commits everything.</span><span>Long monologues are cut at a quiet moment, without losing words.</span></div>
+</div>
+<script src="diagram.js"></script>
+<script>draw([
+  { from: 'audio', to: 'vad' }, { from: 'vad', to: 'whisper', label: 'every ~1 s' },
+  { from: 'whisper', to: 'same', fs: 'b', ts: 't' },
+  { from: 'same', to: 'commit', label: 'yes' }, { from: 'same', to: 'prov', label: 'not yet' },
+  { from: 'commit', to: 'mt', fs: 't', ts: 'b', label: 'sentence' },
+]);</script>
+</body></html>

@@ -1,9 +1,10 @@
 #!/usr/bin/env node
 // Latency / scale test with real talks: N rooms, each fed server-side with a different YouTube video.
 //
-//   npm run multi                                  # 15 rooms, Nerdearla 2025 talks, 5 min, then stop
-//   npm run multi -- --rooms 5 --minutes 3
-//   npm run multi -- --playlist "https://www.youtube.com/playlist?list=..."
+//   npm run multi -- --playlist "https://www.youtube.com/playlist?list=..."   # 15 rooms, 5 min, then stop
+//   npm run multi -- --channel @yourevent --year 2025   # long videos from a channel, optionally by year
+//   npm run multi -- --query "conference keynote"      # a YouTube search
+//   npm run multi -- --playlist <url> --rooms 5 --minutes 3
 //   npm run multi -- --file urls.txt               # one YouTube URL per line
 //   npm run multi -- --list                        # only show which videos would be used
 //   npm run multi -- --cleanup                     # also delete the rooms at the end
@@ -20,9 +21,10 @@ const a = Object.fromEntries(process.argv.slice(2).reduce((acc, v, i, arr) => {
 const N = Number(a.rooms || 15);
 const MINUTES = Number(a.minutes ?? 5); // 0 = until Ctrl+C
 const START = Number(a.start ?? 180); // skip intros / sponsor slides
-const PREFIX = String(a.prefix || 'ne25');
-const QUERY = String(a.query || 'Nerdearla 2025');
-const YEAR = String(a.year || '2025');
+const PREFIX = String(a.prefix || 'yt');
+const QUERY = a.query ? String(a.query) : '';
+const CHANNEL = a.channel ? String(a.channel).replace(/^@/, '') : '';
+const YEAR = a.year ? String(a.year) : '';
 const MIN_DUR = Number(a['min-duration'] || 900); // talks, not shorts/clips
 const http = String(a.server || process.env.OC_SERVER || 'http://localhost:8080').replace(/\/$/, '');
 const headers = { 'content-type': 'application/json', 'x-admin-token': a['admin-token'] || process.env.ADMIN_TOKEN || '' };
@@ -38,7 +40,7 @@ function ytdlp(args, timeoutMs = 90000) {
     const t = setTimeout(() => { p.kill('SIGKILL'); reject(new Error(`yt-dlp timeout: ${args.at(-1)}`)); }, timeoutMs);
     p.stdout.on('data', (d) => (out += d));
     p.stderr.on('data', (d) => (err += d));
-    p.on('error', (e) => { clearTimeout(t); reject(e.code === 'ENOENT' ? new Error('yt-dlp not found — brew install yt-dlp') : e); });
+    p.on('error', (/** @type {NodeJS.ErrnoException} */ e) => { clearTimeout(t); reject(e.code === 'ENOENT' ? new Error('yt-dlp not found — brew install yt-dlp') : e); });
     p.on('close', (code) => { clearTimeout(t); code === 0 || out ? resolve(out) : reject(new Error(err.trim().split('\n').pop() || `yt-dlp exit ${code}`)); });
   });
 }
@@ -59,28 +61,32 @@ async function discover() {
   }
   if (a.playlist) return listFlat(a.playlist);
 
-  const byYear = (v) => new RegExp(`\\b${YEAR}\\b`).test(v.title);
+  if (!CHANNEL && !QUERY) {
+    console.error('Tell me which talks to use: --playlist <url>, --file urls.txt, --channel @handle [--year 2025] or --query "search terms"');
+    process.exit(2);
+  }
+  const byYear = (v) => !YEAR || new RegExp(`\\b${YEAR}\\b`).test(v.title);
   const long = (v) => !v.duration || v.duration >= MIN_DUR;
   const seen = new Map();
   const add = (list) => { for (const v of list) if (!seen.has(v.id) && long(v)) seen.set(v.id, v); };
 
-  // 1) Channel playlists whose title mentions the year (e.g. "Nerdearla 2025 · Charlas").
-  try {
-    const pls = (await listFlat('https://www.youtube.com/@nerdearla/playlists')).filter(byYear);
-    for (const pl of pls.slice(0, 6)) {
-      process.stdout.write(c.dim(`  playlist: ${pl.title}\n`));
-      try { add(await listFlat(pl.url || `https://www.youtube.com/playlist?list=${pl.id}`)); } catch (e) { console.log(c.dim(`    ${e.message}`)); }
-      if (seen.size >= N * 2) break;
+  if (CHANNEL) {
+    // 1) Channel playlists (with --year, only those whose title mentions it), then 2) its uploads.
+    try {
+      const pls = (await listFlat(`https://www.youtube.com/@${CHANNEL}/playlists`)).filter(byYear);
+      for (const pl of pls.slice(0, 6)) {
+        process.stdout.write(c.dim(`  playlist: ${pl.title}\n`));
+        try { add(await listFlat(pl.url || `https://www.youtube.com/playlist?list=${pl.id}`)); } catch (e) { console.log(c.dim(`    ${e.message}`)); }
+        if (seen.size >= N * 2) break;
+      }
+    } catch (e) { console.log(c.dim(`  playlists: ${e.message}`)); }
+    if (seen.size < N) {
+      try { add((await listFlat(`https://www.youtube.com/@${CHANNEL}/videos`, ['--playlist-end', '400'])).filter(byYear)); } catch (e) { console.log(c.dim(`  uploads: ${e.message}`)); }
     }
-  } catch (e) { console.log(c.dim(`  playlists: ${e.message}`)); }
-
-  // 2) Channel uploads with the year in the title.
-  if (seen.size < N) {
-    try { add((await listFlat('https://www.youtube.com/@nerdearla/videos', ['--playlist-end', '400'])).filter(byYear)); } catch (e) { console.log(c.dim(`  uploads: ${e.message}`)); }
   }
-  // 3) Plain search as a last resort.
-  if (seen.size < N) {
-    try { add((await listFlat(`ytsearch60:${QUERY}`)).filter((v) => /nerdearla/i.test(v.title + v.channel))); } catch (e) { console.log(c.dim(`  search: ${e.message}`)); }
+  // 3) A plain search.
+  if (QUERY && seen.size < N) {
+    try { add((await listFlat(`ytsearch60:${QUERY}`)).filter(byYear)); } catch (e) { console.log(c.dim(`  search: ${e.message}`)); }
   }
   return [...seen.values()];
 }

@@ -61,11 +61,14 @@ export function overlap(prev, hyp) {
 export class LocalEngine extends EventEmitter {
   /**
    * @param {object} o
+   * @param {string} o.label         room id, for logs
+   * @param {string} o.target        the session's caption language
    * @param {string} [o.source]      the room's pinned language, or 'auto'
    * @param {string[]} [o.vocabulary] names and terms Whisper should expect (glossary + agenda)
    * @param {string[]} [o.languages]  languages that make sense in this room (a detected language outside this set is
    *                                  re-transcribed in the room's current language: Whisper may hear Galician in Spanish)
    * @param {Function} [o.transcriber] (pcm, opts) → { text, lang, noSpeech }: the speech server client (tests inject a fake)
+   * @param {() => Promise<boolean>} [o.ping] is the speech server up? (tests inject a fake)
    */
   constructor({ label, target, source = 'auto', vocabulary = [], languages = [], transcriber = transcribe, ping = asrReachable }) {
     super();
@@ -237,7 +240,7 @@ export class LocalEngine extends EventEmitter {
     this.pumping = true;
     try {
       while (!this.stopped && this.state === 'live' && this.finals.length) {
-        if (this.busy) await new Promise((r) => { this.onIdle = r; });
+        if (this.busy) await new Promise((r) => { this.onIdle = () => r(undefined); });
         if (this.stopped || this.state !== 'live' || !this.finals.length) break;
         await this.#run(this.finals.shift(), true);
       }

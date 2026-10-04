@@ -23,6 +23,13 @@ This page explains what OpenCaptions protects, which attacks it defends against 
 
 ## Trust boundaries and actors
 
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="images/diagrams/security-dark.png" />
+  <img src="images/diagrams/security-light.png" alt="Trust zones: viewers only read captions, anyone else is rate-limited and blocked, the production team and venue PCs use tokens, local processes are trusted on localhost, and the server reaches Gemini with an API key or IAM." />
+</picture>
+
+<details><summary>Text version of this diagram</summary>
+
 ```mermaid
 flowchart LR
   subgraph Public["Untrusted: internet and venue Wi-Fi"]
@@ -45,6 +52,8 @@ flowchart LR
   L -- trusted in AUTH=auto --> S
   S -- API key / IAM --> G
 ```
+
+</details>
 
 | Actor | Can do |
 |---|---|
@@ -111,7 +120,7 @@ For single sign-on and per-person access, put an identity-aware proxy in front o
 Every response includes:
 
 ```
-Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' https://www.youtube.com https://s.ytimg.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: https://i.ytimg.com; media-src 'self' blob:; worker-src 'self' blob:; connect-src 'self' ws: wss:; frame-src 'self' https://www.youtube.com https://www.youtube-nocookie.com; frame-ancestors 'self'; base-uri 'none'; form-action 'self'; object-src 'none'
+Content-Security-Policy: default-src 'self'; script-src 'self' https://www.youtube.com https://s.ytimg.com; script-src-attr 'none'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: https://i.ytimg.com; media-src 'self' blob:; worker-src 'self' blob:; connect-src 'self' ws: wss:; frame-src 'self' https://www.youtube.com https://www.youtube-nocookie.com; frame-ancestors 'self'; base-uri 'none'; form-action 'self'; object-src 'none'
 X-Content-Type-Options: nosniff
 Referrer-Policy: no-referrer
 Permissions-Policy: microphone=(self), camera=(), geolocation=(), payment=(), usb=()
@@ -197,7 +206,7 @@ These are accepted risks today, listed so you can decide whether they matter for
 |---|---|---|---|
 | Shared tokens, no user accounts or roles | No per-person audit trail. Revoking one person means rotating the token. | Identity-aware proxy (IAP, Cloudflare Access) | Optional OIDC login |
 | Browsers send tokens as `?token=` on WebSocket URLs, because browsers can't set WebSocket headers | Tokens may appear in reverse-proxy access logs | Disable query logging in your proxy. TLS protects them in transit. | Short-lived session tickets |
-| CSP allows `'unsafe-inline'` scripts | Weaker protection if an XSS bug is ever introduced | All dynamic text is escaped. No HTML rendering of user content. | Move inline scripts to files and use a strict CSP |
+| CSP allows inline *styles* (`style-src 'unsafe-inline'`) | Injected CSS could change how a page looks. It can't run code: scripts are strict (files from this server only, no inline scripts or `on…=` handlers) | All dynamic text is escaped. A test fails if a page or template adds an inline script or handler. | Move `style=""` attributes to classes |
 | Rate limits and lockouts are in memory, per process | They reset on restart and aren't shared across shards | Put a CDN or WAF in front for large public events | — |
 | Audit log only on stdout and the dashboard | No tamper-evident history | Ship stdout to your log platform | Structured JSON logs |
 | Stored transcripts aren't encrypted by the app | Anyone with disk access can read them | Encrypted volume or disk | — |

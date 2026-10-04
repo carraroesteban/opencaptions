@@ -72,8 +72,6 @@ function filterArgs() {
 // ---------- capture (restarted automatically) ----------
 const pending = []; // PCM buffered while the server is unreachable (max ~15 s)
 let ws = null, cap = null, level = 0, sentBytes = 0, lastStatus = null;
-const t0 = Date.now();
-
 function startCapture() {
   const args = ['-hide_banner', '-loglevel', 'error', '-nostdin', ...inputArgs(), '-vn', ...filterArgs(), '-ac', '1', '-ar', '16000', '-f', 's16le', 'pipe:1'];
   cap = spawn(ff, args, { stdio: ['ignore', 'pipe', 'pipe'] });

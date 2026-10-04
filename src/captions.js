@@ -10,6 +10,9 @@ export class CaptionTrack extends EventEmitter {
    * @param {string} o.channel   'orig' | target language code
    * @param {import('./glossary.js').Glossary} o.glossary
    * @param {() => number} o.clock  ms since talk start
+   * @param {number} [o.minChars]  don't end a caption on a pause before it has this many characters
+   * @param {number} [o.maxChars]  split long unpunctuated speech at about this length
+   * @param {number} [o.idleMs]    commit the caption after this long without new words
    */
   constructor({ channel, glossary, clock, minChars = 24, maxChars = 150, idleMs = 1300 }) {
     super();
@@ -94,7 +97,8 @@ export class CaptionTrack extends EventEmitter {
     else this.#arm();
   }
 
-  flush() {
+  /** @param {string} [_reason] why (for debugging): 'idle', 'finished', 'reset'… */
+  flush(_reason) {
     clearTimeout(this.timer);
     this.timer = null;
     this.interimText = '';

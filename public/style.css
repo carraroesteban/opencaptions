@@ -9,6 +9,7 @@ h1 { letter-spacing: -.03em; }
 a { color: inherit; text-underline-offset: .18em; text-decoration-thickness: 1px; }
 a:hover { text-decoration-thickness: 2px; }
 code { font-family: var(--mono); font-size: .9em; background: var(--bg3); padding: .1em .35em; border-radius: 6px; }
+pre code { background: none; color: inherit; padding: 0; border-radius: 0; font-size: inherit; }
 ::selection { background: var(--hl); color: var(--hl-ink); }
 button, select, input, textarea { font: inherit; color: inherit; }
 button {

@@ -402,6 +402,16 @@ curl -X POST http://localhost:8080/api/stages/main/ask \
   -d '{"question":"What database did they mention for the control plane?","lang":"en"}'
 ```
 
+### Setup and engine
+
+| Method | Path | Auth | Description |
+|---|---|---|---|
+| `GET` | `/api/setup` | admin | First-run state for the welcome wizard: `done`, event `name`, `languages`, `defaultTargets`, `stages` (`id`, `name`, `source`, `targets`), `engine`, `primaryEngine`, `failover` and `publicUrl`. |
+| `PUT` | `/api/setup` | admin | Body `{ "name"?: string, "done"?: boolean }`. Renames the event (1–80 characters) and marks the wizard as finished. Saved in `data/setup.json`; the name overrides `eventName` from `config/event.json`. |
+| `POST` | `/api/engine` | admin | Offline backup. Body `{ "mode": "auto" \| "cloud" \| "local" }`. `auto` switches by itself, `cloud` always uses Gemini, `local` always uses this computer (refused with `400` while the local engine isn't reachable). Only when Gemini is the main engine. Returns the `failover` status. |
+
+The dashboard feed (`/api/status` and `WS /ws/admin`) includes `failover`: `{ mode, active, online, localReady, since, reason }`, or `null` when Gemini isn't the main engine. A `failover` message is also pushed when it changes.
+
 ### Schedule
 
 The event agenda (`src/schedule.js`): names talks automatically as each slot starts, so operators don't have

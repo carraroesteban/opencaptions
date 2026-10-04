@@ -1,0 +1,25 @@
+<!doctype html><html><head><meta charset="utf-8"><title>Room lifecycle</title><link rel="stylesheet" href="diagram.css">
+<style>
+  .grid { grid-template-columns: 220px 300px 220px; grid-template-rows: auto 150px auto; }
+  #live { grid-column: 2; grid-row: 1; } #idle { grid-column: 1; grid-row: 3; } #paused { grid-column: 3; grid-row: 3; }
+  .n.state { min-width: 0; }
+  #live .ic { background: var(--ink); color: var(--lime); }
+  html[data-theme='dark'] #live .ic { background: var(--lime); color: var(--ink); }
+</style></head><body>
+<div class="d">
+  <p class="eyebrow">A room's AI session, by itself</p>
+  <div class="grid">
+    <div class="n state" id="live" data-icon="play"><b>Live</b><span>audio streams to the AI; captions flow</span></div>
+    <div class="n state" id="idle" data-icon="moon"><b>Idle</b><span>no AI session open</span></div>
+    <div class="n state" id="paused" data-icon="pause"><b>Paused</b><span>session open, no audio sent</span></div>
+  </div>
+  <div class="note"><span><b>Nothing is billed</b> while a room is paused or idle.</span><span>After idling, the next speech starts a <b>new talk transcript</b>.</span></div>
+</div>
+<script src="diagram.js"></script>
+<script>draw([
+  { from: 'idle', to: 'live', fs: 't', ts: 'l', label: 'speech detected · 600 ms pre-roll sent' },
+  { from: 'live', to: 'paused', fs: 'r', ts: 't', off: -10, toff: 30, label: '30 s of silence' },
+  { from: 'paused', to: 'live', fs: 't', ts: 'r', off: -30, toff: 12, label: 'speech again' },
+  { from: 'paused', to: 'idle', fs: 'l', ts: 'r', label: '5 min without speech · session closes' },
+]);</script>
+</body></html>

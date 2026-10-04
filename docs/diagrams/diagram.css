@@ -1,0 +1,72 @@
+/* Documentation diagrams in the OpenCaptions style. Rendered to PNG (light + dark) by scripts/render-docs.js.
+   Same tokens as the app; lime only ever sits on ink (or under ink text). */
+@import url('/public/tokens.css');
+
+html, body { margin: 0; background: transparent; }
+body { font-family: var(--font); color: var(--fg); -webkit-font-smoothing: antialiased; }
+
+.d {
+  --d-bg: var(--paper); --d-card: #FFFFFF; --d-well: var(--fog); --d-line: #D9D4C9; --d-edge: #3A3940; --d-muted: #5C5A63;
+  --d-hero-bg: var(--ink); --d-hero-fg: var(--paper); --d-hero-mute: #B9B6C0; --d-group: #ECE8DF;
+  position: relative; display: inline-block; box-sizing: border-box; padding: 44px 48px; border-radius: 28px;
+  background: var(--d-bg); border: 1px solid var(--d-line); color: var(--ink);
+}
+html[data-theme='dark'] .d {
+  --d-bg: var(--ink); --d-card: #1A191F; --d-well: #26252C; --d-line: #2E2D34; --d-edge: #B9B6C0; --d-muted: #A9A6B0;
+  --d-hero-bg: var(--lime); --d-hero-fg: var(--ink); --d-hero-mute: #3A3D20; --d-group: #17161B;
+  color: var(--paper);
+}
+.eyebrow { font-size: 12px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: var(--d-muted); margin: 0 0 18px; }
+
+/* layout */
+.grid { position: relative; display: grid; align-items: center; }
+.stack { display: grid; gap: 14px; }
+
+/* nodes */
+.n { position: relative; z-index: 2; display: grid; grid-template-columns: auto 1fr; gap: 12px; align-items: center; padding: 14px 18px 14px 14px; border-radius: 16px;
+  background: var(--d-card); border: 1px solid var(--d-line); box-shadow: 0 1px 2px rgba(17, 16, 20, .05), 0 10px 24px -14px rgba(17, 16, 20, .25); min-width: 150px; }
+html[data-theme='dark'] .n { box-shadow: 0 12px 28px -16px rgba(0, 0, 0, .8); }
+.n .ic { width: 38px; height: 38px; border-radius: 11px; background: var(--d-well); display: grid; place-items: center; }
+.n .ic svg { width: 21px; height: 21px; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.n b { display: block; font-size: 16px; line-height: 1.2; }
+.n span { display: block; font-size: 12.5px; color: var(--d-muted); margin-top: 2px; line-height: 1.3; }
+.n.noic { grid-template-columns: 1fr; padding: 13px 18px; }
+.n.small { min-width: 0; padding: 10px 14px 10px 10px; } .n.small .ic { width: 30px; height: 30px; } .n.small b { font-size: 14px; }
+
+/* the OpenCaptions server: the one dark (or lime, in dark mode) block */
+.n.hero { background: var(--d-hero-bg); color: var(--d-hero-fg); border-color: transparent; padding: 20px 24px 20px 20px; }
+.n.hero span { color: var(--d-hero-mute); }
+.n.hero .ic { background: transparent; width: 46px; }
+.n.hero .ic img { width: 46px; }
+.n.hero b { font-family: var(--font-display); font-weight: 800; font-size: 21px; letter-spacing: -.02em; }
+.n.hero .bar { grid-column: 1 / -1; height: 6px; border-radius: 6px; background: var(--lime); width: 46%; margin-top: 4px; }
+html[data-theme='dark'] .n.hero .bar { background: var(--ink); }
+
+/* AI models */
+.n.ai { border-style: dashed; border-width: 1.5px; }
+.n .tag { font-style: normal; display: inline-block; font-size: 10px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; padding: 2px 7px; border-radius: 99px; background: var(--d-well); color: var(--d-muted); margin-left: 6px; vertical-align: 2px; }
+
+/* a tiny phone/screen with caption bars: lime only on the dark screen */
+.screen { width: 38px; height: 38px; border-radius: 9px; background: var(--ink); display: grid; align-content: end; gap: 3px; padding: 7px 6px; box-sizing: border-box; }
+.screen i { display: block; height: 4px; border-radius: 3px; background: #6E6B75; }
+.screen i:last-child { background: var(--lime); width: 64%; }
+html[data-theme='dark'] .screen { background: #000; outline: 1px solid #2E2D34; }
+
+/* groups */
+.g { position: relative; border-radius: 22px; border: 1.5px dashed var(--d-line); background: var(--d-group); padding: 34px 18px 18px; }
+.g > .gl { position: absolute; top: 11px; left: 18px; font-size: 11px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: var(--d-muted); }
+
+/* connectors (drawn by diagram.js) */
+svg.edges { position: absolute; inset: 0; overflow: visible; pointer-events: none; z-index: 1; } /* above groups, below nodes */
+svg.edges path { fill: none; stroke: var(--d-edge); stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+svg.edges path.dash { stroke-dasharray: 5 5; }
+svg.edges path.soft { opacity: .45; }
+.elabel { position: absolute; z-index: 3; transform: translate(-50%, -50%); white-space: nowrap; font-size: 12px; font-weight: 700; padding: 3px 9px; border-radius: 99px;
+  background: var(--d-bg); border: 1px solid var(--d-line); color: var(--d-muted); }
+.elabel.mono { font-family: var(--mono); font-weight: 500; font-size: 11.5px; }
+
+/* legend / notes */
+.note { font-size: 13px; color: var(--d-muted); margin-top: 22px; display: flex; gap: 18px; flex-wrap: wrap; }
+.note b { color: var(--fg); }
+html[data-theme='dark'] .note b { color: var(--paper); }
+.hl { background: var(--lime); color: var(--ink); padding: 0 5px; border-radius: 4px; font-weight: 700; }

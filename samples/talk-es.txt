@@ -1,6 +1,8 @@
-Hola a todos, bienvenidos a Nerdearla. Hoy vamos a hablar de cómo usar modelos de lenguaje en producción sin prenderle fuego al presupuesto.
-Primero, un poco de contexto. El año pasado armamos un asistente para el equipo de soporte, usando RAG con embeddings y una base de datos vectorial.
-Al principio funcionaba bárbaro en la demo, pero en producción la latencia era de ocho segundos y los costos se nos fueron por las nubes.
-Entonces hicimos tres cosas. Cacheamos las respuestas frecuentes, usamos un modelo más chico para clasificar las consultas, y medimos todo con OpenTelemetry.
-La lección más importante es que un modelo open source como Gemma, corriendo local, puede resolver el ochenta por ciento de los casos.
-Muchas gracias, y los espero en el stand de SysArmy para seguir charlando.
+Hola a todos, y bienvenidos a Horizon Summit. Me llamo María José Fernández y diseño espacios públicos.
+Hoy quiero contarles cómo hacer una ciudad pensada para todas las personas, sin importar su edad o su forma de moverse.
+Empecemos con una historia. Hace dos años, en nuestro barrio, una plaza nueva se quedó vacía, porque nadie la había diseñado con los vecinos.
+Entonces cambiamos la forma de trabajar. Primero escuchamos, después dibujamos, y recién al final construimos.
+Pusimos bancos a la sombra, rampas en cada esquina, carteles fáciles de leer y luces cálidas para la noche.
+Al año siguiente, la plaza estaba llena de chicos, de personas mayores y de familias que antes no salían de sus casas.
+La lección más importante es simple: una ciudad accesible no es más cara, solo necesita empezar por las personas.
+Muchas gracias, y los espero en la sesión de preguntas.

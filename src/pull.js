@@ -104,7 +104,13 @@ function pace(src, out) {
   return () => clearInterval(timer);
 }
 
+/**
+ * @param {string} input  file path or URL
+ * @param {{ realtime?: boolean, loop?: boolean, start?: number, via?: string | null }} [opts]
+ * @returns {PassThrough & { stopAudio?: () => void }}  16 kHz mono PCM; call stopAudio() to stop
+ */
 export function openAudio(input, { realtime = true, loop = false, start = 0, via = null } = {}) {
+  /** @type {PassThrough & { stopAudio?: () => void }} */
   const out = new PassThrough();
   if (via === 'ytdlp') return openViaYtDlp(input, out, { start });
   const file = !isUrl(input);
@@ -173,7 +179,7 @@ function openViaYtDlp(pageUrl, out, { start = 0 }) {
   let ytErr = '', ffErr = '';
   yt.stderr.on('data', (b) => { ytErr = (ytErr + b.toString()).slice(-400); });
   ff.stderr.on('data', (b) => { ffErr = (ffErr + b.toString()).slice(-400); out.emit('log', b.toString().trim()); });
-  yt.on('error', (e) => out.destroy(new Error(e.code === 'ENOENT' ? 'yt-dlp is not installed (macOS: brew install yt-dlp)' : `yt-dlp failed: ${e.message}`)));
+  yt.on('error', (/** @type {NodeJS.ErrnoException} */ e) => out.destroy(new Error(e.code === 'ENOENT' ? 'yt-dlp is not installed (macOS: brew install yt-dlp)' : `yt-dlp failed: ${e.message}`)));
   yt.on('close', (code) => { if (code && !out.destroyed && !stopped) out.destroy(new Error(`yt-dlp exited ${code}: ${ytErr.trim().split('\n').pop()}`)); });
   ff.on('close', (code) => { if (code && code !== 255 && !out.destroyed && !stopped) out.destroy(new Error(`ffmpeg exited ${code}: ${ffErr.trim()}`)); });
   let stopped = false;
@@ -190,12 +196,15 @@ function openViaYtDlp(pageUrl, out, { start = 0 }) {
 /** Server-side ingest for a stage: pulls a URL/file and restarts it with backoff. */
 export class PullSource {
   /**
+   * @param {import('./stage.js').Stage} stage  the room that receives the audio
+   * @param {string} url
    * @param {object} [o]
    * @param {boolean} [o.loop]      loop a file
    * @param {number}  [o.start]     start offset in seconds
    * @param {boolean} [o.realtime]  pace input at 1× (default: files yes, live streams no)
    * @param {boolean} [o.once]      don't restart when the input ends (e.g. a YouTube video)
    * @param {string}  [o.label]     shown on the dashboard instead of the URL
+   * @param {string | null} [o.via] 'ytdlp' to resolve a YouTube page first
    */
   constructor(stage, url, { loop = false, start = 0, realtime, once = false, label, via = null } = {}) {
     this.via = via;
@@ -218,7 +227,7 @@ export class PullSource {
   #open() {
     if (this.stopped) return;
     const src = (this.src = openAudio(this.url, { realtime: this.realtime, loop: this.loop, start: this.start, via: this.via }));
-    src.once('data', () => this._resolveFirst?.());
+    src.once('data', () => this._resolveFirst?.(undefined));
     src.once('error', (e) => this._rejectFirst?.(e));
     this.stage.attachIngest({ kind: 'pull', label: this.label, token: this.token, detach: () => this.stop() });
     src.on('data', (b) => { if (this.stopped || this.src !== src) return; this.backoff = 1000; this.stage.pushAudio(b); });

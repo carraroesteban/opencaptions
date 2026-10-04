@@ -2,6 +2,8 @@
 
 > Versión en inglés y más detallada: [runbook.md](runbook.md). Seguridad: [../security-guide.md](../security-guide.md). Problemas: [troubleshooting.md](troubleshooting.md).
 
+<p align="center"><img src="../../public/art/ob-audio.webp" width="640" alt="Una prueba de sonido: micrófono, consola y una notebook con el medidor de nivel" /></p>
+
 Guía para operar OpenCaptions en una conferencia con varias salas en paralelo (congresos, universidades, eventos corporativos y similares).
 Objetivo: **cero operadores dedicados durante las charlas**. Una persona de producción mira el panel y actúa solo si aparece una alerta.
 

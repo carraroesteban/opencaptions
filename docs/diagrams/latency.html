@@ -1,0 +1,48 @@
+<!doctype html><html><head><meta charset="utf-8"><title>Where the time goes</title><link rel="stylesheet" href="diagram.css">
+<style>
+  .tl { --s: 150px; position: relative; width: calc(6.4 * var(--s)); margin: 8px 0 0 190px; }
+  .row { position: relative; height: 64px; margin-bottom: 26px; }
+  .row > b { position: absolute; left: -190px; top: 50%; transform: translateY(-50%); font-size: 15px; width: 170px; }
+  .row > b span { display: block; font-size: 12px; font-weight: 400; color: var(--d-muted); }
+  .seg { position: absolute; top: 10px; height: 44px; border-radius: 10px; display: grid; place-items: center; font-size: 12.5px; font-weight: 700; white-space: nowrap; overflow: hidden; box-sizing: border-box; padding: 0 8px; }
+  .seg.net { background: var(--d-well); color: var(--d-muted); }
+  .seg.model { background: var(--ink); color: var(--paper); }
+  html[data-theme='dark'] .seg.model { background: #2B2A31; }
+  .seg.model::after { content: ''; position: absolute; left: 12px; bottom: 8px; width: 28%; height: 4px; border-radius: 3px; background: var(--lime); }
+  .seg.wait { background: repeating-linear-gradient(135deg, var(--d-well) 0 8px, transparent 8px 16px); border: 1.5px dashed var(--d-line); color: var(--d-muted); }
+  .seg.ghost { background: var(--d-well); opacity: .45; color: var(--d-muted); }
+  .seg.mt { background: var(--graphite); color: var(--paper); }
+  html[data-theme='dark'] .seg.mt { background: #3A3940; }
+  .pin { position: absolute; top: -6px; bottom: -6px; width: 0; border-left: 2px solid var(--fg); }
+  html[data-theme='dark'] .pin { border-color: var(--paper); }
+  .pin span { position: absolute; top: -26px; left: 8px; white-space: nowrap; font-size: 13px; font-weight: 800; font-family: var(--font-display); }
+  .axis { position: relative; height: 30px; border-top: 1.5px solid var(--d-line); }
+  .axis i { position: absolute; top: 6px; transform: translateX(-50%); font-size: 12px; font-style: normal; color: var(--d-muted); }
+  .axis i::before { content: ''; position: absolute; left: 50%; top: -12px; height: 7px; border-left: 1.5px solid var(--d-line); }
+</style></head><body>
+<div class="d">
+  <p class="eyebrow">Where the time goes · typical, with Gemini</p>
+  <div class="tl" id="tl">
+    <div class="row"><b>Original caption<span>the words as spoken</span></b>
+      <div class="seg net" style="left:0;width:calc(.25*var(--s))" title="capture + network"></div>
+      <div class="seg model" style="left:calc(.25*var(--s));width:calc(2.75*var(--s))">Gemini Live recognises the words · 2–3 s</div>
+      <div class="seg net" style="left:calc(3*var(--s));width:calc(.15*var(--s))"></div>
+      <div class="pin" style="left:calc(3.15*var(--s))"><span>≈ 3 s</span></div>
+    </div>
+    <div class="row"><b>Translation<span>each sentence</span></b>
+      <div class="seg ghost" style="left:0;width:calc(3*var(--s))">same recognition</div>
+      <div class="seg wait" style="left:calc(3*var(--s));width:calc(1.2*var(--s))">sentence ends</div>
+      <div class="seg mt" style="left:calc(4.2*var(--s));width:calc(.65*var(--s))">Flash-Lite</div>
+      <div class="pin" style="left:calc(4.85*var(--s))"><span>≈ 4.5–6 s</span></div>
+    </div>
+    <div class="axis" id="axis"></div>
+  </div>
+  <div class="note"><span><b>Capture and network</b> add 0.1–0.3 s.</span><span>Long sentences get a <b>provisional translation every 1.5 s</b> while they're spoken.</span><span>The translation <b>streams</b> in as Flash-Lite writes it.</span></div>
+</div>
+<script src="diagram.js"></script>
+<script>
+  const ax = document.getElementById('axis');
+  for (let s = 0; s <= 6; s++) { const i = document.createElement('i'); i.textContent = `${s} s`; i.style.left = `calc(${s} * var(--s))`; ax.append(i); }
+  draw([]);
+</script>
+</body></html>

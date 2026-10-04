@@ -46,6 +46,10 @@ let thinkOff = true; // Ollama: `think: false` makes reasoning models (qwen3, de
  * @param {string} o.user
  * @param {boolean} [o.json]   ask for a JSON object
  * @param {string} [o.model]   defaults to LOCAL_LLM_MODEL
+ * @param {number} [o.maxTokens]
+ * @param {number} [o.temperature]
+ * @param {number} [o.timeoutMs]
+ * @param {number} [o.priority]  higher goes first when the model is busy (final captions 2, partials 0)
  * @returns {Promise<{ text: string, promptTokens: number, outputTokens: number, ms: number }>}
  */
 export async function chat({ system = '', user, json = false, model = config.localLlmModel, maxTokens = 400, temperature = 0.2, timeoutMs = config.localLlmTimeoutMs, priority = 1 }) {
@@ -168,13 +172,13 @@ export async function llmHealth(timeoutMs = 3000) {
   try {
     if (api === 'ollama') {
       const r = await fetch(`${new URL(url).origin}/api/tags`, { headers: auth(), signal: AbortSignal.timeout(timeoutMs) });
-      const j = await r.json();
+      const j = /** @type {any} */ (await r.json());
       const names = (j.models || []).map((m) => m.name || m.model);
       const missing = wanted.filter((w) => !names.some((n) => n === w || n === `${w}:latest` || n.split(':')[0] === w));
       return { ok: true, hasModel: !missing.length, missing, models: names };
     }
     const r = await fetch(`${url.replace(/\/chat\/completions$/, '')}/models`, { headers: auth(), signal: AbortSignal.timeout(timeoutMs) });
-    const j = await r.json().catch(() => ({}));
+    const j = /** @type {any} */ (await r.json().catch(() => ({})));
     const names = (j.data || []).map((m) => m.id);
     // Single-model servers (llama.cpp's llama-server) answer whatever model name you send.
     const missing = names.length <= 1 ? [] : wanted.filter((w) => !names.includes(w));

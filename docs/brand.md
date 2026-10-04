@@ -16,6 +16,7 @@ An open ring with a caption line coming out of it. The approved files are in [`p
 | `icon.svg`, `maskable.svg`, `avatar.svg` | App icon, favicon, maskable icon and avatars: ink O on a lime tile. |
 | `icon-192.png`, `icon-512.png`, `maskable-512.png`, `avatar-512.png`, `../favicon.ico`, `../apple-touch-icon.png` | Rasterized from the SVGs above. |
 | `og.png` | Link preview (1200×630). |
+| `../../docs/images/social-preview.png` | GitHub social preview (1280×640). Upload it in the repository's **Settings → General → Social preview**. |
 
 The wordmark is **OpenCaptions** in Bricolage Grotesque 800.
 
@@ -55,7 +56,22 @@ Both are turned off for people who ask for reduced motion.
 
 ## Illustrations
 
-Friendly line illustrations live in [`public/art/`](../public/art/) as WebP: `hero`, `audience`, `stage`, `organizer`, `local`, `setup` and `waiting`. They were generated with Higgsfield (GPT Image 2.5) from one shared style prompt: ink lines on paper, warm-grey fills, and lime only on dark screens, so they follow the colour rule. They are drawn on paper, so pages frame them like prints (a rounded paper card) and they work in both themes. To add one, reuse the same style prompt so the set stays consistent.
+Friendly line illustrations live in [`public/art/`](../public/art/) as WebP: `hero`, `audience`, `stage`, `organizer`, `local`, `setup` and `waiting`, plus the welcome wizard's `ob-welcome`, `ob-name`, `ob-rooms`, `ob-langs`, `ob-audio` and `ob-share`, and `offline` for the website. They were generated with Higgsfield (GPT Image 2.5) from one shared style prompt: ink lines on paper, warm-grey fills, and lime only on dark screens, so they follow the colour rule. They are drawn on paper, so pages frame them like prints (a rounded paper card) and they work in both themes. To add one, reuse the same style prompt so the set stays consistent.
+
+The website's hero also uses photographic objects on a transparent background (`public/art/objects/`: microphone, badge, headphones, clicker, ticket, phone), generated the same way. Lime appears on them only on black surfaces (the badge, the phone screen).
+
+## Diagrams in the docs
+
+The technical diagrams in these docs are drawn in the same style: paper and ink, Bricolage headings, the server as the one dark block (lime in dark mode), AI models with a dashed border, and lime only on dark screens. Each one has a light and a dark version, and GitHub shows the one that matches the reader's theme:
+
+```html
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="images/diagrams/latency-dark.png" />
+  <img src="images/diagrams/latency-light.png" alt="Describe what the diagram shows" />
+</picture>
+```
+
+The sources are small HTML pages in [`docs/diagrams/`](diagrams/) that share `diagram.css` (the look) and `diagram.js` (icons and the arrows between boxes). To change one, edit its HTML and run `npm run docs:images` (or `npm run docs:images -- latency` for just that one); it needs Chrome. Below each diagram, a collapsed *Text version* keeps the Mermaid description for screen readers and plain-text readers: update it too.
 
 ## Where things live
 
@@ -65,4 +81,5 @@ Friendly line illustrations live in [`public/art/`](../public/art/) as WebP: `he
 | `public/style.css` | Shared components: buttons, pills, chips, cards, sheets, logo, highlighter. |
 | `public/illustrations.js` | Small inline SVG illustrations and the button icon set (`icon()`, `mountIcons()`). |
 | `public/art/` | The illustration set (WebP). |
+| `docs/diagrams/` | Sources of the documentation diagrams; `npm run docs:images` renders them to `docs/images/diagrams/`. |
 | `site/` | The landing page (EN at `/`, ES at `/es/`). `npm run site` copies the tokens, styles, brand assets and screenshots next to it and serves it on port 8081. The `Site` workflow deploys it to GitHub Pages at opencaptions.kvza.ar. |

@@ -1,0 +1,38 @@
+<!doctype html><html><head><meta charset="utf-8"><title>How it works</title><link rel="stylesheet" href="diagram.css">
+<style>
+  .grid { grid-template-columns: 240px 130px 300px 130px 250px; grid-template-rows: auto auto auto; row-gap: 44px; }
+  #src { grid-column: 1; grid-row: 1 / 4; }
+  #speech { grid-column: 3; grid-row: 1; }
+  #oc { grid-column: 3; grid-row: 2; }
+  #mt { grid-column: 3; grid-row: 3; }
+  #out { grid-column: 5; grid-row: 1 / 4; }
+</style></head><body>
+<div class="d">
+  <p class="eyebrow">How it works</p>
+  <div class="grid">
+    <div class="g stack" id="src"><span class="gl">Room audio</span>
+      <div class="n small" id="desk" data-icon="desk"><b>Sound desk</b><span>through any PC</span></div>
+      <div class="n small" id="tab" data-icon="browser"><b>Browser tab</b><span>a laptop's microphone</span></div>
+      <div class="n small" id="obs" data-icon="stream"><b>OBS · vMix</b><span>RTMP, SRT, HLS</span></div>
+    </div>
+    <div class="n ai" id="speech" data-icon="speech"><b>Speech model <i class="tag">AI</i></b><span>Gemini Live Translate, or Whisper on your machine</span></div>
+    <div class="n hero" id="oc"><b>OpenCaptions</b><span>one server for every room</span></div>
+    <div class="n ai" id="mt" data-icon="translate"><b>Translation model <i class="tag">AI</i></b><span>Gemini Flash-Lite, or an open model</span></div>
+    <div class="g stack" id="out"><span class="gl">Everyone follows along</span>
+      <div class="n small" id="phones" data-screen><b>Phones</b><span>any language, no app</span></div>
+      <div class="n small" id="proj" data-icon="screen"><b>Presenter screen</b><span>next to the stage</span></div>
+      <div class="n small" id="live" data-icon="overlay"><b>Livestream</b><span>OBS / vMix overlay</span></div>
+      <div class="n small" id="dash" data-icon="dashboard"><b>Dashboard</b><span>every room at a glance</span></div>
+    </div>
+  </div>
+</div>
+<script src="diagram.js"></script>
+<script>draw([
+  { from: 'src', to: 'oc', label: 'audio' },
+  { from: 'oc', to: 'speech', fs: 't', ts: 'b', off: -50, label: 'one session per room', lx: -64 },
+  { from: 'speech', to: 'oc', fs: 'b', ts: 't', off: 50, label: 'words + language', lx: 60 },
+  { from: 'oc', to: 'mt', fs: 'b', ts: 't', off: -50, label: 'each sentence', lx: -52 },
+  { from: 'mt', to: 'oc', fs: 't', ts: 'b', off: 50, label: 'translation', lx: 52 },
+  { from: 'oc', to: 'out', label: 'captions' },
+]);</script>
+</body></html>

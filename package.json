@@ -10,12 +10,16 @@
     "feed": "node scripts/feed.js",
     "loadtest": "node scripts/loadtest.js",
     "test": "node scripts/run-tests.js",
+    "lint": "eslint .",
+    "typecheck": "tsc -p tsconfig.json",
+    "record": "node scripts/record-e2e.js",
     "agent": "node scripts/agent.js",
     "multi": "node scripts/multi-youtube.js",
     "setup": "node scripts/setup.js",
     "subtitle": "node scripts/subtitle.js",
     "local": "node scripts/local.js",
-    "site": "node scripts/site.js --serve"
+    "site": "node scripts/site.js --serve",
+    "docs:images": "node scripts/render-docs.js"
   },
   "license": "MIT",
   "dependencies": {
@@ -31,5 +35,12 @@
   },
   "optionalDependencies": {
     "ffmpeg-static": "^5.3.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "9.39.5",
+    "@types/node": "22.20.5",
+    "eslint": "9.39.5",
+    "globals": "17.13.0",
+    "typescript": "7.0.2"
   }
 }

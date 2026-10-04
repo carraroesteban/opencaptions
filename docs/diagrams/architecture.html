@@ -1,0 +1,42 @@
+<!doctype html><html><head><meta charset="utf-8"><title>Architecture</title><link rel="stylesheet" href="diagram.css">
+<style>
+  .grid { grid-template-columns: 250px 110px 330px 110px 270px; grid-template-rows: auto auto; row-gap: 40px; }
+  #rooms { grid-column: 1; grid-row: 1 / 3; }
+  #server { grid-column: 3; grid-row: 1 / 3; display: grid; gap: 14px; }
+  #ai { grid-column: 5; grid-row: 1; }
+  #clients { grid-column: 5; grid-row: 2; }
+</style></head><body>
+<div class="d">
+  <p class="eyebrow">Components</p>
+  <div class="grid">
+    <div class="g stack" id="rooms"><span class="gl">Each room</span>
+      <div class="n small" id="agent" data-icon="desk"><b>Agent or browser</b><span>captures the sound desk</span></div>
+      <div class="n small" id="enc" data-icon="stream"><b>vMix · OBS</b><span>or any SRT / RTMP / HLS stream</span></div>
+    </div>
+    <div class="g" id="server"><span class="gl">OpenCaptions server · one process</span>
+      <div class="n small" id="http" data-icon="globe"><b>HTTP API + pages</b><span>Express, static files</span></div>
+      <div class="n small" id="ws" data-icon="wave"><b>WebSocket hub</b><span>ingest · viewers · dashboard</span></div>
+      <div class="n hero" id="stage"><b>Stage × N</b><span>one per room: audio gate, AI sessions, caption tracks, translation queue</span></div>
+      <div class="n small" id="data" data-icon="disk"><b>data/</b><span>transcripts, rooms, setup, secrets</span></div>
+    </div>
+    <div class="g stack" id="ai"><span class="gl">AI</span>
+      <div class="n small ai" id="live" data-icon="speech"><b>Gemini Live Translate</b><span>or Whisper, locally</span></div>
+      <div class="n small ai" id="flash" data-icon="translate"><b>Gemini Flash-Lite</b><span>or Gemma via Ollama</span></div>
+    </div>
+    <div class="g stack" id="clients"><span class="gl">Clients</span>
+      <div class="n small" id="viewers" data-screen><b>Phones, screens, overlays</b><span>/ws/view</span></div>
+      <div class="n small" id="admin" data-icon="dashboard"><b>Production dashboard</b><span>/ws/admin</span></div>
+    </div>
+  </div>
+</div>
+<script src="diagram.js"></script>
+<script>draw([
+  { from: 'agent', to: 'ws', label: 'PCM audio' },
+  { from: 'enc', to: 'stage', label: 'pulled with ffmpeg' },
+  { from: 'ws', to: 'stage', fs: 'b', ts: 't' },
+  { from: 'stage', to: 'live', fs: 'r', ts: 'l', off: -45, toff: 0, mid: 770, both: true, label: 'Live API', lx: 0 },
+  { from: 'stage', to: 'flash', fs: 'r', ts: 'l', off: -15, toff: 0, mid: 805, label: 'sentences' },
+  { from: 'stage', to: 'viewers', fs: 'r', ts: 'l', off: 15, toff: 0, mid: 805, label: 'captions' },
+  { from: 'stage', to: 'admin', fs: 'r', ts: 'l', off: 45, toff: 0, mid: 770, label: 'status' },
+  { from: 'stage', to: 'data', fs: 'b', ts: 't' }]);</script>
+</body></html>

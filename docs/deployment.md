@@ -2,11 +2,20 @@
 
 This guide helps you choose where the OpenCaptions server runs, then install it. Before you expose it to any network, read [Security](security-guide.md).
 
+<p align="center"><img src="../public/art/organizer.webp" width="640" alt="An organizer at a desk with the production dashboard on a laptop" /></p>
+
 ## Choose a topology
 
 There are two supported layouts. Both are valid for a real event. Pick one from the decision table below.
 
 ### Topology A: server on a venue PC
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="images/diagrams/deploy-venue-dark.png" />
+  <img src="images/diagrams/deploy-venue-light.png" alt="Option A: sound desks feed venue PCs running the agent, which send audio over the LAN to OpenCaptions on a venue laptop; it reaches Gemini over HTTPS and the public through an outbound Cloudflare Tunnel." />
+</picture>
+
+<details><summary>Text version of this diagram</summary>
 
 ```mermaid
 flowchart LR
@@ -22,9 +31,18 @@ flowchart LR
   CF --> P[Phones, remote admin]
 ```
 
+</details>
+
 One machine at the venue runs the server. Room PCs send audio to it over the local network. A Cloudflare Tunnel publishes it at an HTTPS address without opening any inbound port. The same machine can also be the capture PC for one room.
 
 ### Topology B: cloud server, venue PCs only send audio
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="images/diagrams/deploy-cloud-dark.png" />
+  <img src="images/diagrams/deploy-cloud-light.png" alt="Option B: venue PCs send audio outbound over WSS 443 to OpenCaptions on a cloud VM, which uses Gemini and serves phones, projectors and vMix from anywhere." />
+</picture>
+
+<details><summary>Text version of this diagram</summary>
 
 ```mermaid
 flowchart LR
@@ -37,6 +55,8 @@ flowchart LR
   S -- HTTPS 443 --> G[Gemini]
   S --> P[Phones, projectors, vMix]
 ```
+
+</details>
 
 The server runs on a small cloud VM with a real domain and TLS certificate. Each room PC only makes an outbound connection to it. Nothing at the venue accepts incoming connections.
 
@@ -172,7 +192,7 @@ When the proxy runs on the same host as the server, OpenCaptions trusts its `X-F
 
 ## Cloud VM example (Google Compute Engine)
 
-This is topology B on Google Cloud. The Google Developers Platform credits for the Vibeathon can pay for it.
+This is topology B on Google Cloud.
 
 1. Create a VM: e2-small (2 vCPU burst, 2 GB), Debian 12, in a region near the venue (for Argentina, `southamerica-west1` Santiago or `southamerica-east1` São Paulo). Allow HTTP and HTTPS traffic.
 2. Point a DNS record such as `subs.example.com` to the VM's external IP.

@@ -21,16 +21,17 @@ if (!config.geminiApiKey && !config.vertex) {
 }
 console.log(`model: ${config.model}\ninput: ${input} → target: ${target}\n`);
 
-const e = new GeminiEngine({ label: 'check', target, echo: true, vocabulary: ['Nerdearla', 'Kubernetes', 'OpenTelemetry'] });
+const e = new GeminiEngine({ label: 'check', target, echo: true, vocabulary: ['Horizon Summit', 'María José Fernández', 'Hiroshi Tanaka', 'telehealth'] });
 let inText = '', outText = '', audioBytes = 0, firstIn = 0, firstOut = 0, firstInterim = 0, interims = 0, audioT0 = 0;
 const t0 = Date.now();
 const log = [];
 const at = () => ((Date.now() - (audioT0 || t0)) / 1000).toFixed(1);
 e.on('state', (s) => console.log(`[${((Date.now() - t0) / 1000).toFixed(1)}s] state: ${s} (config: ${e.status().level})`));
+let detected = ''; // the first language the model reports
 e.on('log', (m) => console.log('  log:', m));
 e.on('error', (m) => console.log('  error:', m));
 e.on('interim', ({ text }) => { firstInterim ||= Date.now(); interims++; if (interims <= 6) log.push(`${at()}s interim: ${JSON.stringify(text)}`); });
-e.on('input', ({ text, lang }) => { firstIn ||= Date.now(); if (log.length < 14) log.push(`${at()}s input:   ${JSON.stringify(text)}`); inText += text; process.stdout.write(`\x1b[36m${text}\x1b[0m`); if (lang && !e._lang) { e._lang = lang; } });
+e.on('input', ({ text, lang }) => { firstIn ||= Date.now(); if (log.length < 14) log.push(`${at()}s input:   ${JSON.stringify(text)}`); inText += text; process.stdout.write(`\x1b[36m${text}\x1b[0m`); if (lang && !detected) detected = lang; });
 e.on('output', ({ text }) => { firstOut ||= Date.now(); if (log.length < 20) log.push(`${at()}s output:  ${JSON.stringify(text)}`); outText += text; process.stdout.write(`\x1b[33m${text}\x1b[0m`); });
 e.on('audio', (b) => { audioBytes += b.length; });
 e.start();
@@ -46,7 +47,7 @@ setTimeout(() => {
   setTimeout(() => {
     e.stop();
     console.log('\n\n──────── summary ────────');
-    console.log(`detected language: ${e._lang || '(not reported)'}`);
+    console.log(`detected language: ${detected || '(not reported)'}`);
     console.log(`input transcription (${inText.length} chars): ${inText.trim().slice(0, 300) || '✗ none'}`);
     console.log(`translation → ${target} (${outText.length} chars): ${outText.trim().slice(0, 300) || '✗ none'}`);
     console.log(`translated audio received: ${(audioBytes / 48000).toFixed(1)} s`);

@@ -34,6 +34,13 @@ The dashboard shows these per room as a moving average. Measure your own setup w
 
 ## Where the time goes
 
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="images/diagrams/latency-dark.png" />
+  <img src="images/diagrams/latency-light.png" alt="Where the time goes: original captions arrive about 3 s after the words, almost all of it Gemini recognition; translations about 4.5–6 s, after the sentence ends and Flash-Lite translates it." />
+</picture>
+
+<details><summary>Text version of this diagram</summary>
+
 ```mermaid
 flowchart LR
   A[Speaker] -->|~0 ms| B[Sound desk]
@@ -45,6 +52,8 @@ flowchart LR
   F -->|sentence end or 1.5 s partial, plus 0.4-1 s| H[Flash-Lite translation]
   H --> G
 ```
+
+</details>
 
 | Stage | Typical | Controlled by |
 |---|---|---|
@@ -83,6 +92,7 @@ Try one change at a time and compare the dashboard latency over a few minutes of
 
 | Setting | Effect on latency | Cost / risk | Recommendation |
 |---|---|---|---|
+| `MT_STREAM` (on by default) | When a sentence ends, its translation streams into the caption as Gemini writes it. Measured on Gemini 3.5 Flash-Lite, 10 sentences, 2 runs (October 2026): first translated words after a median **0.61 s** instead of 0.69 s for the whole answer, and an average of **0.61 s** instead of 0.83 s, because it cuts the slow responses most. | None: same requests, same cost. The caption never shrinks: streamed text replaces the provisional translation only once it's at least as long. | Leave it on. `MT_STREAM=0` waits for the whole answer. Local mode doesn't stream yet. |
 | `MT_PARTIAL_MS=1000` (default 1500) | Provisional translations appear about 0.5 s sooner on long sentences | About 50% more translation requests (roughly +US$ 0.2 per talk-hour per language). Can hit rate limits on low tiers. | Good trade on a paid tier |
 | Pin the room's `source` language (`"en"` instead of `"auto"`) | First words of a talk arrive sooner and more reliably. The model doesn't need to detect the language. | None, if you know the talk language | **Do it** whenever the schedule tells you the language |
 | `VAD_SILENCE_MS=300` | The model closes turns sooner after pauses, so captions finalize sooner | May split sentences at hesitations | Try it for fast, dense speakers |
@@ -105,10 +115,10 @@ Try one change at a time and compare the dashboard latency over a few minutes of
 - **Many rooms at once, with real talks:**
 
   ```bash
-  npm run multi -- --rooms 10 --minutes 5
+  npm run multi -- --rooms 10 --minutes 5 --playlist "https://www.youtube.com/playlist?list=…"
   ```
 
-  This opens 10 rooms, feeds each a different conference video from YouTube in real time and prints p50/p90 latency per room. A JSON report is written to `data/latency-*.json`. This is also the best way to find your account's concurrent-session limit. It needs `yt-dlp`. Cost is about US$ 0.45/min for 10 rooms.
+  This opens 10 rooms, feeds each a different video from the playlist (or `--channel @handle`, `--query "search terms"`, `--file urls.txt`) in real time and prints p50/p90 latency per room. A JSON report is written to `data/latency-*.json`. This is also the best way to find your account's concurrent-session limit. It needs `yt-dlp`. Cost is about US$ 0.45/min for 10 rooms.
 
 ### How the dashboard measures latency
 
@@ -116,7 +126,8 @@ Latency is measured from **speech onset**, the first audio chunk above the speec
 
 ## Ideas not implemented yet
 
-- **Streaming translation:** show translated tokens as they arrive, instead of waiting for the whole response. Expected gain: 0.2–0.5 s.
+- **Streaming in local mode:** Ollama can stream too; small local models take 0.6–0.7 s per sentence, so they'd gain more than Gemini.
+
 - **Speculative translation:** translate stable prefixes of the sentence in progress, not only on a timer.
 - **Adaptive partial interval:** translate provisional text more often when the provider is fast and quota is available.
 

@@ -9,22 +9,22 @@ const assist = await import('../src/assist.js');
 const { parseSchedule, Schedule } = await import('../src/schedule.js');
 
 const segs = [
-  { id: 'o1', channel: 'orig', text: 'Welcome to Nerdearla, today we talk about observability in Kubernetes.', start: 0, end: 4000, final: true },
-  { id: 'o2', channel: 'orig', text: 'We use OpenTelemetry for traces and Prometheus for metrics.', start: 5000, end: 9000, final: true },
-  { id: 'e1', channel: 'es', text: 'Bienvenidos a Nerdearla, hoy hablamos de observabilidad en Kubernetes.', start: 0, end: 4500, final: true },
-  { id: 'e2', channel: 'es', text: 'Usamos OpenTelemetry para trazas y Prometheus para métricas.', start: 5000, end: 9500, final: true },
+  { id: 'o1', channel: 'orig', text: 'Welcome to Horizon Summit, today we talk about care at a distance.', start: 0, end: 4000, final: true },
+  { id: 'o2', channel: 'orig', text: 'We give each clinic a tablet and a short training.', start: 5000, end: 9000, final: true },
+  { id: 'e1', channel: 'es', text: 'Bienvenidos a Horizon Summit, hoy hablamos de atención a distancia.', start: 0, end: 4500, final: true },
+  { id: 'e2', channel: 'es', text: 'Le damos a cada clínica una tablet y una capacitación corta.', start: 5000, end: 9500, final: true },
 ];
 
 test('summary uses the model output and is cached for all viewers', async () => {
   config.engine = 'gemini';
   let calls = 0;
-  assist._setClient({ models: { generateContent: async () => { calls++; return { text: '{"headline":"Observabilidad","bullets":["OpenTelemetry para trazas","Prometheus para métricas"],"terms":["OpenTelemetry"]}', usageMetadata: { promptTokenCount: 100, candidatesTokenCount: 20 } }; } } });
+  assist._setClient({ models: { generateContent: async () => { calls++; return { text: '{"headline":"Atención a distancia","bullets":["Una tablet por clínica","Capacitación corta"],"terms":["telesalud"]}', usageMetadata: { promptTokenCount: 100, candidatesTokenCount: 20 } }; } } });
   const a = await assist.summarize({ segs, key: 'k1', lang: 'es', scope: 'full', live: true });
   const b = await assist.summarize({ segs, key: 'k1', lang: 'es', scope: 'full', live: true });
   assert.equal(a.ai, true);
-  assert.deepEqual(a.bullets, ['OpenTelemetry para trazas', 'Prometheus para métricas']);
+  assert.deepEqual(a.bullets, ['Una tablet por clínica', 'Capacitación corta']);
   assert.equal(calls, 1, 'second viewer served from cache');
-  assert.equal(b.headline, 'Observabilidad');
+  assert.equal(b.headline, 'Atención a distancia');
 });
 
 test('summary falls back to transcript highlights when the model fails', async () => {
@@ -39,30 +39,30 @@ test('summary falls back to transcript highlights when the model fails', async (
 test('ask is grounded, rate-limited per client and validates input', async () => {
   config.engine = 'gemini';
   assist._setClient({ models: { generateContent: async ({ contents }) => {
-    assert.match(contents, /Question: which tool for traces\?/);
-    return { text: '{"found":true,"answer":"OpenTelemetry [0:05]","quotes":[{"at":"0:05","text":"We use OpenTelemetry for traces"}]}' };
+    assert.match(contents, /Question: what does each clinic get\?/);
+    return { text: '{"found":true,"answer":"A tablet [0:05]","quotes":[{"at":"0:05","text":"We give each clinic a tablet"}]}' };
   } } });
-  const r = await assist.ask({ segs, lang: 'en', question: 'which tool for traces?', clientKey: 'c1' });
+  const r = await assist.ask({ segs, lang: 'en', question: 'what does each clinic get?', clientKey: 'c1' });
   assert.equal(r.found, true);
-  assert.match(r.answer, /OpenTelemetry/);
+  assert.match(r.answer, /tablet/);
   await assert.rejects(assist.ask({ segs, lang: 'en', question: 'x', clientKey: 'c1' }), /too short/);
   let limited = false;
   for (let i = 0; i < 10; i++) {
-    try { await assist.ask({ segs, lang: 'en', question: 'which tool for traces?', clientKey: 'c2' }); } catch (e) { if (e.status === 429) limited = true; }
+    try { await assist.ask({ segs, lang: 'en', question: 'what does each clinic get?', clientKey: 'c2' }); } catch (e) { if (e.status === 429) limited = true; }
   }
   assert.ok(limited, 'per-client limit kicks in');
 });
 
 test('ask without a model returns matching transcript quotes', async () => {
   config.engine = 'mock';
-  const r = await assist.ask({ segs, lang: 'es', question: 'Prometheus metrics?', clientKey: 'c3' });
+  const r = await assist.ask({ segs, lang: 'es', question: 'clinic tablet?', clientKey: 'c3' });
   assert.equal(r.ai, false);
-  assert.match(r.quotes[0].text, /Prometheus/);
+  assert.match(r.quotes[0].text, /tablet/);
 });
 
 test('agenda: CSV with header, HH:MM times, quotes and validation', () => {
   const now = new Date('2026-09-25T12:00:00');
-  const e = parseSchedule('stage,start,title,speaker\nmain,10:00,"Keynote, apertura",Org\nsala-a,2026-09-25 11:30,Rust,Ana\n', now);
+  const e = parseSchedule('stage,start,title,speaker\nmain,10:00,"Keynote, apertura",Org\nsala-a,2026-09-25 11:30,Ciudades,Ana\n', now);
   assert.equal(e.length, 2);
   assert.equal(e[0].title, 'Keynote, apertura');
   assert.equal(new Date(e[0].start).getHours(), 10);
@@ -92,13 +92,13 @@ test('agenda: a Swapcard export pasted from Excel (header, tabs, multi-line cell
   const tsv = [
     'Title\tDescription\tStart date and time\tEnd date and time\tLocation\tSpeakers',
     'Keynote de apertura\t"Bienvenida, agenda\ny más"\t25/09/2026 10:00\t25/09/2026 10:30\tEscenario Principal\tAna Pérez, John Doe',
-    'Rust para gente de Go\tx\t2026-09-25 11:30:00\t\tSala A - Planta baja\tLuis',
+    'Huertas urbanas para principiantes\tx\t2026-09-25 11:30:00\t\tSala A - Planta baja\tLuis',
     'Workshop K8s\ty\t25/09/2026 12:00\t\tLab 3\tZoe',
     'Coffee break\t\t25/09/2026 12:30\t\t\t',
   ].join('\n');
   const rooms = [{ id: 'main', name: 'Escenario Principal' }, { id: 'sala-a', name: 'Sala A' }, { id: 'sala-b', name: 'Sala B' }];
   const e = parseSchedule(tsv, now, { rooms });
-  assert.deepEqual(e.map((x) => [x.stage, x.title, x.speaker]), [['main', 'Keynote de apertura', 'Ana Pérez, John Doe'], ['sala-a', 'Rust para gente de Go', 'Luis']]);
+  assert.deepEqual(e.map((x) => [x.stage, x.title, x.speaker]), [['main', 'Keynote de apertura', 'Ana Pérez, John Doe'], ['sala-a', 'Huertas urbanas para principiantes', 'Luis']]);
   assert.equal(new Date(e[0].start).getHours(), 10);
   assert.deepEqual(e.skipped.map((s) => s.room), ['Lab 3', '—'], 'rooms without captions are skipped, not fatal');
 });
@@ -120,7 +120,7 @@ test('an empty AI summary or answer (small local models) falls back to the trans
   assert.equal(s.ai, false);
   assert.ok(s.bullets.length > 0);
   assist._setClient({ models: { generateContent: async () => ({ text: '{"found":true,"answer":"","quotes":[]}' }) } });
-  const r = await assist.ask({ segs, lang: 'en', question: 'Prometheus metrics?', clientKey: 'c-empty' });
+  const r = await assist.ask({ segs, lang: 'en', question: 'clinic tablet?', clientKey: 'c-empty' });
   assert.equal(r.ai, false);
-  assert.match(r.quotes[0].text, /Prometheus/);
+  assert.match(r.quotes[0].text, /tablet/);
 });

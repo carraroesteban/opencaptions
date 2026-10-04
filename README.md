@@ -39,6 +39,8 @@ OpenCaptions is the complete toolkit for doing that at a real event. It is free,
 
 ## Made for every kind of event
 
+<p align="center"><img src="public/art/hero.webp" width="820" alt="An audience following live captions on their phones while a speaker presents on stage" /></p>
+
 Conferences and summits · universities and schools · places of worship · town halls and public meetings · company all-hands · festivals and cultural events · trade shows · hybrid and livestreamed events.
 
 ## Features
@@ -46,6 +48,8 @@ Conferences and summits · universities and schools · places of worship · town
 <table>
 <tr>
 <td width="33%" valign="top">
+
+<img src="public/art/audience.webp" width="100%" alt="" />
 
 **For your audience**
 
@@ -58,6 +62,8 @@ Conferences and summits · universities and schools · places of worship · town
 </td>
 <td width="33%" valign="top">
 
+<img src="public/art/stage.webp" width="100%" alt="" />
+
 **For the stage and the stream**
 
 - **Presenter screen** with full-screen captions and the room's QR code.
@@ -69,12 +75,16 @@ Conferences and summits · universities and schools · places of worship · town
 </td>
 <td width="33%" valign="top">
 
+<img src="public/art/organizer.webp" width="100%" alt="" />
+
 **For organizers**
 
+- **Guided setup:** the first time you open the dashboard, a short illustrated wizard asks for the event name, rooms and languages. Skip anything you're not sure about.
 - **Production dashboard** with every room's status, audio level, delay, audience, cost and alerts, plus a floating mini-dashboard.
 - **Agenda import** from Swapcard, Sessionize or any spreadsheet: titles and speaker names appear automatically.
 - **Printable QR posters** for every room, in one click.
 - **Glossary** so names, brands and specialist terms are spelled right.
+- **Offline backup:** if the venue loses internet, captions switch to AI running on your laptop and come back to the cloud on their own.
 - **Secure by default:** access tokens, rate limits, and no inbound ports needed.
 
 </td>
@@ -122,6 +132,12 @@ Prefer to keep everything on your own machine? [Local mode](docs/local.md) runs 
 brew install ollama        # Linux: curl -fsSL https://ollama.com/install.sh | sh · Windows: ollama.com/download
 npm run local -- --check   # downloads the models once (~4 GB) and tests them
 npm run local              # http://localhost:8080
+```
+
+Or get the best of both: Gemini as usual, with your laptop ready to take over if the venue's internet goes down:
+
+```bash
+npm run local -- --fallback
 ```
 
 | Screen | Address |
@@ -178,7 +194,7 @@ Full details: [Requirements](docs/requirements.md).
 ## Going live
 
 1. **Server.** Run it at the venue or in the cloud, put HTTPS in front and set `PUBLIC_URL`. [Choosing a setup](docs/deployment.md#choose-a-topology).
-2. **Rooms.** Create them in the dashboard, paste your agenda and print the QR posters.
+2. **Rooms.** The welcome wizard asks for them the first time you open the dashboard. Then paste your agenda and print the QR posters.
 3. **Audio.** Point OBS/vMix at `rtmp://<server>:1935/live/<room>`, or run the small agent on the PC connected to each room's sound desk.
 4. **Screens.** Open the presenter screen next to the stage and add the overlay to your stream.
 5. **Showtime.** Nothing to press: rooms pause in silence, resume on speech and follow the agenda.
@@ -186,6 +202,13 @@ Full details: [Requirements](docs/requirements.md).
 The **[event-day runbook](docs/operations/runbook.md)** has a sound-check list and explains every alert ([en español](docs/operations/event-day.es.md)).
 
 ## How it works
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/images/diagrams/how-it-works-dark.png" />
+  <img src="docs/images/diagrams/how-it-works-light.png" alt="How it works: room audio (sound desk, browser tab, OBS or vMix) goes to the OpenCaptions server, which sends it to a speech model and each sentence to a translation model, then delivers captions to phones, the presenter screen, the livestream and the dashboard." />
+</picture>
+
+<details><summary>Text version of this diagram</summary>
 
 ```mermaid
 flowchart LR
@@ -199,6 +222,8 @@ flowchart LR
   S --> O["🎬 Livestream"]
   S --> D["📊 Dashboard"]
 ```
+
+</details>
 
 - A speech model transcribes each room continuously and detects the language being spoken.
 - Each sentence is translated with the previous sentences and your glossary as context. A provisional translation updates while the sentence is still being spoken, so captions never wait for a full stop.

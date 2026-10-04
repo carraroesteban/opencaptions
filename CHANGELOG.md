@@ -4,6 +4,20 @@ All notable changes to this project are documented in this file. The format foll
 
 ## [Unreleased]
 
+### Added — from the roadmap
+
+- **Streaming translation:** when a sentence ends, its translation streams into the caption as Gemini writes it. Measured on Gemini 3.5 Flash-Lite: first translated words after a median 0.61 s instead of 0.69 s, and an average of 0.61 s instead of 0.83 s (slow answers gain most). The caption never shrinks while streaming. On by default; `MT_STREAM=0` turns it off. See [Latency](docs/latency.md#tuning).
+- **Strict Content-Security-Policy:** every page's script moved to `public/pages/<page>.js`; `script-src` no longer allows inline scripts, and `script-src-attr 'none'` blocks `onclick=`-style handlers. A test fails if a page or template adds one back.
+- **End-to-end test harness:** `test/e2e.test.js` runs the real server with Gemini replaced by a recorded session (`test/fixtures/talk-en.json`), from audio in to captions, transcripts, exports, summary and questions, with no API key. `npm run record` re-records it (`OC_RECORD` / `OC_REPLAY`, see `src/replay.js`).
+- **Linting and type checking:** ESLint (`npm run lint`) on the server, scripts, tests and every page script, and TypeScript checking JSDoc types in `src/` and `scripts/` (`npm run typecheck`); both run in CI. They found a few real bugs: duplicate translations in `public/i18n.js`, a script that read a property the Gemini engine never sets (`check-gemini` always said the language was "not reported"), and JSDoc that no longer matched the code.
+
+### Added — welcome wizard and offline backup
+
+- **Welcome wizard** (`/welcome.html`): the first time someone opens the dashboard, five short illustrated steps ask for the event name, the rooms (with one-click presets) and the languages, explain which AI makes the captions, and show how to connect the sound. Every step can be skipped; **Skip setup** keeps the example configuration. The answers are saved in `data/setup.json` and through the existing room API, and the wizard can be reopened from **Setup wizard** in the toolbar. New `GET`/`PUT /api/setup`.
+- **Offline backup:** `npm run local -- --fallback` keeps Gemini as the main engine and prepares the local engine on standby. If Google's API can't be reached for about 15 seconds, every room switches to Whisper and the local text model; after a minute of stable connection they switch back. The dashboard shows a banner and an AI selector (*Automatic*, *Always Gemini*, *Always this computer*); `POST /api/engine` does the same. Configure it with `FALLBACK=local` or `"fallback": "local"` in `config/event.json`. See [docs/local.md](docs/local.md#offline-backup).
+- **Documentation in the brand style:** every technical diagram (how it works, components, one sentence end to end, room lifecycle, both deployment options, latency, local mode, offline backup, security) is redrawn like the website, in light and dark versions that follow the reader's GitHub theme, with a text version underneath. The main docs pages open with an illustration. Sources in `docs/diagrams/`, rendered with `npm run docs:images`.
+- New illustrations for the wizard, and a 1280×640 GitHub social preview image (`docs/images/social-preview.png`).
+
 ### Changed — new identity
 
 - **New brand: the "Open O"** logo, an ink / paper / lime palette, Bricolage Grotesque headlines and Atkinson Hyperlegible Next for everything you read. Every page shares one set of design tokens ([`public/tokens.css`](public/tokens.css)) with equally polished light and dark themes. See [docs/brand.md](docs/brand.md).
@@ -17,6 +31,9 @@ All notable changes to this project are documented in this file. The format foll
 - **Event-neutral defaults:** the example event, rooms, agenda, glossary and demo captions no longer refer to a specific conference or to tech talks, and the AI prompts no longer assume a software audience, so summaries, answers and translations fit any field.
 - **Dashboard:** a cleaner header with icon buttons, KPI cards, a first-run guide with an illustration, and compact room cards (status, talk, audio level, latest line, audience, delay and cost) with a **See details** toggle for engines, metrics and per-language previews. The first-run guide is now fully translated.
 - **Presenter screen:** captions fill the whole screen from the bottom up instead of a fixed three lines (set `lines` to keep a fixed height), and **F** or a double-click toggles full screen. In the style editor, unchecking *Also show the original* now also removes it from the preview, and *Lines* has an *Auto (fill the screen)* setting.
+- **New demo recordings:** `samples/talk-en.wav` and `samples/talk-es.wav` are now short fictional talks at the example event, read by a synthetic voice. Rebuild them on a Mac with `scripts/make-samples.sh`. The accuracy table in [docs/local.md](docs/local.md#measured-results) was measured again with them.
+- `npm run multi` no longer defaults to one event's YouTube channel: pass `--playlist`, `--file`, `--channel @handle` or `--query`.
+- The website has a new *Made for event day* section about the welcome wizard and the offline backup, and a more tactile design: a centred hero with real objects on the table that follow the pointer, a typing announcement, film grain, a section dock, an endless use-case marquee, a dark band whose statement captions itself as you scroll, and a dock to switch between screenshots. It opens in light mode by default.
 - **Polish:** custom select arrows with proper padding; numbers use the system font's digits (Atkinson Hyperlegible Next only has a slashed zero).
 - **Illustrations** for the room list, dashboard, style editor and website.
 
@@ -105,7 +122,7 @@ All notable changes to this project are documented in this file. The format foll
 
 ### Added
 
-- First version for the Nerdearla 2026 Vibeathon:
+- First version:
   - Gemini Live Translate captions with text translation per sentence.
   - Multi-room server, audience, projector and overlay pages.
   - Production dashboard, glossary, and SRT/VTT/TXT export.

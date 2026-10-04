@@ -5,8 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <title>OpenCaptions · Live captions and translation for every event</title>
   <meta name="description" content="Real-time captions and translation for conferences, classrooms, town halls and festivals. Every attendee follows along on their phone, in their own language. Free and open source." />
-  <meta name="theme-color" content="#FAF8F3" media="(prefers-color-scheme: light)" />
-  <meta name="theme-color" content="#111014" media="(prefers-color-scheme: dark)" />
+  <meta name="theme-color" content="#FAF8F3" />
   <link rel="canonical" href="https://opencaptions.kvza.ar/" />
   <link rel="alternate" hreflang="en" href="https://opencaptions.kvza.ar/" />
   <link rel="alternate" hreflang="es" href="https://opencaptions.kvza.ar/es/" />
@@ -24,11 +23,13 @@
   <meta property="og:image:height" content="630" />
   <meta property="og:locale" content="en_US" />
   <meta name="twitter:card" content="summary_large_image" />
-  <script>try { const t = JSON.parse(localStorage.getItem('oc.theme')); if (t) document.documentElement.dataset.theme = t; } catch {}</script>
+  <script>/* light by default; the ◐ button switches and remembers */ let t = 'light'; try { t = JSON.parse(localStorage.getItem('oc.theme')) || t; } catch {} document.documentElement.dataset.theme = t; document.querySelector('meta[name=theme-color]').content = t === 'dark' ? '#111014' : '#FAF8F3';</script>
   <link rel="stylesheet" href="/style.css" />
   <link rel="stylesheet" href="/site.css" />
 </head>
 <body>
+  <div class="grain" aria-hidden="true"></div>
+  <nav class="dock" aria-label="Sections"><a href="#top" data-sec="top" aria-label="Home"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 11l8-6.5 8 6.5V20a1 1 0 0 1-1 1h-4.5v-6h-5v6H5a1 1 0 0 1-1-1z"/></svg><span>Home</span></a><a href="#live" data-sec="live" aria-label="Live captions"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="13" rx="2.5"/><path d="M7 13.5h6"/><path d="M7 10h10"/></svg><span>Live captions</span></a><a href="#features" data-sec="features" aria-label="Features"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><path d="M14 16.5l2 2 4-4"/></svg><span>Features</span></a><a href="#how" data-sec="how" aria-label="How it works"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg><span>How it works</span></a><a href="#screens" data-sec="screens" aria-label="Screens"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.5" y="4" width="13" height="10" rx="2"/><rect x="15" y="9" width="6.5" height="11" rx="1.6"/><path d="M6 18h6"/></svg><span>Screens</span></a><a href="#pricing" data-sec="pricing" aria-label="Pricing"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M14.5 9.5c-.4-.9-1.4-1.5-2.5-1.5-1.5 0-2.5.8-2.5 2s1.1 1.6 2.5 2 2.5.8 2.5 2-1 2-2.5 2c-1.1 0-2.1-.6-2.5-1.5M12 6.5v1.5M12 16v1.5"/></svg><span>Pricing</span></a><a href="#start" data-sec="start" aria-label="Get started"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 6l5 5-5 5M12 18h7"/></svg><span>Get started</span></a></nav>
   <nav class="nav">
     <div class="wrap">
       <a class="brand" href="/">OpenCaptions</a>
@@ -44,28 +45,18 @@
   </nav>
 
   <main>
-    <section class="hero">
-      <div class="wrap">
-        <div>
-          <svg class="oc-logo typed mark" viewBox="0 0 878 664" aria-hidden="true"><use class="o" href="/brand/sprite.svg#oc-o"/><use class="ln" href="/brand/sprite.svg#oc-line"/></svg>
-          <h1>Every talk, understood by everyone.</h1>
-          <p class="lede">OpenCaptions turns live speech into captions and translations in seconds, on every phone in the room, on the big screen and in your livestream. <b>No app to install, no per-seat fees</b>, and it runs on your own server.</p>
-          <div class="cta">
-            <a class="btn primary" href="#start">Get started free →</a>
-            <a class="btn" href="https://github.com/carraroesteban/opencaptions">View on GitHub</a>
-          </div>
-          <p class="note">Free and open source (MIT) · Self-hosted · Cloud AI or fully offline</p>
+    <section class="hero" id="top">
+      <div class="objs" aria-hidden="true"><img class="obj o-mic" data-depth="26" src="/art/objects/mic.webp" alt="" /><img class="obj o-ticket" data-depth="14" src="/art/objects/ticket.webp" alt="" /><img class="obj o-head" data-depth="20" src="/art/objects/headphones.webp" alt="" /><img class="obj o-badge" data-depth="18" src="/art/objects/badge.webp" alt="" /><img class="obj o-click" data-depth="30" src="/art/objects/clicker.webp" alt="" /><img class="obj o-phone" data-depth="12" src="/art/objects/phone.webp" alt="" /></div>
+      <div class="hero-in">
+        <div class="ticker" aria-label="OpenCaptions now works offline — captions keep running when the Wi-Fi drops"><span class="p">❯</span> <span class="tt" data-pre="OpenCaptions" data-hl="now works offline" data-post="— captions keep running when the Wi-Fi drops"></span><span class="caret"></span></div>
+        <p class="kicker"><svg class="oc-logo typed" viewBox="0 0 878 664" aria-hidden="true"><use class="o" href="/brand/sprite.svg#oc-o"/><use class="ln" href="/brand/sprite.svg#oc-line"/></svg>Open-source live captions</p>
+        <h1>Every talk,<br>understood by everyone.</h1>
+        <p class="lede">Live captions and translation on every phone in the room, on the big screen and in your livestream. <b>No app to install, no per-seat fees</b>, and it runs on your own server.</p>
+        <div class="cta">
+          <a class="btn primary" href="#start">Get started free →</a>
+          <a class="btn" href="https://github.com/carraroesteban/opencaptions">View on GitHub</a>
         </div>
-        <div class="phone" aria-hidden="true">
-          <div class="screen">
-            <div class="top">
-              <div class="row"><b>Main Stage</b><span class="chip bad"><span class="dot live"></span> LIVE</span></div>
-              <div class="pills"><span class="">Original</span><span class="on">English</span><span class="">Español</span></div>
-            </div>
-            <div class="cap" id="cap" data-lines="[&quot;Good morning everyone, and thank you for joining us today.&quot;, &quot;Today I want to share how a small team turned a simple idea into a global community.&quot;, &quot;It all started with one question: what if everyone in the room could follow along?&quot;, &quot;Great events are made by volunteers, speakers and an audience that cares.&quot;]"></div>
-            <div class="orig"><b>Original</b><span id="orig-txt" data-lines="[&quot;Buenos días a todos, y gracias por acompañarnos hoy.&quot;, &quot;Hoy quiero contarles cómo un equipo pequeño convirtió una idea simple en una comunidad global.&quot;, &quot;Todo empezó con una pregunta: ¿y si todas las personas de la sala pudieran seguir la charla?&quot;, &quot;Los grandes eventos los hacen los voluntarios, los oradores y un público que se compromete.&quot;]"></span></div>
-          </div>
-        </div>
+        <p class="note">Free and open source (MIT) · Self-hosted · Cloud AI or fully offline</p>
       </div>
     </section>
 
@@ -77,7 +68,30 @@
       <div class="wrap">
         <p class="eyebrow">Made for every kind of event</p>
         <h2>Wherever people gather to listen.</h2>
-        <div class="uses reveal"><span class="use">Conferences &amp; summits</span><span class="use">Universities &amp; schools</span><span class="use">Places of worship</span><span class="use">Town halls &amp; public meetings</span><span class="use">Company all-hands</span><span class="use">Festivals &amp; cultural events</span><span class="use">Trade shows</span><span class="use">Hybrid &amp; livestreamed events</span></div>
+        <div class="marquee" aria-hidden="false"><div class="track"><span class="use">Conferences &amp; summits</span><span class="use">Universities &amp; schools</span><span class="use">Places of worship</span><span class="use">Town halls &amp; public meetings</span><span class="use">Company all-hands</span><span class="use">Festivals &amp; cultural events</span><span class="use">Trade shows</span><span class="use">Hybrid &amp; livestreamed events</span><span class="sep"></span><span class="use" aria-hidden="true">Conferences &amp; summits</span><span class="use" aria-hidden="true">Universities &amp; schools</span><span class="use" aria-hidden="true">Places of worship</span><span class="use" aria-hidden="true">Town halls &amp; public meetings</span><span class="use" aria-hidden="true">Company all-hands</span><span class="use" aria-hidden="true">Festivals &amp; cultural events</span><span class="use" aria-hidden="true">Trade shows</span><span class="use" aria-hidden="true">Hybrid &amp; livestreamed events</span><span class="sep"></span></div></div>
+      </div>
+    </section>
+
+    <section class="band" id="live">
+      <div class="wrap">
+        <p class="statement" id="statement"><span class="w">Someone</span> <span class="w">in</span> <span class="w">the</span> <span class="w">back</span> <span class="w">row</span> <span class="w">is</span> <span class="w">reading</span> <span class="w">lips.</span> <span class="w">Someone</span> <span class="w">else</span> <span class="w">is</span> <span class="w">translating</span> <span class="w">in</span> <span class="w">their</span> <span class="w">head.</span> <span class="w">Half</span> <span class="w">the</span> <span class="w">room</span> <span class="w">missed</span> <span class="w">that</span> <span class="w">last</span> <span class="w">name.</span> <span class="w">OpenCaptions</span> <span class="w">puts</span> <span class="w">every</span> <span class="w">word</span> <span class="w">on</span> <span class="w">every</span> <span class="w">phone,</span> <span class="w">in</span> <span class="w">every</span> <span class="w">language,</span> <span class="w">the</span> <span class="w">moment</span> <span class="w">it’s</span> <span class="w">spoken.</span></p>
+        <div class="live-grid">
+          <div>
+            <h2>Every word, the moment it’s spoken.</h2>
+            <p class="lede">Scan the QR code, pick a language, and follow along. The word being said right now gets a highlighter, so nobody loses their place.</p>
+          </div>
+          <div class="glow"><div class="phone" aria-hidden="true">
+          <div class="screen">
+            <div class="top">
+              <div class="row"><b>Main Stage</b><span class="chip bad"><span class="dot live"></span> LIVE</span></div>
+              <div class="pills"><span class="">Original</span><span class="on">English</span><span class="">Español</span></div>
+            </div>
+            <div class="cap" id="cap" data-lines="[&quot;Good morning everyone, and thank you for joining us today.&quot;, &quot;Today I want to share how a small team turned a simple idea into a global community.&quot;, &quot;It all started with one question: what if everyone in the room could follow along?&quot;, &quot;Great events are made by volunteers, speakers and an audience that cares.&quot;]"></div>
+            <div class="orig"><b>Original</b><span id="orig-txt" data-lines="[&quot;Buenos días a todos, y gracias por acompañarnos hoy.&quot;, &quot;Hoy quiero contarles cómo un equipo pequeño convirtió una idea simple en una comunidad global.&quot;, &quot;Todo empezó con una pregunta: ¿y si todas las personas de la sala pudieran seguir la charla?&quot;, &quot;Los grandes eventos los hacen los voluntarios, los oradores y un público que se compromete.&quot;]"></span></div>
+          </div>
+        </div>
+</div>
+        </div>
       </div>
     </section>
 
@@ -102,11 +116,21 @@
       </div>
     </section>
 
-    <section id="screenshots">
+    <section id="ready">
       <div class="wrap">
-        <p class="eyebrow">Screenshots</p>
-        <h2>Calm screens for busy days.</h2>
-        <div class="shots"><figure class="reveal"><img src="/images/dashboard.png" alt="The production dashboard: every room at a glance" loading="lazy" /><figcaption>The production dashboard: every room at a glance</figcaption></figure><figure class="reveal"><img src="/images/phones.png" alt="Live captions and “What did I miss?” on a phone" loading="lazy" /><figcaption>Live captions and “What did I miss?” on a phone</figcaption></figure><figure class="reveal"><img src="/images/transcript.png" alt="Searchable transcripts with an AI summary" loading="lazy" /><figcaption>Searchable transcripts with an AI summary</figcaption></figure><figure class="reveal"><img src="/images/projector.png" alt="Full-screen captions for the presenter screen" loading="lazy" /><figcaption>Full-screen captions for the presenter screen</figcaption></figure></div>
+        <p class="eyebrow">Made for event day</p>
+        <h2>Easy to set up. Hard to knock over.</h2>
+        <div class="spot reveal"><img class="art" src="/art/ob-rooms.webp" alt="A floor plan of a venue with four rooms, each with a caption screen" loading="lazy" /><div><h3>A guided setup, not a manual</h3><p>The first time you open the dashboard, a short illustrated wizard asks the essentials and does the rest.</p><ul><li><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg><span>Name your event, add your rooms, pick your languages</span></li><li><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg><span>Skip anything you’re not sure about and change it later</span></li><li><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg><span>Ends with your QR posters ready to print</span></li></ul></div></div>
+        <div class="spot flip reveal"><img class="art" src="/art/offline.webp" alt="A relaxed technician next to a laptop that keeps showing captions while the Wi-Fi is down" loading="lazy" /><div><h3>Keeps going when the Wi-Fi doesn’t</h3><p>Use the cloud for its quality, with a laptop at the venue as the backup. If the internet drops, captions keep running there.</p><ul><li><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg><span>Switches by itself in about 15 seconds</span></li><li><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg><span>Goes back to the cloud once the connection is stable</span></li><li><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg><span>A clear banner and a manual switch on the dashboard</span></li></ul></div></div>
+      </div>
+    </section>
+
+    <section class="band screens" id="screens">
+      <div class="wrap">
+        <p class="eyebrow">The screens</p>
+        <h2>One talk. Every screen in the building.</h2>
+        <figure class="stage-shot reveal"><img id="shot" src="/images/phones.png" alt="Live captions and “What did I miss?” on any phone" /><figcaption id="shot-cap">Live captions and “What did I miss?” on any phone</figcaption></figure>
+        <div class="apps" role="group" aria-label="The screens"><button type="button" class="tile on" data-img="/images/phones.png" data-cap="Live captions and “What did I miss?” on any phone" aria-pressed="true" aria-label="Phone"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="6" y="2.5" width="12" height="19" rx="3"/><path d="M9.5 9h5M9.5 12.5h5M10.5 18.5h3"/></svg><span>Phone</span></button><button type="button" class="tile" data-img="/images/projector.png" data-cap="Full-screen captions next to the speaker" aria-pressed="false" aria-label="Projector"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M7 12h7M8 20h8M12 16v4"/></svg><span>Projector</span></button><button type="button" class="tile" data-img="/images/transcript.png" data-cap="Searchable transcripts with an AI summary" aria-pressed="false" aria-label="Transcript"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 3h7l4 4v14H7z"/><path d="M14 3v4h4M10 12h5M10 16h5"/></svg><span>Transcript</span></button><button type="button" class="tile" data-img="/images/dashboard.png" data-cap="The production dashboard: every room at a glance" aria-pressed="false" aria-label="Dashboard"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18M8 13v4M12 12v5M16 14v3"/></svg><span>Dashboard</span></button></div>
       </div>
     </section>
 
@@ -114,7 +138,7 @@
       <div class="wrap">
         <p class="eyebrow">Pricing</p>
         <h2>Free software. Pay only for the AI you use, or nothing at all.</h2>
-        <div class="engines"><div class="card reveal"><div><h3>Gemini (cloud)</h3><p>The highest accuracy and lowest delay. About US$ 2.2 per room-hour of speech, and silence is never billed.</p><div class="row"><span class=chip>Best quality</span><span class=chip>Many rooms</span><span class=chip>Pay as you go</span></div></div></div><div class="card reveal with-art"><div><h3>Local mode</h3><p>Speech recognition and translation on your own hardware. No API key, no usage fees, and the audio never leaves the building.</p><div class="row"><span class=chip>Private</span><span class=chip>Free</span><span class=chip>Works offline</span></div></div><img class="art" src="/art/local.webp" alt="" loading="lazy" /></div></div>
+        <div class="engines"><div class="card reveal"><div><h3>Gemini (cloud)</h3><p>The highest accuracy and lowest delay. About US$ 2.2 per room-hour of speech, and silence is never billed.</p><div class="row"><span class=chip>Best quality</span><span class=chip>Many rooms</span><span class=chip>Pay as you go</span></div></div></div><div class="card reveal with-art"><div><h3>Local mode</h3><p>Runs on a laptop at the venue. Nothing to sign up for, nothing to pay per hour, and it keeps working without internet, on its own or as a backup for Gemini.</p><div class="row"><span class=chip>Private</span><span class=chip>Free</span><span class=chip>Works offline</span></div></div><img class="art" src="/art/local.webp" alt="" loading="lazy" /></div></div>
       </div>
     </section>
 
