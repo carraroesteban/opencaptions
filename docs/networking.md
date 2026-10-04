@@ -16,6 +16,7 @@ All traffic uses TLS on port 443 once HTTPS is configured. Nothing at the venue 
 | Browsers on `/demo.html` | `www.youtube.com` | HTTPS 443 | YouTube demo player only |
 | Server (optional) | Stream sources | SRT/RTMP/RTSP/UDP/HTTPS | Pulling audio from vMix, OBS or an encoder |
 | Server (optional) | YouTube via `yt-dlp` | HTTPS 443 | Demos and latency tests only |
+| Server, [local mode](local.md) | `127.0.0.1` or a machine on your LAN: speech server (8178 by default) and Ollama (11434) | HTTP | Replaces the Gemini connection. No internet needed after the first model download (GitHub, Hugging Face, `ollama.com`, and npm for the speech engine). |
 | `cloudflared` (optional) | Cloudflare edge | Outbound 443 (QUIC/UDP 7844 preferred, TCP 443 fallback) | Tunnel |
 
 Without TLS, the server listens on plain HTTP on `PORT` (default 8080). Use that only on `localhost` or a trusted LAN.
@@ -34,7 +35,7 @@ Conference networks often block things. Test the exact network you'll use a day 
 | Captive portal | Agents can't connect until someone logs in | Use wired Ethernet or a dedicated SSID for production PCs. Ask IT to exempt their MAC addresses. |
 | TLS-inspecting proxy (corporate) | WebSockets may be cut or blocked | Ask IT to exempt the hostname from inspection. The agent doesn't support HTTP proxies yet. |
 | Unstable uplink | Short gaps in captions | The agent keeps up to 15 s of audio and the server keeps 12 s while reconnecting to Gemini, so short drops lose nothing. Prefer wired links and a failover router with 4G/5G. |
-| No internet at all | No captions | Gemini is a cloud service. An offline engine (for example Gemma running locally) is on the [roadmap](architecture.md#extension-points). |
+| No internet at all | No captions with Gemini | Use [local mode](local.md): Whisper and an open model run on the server machine. Download the models beforehand, while you have internet. |
 | Audience phones on mobile data with poor coverage | Phones lag or disconnect | Captions are about 1 kbps, so even a weak signal is enough. Offer venue Wi-Fi and show the captions on the projector as a fallback. |
 
 ## Sizing the uplink

@@ -27,7 +27,9 @@ const env = process.env;
 if (event.timezone && !env.TZ) env.TZ = event.timezone;
 const DEFAULT_TARGETS = event.defaultTargets || ['es', 'en'];
 const vertex = /^(1|true)$/i.test(env.GOOGLE_GENAI_USE_VERTEXAI || '');
-const engine = flag('mock') ? 'mock' : (env.ENGINE || (env.GEMINI_API_KEY || vertex ? 'gemini' : 'mock'));
+// gemini (cloud) | local (Whisper + a local text model, see docs/local.md) | mock (simulated, no AI at all)
+const engine = flag('mock') ? 'mock' : flag('local') ? 'local' : (env.ENGINE || (env.GEMINI_API_KEY || vertex ? 'gemini' : 'mock'));
+const local = engine === 'local';
 
 export const config = {
   port: Number(env.PORT || 8080),
@@ -61,16 +63,40 @@ export const config = {
   // How often the in-progress sentence is re-translated as a provisional caption (ms).
   mtPartialMs: Number(env.MT_PARTIAL_MS ?? event.mtPartialMs ?? 1500),
   // Give up on (and retry) a translation request after this long.
-  mtTimeoutMs: Number(env.MT_TIMEOUT_MS ?? event.mtTimeoutMs ?? 5000),
+  mtTimeoutMs: Number(env.MT_TIMEOUT_MS ?? event.mtTimeoutMs ?? (local ? 30000 : 5000)),
   textModel: env.TEXT_MODEL || event.textModel || 'gemini-3.5-flash-lite',
   // Optional: shorten the model's end-of-speech wait (ms) to cut caption latency, e.g. 300.
   // Show the model's low-latency interim transcription as provisional text on the original channel.
-  useInterim: (env.USE_INTERIM ?? String(event.useInterim ?? '0')) === '1',
+  useInterim: (env.USE_INTERIM ?? String(event.useInterim ?? (local ? '1' : '0'))) === '1', // local: on (Whisper's provisional words)
   vadSilenceMs: Number(env.VAD_SILENCE_MS ?? event.vadSilenceMs ?? 0),
   transcriptionMode: env.TRANSCRIPTION_MODE || event.transcriptionMode || '', // '' | 'VERBATIM' | 'SMART'
+  // ---- Local engine (ENGINE=local): nothing leaves this machine. See docs/local.md. ----
+  // Speech: whisper.cpp's whisper-server (…/inference), scripts/local-asr-server.js, or an OpenAI-compatible
+  // /v1/audio/transcriptions server.
+  localAsrUrl: env.LOCAL_ASR_URL || 'http://127.0.0.1:8178/inference',
+  localAsrApi: env.LOCAL_ASR_API || '', // '' = from the URL | 'whispercpp' | 'openai'
+  localAsrModel: env.LOCAL_ASR_MODEL || '', // sent as `model` to OpenAI-compatible servers (e.g. Systran/faster-whisper-small)
+  localAsrLabel: env.LOCAL_ASR_LABEL || '', // name shown on the dashboard (npm run local sets it)
+  localAsrConcurrency: Number(env.LOCAL_ASR_CONCURRENCY || 1),
+  localAsrTimeoutMs: Number(env.LOCAL_ASR_TIMEOUT_MS || 30000),
+  localStepMs: Number(env.LOCAL_STEP_MS || 1000), // re-transcribe the sentence in progress this often
+  localEndSilenceMs: Number(env.LOCAL_END_SILENCE_MS || 700), // a pause this long ends an utterance
+  localMaxUtteranceSec: Number(env.LOCAL_MAX_UTTERANCE_SEC || 12), // long monologues are cut at a quiet moment
+  // Translation + audience assistant: Ollama (default) or an OpenAI-compatible server (URL ending in /v1).
+  localLlmOff: /^(off|0|false|no)$/i.test(env.LOCAL_LLM || ''), // transcription only: no translations or summaries
+  localLlmUrl: env.LOCAL_LLM_URL || 'http://127.0.0.1:11434',
+  localLlmApi: env.LOCAL_LLM_API || '', // '' = from the URL | 'ollama' | 'openai'
+  localLlmModel: env.LOCAL_LLM_MODEL || 'gemma3:4b',
+  // Optional separate model for caption translation, e.g. translategemma (a Gemma 3 fine-tuned for translation).
+  // Summaries and questions keep using LOCAL_LLM_MODEL.
+  localMtModel: env.LOCAL_MT_MODEL || '',
+  localLlmConcurrency: Number(env.LOCAL_LLM_CONCURRENCY || 1),
+  localLlmTimeoutMs: Number(env.LOCAL_LLM_TIMEOUT_MS || 60000),
+  localLlmContext: Number(env.LOCAL_LLM_CONTEXT || 8192), // Ollama num_ctx (tokens)
+  localLlmKeepAlive: env.LOCAL_LLM_KEEP_ALIVE || '30m',
   event: {
     name: event.eventName || 'OpenCaptions',
-    accent: event.accent || '#7c5cff',
+    accent: event.accent || '#D4FF3A',
     languages: event.languages || { es: 'Español', en: 'English', pt: 'Português' },
     defaultTargets: DEFAULT_TARGETS,
     publicTranscripts: event.publicTranscripts || '',

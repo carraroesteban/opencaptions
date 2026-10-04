@@ -3,7 +3,8 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="theme-color" content="#0b0b10" />
+  <meta name="theme-color" content="#FAF8F3" media="(prefers-color-scheme: light)" />
+  <meta name="theme-color" content="#111014" media="(prefers-color-scheme: dark)" />
   <link rel="icon" href="/favicon.ico" sizes="32x32" />
   <link rel="icon" href="/brand/icon.svg" type="image/svg+xml" />
   <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
@@ -20,22 +21,28 @@
   <title>Transcripciones</title>
   <link rel="stylesheet" href="/style.css" />
   <style>
-    main { max-width: 860px; margin: 0 auto; padding: 24px 16px 60px; }
-    h1 { font-size: 28px; margin: 8px 0 4px; }
-    .tools { display: flex; gap: 8px; margin: 18px 0; flex-wrap: wrap; }
-    .tools input { flex: 1; min-width: 200px; font-size: 16px; }
+    main { max-width: 860px; margin: 0 auto; padding: 22px 20px 64px; }
+    .bar { display: flex; justify-content: space-between; align-items: center; }
+    #back { text-decoration: none; font-size: 14px; }
+    #back:hover { color: var(--fg); }
+    h1 { font-size: clamp(32px, 6vw, 46px); margin: 44px 0 8px; }
+    #hint { font-size: 17px; margin: 0; max-width: 560px; }
+    .tools { display: flex; gap: 8px; margin: 28px 0 8px; flex-wrap: wrap; }
+    .tools input { flex: 1; min-width: 200px; font-size: 16px; padding: 10px 14px; border-radius: 12px; }
+    .tools select { border-radius: 12px; padding: 10px 12px; }
     .list { display: grid; gap: 10px; }
-    .talk { display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; text-decoration: none; padding: 14px 16px; }
-    .talk:hover { border-color: var(--accent); }
-    .talk h2 { font-size: 18px; margin: 0; line-height: 1.3; }
+    .talk { display: grid; grid-template-columns: 1fr auto; gap: 6px 12px; text-decoration: none; padding: 16px 20px; }
+    .talk h2 { font-size: 19px; margin: 0; line-height: 1.25; }
     .talk .m { grid-column: 1 / -1; color: var(--fg2); font-size: 14px; display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
-    .day { margin: 22px 0 8px; font-size: 13px; letter-spacing: .06em; text-transform: uppercase; color: var(--fg2); }
-    footer { margin-top: 36px; font-size: 13px; }
+    .day { margin: 26px 0 6px; font-size: 12px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--fg2); }
+    .none { padding: 48px 0; }
+    .none .illo { width: 96px; color: var(--fg); }
+    footer { margin-top: 48px; padding-top: 18px; border-top: 1px solid var(--line); font-size: 13px; }
   </style>
 </head>
 <body>
   <main>
-    <div class="row" style="justify-content:space-between"><a href="/" class="muted" id="back" style="text-decoration:none">‹</a><a class="brand" href="/" title="Salas" style="font-size:14px">open<span>captions</span></a></div>
+    <div class="bar"><a class="brand" href="/" title="Salas" style="font-size:17px">OpenCaptions</a><a href="/" class="muted" id="back">‹</a></div>
     <h1 id="h"></h1>
     <p class="muted" id="hint"></p>
     <div class="tools">
@@ -47,6 +54,7 @@
   </main>
   <script type="module">
     import { t, esc, getEvent, langLabel } from '/common.js';
+    import { library } from '/illustrations.js';
     const $ = (id) => document.getElementById(id);
     const ev = await getEvent();
     document.title = `${t('library')} · ${ev.name}`;
@@ -70,7 +78,7 @@
       const q = $('q').value.trim().toLowerCase();
       const room = $('room').value;
       const list = talks.filter((x) => (!room || x.stage === room) && (!q || `${x.title} ${x.speaker} ${x.stageName}`.toLowerCase().includes(q)));
-      if (!list.length) { $('list').innerHTML = `<p class="muted">${esc(t('noTalks'))}</p>`; return; }
+      if (!list.length) { $('list').innerHTML = `<div class="empty-state none">${library}<p>${esc(t('noTalks'))}</p></div>`; return; }
       let day = '';
       $('list').innerHTML = list.map((x) => {
         const d = new Date(x.startedAt);

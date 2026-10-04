@@ -134,7 +134,7 @@ Room audio ──(WSS/TLS)──► OpenCaptions server ──(TLS)──► Goo
 
 | Data | Where it goes | Stored? |
 |---|---|---|
-| Raw audio | Server memory (a reconnect buffer of at most 12 s; the venue agent keeps about 15 s client-side), then Gemini | **Never written to disk** |
+| Raw audio | Server memory (a reconnect buffer of at most 12 s; the venue agent keeps about 15 s client-side), then Gemini, or the local speech server in local mode | **Never written to disk** |
 | Transcripts and translations | Viewers and `data/transcripts/` | Yes by default. `STORE_TRANSCRIPTS=false` disables storage. `RETENTION_DAYS=N` deletes old ones. |
 | Translated voice | Relayed in memory to listeners | Never stored |
 | Room config, glossary | `config/`, `data/stages.json` | Yes. No personal data. |
@@ -143,13 +143,13 @@ Room audio ──(WSS/TLS)──► OpenCaptions server ──(TLS)──► Goo
 
 ## Choosing the AI backend
 
-| | Gemini Developer API (API key, AI Studio) | Google Cloud Vertex AI (recommended for companies) |
-|---|---|---|
-| Setup | `GEMINI_API_KEY` | `GOOGLE_GENAI_USE_VERTEXAI=true`, `GOOGLE_CLOUD_PROJECT`, `GOOGLE_CLOUD_LOCATION` and a service account or ADC |
-| Data used for training | Free tier: may be used to improve products. Paid tier: not used. | Not used without permission |
-| Compliance coverage | Google's API terms | Google Cloud compliance program, including ISO 27001/27017/27018/27701, ISO 42001, SOC 2 Type II, HIPAA BAA and a GDPR DPA |
-| Data residency | Global | Regional endpoints |
-| Access control and audit | AI Studio | Your project's IAM, Cloud Audit Logs, VPC Service Controls |
+| | Gemini Developer API (API key, AI Studio) | Google Cloud Vertex AI (recommended for companies) | [Local mode](local.md) (`ENGINE=local`) |
+|---|---|---|---|
+| Setup | `GEMINI_API_KEY` | `GOOGLE_GENAI_USE_VERTEXAI=true`, `GOOGLE_CLOUD_PROJECT`, `GOOGLE_CLOUD_LOCATION` and a service account or ADC | `npm run local`: a Whisper speech server and Ollama on the same machine or your LAN |
+| Data used for training | Free tier: may be used to improve products. Paid tier: not used. | Not used without permission | Nothing leaves your machines |
+| Compliance coverage | Google's API terms | Google Cloud compliance program, including ISO 27001/27017/27018/27701, ISO 42001, SOC 2 Type II, HIPAA BAA and a GDPR DPA | Your own environment and controls |
+| Data residency | Global | Regional endpoints | The machine running the models |
+| Access control and audit | AI Studio | Your project's IAM, Cloud Audit Logs, VPC Service Controls | Your network. The speech server and Ollama have no authentication: `npm run local` binds them to `127.0.0.1`. If you run them on another machine, keep them on a trusted network. |
 
 The Vertex path uses the same SDK but has not yet been tested end to end, and model IDs may differ there (set `GEMINI_MODEL` and `TEXT_MODEL`). Always check current terms for your region.
 

@@ -2,22 +2,25 @@
 <html lang="es">
 <head>
   <meta charset="utf-8" />
-  <meta name="theme-color" content="#0b0b10" />
+  <meta name="theme-color" content="#FAF8F3" media="(prefers-color-scheme: light)" />
+  <meta name="theme-color" content="#111014" media="(prefers-color-scheme: dark)" />
   <link rel="icon" href="/favicon.ico" sizes="32x32" />
   <link rel="icon" href="/brand/icon.svg" type="image/svg+xml" />
   <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
   <link rel="manifest" href="/manifest.webmanifest" />
   <title>Overlay · Subtítulos</title>
+  <link rel="stylesheet" href="/tokens.css" />
   <style>
     /*
       Broadcast overlay for vMix (Web Browser input) / OBS (Browser Source), 1920×1080.
       Layout:  ?stage=main&lang=es&lines=2&size=46&pos=bottom|top|middle&width=78&margin=64&hide=6&bg=transparent
       Bilingual: &also=en (or orig) adds a smaller second line in another language for mixed-language streams
-      Style:   &font=inter|atkinson|lexend|roboto|opensans|montserrat|mono|system &weight=600 &color=ffffff
+      Style:   &font=atkinsonnext|inter|atkinson|lexend|roboto|opensans|montserrat|mono|system &weight=700 &color=ffffff
                &style=box|outline|shadow|none &box=000000 &alpha=78 &edge=000000 &upper=1 &align=center|left
       Design it visually at /style.html
     */
-    html, body { margin: 0; height: 100%; background: var(--bg, transparent); overflow: hidden; }
+    :root { color-scheme: normal !important; } /* never let a light/dark scheme paint a backdrop: the overlay must stay transparent */
+    html, body { margin: 0; height: 100%; background: var(--ov-bg, transparent); overflow: hidden; }
     .wrap { position: fixed; left: 0; right: 0; display: flex; justify-content: center; padding: 0 4vw; }
     .wrap.bottom { bottom: var(--margin, 64px); }
     .wrap.top { top: var(--margin, 64px); }
@@ -31,7 +34,8 @@
     .box.boxed { background: var(--cap-box); }
     .clip { display: flex; flex-direction: column; justify-content: flex-end; overflow: hidden; max-height: calc(var(--size, 46px) * 1.25 * var(--lines, 2)); }
     .box.idle { opacity: 0; }
-    .clip2 { display: none; flex-direction: column; justify-content: flex-end; overflow: hidden; font-size: .64em; opacity: .88; margin-top: .3em; max-height: calc(var(--size, 46px) * .64 * 1.25 * 2); }
+    /* Second language: a muted tone (Fog on dark captions, Graphite on light ones), not a second accent. */
+    .clip2 { display: none; flex-direction: column; justify-content: flex-end; overflow: hidden; font-size: .64em; font-weight: 400; color: var(--cap-color2, var(--fog)); margin-top: .3em; max-height: calc(var(--size, 46px) * .64 * 1.25 * 2); }
     .box.bi .clip2 { display: flex; }
     .clip2 div:empty { display: none; }
   </style>
@@ -46,8 +50,10 @@
     root.setProperty('--lines', p('lines', 2));
     root.setProperty('--width', p('width', 78) + '%');
     root.setProperty('--margin', p('margin', 64) + 'px');
-    root.setProperty('--bg', toColor(p('bg', 'transparent')));
+    root.setProperty('--ov-bg', toColor(p('bg', 'transparent')));
     const style = applyCaptionStyle(qs);
+    const capRgb = (toColor(p('color', 'ffffff')).match(/\d+/g) || [255, 255, 255]).slice(0, 3).map(Number);
+    root.setProperty('--cap-color2', (capRgb[0] * 299 + capRgb[1] * 587 + capRgb[2] * 114) / 1000 > 140 ? 'var(--fog)' : 'var(--graphite)');
     const box = document.getElementById('box');
     box.classList.toggle('boxed', style === 'box');
     document.getElementById('wrap').className = 'wrap ' + p('pos', 'bottom');

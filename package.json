@@ -1,7 +1,7 @@
 {
   "name": "opencaptions",
   "version": "0.1.0",
-  "description": "Open-source live captions, translation and 'what did I miss?' summaries for multi-room conferences, powered by Gemini Live Translate and Flash-Lite.",
+  "description": "Open-source live captions, translation and 'what did I miss?' summaries for multi-room conferences, powered by Gemini Live Translate and Flash-Lite, or by Whisper and open models running locally.",
   "main": "src/server.js",
   "scripts": {
     "start": "node src/server.js",
@@ -9,11 +9,13 @@
     "check": "node scripts/check-gemini.js",
     "feed": "node scripts/feed.js",
     "loadtest": "node scripts/loadtest.js",
-    "test": "node --test",
+    "test": "node scripts/run-tests.js",
     "agent": "node scripts/agent.js",
     "multi": "node scripts/multi-youtube.js",
     "setup": "node scripts/setup.js",
-    "subtitle": "node scripts/subtitle.js"
+    "subtitle": "node scripts/subtitle.js",
+    "local": "node scripts/local.js",
+    "site": "node scripts/site.js --serve"
   },
   "license": "MIT",
   "dependencies": {

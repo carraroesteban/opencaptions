@@ -80,7 +80,7 @@ Checklist for doc changes:
 
 Contributions are especially welcome here:
 
-- **Local engine** (Gemma, Whisper) for offline events, behind the engine interface.
+- **Local mode** ([docs/local.md](docs/local.md)): measurements on GPUs and Apple's Neural Engine, several rooms per speech server, per-room speech servers, and a local translated voice.
 - **Streaming translation** for lower latency ([Latency](docs/latency.md#ideas-not-implemented-yet)).
 - **Strict CSP:** move inline scripts to files.
 - **OIDC login** as an alternative to shared tokens.

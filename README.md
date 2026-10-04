@@ -1,19 +1,20 @@
 <div align="center">
 
-<img src="public/brand/icon.svg" width="96" height="96" alt="OpenCaptions logo" />
-
-# OpenCaptions
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/images/logo-lockup-dark.png" />
+  <img src="docs/images/logo-lockup-light.png" width="420" alt="OpenCaptions" />
+</picture>
 
 **Live captions and translation for every room of your conference.**<br>
-Open source · self-hosted · built on Gemini 3.5 Live Translate
+Open source · self-hosted · Gemini 3.5 Live Translate, or fully local with Whisper
 
 [![CI](https://github.com/carraroesteban/opencaptions/actions/workflows/ci.yml/badge.svg)](https://github.com/carraroesteban/opencaptions/actions/workflows/ci.yml)
-[![License: MIT](https://img.shields.io/badge/license-MIT-8b5cf6)](LICENSE)
+[![License: MIT](https://img.shields.io/badge/license-MIT-111014)](LICENSE)
 [![Node.js ≥ 20](https://img.shields.io/badge/node-%E2%89%A5%2020-339933?logo=nodedotjs&logoColor=white)](docs/requirements.md)
 [![Docker](https://img.shields.io/badge/docker-compose-2496ED?logo=docker&logoColor=white)](#-install)
 [![Nerdearla Vibeathon 2026](https://img.shields.io/badge/Nerdearla-Vibeathon%202026-a78bfa)](https://nerdearla.devpost.com/)
 
-[Quick start](#-quick-start) · [Install](#-install) · [Features](#-features) · [Documentation](#-documentation) · [Event-day runbook](docs/operations/runbook.md) · [En español](#-en-español)
+[Website](https://opencaptions.kvza.ar) · [Quick start](#-quick-start) · [Install](#-install) · [Features](#-features) · [Documentation](#-documentation) · [Event-day runbook](docs/operations/runbook.md) · [En español](#-en-español)
 
 <img src="docs/images/hero.png" width="920" alt="A conference stream with bilingual captions burned in, and a phone showing live Spanish captions of the same talk" />
 
@@ -46,6 +47,7 @@ One server handles the whole event: 30 rooms ran at once on a laptop in our stre
 - 📅 **Agenda import.** Paste your Swapcard, Sessionize or spreadsheet export. Talks get their titles automatically, and speaker names help the AI spell them right.
 - 🖨️ **Printable QR posters** for every room, a technical glossary, and a one-minute setup wizard.
 - 🔒 **Secure by default**, with tokens, rate limits and no inbound ports needed. 💤 Silence isn't billed.
+- 🏠 **Runs without the cloud too.** `npm run local` uses Whisper and an open model on your own computer: no API key, no cost per hour, and the audio never leaves the building.
 
 ## 🚀 Quick start
 
@@ -72,6 +74,14 @@ npm run check   # 25-second test of your key with a sample talk
 npm start       # http://localhost:8080
 ```
 
+No API key, or no internet? Run the AI on your own computer instead ([local mode](docs/local.md)):
+
+```bash
+brew install ollama        # Linux: curl -fsSL https://ollama.com/install.sh | sh · Windows: ollama.com/download
+npm run local -- --check   # downloads Whisper and Gemma 3 once (~4 GB), then tests them with a sample talk
+npm run local              # http://localhost:8080
+```
+
 | Page | Address |
 |---|---|
 | Audience (the QR code points here) | `http://localhost:8080/` |
@@ -86,9 +96,9 @@ Every page and endpoint: [API reference](docs/reference/api.md#static-pages).
 
 ### What you need
 
-- **One server for the whole event.** It can be a laptop at the venue or a small cloud VM, on macOS, Linux or Windows. Speech recognition and translation run in Google's cloud, so the server only relays audio: 1 CPU and 1 GB of RAM are enough for 20+ rooms.
+- **One server for the whole event.** It can be a laptop at the venue or a small cloud VM, on macOS, Linux or Windows. With Gemini, speech recognition and translation run in Google's cloud, so the server only relays audio: 1 CPU and 1 GB of RAM are enough for 20+ rooms.
 - **Node.js 20 or later**, or Docker.
-- **A Gemini API key** ([AI Studio](https://aistudio.google.com/apikey)) or a Google Cloud project with Vertex AI.
+- **A Gemini API key** ([AI Studio](https://aistudio.google.com/apikey)) or a Google Cloud project with Vertex AI. Or no account at all in [local mode](docs/local.md), where a recent laptop runs the models itself (about one room per laptop today).
 - **Internet access to port 443.** No inbound ports: HTTPS can come from a Cloudflare Tunnel.
 - ffmpeg is installed automatically with `npm install`. `yt-dlp` is optional, for YouTube demos.
 
@@ -165,6 +175,7 @@ flowchart LR
 - **Gemini Flash-Lite** translates sentence by sentence, with the previous sentences and the glossary as context. A provisional translation updates while the sentence is still being spoken.
 - When the speaker already uses a caption language, the transcription goes straight through. Nothing is translated twice.
 - Rooms share nothing, so the system scales room by room.
+- **Local mode** swaps both models for Whisper and an open model running on your machine. OpenCaptions makes Whisper stream by re-transcribing the sentence in progress about once a second and committing the words that two passes agree on ([how](docs/local.md#how-it-works)).
 
 Design decisions are recorded in [ADRs](docs/adr/). Internals: [Architecture](docs/architecture.md).
 
@@ -194,7 +205,7 @@ About **US$ 2.2 per room-hour of speech**, plus US$ 0.4–0.6 per extra caption 
 
 Live Translate is billed on streamed audio, about US$ 0.037 per session-minute. Flash-Lite translation adds the per-language part, mostly from provisional updates (raise `MT_PARTIAL_MS` to cut it). The dashboard shows a running estimate per room. The free tier is enough to develop and test.
 
-For comparison, a human live captioner costs about US$ 90–300 per room-hour, for one language.
+For comparison, a human live captioner costs about US$ 90–300 per room-hour, for one language. In [local mode](docs/local.md) there's no cost per hour at all: you pay with hardware and a few seconds of extra delay.
 
 ## 🏆 How it meets the Vibeathon challenge
 
@@ -213,7 +224,7 @@ For comparison, a human live captioner costs about US$ 90–300 per room-hour, f
 | **Latency** | About 2–3 s to original captions with provisional translations in between; measured per room on the dashboard ([details](docs/latency.md)) |
 | **Scalability** | One Live session per room, rooms independent, 30 rooms on one laptop, cached summaries for all viewers |
 | **Deployment / operation** | Setup wizard, Docker, outbound-only networking, secure by default, rooms without an operator, alerts, runbook |
-| **Innovation** | ✨ What did I miss?, 💬 Ask the talk, bilingual speakers, translated voice, floating captions, bilingual stream overlay |
+| **Innovation** | ✨ What did I miss?, 💬 Ask the talk, bilingual speakers, translated voice, floating captions, bilingual stream overlay, and a fully local mode with streaming Whisper |
 
 ## 📚 Documentation
 
@@ -226,6 +237,7 @@ For comparison, a human live captioner costs about US$ 90–300 per room-hour, f
 | Run the event day | [Runbook](docs/operations/runbook.md) · [Troubleshooting](docs/operations/troubleshooting.md) |
 | Look up a setting or an endpoint | [Configuration](docs/reference/configuration.md) · [API](docs/reference/api.md) |
 | Understand latency | [Latency](docs/latency.md) |
+| Run it without the cloud | [Local mode](docs/local.md) |
 | Change the code | [Architecture](docs/architecture.md) · [Contributing](CONTRIBUTING.md) · [ADRs](docs/adr/) |
 
 <details>
@@ -233,9 +245,10 @@ For comparison, a human live captioner costs about US$ 90–300 per room-hour, f
 
 ```
 src/            server: rooms, Gemini sessions, translation, agenda, security
-  engines/      Gemini Live Translate and the offline mock engine
+  engines/      Gemini Live Translate, local streaming Whisper, and the mock engine
+  local/        clients for the local speech server and text model
 public/         web pages (vanilla JS, no build step) and brand assets
-scripts/        setup wizard, room agent, feeders, load and latency tests, subtitle tool
+scripts/        setup wizard, room agent, feeders, load and latency tests, subtitle tool, local mode launcher
 config/         event.json (rooms, languages), glossary.json, agenda example
 deploy/         systemd and launchd service files
 docs/           documentation (Diátaxis) and architecture decision records
@@ -249,7 +262,7 @@ test/           node:test suites
 - Gemini 3.5 Live Translate is a preview model. Behavior and quotas may change.
 - Accuracy with heavy accents or very fast language switching depends on the model. The glossary and pinning the room's language help.
 - Speakers aren't labeled (no diarization) yet.
-- It needs internet. A local engine for offline events is on the roadmap, and the engine interface is ready for it.
+- Local mode is new: on a laptop CPU, captions run about 4–5 s behind the speaker, and one laptop handles about one room. Without it, OpenCaptions needs internet.
 
 ## 🇦🇷 En español
 
@@ -259,8 +272,9 @@ test/           node:test suites
 - **El escenario** tiene subtítulos grandes en el proyector y un overlay para OBS/vMix, que puede mostrar dos idiomas.
 - **La producción** usa un panel con el estado, la latencia, el costo y las alertas de cada sala. La agenda se importa desde Swapcard y las salas funcionan sin operador.
 - **Cuesta** unos US$ 2,2 por hora de charla por sala, y el silencio no se cobra.
+- **Sin nube:** `npm run local` corre la IA en la propia compu (Whisper + Gemma 3 con Ollama). Sin API key ni costo por hora, y el audio no sale del edificio.
 
-Para probarlo: `npm install && npm run mock`. Para usarlo en serio: `npm run setup && npm start`. Guía del día del evento: [event-day.es.md](docs/operations/event-day.es.md).
+Para probarlo: `npm install && npm run mock`. Para usarlo en serio: `npm run setup && npm start`. Sin API key o sin internet: `npm run local`. Guía del día del evento: [event-day.es.md](docs/operations/event-day.es.md).
 
 ## 🤝 Contributing
 

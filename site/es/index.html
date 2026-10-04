@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>OpenCaptions · Subtítulos y traducción en vivo para cada sala</title>
+  <meta name="description" content="Subtítulos y traducción en vivo, open source, para conferencias. Cada sala, cada celular, el proyector y el streaming. Gemini en la nube, o Whisper en tu propia computadora." />
+  <meta name="theme-color" content="#FAF8F3" media="(prefers-color-scheme: light)" />
+  <meta name="theme-color" content="#111014" media="(prefers-color-scheme: dark)" />
+  <link rel="canonical" href="https://opencaptions.kvza.ar/es/" />
+  <link rel="alternate" hreflang="es" href="https://opencaptions.kvza.ar/es/" />
+  <link rel="alternate" hreflang="en" href="https://opencaptions.kvza.ar/" />
+  <link rel="alternate" hreflang="x-default" href="https://opencaptions.kvza.ar/" />
+  <link rel="icon" href="/favicon.ico" sizes="32x32" />
+  <link rel="icon" href="/brand/icon.svg" type="image/svg+xml" />
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="OpenCaptions" />
+  <meta property="og:url" content="https://opencaptions.kvza.ar/es/" />
+  <meta property="og:title" content="OpenCaptions · Subtítulos y traducción en vivo para cada sala" />
+  <meta property="og:description" content="Subtítulos y traducción en vivo, open source, para conferencias. Cada sala, cada celular, el proyector y el streaming. Gemini en la nube, o Whisper en tu propia computadora." />
+  <meta property="og:image" content="https://opencaptions.kvza.ar/brand/og.png" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta property="og:locale" content="es_AR" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <script>try { const t = JSON.parse(localStorage.getItem('oc.theme')); if (t) document.documentElement.dataset.theme = t; } catch {}</script>
+  <link rel="stylesheet" href="/style.css" />
+  <link rel="stylesheet" href="/site.css" />
+</head>
+<body>
+  <nav class="nav">
+    <div class="wrap">
+      <a class="brand" href="/es/">OpenCaptions</a>
+      <div class="links">
+        <a class="hide-sm" href="#features">Funciones</a>
+        <a class="hide-sm" href="#how">Cómo funciona</a>
+        <a class="hide-sm" href="#screenshots">Capturas</a>
+        <a class="hide-sm" href="https://github.com/carraroesteban/opencaptions">GitHub</a>
+        <a class="lang" href="/" hreflang="en" lang="en" title="English">EN</a>
+        <button id="theme" type="button" aria-label="Claro / oscuro" title="Claro / oscuro">◐</button>
+      </div>
+    </div>
+  </nav>
+
+  <main>
+    <section class="hero">
+      <div class="wrap">
+        <div>
+          <svg class="oc-logo typed mark" viewBox="0 0 878 664" aria-hidden="true"><use class="o" href="/brand/sprite.svg#oc-o"/><use class="ln" href="/brand/sprite.svg#oc-line"/></svg>
+          <h1>Subtítulos y traducción en vivo para cada sala.</h1>
+          <p class="lede">Alguien habla en el escenario. Segundos después, todos pueden leerlo <b>en su idioma</b>: en el celular, en el proyector y en el streaming. Open source, en tu propio servidor, sin instalar ninguna app.</p>
+          <div class="cta">
+            <a class="btn primary" href="#start">Empezar →</a>
+            <a class="btn" href="https://github.com/carraroesteban/opencaptions">Ver en GitHub</a>
+          </div>
+          <p class="note">Licencia MIT · Node.js ≥ 20 · Docker · corre en una notebook</p>
+        </div>
+        <div class="phone" aria-hidden="true">
+          <div class="screen">
+            <div class="top">
+              <div class="row"><b>Escenario principal</b><span class="chip bad"><span class="dot live"></span> EN VIVO</span></div>
+              <div class="pills"><span class="">Original</span><span class="on">Español</span><span class="">English</span></div>
+            </div>
+            <div class="cap" id="cap" data-lines="[&quot;Bienvenidos, hoy vamos a hablar de observabilidad en Kubernetes.&quot;, &quot;Lo primero que necesitás son buenas métricas, logs y trazas.&quot;, &quot;Cuando suena el pager a las tres de la mañana, el contexto lo es todo.&quot;, &quot;¿Preguntas? Pueden seguir estos subtítulos desde el celular.&quot;]"></div>
+            <div class="orig"><b>Original</b><span id="orig-txt" data-lines="[&quot;Welcome everyone, today we are going to talk about observability in Kubernetes.&quot;, &quot;The first thing you need is good metrics, logs and traces.&quot;, &quot;When the pager goes off at three in the morning, context is everything.&quot;, &quot;Any questions? You can follow these captions from your phone.&quot;]"></span></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="features">
+      <div class="wrap">
+        <p class="eyebrow">Funciones</p>
+        <h2>Un solo servidor para todo el evento.</h2>
+        <p class="lede">En la prueba de carga corrieron 30 salas a la vez en una notebook. Las salas no necesitan operador: producción ve todo desde un solo panel.</p>
+        <div class="cols">
+        <div class="card col reveal"><h3>Para el público</h3><ul><li><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="6" y="2.5" width="12" height="19" rx="3"/><path d="M10.5 18.5h3"/></svg><span><b>Subtítulos en cualquier celular</b>Escaneá el QR de la sala y elegí el idioma. Sin app, sin registrarte.</span></li><li><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3.5l1.9 5.1 5.1 1.9-5.1 1.9L12 17.5l-1.9-5.1-5.1-1.9 5.1-1.9z"/><path d="M19 16v4M17 18h4"/></svg><span><b>¿Qué me perdí?</b>Un resumen de los últimos cinco minutos, o de toda la charla, en tu idioma.</span></li><li><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5.5h16v10.5H9.5L4 20z"/><path d="M8 9.5h8M8 12.5h5"/></svg><span><b>Preguntale a la charla</b>Respuestas solo a partir de lo que se dijo, con citas y minuto exacto.</span></li><li><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 3h7l4 4v14H7z"/><path d="M14 3v4h4M10 12h5M10 16h5"/></svg><span><b>Transcripciones</b>Leé, buscá, descargá (TXT, SRT, VTT) e imprimí cada charla.</span></li><li><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="4.5" r="1.6"/><path d="M5 8.5l7 1.5 7-1.5M12 10v4.5M8.5 21l3.5-6.5 3.5 6.5"/></svg><span><b>Ajustes de lectura</b>Tamaño de texto, tipografías de alta legibilidad, interlineado, claro y oscuro. Subtítulos flotantes en la compu.</span></li></ul></div>
+        <div class="card col reveal"><h3>Para el escenario y el streaming</h3><ul><li><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M7 12h7M8 20h8M12 16v4"/></svg><span><b>Vista para proyector</b>Subtítulos grandes y el QR de la sala, para la pantalla junto al speaker.</span></li><li><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="13" rx="2"/><rect x="6.5" y="12" width="8" height="3" rx="1" fill="var(--hl)" stroke="none"/><path d="M7 13.5h7" stroke="var(--hl-ink)"/><path d="M17 3l-2 2M7 3l2 2"/></svg><span><b>Overlay para OBS / vMix</b>Transparente o con chroma, opcionalmente bilingüe. Un editor visual arma la URL.</span></li><li><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3.2 3 3.2 15 0 18M12 3c-3.2 3-3.2 15 0 18"/></svg><span><b>Speakers bilingües</b>Si alguien cambia de idioma en medio de la frase, todos los subtítulos lo siguen.</span></li><li><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21"/></svg><span><b>Cualquier fuente de audio</b>La consola de sonido a través de una PC, u OBS/vMix enviando directo al servidor (RTMP, SRT, HLS).</span></li></ul></div>
+        <div class="card col reveal"><h3>Para la organización</h3><ul><li><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18M8 13v4M12 12v5M16 14v3"/></svg><span><b>Panel de producción</b>Estado, nivel de audio, latencia, público, costo y alertas de cada sala.</span></li><li><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4M7 14h4"/></svg><span><b>Importar la agenda</b>Pegá el export de Swapcard, Sessionize o una planilla: cada charla toma su título.</span></li><li><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="6" height="6" rx="1"/><rect x="14" y="4" width="6" height="6" rx="1"/><rect x="4" y="14" width="6" height="6" rx="1"/><path d="M14 14h2v2h-2zM18 18h2v2h-2zM18 14h2M14 18v2"/></svg><span><b>Carteles con QR</b>Un cartel A4 por sala para imprimir, y un asistente de instalación de un minuto.</span></li><li><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg><span><b>Seguro por defecto</b>Tokens, límites de uso y sin puertos entrantes. El silencio no se cobra.</span></li><li><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l9-7 9 7"/><path d="M5.5 9.5V20h13V9.5"/><path d="M10 20v-5h4v5"/></svg><span><b>Funciona sin la nube</b>Whisper y un modelo abierto en tu computadora: sin API key, el audio no sale del edificio.</span></li></ul></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="how">
+      <div class="wrap">
+        <p class="eyebrow">Cómo funciona</p>
+        <h2>De la consola de sonido a cada celular.</h2>
+        <div class="steps"><div class="step reveal"><h3>Conectá el audio de la sala</h3><p>Un agente liviano (o una pestaña del navegador) en la PC de la sala envía el audio de la consola. O apuntá OBS/vMix al servidor.</p></div><div class="step reveal"><h3>La IA transcribe y traduce</h3><p>Gemini Live Translate en la nube, o Whisper más un modelo abierto en tu máquina. Los subtítulos llegan en unos dos segundos.</p></div><div class="step reveal"><h3>Todos leen en vivo</h3><p>Celulares, proyector y overlay del streaming se actualizan juntos. Las transcripciones quedan online después.</p></div></div>
+      </div>
+    </section>
+
+    <section id="screenshots">
+      <div class="wrap">
+        <p class="eyebrow">Capturas</p>
+        <h2>Pantallas tranquilas para días intensos.</h2>
+        <div class="shots"><figure class="reveal"><img src="/images/dashboard.png" alt="Panel de producción: cada sala, latencia, público, costo y alertas" loading="lazy" /><figcaption>Panel de producción: cada sala, latencia, público, costo y alertas</figcaption></figure><figure class="reveal"><img src="/images/phones.png" alt="Subtítulos en vivo y “¿Qué me perdí?” en el celular" loading="lazy" /><figcaption>Subtítulos en vivo y “¿Qué me perdí?” en el celular</figcaption></figure><figure class="reveal"><img src="/images/transcript.png" alt="Transcripción con búsqueda y resumen con IA" loading="lazy" /><figcaption>Transcripción con búsqueda y resumen con IA</figcaption></figure><figure class="reveal"><img src="/images/projector.png" alt="Vista para proyector con subtítulos grandes y el QR de la sala" loading="lazy" /><figcaption>Vista para proyector con subtítulos grandes y el QR de la sala</figcaption></figure></div>
+      </div>
+    </section>
+
+    <section id="engines">
+      <div class="wrap">
+        <p class="eyebrow">Dos motores</p>
+        <h2>Calidad de nube, o todo local.</h2>
+        <div class="engines"><div class="card reveal"><h3>Gemini</h3><p>La mejor calidad y la menor demora. Unos US$ 2,2 por hora de sala, y el silencio no se cobra. Necesita internet y una API key.</p><div class="row"><span class=chip>Nube</span><span class=chip>~2 s</span><span class=chip>70+ idiomas</span></div></div><div class="card reveal"><h3>Local</h3><p>Whisper y Gemma 3 en tu computadora o en un equipo con GPU de tu red. Sin API key, sin costo por hora, el audio no sale del edificio.</p><div class="row"><span class=chip>Privado</span><span class=chip>Gratis</span><span class=chip>Sin internet</span></div></div></div>
+      </div>
+    </section>
+
+    <section id="start">
+      <div class="wrap">
+        <p class="eyebrow">Empezar</p>
+        <h2>Probalo en dos minutos.</h2>
+        <p class="lede">No hace falta API key: los subtítulos son simulados hasta que agregues una.</p>
+<pre><code><span class="c"># Cloná y arrancá con subtítulos simulados</span>
+<span class="p">$</span> git clone https://github.com/carraroesteban/opencaptions.git
+<span class="p">$</span> cd opencaptions &amp;&amp; npm install
+<span class="p">$</span> npm run mock            <span class="c"># http://localhost:8080</span>
+
+<span class="c"># En otra terminal: mandale una charla de ejemplo</span>
+<span class="p">$</span> npm run feed -- --stage main --input samples/talk-en.wav
+
+<span class="c"># ¿Listo para subtítulos reales? Configurá tu evento</span>
+<span class="p">$</span> npm run setup</code></pre>
+        <div class="cta" style="display:flex;gap:12px;flex-wrap:wrap;margin-top:28px">
+          <a class="btn primary" href="https://github.com/carraroesteban/opencaptions#-quick-start">Documentación →</a>
+          <a class="btn" href="https://github.com/carraroesteban/opencaptions/blob/main/docs/operations/runbook.md">Runbook del día del evento</a>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site">
+    <div class="wrap">
+      <a class="brand" href="/es/">OpenCaptions</a>
+      <span>Hecho para Nerdearla 2026 · Licencia MIT</span>
+      <a href="https://github.com/carraroesteban/opencaptions">GitHub</a>
+      <a href="/" hreflang="en">English</a>
+    </div>
+  </footer>
+  <script src="/site.js" defer></script>
+</body>
+</html>

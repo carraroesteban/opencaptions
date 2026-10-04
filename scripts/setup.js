@@ -17,7 +17,10 @@ const ENV = path.join(ROOT, '.env');
 const EVENT = path.join(ROOT, 'config', 'event.json');
 const b = (s) => `\x1b[1m${s}\x1b[0m`;
 const dim = (s) => `\x1b[2m${s}\x1b[0m`;
-const green = (s) => `\x1b[32m${s}\x1b[0m`;
+// Brand badge: ink on lime (the only way lime appears), so it reads the same on light and dark terminals.
+const brandColor = output.isTTY && !process.env.NO_COLOR;
+const truecolor = /truecolor|24bit/i.test(process.env.COLORTERM || '');
+const badge = (s) => (brandColor ? `${truecolor ? '\x1b[48;2;212;255;58m\x1b[38;2;17;16;20m' : '\x1b[48;5;191m\x1b[38;5;233m'}\x1b[1m ${s} \x1b[0m` : b(s));
 
 // Line queue instead of rl.question(): works both interactively and with piped answers (CI, scripts).
 const rl = readline.createInterface({ input, terminal: false });
@@ -34,7 +37,7 @@ const ask = async (q, def = '') => {
   return a || def;
 };
 let step = 0;
-const n = (q) => `${dim(`[${++step}/8]`)} ${q}`; // progress through the 8 questions
+const n = (q) => `${dim(`[${++step}/9]`)} ${q}`; // progress through the 9 questions
 const yes = async (q, def = true) => /^(y|s|yes|si|sí)/i.test(await ask(`${q} [${def ? 'Y/n' : 'y/N'}]`, def ? 'y' : 'n'));
 const slug = (s) => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40) || 'room';
 const token = () => crypto.randomBytes(18).toString('base64url');
@@ -42,14 +45,21 @@ const token = () => crypto.randomBytes(18).toString('base64url');
 const envOld = fs.existsSync(ENV) ? Object.fromEntries(fs.readFileSync(ENV, 'utf8').split('\n').filter((l) => /^[A-Z_]+=/.test(l)).map((l) => [l.slice(0, l.indexOf('=')), l.slice(l.indexOf('=') + 1)])) : {};
 const evOld = fs.existsSync(EVENT) ? JSON.parse(fs.readFileSync(EVENT, 'utf8')) : {};
 
-console.log(`\n${b('OpenCaptions setup')} — live captions & translation for your event.\n${dim('Press Enter to keep the value in parentheses.')}\n`);
+console.log(`\n${badge('O━ OpenCaptions')} ${b('setup')} — live captions & translation for your event.\n${dim('Press Enter to keep the value in parentheses.')}\n`);
 
 const eventName = await ask(n('Event name'), evOld.eventName || 'My Conference');
-console.log(dim('\nGet a Gemini API key at https://aistudio.google.com/apikey (leave empty to try it in simulated mode).'));
-let apiKey = await ask(n('Gemini API key'), envOld.GEMINI_API_KEY ? '•••• keep current' : '');
-if (apiKey && !apiKey.startsWith('••••') && !/^AIza[\w-]{30,}$/.test(apiKey)) {
-  console.log(dim('  That doesn\'t look like a Gemini API key (they start with "AIza" and are about 39 characters).'));
-  apiKey = await ask('  Paste it again, or press Enter to keep what you typed', apiKey);
+console.log(dim('\nWhere the AI runs:\n  gemini — Google\'s cloud: best quality, ~US$ 2.2 per room-hour, needs internet and an API key\n  local  — this computer: free and private (audio never leaves it), needs a recent computer (docs/local.md)\n  demo   — simulated captions, to try the interface'));
+const engineDefault = envOld.ENGINE === 'local' ? 'local' : envOld.ENGINE === 'mock' ? 'demo' : 'gemini';
+let engine = (await ask(n('AI engine (gemini / local / demo)'), engineDefault)).toLowerCase();
+if (!['gemini', 'local', 'demo'].includes(engine)) engine = 'gemini';
+let apiKey = '';
+if (engine === 'gemini') {
+  console.log(dim('  Get a Gemini API key at https://aistudio.google.com/apikey (leave empty to try it in simulated mode).'));
+  apiKey = await ask('  Gemini API key', envOld.GEMINI_API_KEY ? '•••• keep current' : '');
+  if (apiKey && !apiKey.startsWith('••••') && !/^AIza[\w-]{30,}$/.test(apiKey)) {
+    console.log(dim('  That doesn\'t look like a Gemini API key (they start with "AIza" and are about 39 characters).'));
+    apiKey = await ask('  Paste it again, or press Enter to keep what you typed', apiKey);
+  }
 }
 const roomsDefault = (evOld.stages || []).map((s) => s.name).join(', ') || 'Main stage, Room A';
 const rooms = (await ask(n('Rooms, comma-separated'), roomsDefault)).split(',').map((s) => s.trim()).filter(Boolean);
@@ -78,7 +88,8 @@ const event = {
 
 const env = {
   ...envOld,
-  GEMINI_API_KEY: apiKey.startsWith('••••') ? envOld.GEMINI_API_KEY : apiKey,
+  GEMINI_API_KEY: apiKey.startsWith('••••') || engine !== 'gemini' ? envOld.GEMINI_API_KEY || '' : apiKey,
+  ENGINE: engine === 'local' ? 'local' : engine === 'demo' ? 'mock' : envOld.GEMINI_API_KEY || apiKey ? 'gemini' : '',
   ADMIN_TOKEN: adminToken,
   INGEST_TOKEN: ingestToken,
   ...(publicUrl ? { PUBLIC_URL: publicUrl } : {}),
@@ -86,7 +97,7 @@ const env = {
 
 console.log(`\n${b('Summary')}`);
 console.log(`  Event      ${eventName} (${tz})`);
-console.log(`  Engine     ${env.GEMINI_API_KEY ? 'Gemini' : 'simulated (no API key)'}`);
+console.log(`  Engine     ${engine === 'local' ? 'local (Whisper + Ollama on this computer)' : engine === 'demo' || !env.GEMINI_API_KEY ? 'simulated (no AI)' : 'Gemini'}`);
 for (const s of stages) console.log(`  Room       ${s.name} ${dim(`id=${s.id} · ${s.source} → ${s.targets.join(', ')}`)}`);
 console.log(`  Public URL ${publicUrl || dim('(not set: QR codes will point to this computer)')}`);
 console.log('');
@@ -103,9 +114,9 @@ rl.close();
 // Other devices can't use "localhost": show this computer's LAN address when there's no public URL yet.
 const lan = Object.values(os.networkInterfaces()).flat().find((i) => i && i.family === 'IPv4' && !i.internal)?.address;
 const base = publicUrl || `http://${lan || 'localhost'}:8080`;
-console.log(`\n${green('✓ Saved.')} ${dim('(previous files kept as .bak)')}\n`);
+console.log(`\n${badge('✓ Saved')} ${dim('(previous files kept as .bak)')}\n`);
 console.log(b('Next steps'));
-console.log(`  1. Start the server:            ${b('npm start')}`);
+console.log(`  1. Start the server:            ${b(engine === 'local' ? 'npm run local' : 'npm start')}${engine === 'local' ? dim('  (downloads the models the first time)') : ''}`);
 console.log(`  2. Dashboard on this computer:  http://localhost:8080/admin.html`);
 console.log(`     From another device:         ${base}/admin.html?token=${adminToken}`);
 console.log(`  3. Print the QR posters:        ${base}/kit.html`);
@@ -114,6 +125,7 @@ for (const s of stages) console.log(`       node scripts/agent.js --stage ${s.id
 console.log(`     …or open ${base}/ingest.html?token=${ingestToken} in Chrome on that PC.`);
 console.log(`  5. Optional: 📅 Agenda in the dashboard — paste your Swapcard/Sessionize/Sheets export so talks get their titles.`);
 console.log(`  No audio hardware yet? Feed a sample talk:  ${b(`npm run feed -- --stage ${stages[0]?.id || 'main'} --input samples/talk-en.wav`)}`);
-if (!env.GEMINI_API_KEY) console.log(dim('\n  Running without an API key: captions are simulated. Add GEMINI_API_KEY to .env when ready and run npm run check.'));
+if (engine === 'local') console.log(dim('\n  Local mode needs Ollama for translations (macOS: brew install ollama). npm run local -- --check tests everything end to end.'));
+else if (!env.GEMINI_API_KEY) console.log(dim('\n  Running without an API key: captions are simulated. Add GEMINI_API_KEY to .env when ready and run npm run check.'));
 else console.log(dim('\n  Tip: run npm run check to test your key end to end (25 s).'));
 console.log(dim('  Tokens are secrets: share the ingest token only with room PCs and the admin token only with your team.\n'));

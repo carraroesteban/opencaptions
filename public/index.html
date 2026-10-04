@@ -3,7 +3,8 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="theme-color" content="#0b0b10" />
+  <meta name="theme-color" content="#FAF8F3" media="(prefers-color-scheme: light)" />
+  <meta name="theme-color" content="#111014" media="(prefers-color-scheme: dark)" />
   <link rel="icon" href="/favicon.ico" sizes="32x32" />
   <link rel="icon" href="/brand/icon.svg" type="image/svg+xml" />
   <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
@@ -20,26 +21,33 @@
   <title>Subtítulos en vivo</title>
   <link rel="stylesheet" href="/style.css" />
   <style>
-    main { max-width: 760px; margin: 0 auto; padding: 28px 16px 60px; }
-    h1 { font-size: 30px; margin: 0 0 4px; }
-    .stages { display: grid; gap: 12px; margin-top: 24px; }
-    .stage { display: grid; grid-template-columns: 1fr auto; gap: 6px 12px; align-items: center; text-decoration: none; padding: 18px; }
-    .stage:hover { border-color: var(--accent); }
-    .stage h2 { margin: 0; font-size: 20px; }
+    main { max-width: 780px; margin: 0 auto; padding: 22px 20px 64px; }
+    .bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+    .hero { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 24px; align-items: end; margin: 52px 0 8px; }
+    .hero .illo { width: 210px; color: var(--fg); }
+    h1 { font-size: clamp(34px, 7vw, 52px); margin: 0 0 8px; }
+    #subtitle { font-size: 18px; margin: 0; }
+    .stages { display: grid; gap: 12px; margin-top: 32px; }
+    .stage { display: grid; grid-template-columns: 1fr auto; gap: 8px 12px; align-items: center; text-decoration: none; padding: 20px 22px; }
+    .stage h2 { margin: 0; font-size: 22px; }
     .stage .title { grid-column: 1 / -1; color: var(--fg2); font-size: 15px; }
-    .stage .langs { grid-column: 1 / -1; }
-    .lib { margin-top: 12px; border-style: dashed; }
-    .stage .next { font-size: 13px; color: var(--fg2); }
-    footer { margin-top: 40px; font-size: 13px; }
+    .stage .langs { grid-column: 1 / -1; margin-top: 4px; }
+    .stage .next { font-size: 13px; }
+    .lib { margin-top: 12px; background: transparent; border-style: dashed; border-color: var(--line-strong); box-shadow: none; }
+    .lib .illo { width: 52px; color: var(--fg); }
+    footer { margin-top: 48px; padding-top: 18px; border-top: 1px solid var(--line); font-size: 13px; gap: 12px; }
+    @media (max-width: 560px) { .hero { grid-template-columns: 1fr; margin-top: 32px; } .hero .illo { width: 170px; order: -1; } }
   </style>
 </head>
 <body>
   <main>
-    <a class="brand" href="/" title="Salas" style="font-size:14px">open<span>captions</span></a>
-    <h1 id="event">…</h1>
-    <p class="muted" id="subtitle"></p>
+    <div class="bar"><a class="brand" href="/" title="Salas" style="font-size:17px">OpenCaptions</a></div>
+    <section class="hero">
+      <div><h1 id="event">…</h1><p class="muted" id="subtitle"></p></div>
+      <span id="illo"></span>
+    </section>
     <div class="stages" id="stages" data-no-i18n></div>
-    <a class="card stage lib" href="/talks.html" id="lib"><h2 id="lib-h"></h2><span style="font-size:22px">📚</span><div class="title" id="lib-p"></div></a>
+    <a class="card stage lib" href="/talks.html" id="lib"><h2 id="lib-h"></h2><span id="lib-illo"></span><div class="title" id="lib-p"></div></a>
     <footer class="muted row" style="justify-content:space-between">
       <span id="powered"></span>
       <a href="/admin.html" id="prod"></a>
@@ -48,7 +56,10 @@
   <script type="module">
     import { getEvent, t, esc, langLabel } from '/common.js';
     import { prefsControls } from '/i18n.js';
+    import { stage, library } from '/illustrations.js';
     document.querySelector('footer').append(prefsControls());
+    document.getElementById('illo').innerHTML = stage;
+    document.getElementById('lib-illo').innerHTML = library;
     document.getElementById('subtitle').textContent = t('chooseStage');
     document.getElementById('powered').textContent = t('poweredBy');
     document.getElementById('prod').textContent = t('production');

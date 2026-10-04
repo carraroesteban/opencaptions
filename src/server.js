@@ -14,6 +14,8 @@ import { PullSource } from './pull.js';
 import { systemStats } from './system.js';
 import { summarize, ask, audienceAiEnabled, assistStats } from './assist.js';
 import { Schedule } from './schedule.js';
+import { asrInfo, asrReachable } from './local/asr.js';
+import { llmInfo, llmHealth, chat as localChat } from './local/llm.js';
 import { authMode, tokens, canAdmin, canIngest, noteAuthFailure, securityHeaders, apiRateLimit, originAllowed, wsAllowed, checkPullUrl, clientIp } from './security.js';
 
 const MAX_STAGES = Number(process.env.MAX_STAGES || 60);
@@ -363,8 +365,8 @@ app.get('/manifest.webmanifest', (req, res) => {
     start_url: '/',
     scope: '/',
     display: 'standalone',
-    background_color: '#0b0b10',
-    theme_color: '#0b0b10',
+    background_color: '#FAF8F3',
+    theme_color: '#111014',
     icons: [
       { src: '/brand/icon.svg', sizes: 'any', type: 'image/svg+xml' },
       { src: '/brand/icon-192.png', sizes: '192x192', type: 'image/png' },
@@ -401,11 +403,23 @@ app.use((err, req, res, next) => { // eslint-disable-line no-unused-vars
   res.status(status).json({ error: status >= 500 ? 'internal error' : err.message });
 });
 
+// Local engine: keep an eye on the speech server and the text model (shown on the dashboard).
+const localHealth = { asr: null, llm: null, modelInstalled: null, missing: [], checkedAt: 0 };
+const localModels = () => [...new Set([llmInfo().model, config.localMtModel].filter(Boolean))].join(' + ');
+const engineLabel = () => (config.engine === 'gemini' ? config.model : config.engine === 'local' ? (config.localLlmOff ? asrInfo().label : `${asrInfo().label} + ${localModels()}`) : 'mock');
+async function checkLocal() {
+  const [asr, llm] = await Promise.all([asrReachable(), config.localLlmOff ? { ok: false, hasModel: false, models: [], off: true } : llmHealth()]);
+  Object.assign(localHealth, { asr, llm: llm.ok, modelInstalled: llm.hasModel, missing: llm.missing || [], checkedAt: Date.now() });
+  return { asr, llm };
+}
+if (config.engine === 'local') setInterval(() => checkLocal().catch(() => {}), 15_000).unref();
+
 function snapshot() {
   const list = [...stages.values()].map((s) => s.status());
   return {
     engine: config.engine,
-    model: config.engine === 'gemini' ? config.model : 'mock',
+    model: engineLabel(),
+    local: config.engine === 'local' ? { asrUrl: asrInfo().url, llmUrl: llmInfo().url, llmModel: llmInfo().model, mtModel: llmInfo().mtModel, llmOff: config.localLlmOff, ...localHealth } : undefined,
     event: config.event.name,
     uptimeSec: Math.round(process.uptime()),
     system: systemStats(),
@@ -589,7 +603,21 @@ server.on('error', (e) => {
 server.listen(config.port, config.host, () => {
   const base = config.publicUrl || `${tls ? 'https' : 'http'}://localhost:${config.port}`;
   console.log(`\n  OpenCaptions · ${config.event.name}`);
-  console.log(`  engine: ${config.engine}${config.engine === 'gemini' ? ` (${config.model})` : ' (no GEMINI_API_KEY → simulated captions)'}`);
+  console.log(`  engine: ${config.engine}${config.engine === 'gemini' ? ` (${config.model})` : config.engine === 'local' ? ` (${engineLabel()}, nothing leaves this machine)` : ' (no GEMINI_API_KEY → simulated captions)'}`);
+  if (config.engine === 'local') {
+    console.log(`  speech:  ${asrInfo().url}\n  text:    ${config.localLlmOff ? 'off' : `${llmInfo().url} · ${localModels()}`}`);
+    checkLocal().then(async ({ asr, llm }) => {
+      if (!asr) console.log(`  ⚠ speech server not reachable at ${asrInfo().url} — start everything with: npm run local`);
+      if (llm.off) console.log('  transcription only (LOCAL_LLM=off): no translations or AI summaries');
+      else if (!llm.ok) console.log(`  ⚠ text model not reachable at ${llmInfo().url} — translations and summaries won't work (npm run local starts Ollama)`);
+      else if (!llm.hasModel) {
+        for (const m of llm.missing) console.log(llmInfo().api === 'ollama' ? `  ⚠ model "${m}" is not installed — run: ollama pull ${m}` : `  ⚠ the text model server doesn't list "${m}" (it has: ${llm.models.slice(0, 5).join(', ')}) — check LOCAL_LLM_MODEL / LOCAL_MT_MODEL`);
+      } else {
+        // Load the models now, not at the first caption.
+        for (const model of new Set([llmInfo().model, llmInfo().mtModel])) localChat({ model, user: 'Reply with OK.', maxTokens: 4, priority: 0 }).catch(() => {});
+      }
+    }).catch(() => {});
+  }
   console.log(`  stages: ${[...stages.keys()].join(', ')}`);
   console.log(`\n  Audience     ${base}/`);
   console.log(`  Production   ${base}/admin.html`);

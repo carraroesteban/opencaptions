@@ -7,6 +7,7 @@ import { Chunker, rms } from './audio.js';
 import { CaptionTrack } from './captions.js';
 import { GeminiEngine } from './engines/gemini.js';
 import { MockEngine } from './engines/mock.js';
+import { LocalEngine } from './engines/local.js';
 import { SentenceTranslator } from './translate.js';
 
 const PREROLL_CHUNKS = 6; // 600 ms kept while gated, so the first words aren't clipped
@@ -57,14 +58,15 @@ export class Stage extends EventEmitter {
     //           language via fast text translation of each clause. Lowest latency & cost, any number of languages.
     //  live   → captions straight from each Live session's speech translation (1 session per language).
     //  hybrid → text captions + 1 Live session per language (translated voice 🎧 in every language).
-    this.mode = def.translation || (config.engine === 'mock' && !process.env.TRANSLATION_MODE ? 'live' : config.translationMode);
+    // Local engine: Whisper only transcribes, so every caption language comes from the text translator.
+    this.mode = config.engine === 'local' ? 'text' : def.translation || (config.engine === 'mock' && !process.env.TRANSLATION_MODE ? 'live' : config.translationMode);
     const foreign = src ? targets.filter((t) => t !== src) : targets;
     // Every caption language is its own track, including the talk's own language: it's a passthrough of the
     // transcription while the speaker uses it, and a translation when they switch (bilingual hosts, Q&A).
     this.transTargets = src ? [src, ...foreign] : foreign;
     const liveTargets = foreign.length ? foreign : [src || 'es'];
     this.sessionTargets = this.mode === 'text' ? liveTargets.slice(0, 1) : liveTargets;
-    this.audioLangs = this.sessionTargets.filter((t) => this.transTargets.includes(t));
+    this.audioLangs = config.engine === 'local' ? [] : this.sessionTargets.filter((t) => this.transTargets.includes(t)); // 🎧 needs Live Translate's voice
     // Languages a viewer can pick. 'orig' = whatever is being spoken.
     this.aliases = {};
     this.languages = ['orig', ...this.transTargets];
@@ -183,7 +185,9 @@ export class Stage extends EventEmitter {
         languageHints: this.source ? [this.source] : [],
         mode: config.transcriptionMode,
       };
-      const e = config.engine === 'gemini' ? new GeminiEngine(opts) : new MockEngine(opts);
+      const e = config.engine === 'gemini' ? new GeminiEngine(opts)
+        : config.engine === 'local' ? new LocalEngine({ ...opts, languages: [...new Set([...this.transTargets, this.source, ...Object.keys(config.event.languages)])] })
+          : new MockEngine(opts);
       e.on('input', (t) => primary && this.#onInput(t));
       e.on('interim', (t) => primary && config.useInterim && this.#onInterim(t));
       e.on('output', (t) => this.#onOutput(target, t));
@@ -302,6 +306,7 @@ export class Stage extends EventEmitter {
 
   // ---------- text translation (sentence by sentence, with provisional partials) ----------
   #mtFeed(text, finished, spoken) {
+    if (config.engine === 'local' && config.localLlmOff) return; // transcription only (npm run local -- --no-llm)
     this.mtQ ??= {};
     // Bind translators to the tracks of the current talk: a translation that returns after a talk
     // rollover must land in the talk it belongs to, not in the next one.
@@ -325,7 +330,7 @@ export class Stage extends EventEmitter {
         },
         onError: (m) => this.log('warn', `translate → ${t}: ${m}`),
         // The primary Live session already translates into this language: use it while text MT is throttled.
-        canFallback: () => t === this.sessionTargets[0] && this.engines.get(t)?.state === 'live',
+        canFallback: () => config.engine !== 'local' && t === this.sessionTargets[0] && this.engines.get(t)?.state === 'live',
         onDegraded: (on) => {
           tracks[t]?.flush(); // don't mix a half MT sentence with Live output
           this.log(on ? 'warn' : 'info', on ? `${t}: text translation throttled → Live Translate captions` : `${t}: back to text translation`);
@@ -491,7 +496,7 @@ export class Stage extends EventEmitter {
     const now = Date.now();
     if (this.ticks++ % 15 === 0) this.#applySchedule(now);
     // Cost: every open session is billed for streamed audio (input + generated output).
-    if (this.engines.size && !this.gated) this.costUsd += (USD_PER_SESSION_MIN / 60) * this.engines.size;
+    if (this.engines.size && !this.gated && config.engine !== 'local') this.costUsd += (USD_PER_SESSION_MIN / 60) * this.engines.size;
 
     // Stall watchdog: people are talking but a session produced nothing for a while → reconnect it.
     const primary = this.engines.get(this.sessionTargets[0]);

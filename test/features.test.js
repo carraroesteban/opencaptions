@@ -112,3 +112,15 @@ test('agenda: date formats', () => {
   assert.equal(at('title,begins at,place\nX,2026-09-25T13:30:00.000Z,main').toISOString(), '2026-09-25T13:30:00.000Z');
   assert.equal(at('main,10:00,"Keynote, apertura",Org').getHours(), 10, 'plain CSV without header still works');
 });
+
+test('an empty AI summary or answer (small local models) falls back to the transcript', async () => {
+  config.engine = 'gemini';
+  assist._setClient({ models: { generateContent: async () => ({ text: '{"headline":"","bullets":[],"terms":[]}' }) } });
+  const s = await assist.summarize({ segs, key: 'k-empty', lang: 'es', scope: 'full', live: true });
+  assert.equal(s.ai, false);
+  assert.ok(s.bullets.length > 0);
+  assist._setClient({ models: { generateContent: async () => ({ text: '{"found":true,"answer":"","quotes":[]}' }) } });
+  const r = await assist.ask({ segs, lang: 'en', question: 'Prometheus metrics?', clientKey: 'c-empty' });
+  assert.equal(r.ai, false);
+  assert.match(r.quotes[0].text, /Prometheus/);
+});

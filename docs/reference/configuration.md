@@ -10,6 +10,7 @@ OpenCaptions reads its configuration from four places, in this order of preceden
 Two more things affect what runs:
 
 - **`--mock` CLI flag** (`npm run mock`, or `node src/server.js --mock`) forces the simulated caption engine regardless of `GEMINI_API_KEY` — useful for demos and UI work without burning API quota.
+- **`--local` CLI flag** (`node src/server.js --local`) forces the local engine, like `ENGINE=local`. `npm run local` sets `ENGINE=local` for you after starting the speech server and the text model ([Local mode](../local.md)).
 - **`EVENT_CONFIG`** environment variable points to a different event file than `config/event.json` (see [Environment variables](#environment-variables)).
 
 Related docs: [Security](../security-guide.md) · [Event-day runbook](../operations/runbook.md) · [API reference](./api.md) · [Latency tuning](../latency.md)
@@ -55,7 +56,7 @@ See [Security](../security-guide.md) for the full threat model.
 | `GEMINI_API_KEY` | `''` | Gemini Developer API key ([aistudio.google.com/apikey](https://aistudio.google.com/apikey)). Without a key (and without Vertex AI configured) the server runs in mock mode. |
 | `GEMINI_MODEL` | `gemini-3.5-live-translate-preview` (or `event.json`'s `model`) | Gemini Live Translate model used for transcription + speech translation. |
 | `TEXT_MODEL` | `gemini-3.5-flash-lite` (or `event.json`'s `textModel`) | Fast text model used for per-sentence caption translation (`text`/`hybrid` modes). |
-| `ENGINE` | auto: `gemini` if `GEMINI_API_KEY` or Vertex AI is configured, else `mock` | Force `gemini` or `mock` explicitly. Overridden by `--mock`. |
+| `ENGINE` | auto: `gemini` if `GEMINI_API_KEY` or Vertex AI is configured, else `mock` | `gemini`, `local` (Whisper and a text model on this machine or your network, see [Local AI](#local-ai-enginelocal)) or `mock`. Overridden by `--mock` and `--local`. |
 | `GOOGLE_GENAI_USE_VERTEXAI` | `false` | `1`/`true` switches from the Gemini Developer API to **Vertex AI** in your own Google Cloud project — data stays in your project/region, covered by Google Cloud's compliance program (ISO 27001/27017/27018/27701, ISO 42001, SOC 2, HIPAA BAA, DPA). Auth via Application Default Credentials (`gcloud auth application-default login`, or a service account on the VM) — no API key needed. |
 | `GOOGLE_CLOUD_PROJECT` | `''` | GCP project ID. Required when `GOOGLE_GENAI_USE_VERTEXAI=1`. |
 | `GOOGLE_CLOUD_LOCATION` | `us-central1` | GCP region for Vertex AI. |
@@ -71,6 +72,40 @@ Viewer-facing "What did I miss?" summaries and question answering, grounded only
 | `ASK_PER_CLIENT_PER_MIN` | `6` | Questions per minute allowed from a single client (by IP). |
 | `SUMMARY_RPM` | `30` | Summary generations per minute across the whole server (`GET /api/stages/:id/summary`) before falling back to the extractive summary; a cache hit doesn't count against it. |
 
+### Local AI (`ENGINE=local`)
+
+Speech recognition with Whisper and translation with an open model, on this machine or a server on your network. Nothing is sent to a cloud service. `npm run local` sets the URLs and model names below for you; set them yourself when you run the servers on your own (see [Local mode](../local.md#use-your-own-servers)). The translation mode is always `text` in local mode (no translated voice).
+
+| Variable | Default | Description |
+|---|---|---|
+| `LOCAL_ASR_URL` | `http://127.0.0.1:8178/inference` | Speech server. A path ending in `/inference` uses whisper.cpp's dialect (`whisper-server`, or the bundled `scripts/local-asr-server.js`); a path ending in `/v1/audio/transcriptions` uses the OpenAI dialect (speaches, LocalAI, WhisperKit). |
+| `LOCAL_ASR_API` | from the URL | Force the dialect: `whispercpp` or `openai`. |
+| `LOCAL_ASR_MODEL` | `whisper-1` (OpenAI dialect) | Model name sent to OpenAI-compatible servers that serve several models, e.g. `Systran/faster-whisper-small`. Not sent to whisper.cpp. |
+| `LOCAL_ASR_LABEL` | the model name | Name shown on the dashboard and in the startup banner. |
+| `LOCAL_ASR_CONCURRENCY` | `1` | Requests sent to the speech server at once, across all rooms. Raise it only for servers that process requests in parallel (GPU servers). |
+| `LOCAL_ASR_TIMEOUT_MS` | `30000` | Give up on a transcription request after this long. A final pass is retried once. |
+| `LOCAL_STEP_MS` | `1000` | How often the utterance in progress is re-transcribed for provisional words. Higher = less load on the speech server, words appear later. |
+| `LOCAL_END_SILENCE_MS` | `700` | A pause this long ends an utterance and triggers its final pass. |
+| `LOCAL_MAX_UTTERANCE_SEC` | `12` | A speaker who never pauses is cut after this long, at the quietest moment. |
+| `LOCAL_LLM` | on | `off` = transcription only: no translations and no AI summaries or answers (the assistant falls back to transcript highlights). |
+| `LOCAL_LLM_URL` | `http://127.0.0.1:11434` | Text model server. Ollama by default; a URL whose path contains `/v1` uses the OpenAI chat dialect (LM Studio, llama.cpp's `llama-server`, vLLM, Jan). |
+| `LOCAL_LLM_API` | from the URL | Force the dialect: `ollama` or `openai`. |
+| `LOCAL_LLM_KEY` | unset | Bearer token sent to the text model server, for servers that require one. |
+| `LOCAL_LLM_MODEL` | `gemma3:4b` | Model for translation, summaries and questions. |
+| `LOCAL_MT_MODEL` | unset (uses `LOCAL_LLM_MODEL`) | A separate model for caption translation only, e.g. `translategemma`. TranslateGemma models get the exact prompt they were trained on. |
+| `LOCAL_LLM_CONCURRENCY` | `1` | Requests sent to the text model at once. Final translations go first, then the assistant; provisional translations are skipped while it's busy. |
+| `LOCAL_LLM_TIMEOUT_MS` | `60000` | Give up on a text model request after this long (summaries use at least 90 s). |
+| `LOCAL_LLM_CONTEXT` | `8192` | Ollama context window (`num_ctx`), in tokens. It also sets how much transcript a summary reads: about 2.6 characters per token, so about the last 20 minutes of a talk by default. |
+| `LOCAL_LLM_KEEP_ALIVE` | `30m` | How long Ollama keeps the model loaded between requests. |
+
+Read by the launcher (`npm run local`) or the bundled speech server (`node scripts/local-asr-server.js`), not by the OpenCaptions server:
+
+| Variable | Default | Description |
+|---|---|---|
+| `LOCAL_ASR_SIZE` | `small` on Apple Silicon and 8+ cores, else `base` (whisper.cpp on Apple Silicon: `large-v3-turbo-q5_0`) | Launcher: Whisper model to download and start, like `--asr-model`. |
+| `LOCAL_ASR_MODEL_DIR` | `local/models/sherpa-onnx-whisper-small` | Bundled speech server started by hand: model folder (or `--model`). The launcher always passes `--model`. |
+| `LOCAL_ASR_PORT` | `8178` | Bundled speech server started by hand: port (or `--port`; `--host` defaults to `127.0.0.1`). The launcher always uses 8178. |
+
 ### Translation & latency tuning
 
 See [Latency tuning](../latency.md).
@@ -80,10 +115,10 @@ See [Latency tuning](../latency.md).
 | `TRANSLATION_MODE` | `text` (or `event.json`'s `translation`; per-stage `translation` overrides this). With the mock engine and no explicit value, rooms use `live`. | `text`: one Gemini Live session per stage (transcription + one translated voice) plus fast text-MT captions for every target language — lowest latency/cost, any number of languages. `live`: one Live session per target language, captions straight from Live's own speech translation. `hybrid`: text-MT captions plus one Live session per language (so every language also gets translated voice 🎧). |
 | `MT_RPM` | `0` (unlimited) | Text-translation requests/minute budget for the whole server. Set it to your AI Studio tier's limit (e.g. `15` on the free tier). Provisional (in-progress) translations use at most 60% of the budget; final sentences get priority. |
 | `MT_PARTIAL_MS` | `1500` | How often (ms) the in-progress sentence is re-translated as a provisional caption. Lower = faster-feeling captions, more requests. |
-| `MT_TIMEOUT_MS` | `5000` | Give up on (and retry) a text-translation request after this long. |
+| `MT_TIMEOUT_MS` | `5000` (`30000` with `ENGINE=local`) | Give up on (and retry) a text-translation request after this long. |
 | `VAD_SILENCE_MS` | `0` (model default) | Shortens Gemini Live's end-of-speech wait, e.g. `300`, to cut caption latency. Only applied at the engine's `'full'` config level. |
 | `TRANSCRIPTION_MODE` | `''` | `''` (verbatim) or `SMART` (removes filler words) — passed to Gemini Live as the input transcription mode. |
-| `USE_INTERIM` | `false` (`0`) | `1` shows the model's low-latency interim transcription as provisional text on the original-language channel, before it's confirmed. |
+| `USE_INTERIM` | `false` (`0`); `1` with `ENGINE=local` | `1` shows the model's low-latency interim transcription as provisional text on the original-language channel, before it's confirmed. In local mode these are Whisper's provisional words. |
 
 ### Audio & session lifecycle
 
@@ -136,7 +171,7 @@ Loaded once at startup from the path in `EVENT_CONFIG` (default `config/event.js
 | Key | Type | Default | Description |
 |---|---|---|---|
 | `eventName` | string | `"OpenCaptions"` | Shown in the UI and startup banner. |
-| `accent` | string | `"#7c5cff"` | Accent color (CSS color value) used across the audience/admin pages. |
+| `accent` | string | `"#D4FF3A"` | Highlight color (CSS color value): the live-word highlighter, search hits and projector labels. Text on it switches between ink and paper automatically for contrast. |
 | `publicUrl` | string | `""` | Canonical external URL. Overridden by `PUBLIC_URL`. |
 | `publicTranscripts` | `"current"` \| `"all"` \| `"none"` | `"current"` | Who may download transcripts. Overridden by `PUBLIC_TRANSCRIPTS`. |
 | `timezone` | string (IANA zone, e.g. `"America/Argentina/Buenos_Aires"`) | unset | Sets `process.env.TZ` at startup, but only if `TZ` isn't already set in the environment. Controls what "today" and `HH:MM` mean when parsing the schedule's start times (see [Schedule file](#schedule-file-configschedulejson)) — containers default to UTC otherwise. No matching environment variable; set `TZ` directly if you'd rather not use this key. |
@@ -178,7 +213,7 @@ Each entry in `stages` (and the body of `POST /api/stages` / `PATCH /api/stages/
 ```json
 {
   "eventName": "Nerdearla 2026",
-  "accent": "#8b5cf6",
+  "accent": "#D4FF3A",
   "publicUrl": "",
   "publicTranscripts": "all",
   "timezone": "America/Argentina/Buenos_Aires",
@@ -278,10 +313,11 @@ All under `DATA_DIR` (default `data/`), created on demand.
 | Script | Runs | Flags |
 |---|---|---|
 | `npm start` | `node src/server.js` | — |
-| `npm run setup` | `node scripts/setup.js` | Interactive wizard, no flags — asks for the event name, rooms (comma-separated), the language talks are usually given in, caption languages for the audience, a Gemini API key, the public URL, whether past-talk transcripts should be public too, and the event's time zone. Writes `.env` (`GEMINI_API_KEY`, `ADMIN_TOKEN`, `INGEST_TOKEN`, `PUBLIC_URL`) and `config/event.json`, generating admin/ingest tokens if none exist yet. Safe to re-run — see [Files written at runtime](#files-written-at-runtime) for what it backs up. |
+| `npm run setup` | `node scripts/setup.js` | Interactive wizard, no flags — asks for the event name, the AI engine (`gemini`, `local` or `demo`), a Gemini API key (Gemini only), rooms (comma-separated), the language talks are usually given in, caption languages for the audience, the public URL, whether past-talk transcripts should be public too, and the event's time zone. Writes `.env` (`ENGINE`, `GEMINI_API_KEY`, `ADMIN_TOKEN`, `INGEST_TOKEN`, `PUBLIC_URL`) and `config/event.json`, generating admin/ingest tokens if none exist yet. Safe to re-run — see [Files written at runtime](#files-written-at-runtime) for what it backs up. |
 | `npm run mock` | `node src/server.js --mock` | Forces the mock caption engine. |
-| `npm test` | `node --test` (finds every `*.test.js`) | — |
-| `npm run check` | `node scripts/check-gemini.js` | `--input <file>` (default `samples/talk-en.wav`), `--target <lang>` (default `es`), `--seconds <n>` (default `25`), `--raw` (sets `OC_DEBUG_RAW=1`). End-to-end check of your Gemini key/model without starting the server. |
+| `npm run local` | `node scripts/local.js` | Local mode: finds or starts a Whisper speech server and Ollama, downloads models once, then starts the server with `ENGINE=local`. `--check` (run the end-to-end check instead; also takes the check's `--input`, `--seconds`, `--target`, `--source`), `--asr auto\|builtin\|whispercpp\|whisperkit`, `--asr-model <size>`, `--llm-model <name>`, `--mt-model <name>`, `--build-whisper`, `--no-llm`. See [Local mode](../local.md). |
+| `npm test` | `node scripts/run-tests.js` (runs every `test/*.test.js` with `node --test`) | Extra flags are passed to `node --test`, e.g. `npm test -- --test-name-pattern=local`. |
+| `npm run check` | `node scripts/check-gemini.js` | `--input <file>` (default `samples/talk-en.wav`), `--target <lang>` (default `es`), `--seconds <n>` (default `25`), `--raw` (sets `OC_DEBUG_RAW=1`). End-to-end check of your Gemini key/model without starting the server. With `ENGINE=local` it runs `scripts/check-local.js` instead: streams the sample through your speech server in real time, translates a few sentences and reports word error rate, delay and speed (`--seconds` defaults to `30`, `--source` to `auto`). |
 | `npm run feed` | `node scripts/feed.js` | `--stage <id>` (default `main`), `--input <file\|url>` or `--youtube <url>`, `--start <sec>`, `--loop`, `--server <ws(s)://host:port>` (default `ws://localhost:8080`, or `OC_SERVER`), `--token <ingest token>` (or `INGEST_TOKEN`), `--label <text>`, `--quiet`. Streams any audio/video file, URL, or YouTube link into a stage in real time. |
 | `npm run loadtest` | `node scripts/loadtest.js` | `--stages <n>` (default `10`), `--input <file>` (default `samples/talk-en.wav`), `--server <url>` (default `http://localhost:8080`), `--admin-token <token>` (or `ADMIN_TOKEN`/`INGEST_TOKEN`), `--source`, `--targets`, `--cleanup`. Simulates N simultaneous stages fed with the same audio. |
 | `npm run agent` | `node scripts/agent.js` | `--stage <id>` (required), `--server <ws(s)://host:port>` (default `ws://localhost:8080`, or `OC_SERVER`), `--token <token>` (or `INGEST_TOKEN`), `--device <index\|name>`, `--channel mix\|left\|right`, `--gain <x>`, `--label <text>`, `--quiet`, `--list-devices`, `--file <path>` (test mode: loop a file instead of a sound card). Headless stage agent — captures a sound card with ffmpeg and streams it to the server, reconnecting forever; meant to run as a system service on each stage PC. Reconnects if the server sends no message for 6 s (a half-dead connection TCP wouldn't notice for minutes); if the server closes the connection with code `4000` (another source — browser ingest, a `pull` — took over the room), it backs off and waits 60 s before retrying instead of fighting for the room every second. |
@@ -321,6 +357,15 @@ ADMIN_TOKEN=<openssl rand -base64 24>
 INGEST_TOKEN=<openssl rand -base64 24>
 TUNNEL_TOKEN=<cloudflare tunnel token>
 BIND_ADDR=127.0.0.1
+```
+
+**Fully local, no cloud AI** (models on this machine; `npm run local` starts them):
+
+```env
+ENGINE=local
+# optional: a better translation model, a bigger text model
+# LOCAL_MT_MODEL=translategemma
+# LOCAL_LLM_MODEL=gemma3:12b
 ```
 
 **Enterprise: Vertex AI, no transcript storage**:

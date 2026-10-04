@@ -3,7 +3,8 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta name="theme-color" content="#0b0b10" />
+  <meta name="theme-color" content="#FAF8F3" media="(prefers-color-scheme: light)" />
+  <meta name="theme-color" content="#111014" media="(prefers-color-scheme: dark)" />
   <link rel="icon" href="/favicon.ico" sizes="32x32" />
   <link rel="icon" href="/brand/icon.svg" type="image/svg+xml" />
   <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
@@ -14,40 +15,40 @@
     /* Play-along demo: the browser plays a YouTube talk while the server transcribes/translates the same
        audio in real time → compare speech and captions side by side (and record the demo video). */
     body { min-height: 100vh; }
-    header { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; padding: 12px 18px; border-bottom: 1px solid var(--line); }
+    header { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; padding: 14px 24px; border-bottom: 1px solid var(--line); }
     header input[type=text] { flex: 1 1 320px; }
     header input[type=number] { width: 80px; }
-    main { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 16px; padding: 16px 18px; }
+    main { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 20px; padding: 24px; }
     @media (max-width: 1000px) { main { grid-template-columns: 1fr; } }
-    .stagewrap { position: relative; width: 100%; aspect-ratio: 16 / 9; background: #000; border-radius: 12px; overflow: hidden; }
+    .stagewrap { position: relative; width: 100%; aspect-ratio: 16 / 9; background: var(--ink); border-radius: 16px; overflow: hidden; box-shadow: var(--shadow); }
     #player, .stagewrap iframe { position: absolute; inset: 0; width: 100%; height: 100%; }
     .ov { position: absolute; left: 0; right: 0; bottom: 6%; display: flex; justify-content: center; pointer-events: none; padding: 0 5%; }
-    .ov .box { max-width: 88%; background: rgba(0,0,0,.78); color: #fff; font-weight: 600; text-align: center; border-radius: .25em;
+    .ov .box { max-width: 88%; background: rgba(17, 16, 20, .84); color: var(--paper); font-weight: 700; text-align: center; border-radius: .25em; --hl: var(--lime); --hl-ink: var(--ink);
       padding: .2em .6em; font-size: clamp(16px, 2.6vw, 34px); line-height: 1.25; transition: opacity .5s; }
     .ov .clip { display: flex; flex-direction: column; justify-content: flex-end; overflow: hidden; max-height: calc(1.25em * 2); }
     .ov .box.idle { opacity: 0; }
-    .orig { margin-top: 10px; background: var(--bg2); border: 1px solid var(--line); border-radius: 12px; padding: 10px 14px; min-height: 3.4em; color: var(--fg2); font-size: 17px; }
-    .orig b { color: var(--accent); font-size: 11px; letter-spacing: .1em; text-transform: uppercase; margin-right: 6px; }
+    .orig { margin-top: 12px; background: var(--bg2); border: 1px solid var(--line); border-radius: 14px; padding: 12px 16px; min-height: 3.4em; color: var(--translation); font-size: 17px; }
+    .orig b { color: var(--fg2); font-size: 11px; letter-spacing: .1em; text-transform: uppercase; margin-right: 8px; }
     aside { display: grid; gap: 12px; align-content: start; }
     .stats { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
     .stats div { background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; font-size: 11px; color: var(--fg2); }
+    aside .card > .row b, aside .card > b { font-family: var(--font-display); font-weight: 800; letter-spacing: -.01em; }
     .stats b { display: block; font-size: 20px; color: var(--fg); font-variant-numeric: tabular-nums; }
     #transcript { max-height: 46vh; overflow: auto; font-size: 15px; line-height: 1.45; }
     #transcript p { margin: 0 0 .5em; }
-    #transcript p.partial { color: var(--accent); }
     .hint { font-size: 12px; }
     body.mic .yt-only, body:not(.mic) .mic-only { display: none !important; }
     body.mic #player { display: none; }
     body.mic .ov { bottom: 50%; transform: translateY(50%); }
     body.mic .ov .box { background: transparent; font-size: clamp(20px, 3.6vw, 52px); }
     body.mic .ov .clip { max-height: calc(1.25em * 3); }
-    .micidle { position: absolute; inset: 0; display: grid; place-items: center; color: #777; font-size: clamp(16px, 2vw, 24px); text-align: center; padding: 20px; }
+    .micidle { position: absolute; inset: 0; display: grid; place-items: center; color: #A8A5AE; font-size: clamp(16px, 2vw, 24px); text-align: center; padding: 20px; }
     #securewarn { background: color-mix(in srgb, var(--bad) 18%, transparent); border: 1px solid var(--bad); border-radius: 10px; padding: 8px 12px; margin: 10px 18px 0; font-size: 14px; }
   </style>
 </head>
 <body>
   <header>
-    <a class="brand" href="/admin.html" title="Panel de producción" style="font-size:14px">open<span>captions</span> · demo</a>
+    <a class="brand" href="/admin.html" title="Panel de producción" style="font-size:14px">OpenCaptions<span class="sub">· demo</span></a>
     <select id="mode"><option value="youtube">▶ Video de YouTube</option><option value="mic">🎙 Micrófono en vivo</option></select>
     <input type="text" id="url" class="yt-only" placeholder="URL de YouTube (ej: https://www.youtube.com/watch?v=…)" />
     <label class="row muted hint mic-only" style="flex:1 1 260px">Micrófono <select id="mic" style="flex:1"><option value="">(predeterminado)</option></select></label>
@@ -85,7 +86,7 @@
     </aside>
   </main>
   <script type="module">
-    import { qs, esc, store, wsUrl, Socket, CaptionState, getEvent, langLabel } from '/common.js';
+    import { qs, esc, store, wsUrl, Socket, CaptionState, getEvent, langLabel, liveText, liveHtml } from '/common.js';
     import { localize, prefsControls, tr } from '/i18n.js';
     document.querySelector('header').append(prefsControls());
     localize();
@@ -287,11 +288,11 @@
       });
     }
     function draw() {
-      $('ovtxt').textContent = main.tail(150);
+      liveText($('ovtxt'), main.tail(150), !main.partial?.text);
       $('ovbox').classList.toggle('idle', !main.tail(5));
       $('origtxt').textContent = orig.tail(200) || '…';
       const list = [...main.finals.slice(-40), ...(main.partial ? [main.partial] : [])];
-      $('transcript').innerHTML = list.map((s) => `<p class="${s.final ? '' : 'partial'}">${esc(s.text)}</p>`).join('');
+      $('transcript').innerHTML = list.map((s) => `<p class="${s.final ? '' : 'partial'}">${s.final ? esc(s.text) : liveHtml(s.text)}</p>`).join('');
       $('transcript').scrollTop = $('transcript').scrollHeight;
     }
     setInterval(() => $('ovbox').classList.toggle('idle', Date.now() - main.updatedAt > 7000), 500);

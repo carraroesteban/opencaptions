@@ -47,8 +47,35 @@ export const store = {
 export async function getEvent() {
   const r = await fetch('/api/event');
   const ev = await r.json();
-  if (ev.accent) document.documentElement.style.setProperty('--accent', ev.accent);
+  setAccent(ev.accent);
   return ev;
+}
+
+/** Event accent colour → --accent, plus ink or paper on top of it (--on-accent) so text on it stays readable. */
+export function setAccent(c) {
+  if (!c) return;
+  const root = document.documentElement.style;
+  root.setProperty('--accent', c);
+  const m = /rgba?\((\d+), (\d+), (\d+)/.exec(toColor(c) || '');
+  if (!m) return root.removeProperty('--on-accent');
+  const [r, g, b] = m.slice(1, 4).map((v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; });
+  root.setProperty('--on-accent', 0.2126 * r + 0.7152 * g + 0.0722 * b > 0.18 ? '#111014' : '#FAF8F3');
+}
+
+/**
+ * Write a caption into an element. While it's still being spoken (not final), the last word gets the highlighter
+ * sweep (.live-word); the span is reused while the word doesn't change so the sweep doesn't replay.
+ */
+export function liveText(el, text, final) {
+  text = String(text ?? '');
+  if (final) { el.textContent = text; return; }
+  const cut = text.search(/\S+\s*$/);
+  const head = cut > 0 ? text.slice(0, cut) : '', word = cut >= 0 ? text.slice(cut).trimEnd() : '';
+  const span = el.lastChild?.nodeType === 1 && el.lastChild.classList.contains('live-word') ? el.lastChild : null;
+  if (span && span.textContent === word && el.childNodes.length === 2 && el.firstChild.nodeType === 3) { el.firstChild.nodeValue = head; return; }
+  el.textContent = '';
+  el.append(document.createTextNode(head));
+  if (word) { const w = Object.assign(document.createElement('span'), { className: 'live-word', textContent: word }); w.dataset.w = word; el.append(w); }
 }
 
 /**
@@ -160,6 +187,12 @@ export class PcmPlayer {
   stop() { this.ctx?.close(); this.ctx = null; }
 }
 
+/** Same as liveText(), as an HTML string (for pages that render with innerHTML). */
+export function liveHtml(text) {
+  const m = /^([\s\S]*?)(\S+)\s*$/.exec(String(text ?? ''));
+  return m ? `${esc(m[1])}<span class="live-word" data-w="${esc(m[2])}">${esc(m[2])}</span>` : esc(text);
+}
+
 export const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 
 /** Keep the screen on (phones reading captions, projector PCs). Silently does nothing if unsupported. */
@@ -197,6 +230,7 @@ export const fmtClock = (ms) => { const s = Math.max(0, Math.round(ms / 1000)); 
 // ---------- caption styling (shared by overlay.html, screen.html and style.html) ----------
 export const FONTS = {
   system: { label: 'Sistema', css: "system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif" },
+  atkinsonnext: { label: 'Atkinson Hyperlegible Next (OpenCaptions)', google: 'Atkinson Hyperlegible Next' },
   inter: { label: 'Inter', google: 'Inter' },
   atkinson: { label: 'Atkinson Hyperlegible (máxima legibilidad)', google: 'Atkinson Hyperlegible' },
   lexend: { label: 'Lexend', google: 'Lexend' },
@@ -239,14 +273,14 @@ export function loadFont(key) {
 export function applyCaptionStyle(p, d = {}) {
   const get = (k) => p.get(k) ?? d[k];
   const root = document.documentElement.style;
-  root.setProperty('--cap-font', loadFont(get('font') || 'inter'));
-  root.setProperty('--cap-weight', get('weight') || 600);
+  root.setProperty('--cap-font', loadFont(get('font') || 'atkinsonnext'));
+  root.setProperty('--cap-weight', get('weight') || 700);
   root.setProperty('--cap-color', toColor(get('color') || 'ffffff'));
   const alpha = get('alpha') != null ? Number(get('alpha')) / 100 : undefined;
   root.setProperty('--cap-box', toColor(get('box') || '000000', alpha ?? 0.78));
   root.setProperty('--cap-transform', get('upper') === '1' ? 'uppercase' : 'none');
   root.setProperty('--cap-align', get('align') || 'center');
-  if (get('accent')) root.setProperty('--accent', toColor(get('accent')));
+  if (get('accent')) setAccent(toColor(get('accent')));
   const style = get('style') || 'box';
   const edge = toColor(get('edge') || '000000');
   root.setProperty('--cap-shadow', style === 'outline'

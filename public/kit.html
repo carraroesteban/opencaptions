@@ -3,7 +3,8 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta name="theme-color" content="#0b0b10" />
+  <meta name="theme-color" content="#FAF8F3" media="(prefers-color-scheme: light)" />
+  <meta name="theme-color" content="#111014" media="(prefers-color-scheme: dark)" />
   <link rel="icon" href="/favicon.ico" sizes="32x32" />
   <link rel="icon" href="/brand/icon.svg" type="image/svg+xml" />
   <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
@@ -11,24 +12,30 @@
   <title>Kit de QR</title>
   <link rel="stylesheet" href="/style.css" />
   <style>
-    .bar { max-width: 900px; margin: 0 auto; padding: 20px 16px; display: grid; gap: 10px; }
-    .bar h1 { margin: 0; font-size: 24px; }
-    .warn { border-color: var(--warn); color: var(--warn); }
-    .sheets { display: grid; gap: 24px; justify-content: center; padding: 0 16px 40px; }
+    .bar { max-width: 900px; margin: 0 auto; padding: 22px 20px; display: grid; gap: 12px; }
+    .bar h1 { margin: 18px 0 0; font-size: 32px; }
+    .warn { border-color: color-mix(in srgb, var(--warn) 45%, var(--line)); color: var(--warn); }
+    .sheets { display: grid; gap: 28px; justify-content: center; padding: 8px 16px 48px; }
+    /* A4 poster: printed on white paper, so it's always the light identity (all-ink logo, ink on lime). */
     .poster {
-      width: 210mm; min-height: 297mm; background: #fff; color: #111; border-radius: 6px; box-shadow: 0 10px 40px rgba(0,0,0,.35);
-      padding: 18mm 16mm; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 8mm; font-family: var(--font);
+      --paper-w: #FFFFFF;
+      width: 210mm; min-height: 297mm; background: var(--paper-w); color: var(--ink); border-radius: 8px; box-shadow: var(--shadow-lg);
+      padding: 20mm 16mm 14mm; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 7mm; font-family: var(--font);
+      print-color-adjust: exact; -webkit-print-color-adjust: exact;
     }
-    .poster .ev { font-size: 16pt; font-weight: 700; color: var(--accent); letter-spacing: .02em; }
-    .poster h2 { font-size: 44pt; margin: 0; line-height: 1.05; letter-spacing: -.02em; }
-    .poster .lead { font-size: 22pt; font-weight: 700; margin: 0; }
-    .poster .lead span { display: block; font-size: 16pt; font-weight: 500; color: #555; margin-top: 2mm; }
-    .poster img { width: 110mm; height: 110mm; image-rendering: pixelated; }
-    .poster .url { font-family: var(--mono); font-size: 14pt; color: #333; }
+    .poster .ev { font-size: 15pt; font-weight: 700; color: var(--graphite); letter-spacing: .08em; text-transform: uppercase; }
+    .poster h2 { font-family: var(--font-display); font-weight: 800; font-size: 50pt; margin: 0; line-height: 1; letter-spacing: -.03em; }
+    .poster .lead { font-size: 24pt; font-weight: 700; margin: 0; }
+    .poster .lead .hl { background: var(--lime); color: var(--ink); padding: .02em .22em; border-radius: .18em; }
+    .poster .lead span.tr { display: block; font-size: 16pt; font-weight: 400; color: var(--graphite); margin-top: 3mm; }
+    .poster img { width: 108mm; height: 108mm; image-rendering: pixelated; border: 1.5px solid var(--ink); border-radius: 6mm; padding: 4mm; }
+    .poster .url { font-family: var(--mono); font-size: 14pt; color: var(--graphite); }
     .poster .langs { display: flex; gap: 3mm; flex-wrap: wrap; justify-content: center; }
-    .poster .langs b { border: 1.5px solid #111; border-radius: 99px; padding: 1.5mm 5mm; font-size: 13pt; }
-    .poster .extra { font-size: 13pt; color: #333; max-width: 150mm; line-height: 1.4; }
-    .poster .foot { margin-top: auto; font-size: 10pt; color: #777; }
+    .poster .langs b { border: 1.5px solid var(--ink); border-radius: 99px; padding: 1.5mm 5mm; font-size: 13pt; }
+    .poster .extra { font-size: 13pt; color: var(--ink); max-width: 150mm; line-height: 1.45; }
+    .poster .extra .tr { color: var(--graphite); }
+    .poster .foot { margin-top: auto; font-size: 10pt; color: #6A6870; display: flex; gap: 2mm; align-items: center; }
+    .poster .foot img { width: 7mm; height: auto; border: 0; padding: 0; border-radius: 0; image-rendering: auto; }
     @media print {
       @page { size: A4; margin: 0; }
       body { background: #fff; }
@@ -40,7 +47,7 @@
 </head>
 <body>
   <div class="bar">
-    <a class="brand" href="/admin.html" title="Panel de producción" style="font-size:13px">open<span>captions</span></a>
+    <a class="brand" href="/admin.html" title="Panel de producción" style="font-size:16px">OpenCaptions</a>
     <h1>🖨 Kit de QR para las salas</h1>
     <p class="muted" style="margin:0">Un cartel A4 por sala: pegalo en la entrada y junto al escenario. El público escanea, elige idioma y sigue los subtítulos en el celular (y puede pedir un resumen de lo que se perdió).</p>
     <div class="card warn hidden" id="localwarn">⚠ Estos QR apuntan a <b id="lw-url"></b>, que el público no puede abrir. Configurá <code>PUBLIC_URL</code> con la dirección HTTPS del evento y recargá esta página.</div>
@@ -70,12 +77,12 @@
         return `<section class="poster">
           <div class="ev">${esc(ev.name)}</div>
           <h2>${esc(s.name)}</h2>
-          <p class="lead">Subtítulos en vivo${bi ? '<span>Live captions · translation</span>' : ''}</p>
+          <p class="lead"><span class="hl">Subtítulos en vivo</span>${bi ? '<span class="tr">Live captions · translation</span>' : ''}</p>
           <img src="/api/qr.svg?text=${encodeURIComponent(url)}" alt="QR ${esc(url)}" />
           <div class="url">${esc(url.replace(/^https?:\/\//, ''))}</div>
           <div class="langs">${langs}</div>
-          <p class="extra">📱 Escaneá con la cámara, elegí tu idioma y seguí la charla desde el celular. ✨ ¿Llegaste tarde? Tocá <b>“¿Qué me perdí?”</b>.${bi ? '<br><span style="color:#666">Scan with your camera, pick your language and follow the talk on your phone. Late? Tap “What did I miss?”.</span>' : ''}</p>
-          <div class="foot">Subtítulos generados con IA · pueden contener errores · open-source: OpenCaptions</div>
+          <p class="extra">📱 Escaneá con la cámara, elegí tu idioma y seguí la charla desde el celular. ✨ ¿Llegaste tarde? Tocá <b>“¿Qué me perdí?”</b>.${bi ? '<br><span class="tr">Scan with your camera, pick your language and follow the talk on your phone. Late? Tap “What did I miss?”.</span>' : ''}</p>
+          <div class="foot"><img src="/brand/mark-ink.svg" alt="" />Subtítulos generados con IA · pueden contener errores · open-source: OpenCaptions</div>
         </section>`;
       }).join('');
     }

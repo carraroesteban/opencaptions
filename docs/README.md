@@ -20,6 +20,7 @@ The docs follow the [Diátaxis](https://diataxis.fr/) framework. Each page has o
 | [Networking](networking.md) | How-to | Know which ports and domains are used, and what to do when the venue network blocks something. |
 | [Security](security-guide.md) | Explanation + how-to | Understand the threat model and apply the hardening checklist. |
 | [Latency](latency.md) | Explanation + how-to | Understand where the seconds go and tune for lower delay. |
+| [Local mode](local.md) | How-to + explanation | Run speech recognition and translation on your own computer: no API key, no internet, no cost per hour. |
 | [Event-day runbook](operations/runbook.md) | How-to | Prepare and operate the rooms on the day. |
 | [Troubleshooting](operations/troubleshooting.md) | How-to | Fix a specific symptom quickly. |
 | [Runbook in Spanish](operations/event-day.es.md) | How-to | Hand the production crew a checklist in Spanish. |
@@ -37,6 +38,7 @@ The docs follow the [Diátaxis](https://diataxis.fr/) framework. Each page has o
 |---|---|---|
 | [Architecture](architecture.md) | Explanation | Components, data flow, failure handling and how it scales. |
 | [Architecture decision records](adr/README.md) | Explanation | Why the main technical choices were made, and what they cost. |
+| [Brand and design system](brand.md) | Reference | Logo files, colours and the colour rule, type, light/dark tokens, motion, and the website. |
 
 ## Contribute
 

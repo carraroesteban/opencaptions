@@ -124,7 +124,7 @@ Opcional: panel → *＋ Nueva charla* con el título (queda en el nombre de los
 | Se corta internet del server | Sin traducción hasta que vuelva; las páginas reconectan solas | Server en la nube (no en el venue) evita esto. |
 | Se reinicia el server | Las pantallas, celulares y mini PCs reconectan solos; las transcripciones ya guardadas quedan en `data/` | `docker compose restart` / `npm start`. |
 | Se cuelga Chrome en la mini PC | Sin audio de esa sala | Reabrir la URL; con `--kiosk` + autostart arranca solo. |
-| Gemini caído o sin crédito | Se detienen los subtítulos; el panel muestra el error por sala y el server reintenta solo | Revisar estado/crédito en AI Studio. A futuro: motor local con Gemma (los motores son intercambiables, ver README → Project layout). |
+| Gemini caído o sin crédito | Se detienen los subtítulos; el panel muestra el error por sala y el server reintenta solo | Revisar estado/crédito en AI Studio. Plan B para una sala chica: `npm run local` (Whisper + Gemma en la compu, sin internet; ver [modo local](../local.md)). Probarlo antes del evento: la primera vez baja ~4 GB de modelos. |
 
 ## Al cierre de cada día
 

@@ -44,8 +44,10 @@ flowchart LR
 | `src/security.js` | Authentication (`AUTH`, tokens, localhost trust), security headers, rate limits, WebSocket origin checks, SSRF validation for pulls |
 | `src/stage.js` | One room: receives audio, detects speech, gates silence, owns model sessions and caption tracks, measures latency and cost, raises alerts |
 | `src/engines/gemini.js` | One Gemini Live Translate session: config fallbacks, session resumption, reconnect with backoff, 12 s audio buffer while reconnecting |
+| `src/engines/local.js` | Local engine: cuts audio into utterances and makes Whisper stream (re-transcription about once a second, words committed when two passes agree, a final pass per utterance). See [Local mode](local.md#how-it-works). |
+| `src/local/` | Clients for the local speech server (`asr.js`: whisper.cpp and OpenAI dialects, hallucination filter, request queue) and the local text model (`llm.js`: Ollama and OpenAI dialects, priorities) |
 | `src/engines/mock.js` | Offline engine with the same interface, for development and load tests |
-| `src/translate.js` | `SentenceTranslator`: sentence-level text translation with provisional partials, a global rate limiter, timeouts, retries and fallback to Live's own translation |
+| `src/translate.js` | `SentenceTranslator`: sentence-level text translation with provisional partials, a global rate limiter, timeouts, retries and fallback to Live's own translation. In local mode it calls the local text model instead of Flash-Lite. |
 | `src/captions.js` | `CaptionTrack`: turns model fragments into partial/final caption segments with timestamps and line-length limits |
 | `src/glossary.js` | Vocabulary hints for recognition and whole-word replacements, hot-reloaded from `config/glossary.json` |
 | `src/store.js` | Per-talk JSONL storage, retention purge, SRT/VTT/TXT export |
@@ -54,7 +56,7 @@ flowchart LR
 | `src/assist.js` | Audience assistant: *What did I miss?* summaries and *Ask the talk* answers from the transcript (Gemini Flash-Lite), cached and rate-limited, with an extractive fallback |
 | `src/schedule.js` | Agenda: parses CSV/JSON, finds the current and next talk per room; the Stage uses it to name talks automatically |
 | `public/` | Vanilla JavaScript pages (audience, projector, overlay, ingest, dashboard, demo, style editor), with no build step |
-| `scripts/` | Headless agent, feed, load test, multi-room latency test, Gemini check |
+| `scripts/` | Headless agent, feed, load test, multi-room latency test, Gemini check, local mode launcher (`local.js`), bundled speech server (`local-asr-server.js`) and local check |
 
 ## Data flow for one sentence
 
@@ -136,7 +138,7 @@ There is no database. That's deliberate ([ADR 0001](adr/0001-single-process-node
 
 ## Extension points
 
-- **Engines:** implement `start`, `sendAudio`, `endAudio`, `stop`, `restart` and `status`, and emit `input`, `output`, `audio`, `turn`, `state`, `log` and `error`. `mock.js` is the smallest example. A local engine (Gemma or Whisper-based) for offline events plugs in here.
+- **Engines:** implement `start`, `sendAudio`, `endAudio`, `stop`, `restart` and `status`, and emit `input`, `output`, `audio`, `turn`, `state`, `log` and `error`. `mock.js` is the smallest example; `local.js` shows how to wrap a non-streaming model ([ADR 0009](adr/0009-local-engine-with-whisper-and-ollama.md)).
 - **Audio sources:** anything that produces PCM16 mono 16 kHz can send it to `/ws/ingest`. See the [API reference](reference/api.md).
 - **Outputs:** the viewer protocol is plain JSON over WebSocket. Overlays and pages are static HTML that you can copy and restyle.
 

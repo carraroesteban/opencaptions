@@ -9,3 +9,6 @@ docs
 test
 *.log
 .DS_Store
+local
+site
+_site

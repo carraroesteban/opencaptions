@@ -7,6 +7,9 @@ import { GeminiEngine } from '../src/engines/gemini.js';
 import { Chunker } from '../src/audio.js';
 import { openAudio } from '../src/pull.js';
 
+// Local mode has its own check (speech server + local text model).
+if (config.engine === 'local') await import('./check-local.js');
+
 const arg = (k, d) => { const i = process.argv.indexOf(`--${k}`); return i > 0 ? process.argv[i + 1] ?? true : d; };
 const input = arg('input', 'samples/talk-en.wav');
 const target = arg('target', 'es');

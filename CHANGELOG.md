@@ -4,6 +4,26 @@ All notable changes to this project are documented in this file. The format foll
 
 ## [Unreleased]
 
+### Changed — new identity
+
+- **New brand: the "Open O"** logo, an ink / paper / lime palette, Bricolage Grotesque headlines and Atkinson Hyperlegible Next for everything you read. Every page shares one set of design tokens ([`public/tokens.css`](public/tokens.css)) with equally polished light and dark themes. See [docs/brand.md](docs/brand.md).
+- **Highlighter on the live word:** the word being spoken right now gets a lime highlighter sweep on phones, the transcript page, the projector, the demo and floating captions.
+- Restyled dashboard, audience page, transcripts, projector screen, overlay (the second language now uses a muted tone), QR posters, style editor, ingest and setup wizard. New favicon, app icons and link-preview image.
+- The default caption font in the overlay and on the projector is now Atkinson Hyperlegible Next 700 (it was Inter 600), and the projector's default background is ink (`#111014`) instead of pure black. Existing URLs that set `font`, `weight` or `bg` look the same as before.
+- The default `accent` is now lime (`#D4FF3A`). Text on an event's accent colour switches between ink and paper automatically.
+
+### Added — website
+
+- **[opencaptions.kvza.ar](https://opencaptions.kvza.ar)** in English and Spanish, built from `site/` and deployed to GitHub Pages by the new `Site` workflow. Preview it with `npm run site`.
+
+### Added — local mode: captions without the cloud
+
+- **`ENGINE=local`:** speech recognition with Whisper and translation, summaries and answers with an open model (Gemma 3 through Ollama by default), on the same computer or a server on your network. No API key, no cost per hour, and the room's audio never leaves the machine. Everything else (audience pages, projector, overlay, agenda, transcripts, dashboard) works unchanged. See [docs/local.md](docs/local.md) and [ADR 0009](docs/adr/0009-local-engine-with-whisper-and-ollama.md).
+- **Streaming Whisper:** utterances are re-transcribed about once a second while the speaker talks; words two passes agree on are committed and the rest shown as provisional, so captions appear during the sentence. Long monologues are cut at a quiet moment without losing or repeating words; Whisper's typical hallucinations on silence ("Thanks for watching", "Amara.org") and repetition loops are removed; a language the event doesn't use (Galician for Spanish) is re-transcribed in the room's language.
+- **`npm run local`:** finds or starts a speech server (whisper.cpp, WhisperKit on Apple Silicon, or a bundled one on sherpa-onnx that runs on any CPU), starts Ollama, downloads the models once and starts the server. `npm run local -- --check` streams a sample talk through the whole pipeline and reports word error rate, delay and speed.
+- Works with any whisper.cpp or OpenAI-compatible speech server (speaches, LocalAI, WhisperKit) and any Ollama or OpenAI-compatible chat server (LM Studio, llama.cpp, vLLM), so a GPU machine can serve several OpenCaptions servers. Optional separate translation model (`LOCAL_MT_MODEL=translategemma`) with the prompt it was trained on.
+- The setup wizard asks which AI engine to use (Gemini, local or demo); the dashboard shows a 🔒 local chip and tells you what's missing (speech server down, Ollama not running, model not downloaded).
+
 ### Added — making it easy for people
 
 - **✨ What did I miss?** on the audience page: a summary of the last 5 minutes (or the whole talk) in the viewer's language, generated from the transcript and cached for everyone.

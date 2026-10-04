@@ -2,7 +2,7 @@
 
 This page explains where caption delay comes from, how to measure it and which settings reduce it.
 
-**Short answer:** original-language captions appear about 3 seconds after the speaker says the words, and translations about 4.5–6 seconds after. Nearly all of that time is spent inside the speech model. The computer that runs the server makes no measurable difference, whether it's a Mac, Linux or Windows machine.
+**Short answer:** original-language captions appear about 3 seconds after the speaker says the words, and translations about 4.5–6 seconds after. Nearly all of that time is spent inside the speech model. The computer that runs the server makes no measurable difference, whether it's a Mac, Linux or Windows machine. That's with Gemini; in [local mode](#in-local-mode) the computer runs the models, so it matters.
 
 ## Measured numbers
 
@@ -65,6 +65,18 @@ Human live captioning isn't instant either. A stenographer or respeaker has to h
 
 What viewers notice most is not the absolute delay but whether the text moves. Words in progress appear as they're recognized (highlighted, then settled), so the screen never looks frozen while a sentence is spoken.
 
+### In local mode
+
+With [local mode](local.md), the speech model runs on your machine, so its speed sets the delay. Whisper isn't a streaming model: OpenCaptions re-transcribes the sentence in progress about once a second and commits the words that two passes in a row agree on. Committed words therefore trail the speaker by roughly two passes plus the step between them.
+
+| Machine (bundled speech server, CPU only) | Whisper | First provisional words | Committed words behind the speaker |
+|---|---|---|---|
+| Apple Silicon, 4 cores in a Linux VM | small | 1.5–1.7 s | about 4–5 s |
+| Apple Silicon, 4 cores in a Linux VM | base | 2.2 s | about 2 s (but many errors in Spanish) |
+| Cloud VM, 2 x86 vCPUs | base | 2.4 s | about 4.5 s |
+
+To lower it: a GPU or Apple's Neural Engine (whisper.cpp or WhisperKit), a smaller model, or fewer rooms per speech server. `LOCAL_STEP_MS` trades provisional-word freshness for load. Full numbers and settings: [Local mode](local.md#measured-results).
+
 ## Tuning
 
 Try one change at a time and compare the dashboard latency over a few minutes of real speech.
@@ -82,13 +94,13 @@ Try one change at a time and compare the dashboard latency over a few minutes of
 
 **Settings that don't help:**
 
-- A faster CPU, more RAM, or a different operating system.
+- A faster CPU, more RAM, or a different operating system (with Gemini; in local mode a faster machine does help).
 - Moving the server into a US region. That saves at most about 100 ms towards Gemini but adds the same towards viewers in Latin America.
 - Smaller audio chunks. They save tens of milliseconds and cost more messages.
 
 ## Measure it yourself
 
-- **One room:** `npm run check` prints time-to-first-text for a 25-second sample.
+- **One room:** `npm run check` prints time-to-first-text for a 25-second sample. In local mode, `npm run local -- --check` prints word error rate and how far the captions trail the speaker.
 - **Live:** open `/demo.html?mode=mic`, speak and read the delay shown on screen.
 - **Many rooms at once, with real talks:**
 

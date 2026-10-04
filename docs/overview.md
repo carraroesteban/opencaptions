@@ -61,24 +61,26 @@ The design details are in [Architecture](architecture.md), and the reasons behin
 - **Built for operations.** Silence gating, automatic reconnection with no lost audio, watchdogs, alerts, and a runbook for the crew.
 - **Secure by default.** Tokens for everything except the public caption pages, hardened HTTP, SSRF-safe stream pulls, and no audio stored. An enterprise path runs through Google Cloud Vertex AI.
 - **Open and forkable.** MIT license, plain JavaScript, documented APIs, and a pluggable engine interface.
+- **Cloud or local.** Gemini for the best quality at scale, or [local mode](local.md), where Whisper and an open model run on your own computer, with no account, no cost per hour and no audio leaving the building.
 
 ## Status and maturity
 
 | Area | Status |
 |---|---|
 | Captions and translation with real talks | Working and measured, with the real model and real conference videos |
-| Multi-room operation | Tested with 10 simultaneous rooms (mock engine and real talks) |
+| Multi-room operation | Tested with 30 simultaneous rooms playing real talks through Gemini on one laptop (29 streamed; YouTube refused one video). See [Latency](latency.md#measured-numbers). |
 | Security baseline | Implemented and covered by unit tests. See [known gaps](security-guide.md#known-gaps). |
 | Audience assistant, transcript pages, agenda, QR kit | Implemented and tested with the mock engine and a fake model in unit tests; summaries/answers with the real model to be verified on event day |
 | Platforms | macOS tested end to end; Linux tested in CI and mock mode; Windows expected ([Requirements](requirements.md#support-levels)) |
 | Vertex AI backend | Implemented, not yet tested end to end |
-| Automated tests | 24 unit and regression tests on Linux, macOS and Windows (captions, exports, security rules, reconnect/rollover edge cases, assistant, agenda). No automated end-to-end test with the real model yet. |
+| Local mode (Whisper + Ollama) | Implemented; measured on CPUs with the bundled speech server (one room). GPU and Neural Engine backends, and several rooms per machine, not measured yet ([Local mode](local.md#measured-results)) |
+| Automated tests | 49 unit and regression tests on Linux, macOS and Windows (captions, exports, security rules, reconnect/rollover edge cases, assistant, agenda, HTTP pages, local engine). No automated end-to-end test with the real model yet; `npm run local -- --check` runs one with local models. |
 | Version | 0.x (pre-release). Breaking changes are listed in the [changelog](../CHANGELOG.md). |
 
 ## Roadmap
 
-1. A local engine (Gemma) for events without internet.
-2. Streaming translation to reduce delay by a further 0.2–0.5 s.
+1. Streaming translation to reduce delay by a further 0.2–0.5 s.
+2. Local mode: measure GPU and Neural Engine backends, several rooms per machine, and a local translated voice.
 3. SSO login and per-person audit trail. Today an identity-aware proxy does this.
 4. Speaker identification in captions.
 5. An end-to-end test harness with recorded model responses.

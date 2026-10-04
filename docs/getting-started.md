@@ -87,6 +87,8 @@ Or do it by hand:
    npm start
    ```
 
+**No API key?** You can run the AI on your own computer instead. Install [Ollama](https://ollama.com/download), then run `npm run local -- --check` and `npm run local` in place of steps 3 and 4. The first run downloads about 4 GB of models. Captions run a little further behind the speaker than with Gemini. See [Local mode](local.md).
+
 ## 5. Caption two rooms at once
 
 In two more terminals, run one feed per room:
@@ -124,6 +126,7 @@ You ran the server, fed it audio from a file and a microphone, and watched capti
 ## Next steps
 
 - [Requirements](requirements.md): check what an event needs.
+- [Local mode](local.md): run the models on your own computer, without the cloud.
 - [Deployment](deployment.md): choose where the server runs.
 - [Security](security-guide.md): read this before exposing the server to a network.
 - [Event-day runbook](operations/runbook.md): run it at a conference.

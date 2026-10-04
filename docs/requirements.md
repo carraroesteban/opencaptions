@@ -24,11 +24,27 @@ This page lists what OpenCaptions needs to run, per role. OpenCaptions has three
 | Disk | Under 100 MB for the app. Transcripts are text only, typically a few hundred KB per room per day. Audio is never written to disk. |
 | ffmpeg | Only for pulling streams (SRT, RTMP, HLS) or non-WAV files. `npm install` fetches `ffmpeg-static` for macOS, Linux and Windows. A system ffmpeg or `FFMPEG_PATH` takes precedence. |
 | yt-dlp | Optional. Only for YouTube demos and `npm run multi`. |
-| AI provider | A Gemini API key from Google AI Studio, or a Google Cloud project with Vertex AI (see [Security](security-guide.md#choosing-the-ai-backend)). |
+| AI provider | A Gemini API key from Google AI Studio, or a Google Cloud project with Vertex AI (see [Security](security-guide.md#choosing-the-ai-backend)). Or none, in [local mode](local.md) (below). |
 
 ### Why the operating system barely matters
 
 The server does very little work itself. Per room it relays about 32 KB/s of audio to Gemini and forwards small caption messages to viewers. Speech recognition and translation run in Google's cloud. A Mac, a Linux VM and a Windows mini PC therefore give the same caption latency, as long as the network is similar. See [Latency](latency.md).
+
+This isn't true in local mode, where the server runs the models itself.
+
+### Local mode
+
+In [local mode](local.md), speech recognition (Whisper) and translation (an open model through Ollama) run on the server machine, or on another machine on your network.
+
+| Item | Requirement |
+|---|---|
+| Computer | A recent laptop or desktop. **Tested:** Apple Silicon (4 cores in a Linux VM) and a 2-vCPU x86 cloud VM, both on the CPU only. **Expected:** Windows and Linux PCs, and GPUs through whisper.cpp, WhisperKit or an OpenAI-compatible speech server. |
+| Memory | About 6 GB free with the defaults (Whisper `small`, `gemma3:4b`). 16 GB of RAM in total is comfortable. |
+| Disk | About 5 GB for the models, downloaded once into `local/models` and Ollama's folder. |
+| Software | [Ollama](https://ollama.com/download) for the text model. The speech engine installs itself on first use; WhisperKit (`brew install whisperkit-cli`) or a whisper.cpp build are optional and faster on a Mac. |
+| Network | Internet only for the first download. After that, none: rooms, phones and screens only need your local network. |
+| Rooms | About one per computer today. Shard rooms across computers for more. |
+
 
 ## Venue PC (one per room)
 

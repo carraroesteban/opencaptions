@@ -3,7 +3,8 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta name="theme-color" content="#0b0b10" />
+  <meta name="theme-color" content="#FAF8F3" media="(prefers-color-scheme: light)" />
+  <meta name="theme-color" content="#111014" media="(prefers-color-scheme: dark)" />
   <link rel="icon" href="/favicon.ico" sizes="32x32" />
   <link rel="icon" href="/brand/icon.svg" type="image/svg+xml" />
   <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
@@ -12,20 +13,22 @@
   <link rel="stylesheet" href="/style.css" />
   <style>
     body { min-height: 100vh; }
-    header { display: flex; gap: 12px; align-items: center; padding: 12px 18px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
-    main { display: grid; grid-template-columns: 340px minmax(0, 1fr); gap: 16px; padding: 16px 18px; }
+    header { display: flex; gap: 12px 16px; align-items: center; padding: 14px 24px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+    main { display: grid; grid-template-columns: 360px minmax(0, 1fr); gap: 20px; padding: 24px; }
     @media (max-width: 1000px) { main { grid-template-columns: 1fr; } }
-    .controls { display: grid; gap: 12px; align-content: start; }
+    .controls { display: grid; gap: 14px; align-content: start; }
+    .controls > div > b, .controls > b { font-family: var(--font-display); font-weight: 800; letter-spacing: -.01em; }
     .controls .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
     .controls input[type=color] { width: 100%; height: 36px; padding: 2px; }
     .controls input[type=range] { width: 100%; }
     .presets { display: flex; gap: 6px; flex-wrap: wrap; }
     .presets button { font-size: 13px; padding: 6px 10px; }
-    .stagebox { position: relative; width: 100%; aspect-ratio: 16 / 9; border-radius: 12px; overflow: hidden; border: 1px solid var(--line); }
+    .stagebox { position: relative; width: 100%; aspect-ratio: 16 / 9; border-radius: 16px; overflow: hidden; border: 1px solid var(--line); box-shadow: var(--shadow); }
+    /* Stand-in for the program feed (camera / slides): neutral, so the caption style is what you judge. */
     .stagebox .bgimg { position: absolute; inset: 0; background:
-      radial-gradient(ellipse at 30% 30%, #3b4a6b 0%, transparent 60%), radial-gradient(ellipse at 75% 60%, #6b3b5a 0%, transparent 55%),
-      linear-gradient(135deg, #1c2233, #2b1f33); }
-    .stagebox .bgimg::after { content: 'Programa (cámara / slides)'; position: absolute; left: 3%; top: 4%; color: #ffffff55; font: 600 14px var(--font); }
+      radial-gradient(ellipse at 28% 32%, #4A4852 0%, transparent 58%), radial-gradient(ellipse at 78% 64%, #3A3940 0%, transparent 55%),
+      linear-gradient(135deg, #2B2A31, #111014); }
+    .stagebox .bgimg::after { content: 'Programa (cámara / slides)'; position: absolute; left: 3%; top: 4%; color: #FAF8F366; font: 700 14px var(--font); }
     .stagebox iframe { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; border: 0; transform-origin: 0 0; background: transparent; color-scheme: normal; /* same scheme as the embedded page → transparent */ }
     .out { display: flex; gap: 6px; } .out input { flex: 1; font-family: var(--mono); font-size: 12px; }
     .val { float: right; color: var(--fg); font-variant-numeric: tabular-nums; }
@@ -35,7 +38,7 @@
 </head>
 <body class="t-overlay">
   <header>
-    <a class="brand" href="/admin.html" title="Panel de producción" style="font-size:14px">open<span>captions</span> · estilo de subtítulos</a>
+    <a class="brand" href="/admin.html" title="Panel de producción" style="font-size:14px">OpenCaptions<span class="sub">· estilo de subtítulos</span></a>
     <div class="row" role="group">
       <button class="pill" data-target="overlay" aria-pressed="true">🎬 Overlay vMix / OBS</button>
       <button class="pill" data-target="screen" aria-pressed="false">🖥️ Pantalla / proyector</button>
@@ -103,15 +106,16 @@
     let target = store.get('style.target', 'overlay');
 
     const DEFAULTS = {
-      overlay: { font: 'inter', size: 46, weight: 600, lines: 2, align: 'center', color: '#ffffff', style: 'box', box: '#000000', alpha: 78, upper: false, pos: 'bottom', width: 78, bgmode: 'transparent', also: '' },
-      screen: { font: 'inter', size: 6.4, weight: 600, lines: 3, align: 'left', color: '#ffffff', style: 'none', box: '#000000', alpha: 0, upper: false, sbg: '#000000', accent: ev.accent || '#8b5cf6', orig: true, qr: true },
+      overlay: { font: 'atkinsonnext', size: 46, weight: 700, lines: 2, align: 'center', color: '#ffffff', style: 'box', box: '#000000', alpha: 78, upper: false, pos: 'bottom', width: 78, bgmode: 'transparent', also: '' },
+      screen: { font: 'atkinsonnext', size: 6.4, weight: 700, lines: 3, align: 'left', color: '#ffffff', style: 'none', box: '#000000', alpha: 0, upper: false, sbg: '#111014', accent: (ev.accent || '#d4ff3a').toLowerCase(), orig: true, qr: true },
     };
     const PRESETS = {
+      'OpenCaptions': { font: 'atkinsonnext', weight: 700, color: '#faf8f3', style: 'box', box: '#111014', alpha: 88, upper: false, align: 'center', accent: '#d4ff3a', sbg: '#111014' },
       'Nerdearla': { font: 'lexend', weight: 700, color: '#ffffff', style: 'box', box: '#1a1033', alpha: 85, accent: '#8b5cf6', sbg: '#0b0716' },
       'TV clásico': { font: 'roboto', weight: 500, color: '#ffffff', style: 'box', box: '#000000', alpha: 80, upper: false, align: 'center' },
       'Alto contraste': { font: 'atkinson', weight: 700, color: '#ffe600', style: 'box', box: '#000000', alpha: 100, sbg: '#000000' },
       'Minimal': { font: 'inter', weight: 700, color: '#ffffff', style: 'outline', box: '#000000', alpha: 0 },
-      'Lower third': { font: 'montserrat', weight: 800, color: '#ffffff', style: 'box', box: '#8b5cf6', alpha: 92, align: 'left', upper: true, lines: 1 },
+      'Lower third': { font: 'montserrat', weight: 800, color: '#111014', style: 'box', box: '#d4ff3a', alpha: 100, align: 'left', upper: true, lines: 1 },
     };
 
     $('stage').innerHTML = ev.stages.map((s) => `<option value="${s.id}">${esc(s.name)}</option>`).join('');
@@ -139,7 +143,7 @@
       update();
     }
 
-    const hex = (c) => c.replace('#', '');
+    const hex = (c) => c.replace('#', '').toLowerCase();
     function params(v, preview) {
       const d = DEFAULTS[target];
       const p = new URLSearchParams();
@@ -147,7 +151,7 @@
       if (target === 'overlay') p.set('lang', $('lang').value);
       else p.set('langs', v.orig && $('lang').value !== 'orig' ? `${$('lang').value},orig` : $('lang').value);
       const add = (k, val, def) => { if (String(val) !== String(def)) p.set(k, val); };
-      add('font', v.font, 'inter'); add('size', v.size, d.size); add('weight', v.weight, 600); add('lines', v.lines, d.lines);
+      add('font', v.font, 'atkinsonnext'); add('size', v.size, d.size); add('weight', v.weight, 700); add('lines', v.lines, d.lines);
       add('align', v.align, target === 'overlay' ? 'center' : 'left');
       add('color', hex(v.color), 'ffffff'); add('style', v.style, target === 'overlay' ? 'box' : 'none');
       add('box', hex(v.box), '000000'); add('alpha', v.alpha, 78); if (v.upper) p.set('upper', '1');
@@ -156,7 +160,7 @@
         if (v.bgmode !== 'transparent') p.set('bg', v.bgmode);
         if (v.also && v.also !== $('lang').value) p.set('also', v.also);
       } else {
-        add('bg', hex(v.sbg), '000000'); add('accent', hex(v.accent), hex(ev.accent || '#8b5cf6'));
+        add('bg', hex(v.sbg), '111014'); add('accent', hex(v.accent), hex(ev.accent || '#d4ff3a'));
         if (!v.qr) p.set('qr', '0');
       }
       if (preview) p.set('preview', '1');

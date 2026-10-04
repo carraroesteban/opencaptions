@@ -10,6 +10,7 @@
 // replaced by text in the wrong language.
 import { createClient } from './genai.js';
 import { config } from './config.js';
+import { chat as localChat, cleanTranslation, llmBusy, llmInfo } from './local/llm.js';
 
 let ai = null;
 const client = () => (ai ??= createClient());
@@ -53,6 +54,7 @@ const USD_IN = 0.30 / 1e6, USD_OUT = 2.5 / 1e6;
 
 export async function translateText({ text, from, to, context = [], vocabulary = [], partial = false, stats = null }) {
   if (config.engine === 'mock') return `(${to}) ${text}`;
+  if (config.engine === 'local') return translateLocal({ text, from, to, context, vocabulary, partial });
   const sys = [
     `You translate live conference captions from ${from ? langName(from) : 'the speaker\'s language'} to ${langName(to)}.`,
     partial
@@ -83,6 +85,43 @@ export async function translateText({ text, from, to, context = [], vocabulary =
     }
     throw e;
   }
+}
+
+/**
+ * Same job on a model running on this machine (ENGINE=local). Small models need a blunter prompt, and their
+ * answer is cleaned of the labels and notes they like to add. No quota, no cost: the limit is the machine.
+ */
+// TranslateGemma (Google, 2026: Gemma 3 fine-tuned for translation) is trained on exactly this prompt, with plain
+// language names and codes; extra instructions (glossary, context) would be translated along with the text.
+const TG_NAMES = { es: 'Spanish', en: 'English', pt: 'Portuguese', fr: 'French', de: 'German', it: 'Italian', ca: 'Catalan', gl: 'Galician', ja: 'Japanese', zh: 'Chinese', ko: 'Korean', nl: 'Dutch' };
+export function translateGemmaPrompt({ text, from, to }) {
+  const name = (c) => TG_NAMES[String(c).split('-')[0]] || c;
+  const src = name(from), dst = name(to);
+  return `You are a professional ${src} (${from}) to ${dst} (${to}) translator. Your goal is to accurately convey the meaning and nuances of the original ${src} text while adhering to ${dst} grammar, vocabulary, and cultural sensitivities.\n`
+    + `Produce only the ${dst} translation, without any additional explanations or commentary. Please translate the following ${src} text into ${dst}:\n\n\n${text}`;
+}
+
+async function translateLocal({ text, from, to, context, vocabulary, partial }) {
+  const model = llmInfo().mtModel;
+  const request = { model, maxTokens: Math.min(400, 32 + Math.ceil(text.length / 2)), temperature: 0.1, timeoutMs: config.mtTimeoutMs, priority: partial ? 0 : 2 };
+  // Its prompt needs the source language; until Whisper has detected one, the generic prompt below is used.
+  if (/translategemma/i.test(model) && from) return guardLength(text, cleanTranslation((await localChat({ ...request, user: translateGemmaPrompt({ text, from, to }) })).text));
+  const system = [
+    `You are a professional live-caption translator. Translate the user's text from ${from ? langName(from) : 'the speaker\'s language'} into ${langName(to)}.`,
+    partial ? 'The sentence is still being spoken and may be cut off: translate only what is there, do not complete it.' : '',
+    'Keep technical terms, product names, commands and people names as software engineers write them (Kubernetes, pull request, deploy, on-call, OpenTelemetry).',
+    vocabulary.length ? `Names and terms to keep as written: ${vocabulary.slice(0, 40).join(', ')}.` : '',
+    `Reply with the ${langName(to)} translation only: no quotes, no notes, no explanations, no original text.`,
+  ].filter(Boolean).join('\n');
+  const ctx = context.length ? `Previous sentences, for context only (do not translate them): ${context.join(' ')}\n\n` : '';
+  const out = await localChat({ ...request, system, user: `${ctx}Translate into ${langName(to)}:\n${text}` });
+  return guardLength(text, cleanTranslation(out.text));
+}
+
+/** A small model stuck in a loop: a translation is never several times longer than its source. */
+function guardLength(source, result) {
+  const limit = Math.round(source.length * 2.5) + 40;
+  return result.length > limit ? `${result.slice(0, limit).replace(/\s+\S*$/, '')}…` : result;
 }
 
 const SENTENCE_END = /[.?!…]["')\]»]?(?=\s|$)/g;
@@ -202,6 +241,7 @@ export class SentenceTranslator {
     if (this.partialInFlight || this.busyFinal || this.finals.length || this.degraded()) return; // finals first
     if (text.length < 18 || Date.now() - this.lastPartialAt < config.mtPartialMs) return;
     if (!limiter.allow(0.6)) return; // keep 40% of the budget for final sentences
+    if (config.engine === 'local' && llmBusy()) return; // a local model is already busy: final sentences first
     this.partialInFlight = true;
     this.lastPartialAt = Date.now();
     const id = this.openId;

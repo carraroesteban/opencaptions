@@ -3,7 +3,8 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="theme-color" content="#0b0b10" />
+  <meta name="theme-color" content="#FAF8F3" media="(prefers-color-scheme: light)" />
+  <meta name="theme-color" content="#111014" media="(prefers-color-scheme: dark)" />
   <link rel="icon" href="/favicon.ico" sizes="32x32" />
   <link rel="icon" href="/brand/icon.svg" type="image/svg+xml" />
   <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
@@ -21,33 +22,33 @@
   <link rel="stylesheet" href="/style.css" />
   <style>
     body { display: flex; flex-direction: column; height: 100dvh; overflow: hidden; }
-    header { padding: 12px 16px 10px; border-bottom: 1px solid var(--line); background: var(--bg); }
+    header { padding: 12px 16px 12px; border-bottom: 1px solid var(--line); background: var(--bg); }
     header .top { display: flex; align-items: center; gap: 10px; }
-    header h1 { font-size: 17px; margin: 0; flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    header .talk { font-size: 13px; color: var(--fg2); margin: 2px 0 10px 34px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .back { text-decoration: none; font-size: 22px; line-height: 1; width: 24px; }
-    .langs { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; padding-bottom: 2px; }
-    #scroll { flex: 1; overflow-y: auto; padding: 18px 18px 40px; scroll-behavior: smooth; }
-    #text { font-size: var(--size, 24px); line-height: var(--read-lh, 1.45); font-family: var(--read-font, var(--font)); max-width: 820px; margin: 0 auto; font-weight: 500; }
-    #text p { margin: 0 0 .55em; }
+    header h1 { font-size: 20px; margin: 0; flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    header .talk { font-size: 14px; color: var(--fg2); margin: 2px 0 12px 38px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    header .talk:empty { margin-bottom: 8px; }
+    .back { text-decoration: none; font-size: 22px; line-height: 1; width: 28px; height: 28px; display: grid; place-items: center; border-radius: 50%; color: var(--fg2); }
+    .back:hover { background: var(--bg3); color: var(--fg); }
+    .langs { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; padding: 0 0 2px 38px; }
+    #scroll { flex: 1; overflow-y: auto; padding: 24px 20px 48px; scroll-behavior: smooth; }
+    #text { font-size: var(--size, 24px); line-height: var(--read-lh, 1.45); font-family: var(--read-font, var(--font)); max-width: 820px; margin: 0 auto; font-weight: 400; }
+    #text p { margin: 0 0 .6em; transition: color .6s var(--ease); }
     #text p.old { color: var(--fg2); }
-    #text p.partial { color: var(--accent); }
-    #text .empty { color: var(--fg2); font-size: 18px; text-align: center; margin-top: 30vh; }
-    #orig { border-top: 1px solid var(--line); padding: 10px 18px; font-size: 16px; color: var(--fg2); background: var(--bg2); min-height: 3.2em; }
-    #orig b { color: var(--fg); font-size: 11px; letter-spacing: .08em; text-transform: uppercase; margin-right: 6px; }
-    footer { display: flex; gap: 8px; padding: 10px 12px calc(10px + env(safe-area-inset-bottom)); border-top: 1px solid var(--line); background: var(--bg); align-items: center; }
+    #text p.partial { color: var(--fg); }
+    #text .empty { color: var(--fg2); font-size: 18px; margin-top: 26vh; }
+    #orig { border-top: 1px solid var(--line); padding: 12px 20px; font-size: 16px; color: var(--translation); background: var(--bg2); min-height: 3.2em; }
+    #orig b { color: var(--fg2); font-size: 11px; letter-spacing: .1em; text-transform: uppercase; margin-right: 8px; }
+    footer { display: flex; gap: 6px; padding: 10px 12px calc(10px + env(safe-area-inset-bottom)); border-top: 1px solid var(--line); background: var(--bg); align-items: center; }
     footer .spacer { flex: 1; }
-    footer button { padding: 8px 10px; font-size: 15px; }
-    footer { gap: 6px; }
-    #ai { font-weight: 600; }
-    #ai { background: color-mix(in srgb, var(--accent) 18%, var(--bg3)); border-color: color-mix(in srgb, var(--accent) 55%, var(--line)); }
-    /* Phones: keep "What did I miss?" readable; "show original" moves into the Aa sheet. */
+    footer button { padding: 8px 11px; font-size: 15px; }
+    #settings { font-family: var(--font-display); font-weight: 800; }
     #ai { white-space: nowrap; }
+    /* Phones: keep "What did I miss?" readable; "show original" moves into the Aa sheet. */
     @media (max-width: 440px) { #listen .lbl { display: none; } #dual { display: none; } #pip { display: none; } }
     @media (max-width: 330px) { #ai .lbl { display: none; } }
     footer a.btn { text-decoration: none; }
-    #tolive { position: fixed; bottom: 86px; left: 50%; transform: translateX(-50%); box-shadow: 0 6px 20px rgba(0,0,0,.4); }
-    #listen[aria-pressed='true'] { background: var(--accent); border-color: var(--accent); color: #fff; }
+    #tolive { position: fixed; bottom: 86px; left: 50%; transform: translateX(-50%); box-shadow: var(--shadow-lg); border-radius: var(--pill); }
+    #listen[aria-pressed='true'], #pip[aria-pressed='true'] { background: var(--primary-bg); border-color: var(--primary-bg); color: var(--primary-fg); }
   </style>
 </head>
 <body>
@@ -60,14 +61,14 @@
     <div class="talk" id="talk"></div>
     <div class="langs" id="langs" role="group"></div>
   </header>
-  <div id="scroll" aria-live="polite"><div id="text"><div class="empty" id="empty"></div></div></div>
+  <div id="scroll" aria-live="polite"><div id="text"><div class="empty empty-state"><svg class="oc-logo typing" viewBox="0 0 878 664" aria-hidden="true"><use class="o" href="/brand/sprite.svg#oc-o"/><use class="ln" href="/brand/sprite.svg#oc-line"/></svg><span id="empty"></span></div></div></div>
   <div id="orig" class="hidden"><b></b><span></span></div>
   <button id="tolive" class="primary hidden"></button>
   <footer>
     <button id="settings" aria-haspopup="dialog">Aa</button>
     <button id="dual" class="pill" aria-pressed="false"></button>
     <span class="spacer"></span>
-    <button id="ai" aria-haspopup="dialog">✨ <span class="lbl"></span></button>
+    <button id="ai" class="primary" aria-haspopup="dialog">✨ <span class="lbl"></span></button>
     <button id="listen" class="hidden" aria-pressed="false">🎧</button>
     <button id="pip" class="hidden">⧉</button>
     <a id="doc" class="btn"><button tabindex="-1">📄</button></a>
@@ -88,7 +89,7 @@
     <div class="set-row"><span id="l-dual"></span><span class="row" id="dual-opts"></span></div>
   </dialog>
   <script type="module">
-    import { qs, t, esc, store, wsUrl, Socket, CaptionState, PcmPlayer, langLabel, wakeLock, getEvent, applyReadingPrefs, setReadingPref, setTheme } from '/common.js';
+    import { qs, t, esc, store, wsUrl, Socket, CaptionState, PcmPlayer, langLabel, wakeLock, getEvent, applyReadingPrefs, setReadingPref, setTheme, liveText } from '/common.js';
     import { mountAssistant } from '/assist-ui.js';
     const $ = (id) => document.getElementById(id);
     const stageId = qs.get('stage');
@@ -201,16 +202,17 @@
       box.innerHTML = '';
       s.finals.forEach((f, i) => box.append(para(f, i < s.finals.length - 6)));
       if (s.partial) box.append(para(s.partial));
-      if (!s.finals.length && !s.partial) box.innerHTML = `<div class="empty">${esc(t('waiting'))}</div>`;
+      if (!s.finals.length && !s.partial) box.innerHTML = `<div class="empty empty-state">${LOGO}<span>${esc(t('waiting'))}</span></div>`;
       renderOrig();
       renderPip();
       scrollEnd();
     }
 
+    const LOGO = '<svg class="oc-logo typing" viewBox="0 0 878 664" aria-hidden="true"><use class="o" href="/brand/sprite.svg#oc-o"/><use class="ln" href="/brand/sprite.svg#oc-line"/></svg>';
     function para(seg, old = false) {
       const p = document.createElement('p');
       p.dataset.id = seg.id;
-      p.textContent = seg.text;
+      liveText(p, seg.text, seg.final);
       if (!seg.final) p.className = 'partial'; else if (old) p.className = 'old';
       return p;
     }
@@ -219,7 +221,7 @@
       const box = $('text');
       box.querySelector('.empty')?.remove();
       let p = box.querySelector(`p[data-id="${CSS.escape(seg.id)}"]`);
-      if (p) { p.textContent = seg.text; p.className = seg.final ? '' : 'partial'; }
+      if (p) { liveText(p, seg.text, seg.final); p.className = seg.final ? '' : 'partial'; }
       else box.append(para(seg));
       // keep the partial last and dim older paragraphs
       const ps = box.querySelectorAll('p');
@@ -293,14 +295,15 @@
     $('pip').title = t('floating');
     $('pip').setAttribute('aria-label', t('floating'));
     const pipText = () => states[channel()]?.tail(220) || t('waiting');
+    const pipLive = () => !!states[channel()]?.partial?.text; // still being spoken → highlight the last word
     function renderPip() {
-      if (pipWin) pipWin.document.getElementById('t').textContent = pipText();
+      if (pipWin) liveText(pipWin.document.getElementById('t'), pipText(), !pipLive());
       else if (pipCv) drawPip();
     }
     function drawPip() {
       const g = pipCv.getContext('2d'), W = pipCv.width, H = pipCv.height, pad = 24, lh = 46;
-      g.fillStyle = '#000'; g.fillRect(0, 0, W, H);
-      g.fillStyle = '#fff'; g.font = '600 36px system-ui, -apple-system, sans-serif'; g.textBaseline = 'top';
+      g.fillStyle = '#111014'; g.fillRect(0, 0, W, H); // ink
+      g.font = "700 36px 'Atkinson Hyperlegible Next', system-ui, -apple-system, sans-serif"; g.textBaseline = 'top';
       const lines = [];
       let cur = '';
       for (const w of pipText().split(/\s+/)) {
@@ -308,7 +311,17 @@
         if (cur && g.measureText(next).width > W - pad * 2) { lines.push(cur); cur = w; } else cur = next;
       }
       if (cur) lines.push(cur);
-      lines.slice(-3).forEach((l, i) => g.fillText(l, pad, pad + i * lh));
+      const shown = lines.slice(-3);
+      shown.forEach((l, i) => {
+        const y = pad + i * lh;
+        const cut = i === shown.length - 1 && pipLive() ? l.lastIndexOf(' ') + 1 : l.length;
+        g.fillStyle = '#FAF8F3'; g.fillText(l.slice(0, cut), pad, y); // paper
+        if (cut < l.length) { // live word: ink on a lime highlighter
+          const x = pad + g.measureText(l.slice(0, cut)).width, w = g.measureText(l.slice(cut)).width;
+          g.fillStyle = '#D4FF3A'; g.fillRect(x - 4, y - 3, w + 8, lh - 4);
+          g.fillStyle = '#111014'; g.fillText(l.slice(cut), x, y);
+        }
+      });
     }
     async function togglePip() {
       try {
@@ -322,7 +335,7 @@
           for (const l of document.querySelectorAll('link[rel="stylesheet"]')) d.head.append(Object.assign(d.createElement('link'), { rel: 'stylesheet', href: l.href }));
           const css = d.createElement('style');
           css.textContent = 'body{margin:0;height:100vh;overflow:hidden;display:flex;align-items:flex-end;background:var(--bg);color:var(--fg)}'
-            + '#t{padding:10px 16px;font:600 clamp(16px,13vh,48px)/1.35 var(--read-font,var(--font))}';
+            + '#t{padding:12px 18px;font:700 clamp(16px,13vh,48px)/1.35 var(--read-font,var(--font))}';
           d.head.append(css);
           d.title = document.title;
           d.body.innerHTML = '<div id="t" aria-live="polite"></div>';

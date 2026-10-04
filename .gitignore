@@ -6,3 +6,9 @@ data/
 samples/*.mp3
 samples/*.m4a
 samples/*.webm
+
+# Local AI mode: downloaded models and runtimes (npm run local)
+/local/
+
+# Landing page build output (npm run site)
+/_site/

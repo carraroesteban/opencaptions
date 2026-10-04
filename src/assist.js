@@ -8,6 +8,7 @@
 import { createClient } from './genai.js';
 import { config } from './config.js';
 import { rateLimiter } from './security.js';
+import { chat as localChat } from './local/llm.js';
 
 let ai = null;
 const client = () => (ai ??= createClient());
@@ -27,7 +28,8 @@ export const assistStats = { requests: 0, errors: 0, cacheHits: 0, usd: 0 };
 
 const cache = new Map(); // key → { at, value, pending }
 const RECENT_MS = 5 * 60_000;
-const MAX_CONTEXT_CHARS = 60_000; // ≈ 15k tokens ≈ a long talk; older text is trimmed from the start
+// ≈ 15k tokens ≈ a long talk; older text is trimmed from the start. Local models get what fits their context window.
+const MAX_CONTEXT_CHARS = config.engine === 'local' ? Math.max(4000, Math.round(config.localLlmContext * 2.6)) : 60_000;
 
 const fmt = (ms) => { const s = Math.max(0, Math.round(ms / 1000)); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; };
 
@@ -44,6 +46,11 @@ function pickText(segs, lang, { sinceMs = 0 } = {}) {
 
 let thinking = true;
 async function generate(system, prompt, maxOutputTokens = 600) {
+  if (config.engine === 'local') {
+    const r = await localChat({ system, user: prompt, json: true, maxTokens: maxOutputTokens, temperature: 0.2, timeoutMs: Math.max(config.localLlmTimeoutMs, 90_000), priority: 1 });
+    assistStats.requests++;
+    return r.text;
+  }
   const call = (withThinking) => client().models.generateContent({
     model: config.textModel,
     contents: prompt,
@@ -117,7 +124,7 @@ export async function summarize({ segs, key, lang, scope = 'full', live = true, 
   if (!list.length) return { ...base, ai: false, bullets: [], text: '' };
 
   const run = (async () => {
-    if (!audienceAiEnabled || config.engine === 'mock' || !globalSummary('all')) return { ...base, ai: false, ...extractiveSummary(list) };
+    if (!audienceAiEnabled || config.engine === 'mock' || config.localLlmOff || !globalSummary('all')) return { ...base, ai: false, ...extractiveSummary(list) };
     const system = [
       `You summarize a live technical conference talk for attendees, writing in ${langName(lang)}.`,
       'Use ONLY the transcript. Never invent facts, numbers, names or links. Keep technical terms as engineers write them.',
@@ -128,7 +135,10 @@ export async function summarize({ segs, key, lang, scope = 'full', live = true, 
     try {
       const out = await generate(system, `Talk title: ${title || '(untitled)'}\nSummarize ${what}.\n\nTranscript:\n${text}`, 700);
       const j = parseJson(out);
-      return { ...base, ai: true, headline: String(j.headline || ''), bullets: (j.bullets || []).map(String).slice(0, 8), terms: (j.terms || []).map(String).slice(0, 8) };
+      const bullets = (j.bullets || []).map(String).filter((b) => b.trim()).slice(0, 8);
+      // Small local models sometimes return valid but empty JSON: highlights are more useful than nothing.
+      if (!String(j.headline || '').trim() && !bullets.length) throw new Error('empty summary');
+      return { ...base, ai: true, headline: String(j.headline || ''), bullets, terms: (j.terms || []).map(String).slice(0, 8) };
     } catch (e) {
       assistStats.errors++;
       return { ...base, ai: false, error: 'ai-unavailable', ...extractiveSummary(list) };
@@ -148,7 +158,7 @@ export async function ask({ segs, lang, question, clientKey, title = '' }) {
   if (!perClientAsk(clientKey) || !globalAsk('all')) throw Object.assign(new Error('too many questions right now, try again in a minute'), { status: 429 });
   const { text, list } = pickText(segs, 'orig');
   if (!list.length) return { ai: false, found: false, answer: '', quotes: [] };
-  if (!audienceAiEnabled || config.engine === 'mock') return { ai: false, ...extractiveAnswer(list, question) };
+  if (!audienceAiEnabled || config.engine === 'mock' || config.localLlmOff) return { ai: false, ...extractiveAnswer(list, question) };
   const system = [
     'You answer questions from attendees about a live conference talk, using ONLY the transcript provided.',
     `Answer in ${langName(lang)}, in 1-3 short sentences. Quote timestamps like [12:34] when helpful.`,
@@ -159,6 +169,7 @@ export async function ask({ segs, lang, question, clientKey, title = '' }) {
   try {
     const out = await generate(system, `Talk title: ${title || '(untitled)'}\n\nTranscript:\n${text}\n\nQuestion: ${question}`, 500);
     const j = parseJson(out);
+    if (!String(j.answer || '').trim()) throw new Error('empty answer');
     return { ai: true, found: !!j.found, answer: String(j.answer || ''), quotes: (j.quotes || []).slice(0, 2).map((q) => ({ at: String(q.at || ''), text: String(q.text || '') })) };
   } catch (e) {
     assistStats.errors++;

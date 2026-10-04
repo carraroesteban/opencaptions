@@ -14,3 +14,4 @@ The format is a short version of [MADR](https://adr.github.io/madr/). Copy [temp
 | [0006](0006-vanilla-js-frontend.md) | Vanilla JavaScript front end, no build step | Accepted |
 | [0007](0007-docker-optional.md) | Docker optional for the server, native for venue agents | Accepted |
 | [0008](0008-grounded-audience-assistant.md) | A grounded, cached audience assistant | Accepted |
+| [0009](0009-local-engine-with-whisper-and-ollama.md) | A local engine: streaming Whisper and a local text model, behind HTTP | Accepted |

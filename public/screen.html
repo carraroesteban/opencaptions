@@ -3,7 +3,8 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta name="theme-color" content="#0b0b10" />
+  <meta name="theme-color" content="#FAF8F3" media="(prefers-color-scheme: light)" />
+  <meta name="theme-color" content="#111014" media="(prefers-color-scheme: dark)" />
   <link rel="icon" href="/favicon.ico" sizes="32x32" />
   <link rel="icon" href="/brand/icon.svg" type="image/svg+xml" />
   <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
@@ -12,27 +13,28 @@
   <link rel="stylesheet" href="/style.css" />
   <style>
     /* Projector / stage screen. Params: ?stage=main&langs=es,orig&qr=1&ui=es&size=6.4&lines=3
-       Style: &font=… &weight=… &color=ffffff &bg=000000 &accent=8b5cf6 &upper=1 &align=left|center &style=none|shadow|outline
+       Style: &font=… &weight=… &color=ffffff &bg=111014 &accent=d4ff3a &upper=1 &align=left|center &style=none|shadow|outline
        Design it visually at /style.html */
-    html, body { background: var(--screen-bg, #000); color: #fff; height: 100%; overflow: hidden; cursor: none; }
+    html, body { background: var(--screen-bg, var(--ink)); color: var(--paper); height: 100%; overflow: hidden; cursor: none; }
     .band { font-family: var(--cap-font); text-transform: var(--cap-transform); text-align: var(--cap-align); text-shadow: var(--cap-shadow); }
     .band.main .clip { color: var(--cap-color); font-weight: var(--cap-weight); }
     .wrap { position: fixed; inset: 0; display: grid; grid-template-rows: auto 1fr auto; padding: 3vh 4vw; gap: 2vh; }
-    .head { display: flex; justify-content: space-between; align-items: baseline; color: #9a9ab0; font-size: 2.2vh; }
-    .head b { color: #fff; }
+    .head { display: flex; justify-content: space-between; align-items: baseline; color: #A8A5AE; font-size: 2.2vh; }
+    .head b { color: var(--paper); font-family: var(--font-display); font-weight: 800; letter-spacing: -.01em; }
+    #clock { font-variant-numeric: tabular-nums; }
     .bands { display: grid; align-content: end; gap: 3vh; }
     .band { line-height: 1.22; transition: opacity 1s; }
     .band .clip { display: flex; flex-direction: column; justify-content: flex-end; overflow: hidden; }
     .band.main .clip { font-size: var(--main, 6.4vh); height: calc(var(--main, 6.4vh) * 1.22 * var(--lines, 3)); }
-    .band.sub .clip { font-size: 3.6vh; height: calc(3.6vh * 1.22 * 2); color: #b8b8c8; font-weight: 500; }
-    .band .lbl { font-size: 1.6vh; letter-spacing: .14em; text-transform: uppercase; color: var(--accent); margin-bottom: .6vh; font-weight: 700; }
-    .band .partial { color: #fff; }
+    .band.sub .clip { font-size: 3.6vh; height: calc(3.6vh * 1.22 * 2); color: var(--fog); font-weight: 400; } /* translation tone */
+    .band .lbl { font-family: var(--font); font-size: 1.6vh; letter-spacing: .14em; text-transform: uppercase; color: var(--accent); margin-bottom: .8vh; font-weight: 700; }
     .foot { display: flex; justify-content: space-between; align-items: flex-end; gap: 2vw; }
-    .qr { display: flex; align-items: center; gap: 1.4vw; background: #111; border: 1px solid #222; padding: 1.2vh 1.2vw; border-radius: 1.4vh; }
-    .qr img { width: 14vh; height: 14vh; background: #fff; border-radius: .8vh; padding: .5vh; }
-    .qr div { font-size: 2.1vh; color: #ccc; max-width: 26vw; }
-    .qr b { display: block; color: #fff; font-size: 2.6vh; margin-bottom: .4vh; }
-    .foot-l { font-size: 1.8vh; color: #666; font-weight: 700; } .foot-l i { font-style: normal; font-weight: 400; }
+    .qr { display: flex; align-items: center; gap: 1.4vw; background: #1B1A20; border: 1px solid #2A2930; padding: 1.4vh 1.4vw; border-radius: 1.8vh; }
+    .qr img { width: 14vh; height: 14vh; background: #fff; border-radius: 1vh; padding: .6vh; }
+    .qr div { font-size: 2.1vh; color: var(--fog); max-width: 26vw; }
+    .qr b { display: block; color: var(--paper); font-family: var(--font-display); font-weight: 800; font-size: 2.7vh; letter-spacing: -.01em; margin-bottom: .5vh; }
+    .foot-l { font-size: 1.8vh; color: #77757E; display: flex; align-items: center; gap: .5em; } .foot-l i { font-style: normal; }
+    .foot-l .brand { color: #A8A5AE; } .foot-l .brand::before { background-image: url(/brand/mark-dark.svg); } /* always dark: paper O + lime line */
     .fade { opacity: .25; transition: opacity 1s; }
   </style>
 </head>
@@ -41,12 +43,12 @@
     <div class="head"><span><b id="stage"></b> <span id="talk"></span></span><span id="clock"></span></div>
     <div class="bands" id="bands"></div>
     <div class="foot">
-      <div class="foot-l">open<span style="color:var(--accent)">captions</span> · <i id="powered"></i></div>
+      <div class="foot-l"><span class="brand">OpenCaptions</span> · <i id="powered"></i></div>
       <div class="qr" id="qrbox"><img id="qr" alt="QR" /><div><b id="follow"></b><span id="url"></span></div></div>
     </div>
   </div>
   <script type="module">
-    import { qs, t, esc, wsUrl, Socket, CaptionState, getEvent, langLabel, applyCaptionStyle, previewStream, toColor, wakeLock } from '/common.js';
+    import { qs, t, esc, wsUrl, Socket, CaptionState, getEvent, langLabel, applyCaptionStyle, previewStream, toColor, wakeLock, liveText } from '/common.js';
     wakeLock(); // projector PCs must not blank mid-talk
     const $ = (id) => document.getElementById(id);
     const stageId = qs.get('stage') || 'main';
@@ -102,7 +104,7 @@
       bands.forEach((ch, i) => {
         if (only && only !== ch) return;
         const el = document.querySelector(`#b-${CSS.escape(ch)} .txt`);
-        if (el) el.textContent = states[ch]?.tail(i ? 200 : 260) || '';
+        if (el) liveText(el, states[ch]?.tail(i ? 200 : 260) || '', i > 0 || !states[ch]?.partial?.text); // highlighter on the live word of the main band
         document.getElementById(`b-${ch}`)?.classList.remove('fade');
       });
     }

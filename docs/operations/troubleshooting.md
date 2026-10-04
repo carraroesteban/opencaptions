@@ -20,6 +20,10 @@ Find the symptom, then follow the steps in order. Server logs are printed to the
 | `setup rejected (…); retrying with '<level>' config` | The model rejected an optional field | Automatic. It retries with a smaller config (full → minimal → bare). Report it if it persists. |
 | Sessions reconnect every few minutes | Normal session renewal (`goAway`) | Nothing. Audio is buffered and resumed. |
 
+## Local mode
+
+See [Local mode → Troubleshooting](../local.md#troubleshooting) for the speech server, Ollama and model problems.
+
 ## Authentication
 
 | Symptom | Cause | Fix |

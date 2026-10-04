@@ -3,7 +3,8 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta name="theme-color" content="#0b0b10" />
+  <meta name="theme-color" content="#FAF8F3" media="(prefers-color-scheme: light)" />
+  <meta name="theme-color" content="#111014" media="(prefers-color-scheme: dark)" />
   <link rel="icon" href="/favicon.ico" sizes="32x32" />
   <link rel="icon" href="/brand/icon.svg" type="image/svg+xml" />
   <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
@@ -12,42 +13,50 @@
   <link rel="stylesheet" href="/style.css" />
   <style>
     body { min-height: 100vh; }
-    header { position: sticky; top: 0; z-index: 5; background: color-mix(in srgb, var(--bg) 92%, transparent); backdrop-filter: blur(8px); border-bottom: 1px solid var(--line); padding: 12px 20px; display: flex; gap: 16px; align-items: center; flex-wrap: wrap; }
-    header h1 { font-size: 18px; margin: 0; }
-    .kpis { display: flex; gap: 18px; flex-wrap: wrap; margin-left: auto; }
-    .kpi { display: grid; font-size: 11px; color: var(--fg2); text-transform: uppercase; letter-spacing: .06em; }
-    .kpi b { font-size: 20px; color: var(--fg); letter-spacing: 0; text-transform: none; font-variant-numeric: tabular-nums; }
-    main { padding: 18px 20px 20px; display: grid; gap: 18px; }
-    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); gap: 14px; }
-    .stage { display: grid; gap: 10px; align-content: start; }
-    .stage.alert { border-color: color-mix(in srgb, var(--bad) 60%, var(--line)); }
+    header { position: sticky; top: 0; z-index: 5; background: color-mix(in srgb, var(--bg) 88%, transparent); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border-bottom: 1px solid var(--line); padding: 14px 24px; display: flex; gap: 14px 20px; align-items: center; flex-wrap: wrap; }
+    header h1 { font-size: 22px; margin: 2px 0 0; }
+    .kpis { display: flex; gap: 6px 22px; flex-wrap: wrap; margin-left: auto; }
+    .kpi { display: grid; font-size: 10.5px; font-weight: 700; color: var(--fg2); text-transform: uppercase; letter-spacing: .08em; }
+    .kpi b { font-size: 20px; color: var(--fg); letter-spacing: -.01em; text-transform: none; font-variant-numeric: tabular-nums; }
+    main { padding: 24px; display: grid; gap: 20px; max-width: 1680px; margin: 0 auto; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(380px, 1fr)); gap: 16px; }
+    .stage { display: grid; gap: 12px; align-content: start; }
+    .stage.alert { border-color: color-mix(in srgb, var(--bad) 55%, var(--line)); box-shadow: 0 0 0 3px color-mix(in srgb, var(--bad) 12%, transparent); }
     .stage .top { display: flex; gap: 8px; align-items: center; }
-    .stage h3 { margin: 0; font-size: 17px; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .stage h3 { margin: 0; font-size: 20px; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .stage .sub { font-size: 13px; color: var(--fg2); }
     .stage .metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
-    .stage .metrics div { background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; font-size: 11px; color: var(--fg2); }
-    .stage .metrics b { display: block; font-size: 15px; color: var(--fg); font-variant-numeric: tabular-nums; }
-    .stage .preview { display: grid; gap: 4px; font-size: 13px; }
+    .stage .metrics div { background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 7px 9px; font-size: 11px; color: var(--fg2); }
+    .stage .metrics b { display: block; font-size: 16px; color: var(--fg); font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .stage .preview { display: grid; gap: 5px; font-size: 13px; background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 9px 11px; }
     .stage .preview div { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .stage .preview span.l { display: inline-block; min-width: 38px; font-size: 10px; font-weight: 700; color: var(--accent); text-transform: uppercase; }
-    .stage .actions { display: flex; gap: 6px; flex-wrap: wrap; }
+    .stage .preview div + div { color: var(--translation); }
+    .stage .preview span.l { display: inline-block; min-width: 38px; font-size: 10px; font-weight: 700; color: var(--fg2); letter-spacing: .06em; text-transform: uppercase; }
+    .stage .actions { display: flex; gap: 6px; flex-wrap: wrap; padding-top: 2px; }
     .stage .actions button { padding: 5px 10px; font-size: 13px; }
     #logs { font-family: var(--mono); font-size: 12px; max-height: 260px; overflow: auto; display: grid; gap: 2px; }
     #logs .warn { color: var(--warn); } #logs .error { color: var(--bad); }
     .qrrow { display: grid; grid-template-columns: 150px 1fr; gap: 14px; align-items: center; }
-    .qrrow img { width: 150px; background: #fff; border-radius: 8px; }
+    .qrrow img { width: 150px; background: #fff; border-radius: 10px; padding: 4px; border: 1px solid var(--line); }
     .copy { display: flex; gap: 6px; } .copy input { flex: 1; font-family: var(--mono); font-size: 12px; }
-    table { width: 100%; border-collapse: collapse; font-size: 13px; } td, th { padding: 6px 4px; border-bottom: 1px solid var(--line); text-align: left; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; } td, th { padding: 8px 4px; border-bottom: 1px solid var(--line); text-align: left; }
     .langs-check { display: flex; gap: 10px; flex-wrap: wrap; }
-      #onboard { margin-bottom: 16px; border-color: color-mix(in srgb, var(--accent) 50%, var(--line)); }
-    #onboard ol { list-style: none; padding: 0; margin: 10px 0 0; display: grid; gap: 7px; font-size: 14px; }
-    #onboard li.done { opacity: .55; }
-    #onboard a { color: var(--accent); }
+    section.card > .row b { font-family: var(--font-display); font-weight: 800; font-size: 17px; letter-spacing: -.01em; }
+    /* First-run guide */
+    #onboard { padding: 20px 22px; }
+    #onboard ol { list-style: none; padding: 0; margin: 12px 0 0; display: grid; gap: 4px; font-size: 14px; }
+    #onboard li { display: flex; gap: 10px; align-items: baseline; padding: 6px 0; }
+    #onboard li.done { opacity: .5; }
+    #onboard li.done b { text-decoration: line-through; text-decoration-thickness: 1px; }
+    #onboard a { color: inherit; font-weight: 700; }
+    .ck { flex: none; width: 18px; height: 18px; border-radius: 50%; border: 1.5px solid var(--line-strong); position: relative; top: 3px; }
+    .ck.on { background: var(--primary-bg); border-color: var(--primary-bg); }
+    .ck.on::after { content: ''; position: absolute; left: 5px; top: 2px; width: 4px; height: 8px; border: solid var(--primary-fg); border-width: 0 2px 2px 0; transform: rotate(45deg); }
 </style>
 </head>
 <body>
   <header>
-    <div><div class="brand" style="font-size:12px">open<span>captions</span></div><h1 id="event">Producción</h1></div>
+    <div><div class="brand" style="font-size:13px">OpenCaptions</div><h1 id="event">Producción</h1></div>
     <span class="chip" id="engine"></span>
     <div class="kpis">
       <div class="kpi">Salas en vivo<b id="k-live">–</b></div>
@@ -72,7 +81,7 @@
   </header>
   <main>
     <section class="card hidden" id="onboard">
-      <div class="row" style="justify-content:space-between"><b>🚀 Primeros pasos</b><button id="ob-hide" class="muted" style="padding:2px 10px">Ocultar</button></div>
+      <div class="row" style="justify-content:space-between"><b>🚀 Primeros pasos</b><button id="ob-hide" class="muted" style="padding:3px 12px;font-size:13px;box-shadow:none">Ocultar</button></div>
       <ol id="ob-steps"></ol>
     </section>
     <div class="grid" id="grid"></div>
@@ -123,13 +132,13 @@
   </form></dialog>
 
   <script type="module">
-    import { qs, esc, store, wsUrl, Socket, langLabel, takeUrlToken } from '/common.js';
+    import { qs, esc, store, wsUrl, Socket, langLabel, takeUrlToken, setAccent } from '/common.js';
     import { localize, prefsControls, tr } from '/i18n.js';
     document.querySelector('header > .row:last-child').append(prefsControls());
     const $ = (id) => document.getElementById(id);
     let token = takeUrlToken('admin.token');
     let ev = await (await fetch('/api/event')).json();
-    document.documentElement.style.setProperty('--accent', ev.accent);
+    setAccent(ev.accent);
     $('event').textContent = `${ev.name} · Producción`;
     let last = null;
     const logs = [];
@@ -173,18 +182,30 @@
     let scheduleCount = null;
     async function refreshSchedule() { try { scheduleCount = (await (await fetch('/api/schedule')).json()).length; } catch { scheduleCount = 0; } }
     refreshSchedule();
+    // Local engine (npm run local): speech server + text model health, checked by the server every 15 s.
+    const localOk = (l) => !!l && l.asr !== false && (l.llmOff || l.llm !== false);
+    function localDetail(s) {
+      const l = s.local || {};
+      if (l.asr === false) return `no responde el servidor de voz (<code>${esc(l.asrUrl || '')}</code>) — corré <code>npm run local</code>`;
+      if (l.llmOff) return `solo transcripción (sin traducciones ni resúmenes) · ${esc(s.model)}`;
+      if (l.llm === false) return `no responde el modelo de traducción (<code>${esc(l.llmUrl || '')}</code>) — corré <code>npm run local</code> o abrí Ollama`;
+      if (l.modelInstalled === false) { const m = esc((l.missing || [])[0] || l.llmModel || ''); return `falta el modelo <code>${m}</code> — <code>ollama pull ${m}</code>`; }
+      return `listo · ${esc(s.model)} · el audio no sale de esta computadora`;
+    }
     function renderOnboard(s) {
       if (store.get('admin.obHidden', false)) return $('onboard').classList.add('hidden');
       const withAudio = s.stages.filter((x) => x.ingest).length;
       const steps = [
-        [s.engine === 'gemini', 'Conectar Gemini', s.engine === 'gemini' ? `listo · ${esc(s.model)}` : 'poné <code>GEMINI_API_KEY</code> en <code>.env</code> y reiniciá (hoy corre en modo simulado)'],
+        s.engine === 'local'
+          ? [localOk(s.local), 'Motor de IA local', localDetail(s)]
+          : [s.engine === 'gemini', 'Conectar Gemini', s.engine === 'gemini' ? `listo · ${esc(s.model)}` : 'poné <code>GEMINI_API_KEY</code> en <code>.env</code> y reiniciá, o corré <code>npm run local</code> para usar IA en esta computadora (hoy corre en modo simulado)'],
         [s.stages.length > 0, 'Crear las salas', `${s.stages.length} sala(s) · <a href="#" data-ob="add">+ Sala</a>`],
         [withAudio === s.stages.length && s.stages.length > 0, 'Conectar el audio de cada sala', `${withAudio}/${s.stages.length} con audio · agente, navegador o stream (ver <a href="https://github.com/carraroesteban/opencaptions/blob/main/docs/operations/runbook.md" target="_blank">runbook</a>)`],
         [scheduleCount > 0, 'Cargar la agenda (títulos automáticos)', scheduleCount ? `${scheduleCount} charla(s) cargadas` : '<a href="#" data-ob="agenda">📅 pegar agenda</a> (opcional)'],
         [store.get('admin.kitDone', false), 'Imprimir los QR de cada sala', '<a href="/kit.html" target="_blank" data-ob="kit">🖨 abrir kit</a>'],
         [store.get('admin.soundDone', false), 'Prueba de sonido en cada sala', '<a href="/demo.html?mode=mic" target="_blank" data-ob="sound">🎙 abrir</a>'],
       ];
-      $('ob-steps').innerHTML = steps.map(([ok, title, detail]) => `<li class="${ok ? 'done' : ''}"><span>${ok ? '✅' : '⬜'}</span> <b>${title}</b> <span class="muted">— ${detail}</span></li>`).join('');
+      $('ob-steps').innerHTML = steps.map(([ok, title, detail]) => `<li class="${ok ? 'done' : ''}"><span class="ck${ok ? ' on' : ''}" role="img" aria-label="${ok ? '✓' : '·'}"></span><span><b>${title}</b> <span class="muted">— ${detail}</span></span></li>`).join('');
       $('onboard').classList.toggle('hidden', steps.every(([ok]) => ok));
     }
     $('ob-steps').onclick = (e) => {
@@ -200,8 +221,9 @@
     function render(s) {
       last = s;
       renderOnboard(s);
-      $('engine').textContent = s.engine === 'gemini' ? `Gemini · ${s.model}` : 'Modo simulado (sin API key)';
-      $('engine').className = 'chip ' + (s.engine === 'gemini' ? 'ok' : 'warn');
+      $('engine').textContent = s.engine === 'gemini' ? `Gemini · ${s.model}` : s.engine === 'local' ? `🔒 Local · ${s.model}` : 'Modo simulado (sin API key)';
+      $('engine').className = 'chip ' + (s.engine === 'mock' ? 'warn' : s.engine === 'local' && !localOk(s.local) ? 'bad' : 'ok');
+      $('engine').title = s.engine === 'local' ? tr('IA local: el audio y el texto no salen de esta computadora') : '';
       $('k-live').textContent = `${s.totals.live}/${s.totals.stages}`;
       $('k-sessions').textContent = s.totals.sessions;
       $('k-viewers').textContent = s.totals.viewers;
@@ -287,10 +309,10 @@
       const css = d.createElement('style');
       css.textContent = `body{margin:0;padding:8px;font-size:13px;background:var(--bg);color:var(--fg)}
         .k{display:flex;flex-wrap:wrap;gap:4px 14px;color:var(--fg2);margin:2px 6px 8px}.k b{color:var(--fg)}
-        .r{display:grid;grid-template-columns:12px minmax(0,1fr) auto;gap:2px 8px;align-items:center;padding:6px 8px;border-radius:10px;cursor:pointer}
+        .r{display:grid;grid-template-columns:12px minmax(0,1fr) auto;gap:2px 8px;align-items:center;padding:7px 9px;border-radius:12px;cursor:pointer}
         .r:hover{background:var(--bg2)}.r.bad{background:color-mix(in srgb,var(--bad) 20%,transparent)}
         .d{width:10px;height:10px;border-radius:50%;background:var(--line)}.d.live{background:var(--ok)}.d.pause{background:var(--warn)}.d.bad{background:var(--bad)}
-        .n{font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.v{color:var(--fg2);font-size:12px}
+        .n{font-family:var(--font-display);font-weight:800;letter-spacing:-.01em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.v{color:var(--fg2);font-size:12px}
         .t{grid-column:2/4;color:var(--fg2);font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.r.bad .t{color:var(--fg)}`;
       d.head.append(css);
       d.title = `${ev.name} · ${tr('Producción')}`;

@@ -1,0 +1,43 @@
+name: Site
+
+# Landing page at https://opencaptions.kvza.ar (site/ + shared tokens, brand assets and screenshots from the app).
+# One-time setup: Settings → Pages → Source: "GitHub Actions"; DNS: CNAME opencaptions.kvza.ar → carraroesteban.github.io
+
+on:
+  push:
+    branches: [main]
+    paths: [site/**, public/tokens.css, public/style.css, public/brand/**, public/favicon.ico, public/apple-touch-icon.png, docs/images/**, scripts/site.js, .github/workflows/pages.yml]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: node scripts/site.js
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

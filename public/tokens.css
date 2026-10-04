@@ -1,0 +1,85 @@
+/*
+  OpenCaptions design tokens — shared by every page (app, overlay, landing site). No build step: link it, or
+  @import it, before any other stylesheet.
+
+  Colour rule: lime only on ink, or ink on lime. Never lime on paper, never lime as text on a light background.
+  So lime is a *fill* (highlighter, primary button, live word) with ink on top; where an emphasis colour is needed
+  as text or a stroke, use --accent-fg (ink on light, lime on dark). Keep lime to ~10 % of any screen.
+*/
+@import url('https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible+Next:ital,wght@0,400;0,700;1,400&family=Bricolage+Grotesque:opsz,wght@12..96,800&display=swap');
+
+:root {
+  /* ---- brand palette (fixed) ---- */
+  --ink: #111014;
+  --paper: #FAF8F3;
+  --lime: #D4FF3A;
+  --graphite: #2B2A31;
+  --fog: #E8E5DD;
+
+  /* ---- type ---- */
+  --font-display: 'Bricolage Grotesque', ui-rounded, 'Avenir Next', 'Segoe UI', system-ui, sans-serif;
+  --font: 'Atkinson Hyperlegible Next', 'Atkinson Hyperlegible', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --mono: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+
+  /* ---- shape, depth, motion ---- */
+  --radius-sm: 8px;
+  --radius: 14px;
+  --radius-lg: 22px;
+  --pill: 999px;
+  --ease: cubic-bezier(.2, .7, .2, 1);
+  --dur: .18s;
+  --sweep: .32s; /* highlighter sweep on the live word */
+
+  /* ---- semantic: light (default) ---- */
+  --bg: var(--paper);          /* page */
+  --bg2: #FFFFFF;              /* cards, sheets, inputs */
+  --bg3: var(--fog);           /* buttons, chips, wells */
+  --fg: var(--ink);
+  --fg2: #5C5A63;              /* secondary text (≥ 5:1 on paper) */
+  --line: #E3DFD5;
+  --line-strong: #CFCAC0;
+  --translation: var(--graphite); /* second-language caption lines: a muted tone, not a second accent */
+  --accent: var(--lime);       /* events may override with their own colour (config/event.json → accent) */
+  --on-accent: var(--ink);
+  --accent-fg: var(--ink);     /* emphasis as text/stroke: never lime on light */
+  --hl: var(--accent);         /* highlighter fill (the live word, search hits, selection) */
+  --hl-ink: var(--on-accent);
+  --primary-bg: var(--ink);    /* main action + selected state: ink on light, lime on dark */
+  --primary-fg: var(--paper);
+  --logo-o: var(--ink);
+  --logo-line: var(--ink);     /* all-ink logo on light backgrounds */
+  --ok: #1B7F45;
+  --warn: #9A5B00;
+  --bad: #C8321F;
+  --focus: var(--ink);
+  --shadow-sm: 0 1px 2px rgba(17, 16, 20, .06), 0 1px 1px rgba(17, 16, 20, .04);
+  --shadow: 0 1px 2px rgba(17, 16, 20, .05), 0 8px 24px -8px rgba(17, 16, 20, .12);
+  --shadow-lg: 0 24px 60px -18px rgba(17, 16, 20, .28);
+  --scrim: rgba(17, 16, 20, .38);
+  --logo: url(/brand/mark-ink.svg);
+  color-scheme: light;
+}
+
+/* ---- semantic: dark ---- */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --bg: var(--ink); --bg2: #19181D; --bg3: var(--graphite); --fg: var(--paper); --fg2: #A8A5AE;
+    --line: #2A2930; --line-strong: #3B3A42; --translation: var(--fog);
+    --accent-fg: var(--lime); --primary-bg: var(--lime); --primary-fg: var(--ink); --logo-o: var(--paper); --logo-line: var(--lime);
+    --ok: #5BD68A; --warn: #F5B544; --bad: #FF7A66; --focus: var(--lime);
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, .4); --shadow: 0 1px 2px rgba(0, 0, 0, .4), 0 10px 30px -10px rgba(0, 0, 0, .6);
+    --shadow-lg: 0 30px 70px -20px rgba(0, 0, 0, .8); --scrim: rgba(0, 0, 0, .6);
+    --logo: url(/brand/mark-dark.svg);
+    color-scheme: dark;
+  }
+}
+:root[data-theme='dark'] {
+  --bg: var(--ink); --bg2: #19181D; --bg3: var(--graphite); --fg: var(--paper); --fg2: #A8A5AE;
+  --line: #2A2930; --line-strong: #3B3A42; --translation: var(--fog);
+  --accent-fg: var(--lime); --primary-bg: var(--lime); --primary-fg: var(--ink); --logo-o: var(--paper); --logo-line: var(--lime);
+  --ok: #5BD68A; --warn: #F5B544; --bad: #FF7A66; --focus: var(--lime);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, .4); --shadow: 0 1px 2px rgba(0, 0, 0, .4), 0 10px 30px -10px rgba(0, 0, 0, .6);
+  --shadow-lg: 0 30px 70px -20px rgba(0, 0, 0, .8); --scrim: rgba(0, 0, 0, .6);
+  --logo: url(/brand/mark-dark.svg);
+  color-scheme: dark;
+}
