@@ -18,9 +18,9 @@ A shorter Spanish version for venue crews is in [event-day.es.md](event-day.es.m
 
 ### Server
 
-- [ ] Run `npm run setup` (event name, rooms, languages, API key, tokens) — or edit `.env` and `config/event.json` by hand.
+- [ ] Start OpenCaptions (double-click **Start OpenCaptions**, `npm start` or Docker) and go through the welcome wizard: event name, rooms, languages, the Gemini API key and the public address. From the terminal, `npm run setup` does the same.
 - [ ] Choose a topology and deploy the server ([Deployment](../deployment.md)).
-- [ ] Set up HTTPS and set `PUBLIC_URL` to the final address.
+- [ ] Set up HTTPS: **Settings → Public address** (use your own domain for the event: a quick address changes on every restart), or your own proxy with `PUBLIC_URL` set to the final address.
 - [ ] Set `ADMIN_TOKEN` and `INGEST_TOKEN` to long random values (`openssl rand -base64 24`). Store them in the team's password manager.
 - [ ] Walk through the [hardening checklist](../security-guide.md#hardening-checklist).
 - [ ] Enable billing on the Gemini project and set a budget alert.

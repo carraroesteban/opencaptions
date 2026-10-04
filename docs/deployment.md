@@ -86,10 +86,12 @@ On top of that, OpenCaptions requires tokens for everything except the public ca
 
 ## Install the server
 
-You can install in three ways. They are equivalent at runtime.
+You can install in several ways. They are equivalent at runtime.
 
 | Method | Best for |
 |---|---|
+| [Double-click starter](#double-click-starter) | Organizers on a Mac or Windows laptop, no terminal |
+| [Published Docker image](#published-docker-image) | Any Docker host, without downloading the code |
 | [Docker Compose](#docker-compose) | Linux servers and cloud VMs. Reproducible and isolated. |
 | [Node.js directly](#nodejs-directly) | macOS and Windows laptops, development, venue PCs |
 | [systemd service](#systemd-service-linux-without-docker) | Linux servers when you don't want Docker |
@@ -106,6 +108,32 @@ For **venue PCs that capture audio**, no. Docker Desktop on macOS and Windows ca
 
 For **a laptop demo**, it's optional. `npm start` is simpler.
 
+### Double-click starter
+
+1. Install [Node.js](https://nodejs.org/en/download) (LTS).
+2. Download the [ZIP](https://github.com/carraroesteban/opencaptions/archive/refs/heads/main.zip) and unzip it.
+3. Double-click `Start OpenCaptions.command` (macOS) or `Start OpenCaptions.bat` (Windows).
+
+It installs the libraries the first time, starts the server and opens the dashboard; the welcome wizard asks for the API key and can create the public address. It's the same as `npm run app`. Keep the window open; closing it stops the server. The first time, macOS and Windows may warn about a downloaded file: see the README's [Quick start](../README.md#without-the-terminal).
+
+### Published Docker image
+
+Every push to `main` publishes `ghcr.io/carraroesteban/opencaptions` (amd64 and arm64; tags `latest`, `sha-…` and a version for each `v*` tag). Nothing to clone or build:
+
+```bash
+docker run -d --name opencaptions --restart unless-stopped -p 127.0.0.1:8080:8080 -v opencaptions-data:/app/data -v opencaptions-config:/app/config ghcr.io/carraroesteban/opencaptions
+docker logs opencaptions | grep "Open the dashboard"
+```
+
+The named volumes keep transcripts, settings and secrets (`opencaptions-data`) and the event, glossary and agenda files (`opencaptions-config`, filled from the image the first time) across upgrades. Pass settings with `-e`, e.g. `-e GEMINI_API_KEY=…`, or set the key in the dashboard. Upgrade:
+
+```bash
+docker pull ghcr.io/carraroesteban/opencaptions
+docker rm -f opencaptions
+```
+
+…then the same `docker run` again.
+
 ### Docker Compose
 
 Requirements: Docker Engine 24+ with the Compose plugin.
@@ -114,9 +142,10 @@ Requirements: Docker Engine 24+ with the Compose plugin.
 git clone https://github.com/carraroesteban/opencaptions.git
 cd opencaptions
 cp .env.example .env
+mkdir -p data
 ```
 
-Edit `.env` and set at least these values:
+Everything in `.env` is optional: the API key can be pasted in the dashboard, and tokens are generated on first start. For a server you'll keep, set these:
 
 ```bash
 GEMINI_API_KEY=<key>
@@ -129,14 +158,14 @@ Then start it:
 
 ```bash
 docker compose up -d --build
-docker compose logs -f          # shows the URLs
+docker compose logs -f          # shows the URLs and a dashboard link that signs you in
 ```
 
 By default the container is published only on `127.0.0.1:8080`, ready for a tunnel or reverse proxy on the same host. To reach it from the LAN directly, set `BIND_ADDR=0.0.0.0` in `.env`.
 
 To include `yt-dlp` for YouTube demos and `npm run multi`, set `WITH_YTDLP=1` in `.env` and rebuild.
 
-To add the Cloudflare Tunnel as a second container:
+For HTTPS, the dashboard's [public address](#one-click-public-address) works inside the container (the image includes `cloudflared`). Or add the Cloudflare Tunnel as a second container:
 
 1. In the Cloudflare dashboard, open **Zero Trust → Networks → Tunnels** and create a tunnel.
 2. Add a public hostname that points to the service `http://opencaptions:8080`.
@@ -181,10 +210,22 @@ Browsers only allow microphone capture on `localhost` or HTTPS pages. Phones on 
 
 | Option | Inbound ports | Certificate | When |
 |---|---|---|---|
-| **Cloudflare Tunnel** (named) | None | Automatic | Topology A, or B without a public IP. Recommended. |
-| Cloudflare quick tunnel: `cloudflared tunnel --url http://localhost:8080` | None | Automatic, random `trycloudflare.com` name | Demos only. The URL changes on every start. |
+| **Dashboard → Settings → Public address**, own domain | None | Automatic | Topology A, or B without a public IP. Recommended. |
+| **Dashboard → Settings → Public address**, quick | None | Automatic, random `trycloudflare.com` name | Trying it out and small events. The address changes on every start. |
+| Cloudflare Tunnel as a Docker container (`--profile tunnel`) | None | Automatic | Docker Compose, if you prefer a separate container |
 | **Caddy** reverse proxy: `caddy reverse-proxy --from subs.example.com --to localhost:8080` | 80 and 443 on a public VM | Automatic (Let's Encrypt) | Topology B on a VM with a public IP |
 | Built-in TLS: `HTTPS_CERT` and `HTTPS_KEY` | 8080 on the LAN | [mkcert](https://github.com/FiloSottile/mkcert). Install its CA on every device. | Isolated LAN with no internet for clients |
+
+### One-click public address
+
+**Settings → Public address** (and the welcome wizard's "Phones" step) runs Cloudflare Tunnel for you: no account, router settings or certificates. The first time, it downloads Cloudflare's `cloudflared` into `local/bin/` (about 40 MB; the Docker image already has it). While it's on, its address is the public URL: QR codes, links and allowed origins use it. It comes back on after a restart (`data/setup.json`).
+
+- **Quick address:** a random `https://….trycloudflare.com` address, ready in a minute or two (the dashboard shows the link once the address answers from the internet). It **changes every time OpenCaptions restarts**, or if `cloudflared` has to reconnect, so print the QR posters after starting it and don't restart during the event; the dashboard warns when it changed. Cloudflare offers quick tunnels for testing and small events, with a limit of about 200 requests at once.
+- **Your own domain:** a fixed address for real events. In Cloudflare, open **Zero Trust → Networks → Tunnels**, create a tunnel, and add a public hostname pointing to `http://localhost:8080` (your `PORT`). Paste the tunnel token and the hostname in Settings. The token is kept in `data/secrets.json`.
+
+From the command line: `TUNNEL=quick npm start`, or `TUNNEL=token TUNNEL_HOST=captions.example.com` after saving the token once from the dashboard. Requests through the tunnel are never treated as local, so the dashboard and ingest always need a token there.
+
+Without a public address, QR codes use the address the dashboard was opened with, or this computer's Wi-Fi address when it was opened as `localhost`, so phones on the same Wi-Fi can follow.
 
 Tunnels and reverse proxies all support WebSockets without extra configuration. Set `PUBLIC_URL` to the final HTTPS address so QR codes point to it.
 

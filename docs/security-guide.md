@@ -117,6 +117,7 @@ If `ADMIN_TOKEN` or `INGEST_TOKEN` isn't set, a random 24-character token is gen
 
 **Presenting a token:**
 
+- **Sign-in screen:** the dashboard and the welcome wizard ask for the admin token when the browser isn't on the server itself (with Docker, even the host's own browser), check it with the server and store it. In Docker, the startup log has a link that signs in directly (`docker compose logs opencaptions | grep "Open the dashboard"`); treat it like the token.
 - **Browsers:** open `…/admin.html?token=<ADMIN_TOKEN>` or `…/ingest.html?token=<INGEST_TOKEN>` once. The page stores it and cleans the URL.
 - **Scripts, the agent and Prometheus:** send `Authorization: Bearer <token>`.
 
@@ -157,7 +158,7 @@ Room audio ──(WSS/TLS)──► OpenCaptions server ──(TLS)──► Goo
 | Translated voice | Relayed in memory to listeners | Never stored |
 | Room config, glossary | `config/`, `data/stages.json` | Yes. No personal data. |
 | Viewers | Nothing collected: no accounts, cookies, analytics or IP logs | Nothing |
-| Tokens | `.env` or `data/secrets.json` | Keep both out of version control. `.gitignore` already covers them. |
+| Tokens, the Gemini API key and the Cloudflare tunnel token | `.env` or `data/secrets.json` (file mode 600) | Keep both out of version control. `.gitignore` already covers them. A key or tunnel token pasted in the dashboard goes to `data/secrets.json` and is never sent back to any browser: the dashboard sees only the key's last 4 characters, and the history records that the key changed, not the key. Google checks a new key before it's saved. |
 
 ## Choosing the AI backend
 
@@ -186,7 +187,7 @@ The controls on this page are designed to make that straightforward.
 
 Before exposing a server for an event:
 
-- [ ] HTTPS in front: a tunnel, Caddy or built-in TLS. `PUBLIC_URL` set to the HTTPS address.
+- [ ] HTTPS in front: **Settings → Public address** (Cloudflare Tunnel), Caddy or built-in TLS. With your own proxy, `PUBLIC_URL` set to the HTTPS address. A quick `trycloudflare.com` address is public to anyone who has the link, like any other public address: the dashboard and ingest still need their tokens through it. Turning it off and on is locked in Event mode.
 - [ ] No router port forwarding to any venue PC. The app port (8080) is not reachable from the internet (`BIND_ADDR=127.0.0.1` or `HOST=127.0.0.1` behind a proxy).
 - [ ] `ADMIN_TOKEN` and `INGEST_TOKEN` set to long random values, different from each other, and shared only with the people and PCs that need them.
 - [ ] `AUTH` is `auto` or `token`, never `off`.

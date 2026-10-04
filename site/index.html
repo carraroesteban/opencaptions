@@ -149,9 +149,17 @@
     <section id="start">
       <div class="wrap">
         <p class="eyebrow">Get started</p>
-        <h2>See it working in two minutes.</h2>
-        <p class="lede">No API key needed: captions are simulated until you add one.</p>
-<pre><code><span class="c"># Clone and start in demo mode</span>
+        <h2>Up and running in a few minutes.</h2>
+        <p class="lede">No terminal needed. Install Node.js, download OpenCaptions and double-click <b>Start OpenCaptions</b>. The setup wizard asks for your event, connects the AI and creates a public address for the QR codes.</p>
+        <div class="cta" style="display:flex;gap:12px;flex-wrap:wrap;margin:0 0 28px">
+          <a class="btn primary" href="https://github.com/carraroesteban/opencaptions/archive/refs/heads/main.zip">Download OpenCaptions (ZIP)</a>
+          <a class="btn" href="https://nodejs.org/en/download">Get Node.js</a>
+        </div>
+<pre><code><span class="c"># Or with Docker, nothing to download first</span>
+<span class="p">$</span> docker run -d --name opencaptions -p 127.0.0.1:8080:8080 -v opencaptions-data:/app/data ghcr.io/carraroesteban/opencaptions
+<span class="p">$</span> docker logs opencaptions | grep "Open the dashboard"
+
+<span class="c"># Developers: clone and start in demo mode</span>
 <span class="p">$</span> git clone https://github.com/carraroesteban/opencaptions.git
 <span class="p">$</span> cd opencaptions &amp;&amp; npm install
 <span class="p">$</span> npm run mock            <span class="c"># http://localhost:8080</span>
@@ -162,7 +170,7 @@
 <span class="c"># Ready for a real event? Set it up in a minute</span>
 <span class="p">$</span> npm run setup</code></pre>
         <div class="cta" style="display:flex;gap:12px;flex-wrap:wrap;margin-top:28px">
-          <a class="btn primary" href="https://github.com/carraroesteban/opencaptions#-quick-start">Read the documentation →</a>
+          <a class="btn primary" href="https://github.com/carraroesteban/opencaptions#quick-start">Read the documentation →</a>
           <a class="btn" href="https://github.com/carraroesteban/opencaptions/blob/main/docs/operations/runbook.md">Event-day runbook</a>
         </div>
       </div>

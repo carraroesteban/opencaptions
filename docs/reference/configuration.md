@@ -23,7 +23,10 @@ Related docs: [Security](../security-guide.md) · [Event-day runbook](../operati
 |---|---|---|
 | `PORT` | `8080` | HTTP/WebSocket listen port. |
 | `HOST` | `0.0.0.0` | Listen address. `127.0.0.1` restricts the server to this machine. |
-| `PUBLIC_URL` | `''` (falls back to `event.json`'s `publicUrl`, then the request's own host) | Canonical external URL, used in QR codes, admin/ingest links, and WebSocket origin checks. No trailing slash. |
+| `PUBLIC_URL` | `''` (falls back to `event.json`'s `publicUrl`, then the public tunnel's address while it's on, then the request's own host, with this computer's Wi-Fi address instead of `localhost`) | Canonical external URL, used in QR codes, admin/ingest links, and WebSocket origin checks. No trailing slash. |
+| `TUNNEL` | unset (whatever was last chosen in **Settings → Public address**) | `quick`: start a public HTTPS address through Cloudflare at startup (a random `trycloudflare.com` address that changes on every start). `token`: a tunnel on your own domain, with the token saved from the dashboard and `TUNNEL_HOST`. See [Deployment](../deployment.md#one-click-public-address). |
+| `TUNNEL_HOST` | `''` | With `TUNNEL=token`: the tunnel's public hostname, e.g. `captions.example.com`. |
+| `CLOUDFLARED_PATH` | unset (`PATH`, then `local/bin/`, else downloaded into `local/bin/` on first use) | The `cloudflared` program used for the public address. The Docker image includes it. |
 | `HTTPS_CERT` / `HTTPS_KEY` | unset (plain HTTP) | Paths to a TLS certificate/key (e.g. from `mkcert`) to serve HTTPS directly. Both must be set together. Required for microphone capture from any host other than `localhost`, unless a TLS-terminating proxy sits in front. |
 | `TRUST_PROXY` | `loopback` | Express `trust proxy` setting — which upstream proxies' `X-Forwarded-*` headers to trust for `req.secure`/`req.ip`. Docker Compose overrides this to `uniquelocal`. |
 | `EVENT_CONFIG` | `config/event.json` | Path to the event config file (relative to the project root). Also determines which file's mtime `data/stages.json` is compared against. |
@@ -53,7 +56,8 @@ See [Security](../security-guide.md) for the full threat model.
 
 | Variable | Default | Description |
 |---|---|---|
-| `GEMINI_API_KEY` | `''` | Gemini Developer API key ([aistudio.google.com/apikey](https://aistudio.google.com/apikey)). Without a key (and without Vertex AI configured) the server runs in mock mode. |
+| `GEMINI_API_KEY` | `''` | Gemini Developer API key ([aistudio.google.com/apikey](https://aistudio.google.com/apikey)). A key pasted in the dashboard (welcome wizard or **Settings**, saved in `data/secrets.json`) is used instead of this one. Without a key (and without Vertex AI configured) the server runs in mock mode. |
+| `GEMINI_API_BASE` | `https://generativelanguage.googleapis.com` | Where the dashboard's key check asks Google (tests point it at a stand-in). |
 | `GEMINI_MODEL` | `gemini-3.5-live-translate-preview` (or `event.json`'s `model`) | Gemini Live Translate model used for transcription + speech translation. |
 | `TEXT_MODEL` | `gemini-3.5-flash-lite` (or `event.json`'s `textModel`) | Fast text model used for per-sentence caption translation (`text`/`hybrid` modes). |
 | `ENGINE` | auto: `gemini` if `GEMINI_API_KEY` or Vertex AI is configured, else `mock` | `gemini`, `local` (Whisper and a text model on this machine or your network, see [Local AI](#local-ai-enginelocal)) or `mock`. Overridden by `--mock` and `--local`. |
@@ -161,7 +165,7 @@ These are read by `docker-compose.yml` itself, not by the Node process (except `
 |---|---|---|
 | `BIND_ADDR` | `127.0.0.1` | Host address the container's port 8080 is published on. Set to `0.0.0.0` to expose it on the LAN (tokens are still enforced). |
 | `WITH_YTDLP` | `0` | Build arg — `1` includes `yt-dlp` in the image (needed for YouTube demos / `npm run multi`). |
-| `TUNNEL_TOKEN` | required for the `tunnel` profile | Cloudflare Tunnel token, used by `docker compose --profile tunnel up`. |
+| `TUNNEL_TOKEN` | required for the `tunnel` profile | Cloudflare Tunnel token, used by `docker compose --profile tunnel up` (a separate `cloudflared` container). The dashboard's **Public address** does the same without the profile, and never passes this variable to a quick tunnel. |
 | `TRUST_PROXY` | `uniquelocal` (compose default; `loopback` if run outside Compose) | Trusts `X-Forwarded-*` from the private Docker network the `tunnel` service sits on. |
 
 ### Debugging
@@ -305,9 +309,9 @@ All under `DATA_DIR` (default `data/`), created on demand.
 | Path | Written by | Contents |
 |---|---|---|
 | `data/stages.json` | Every `POST`/`PATCH`/`DELETE /api/stages*` call | JSON array of the current stage definitions (same shape as `event.json`'s `stages`). Takes precedence over `config/event.json` on the next restart — see [precedence](#configuration-reference). |
-| `data/setup.json` | The welcome wizard and the dashboard's Settings | `{ "done", "name", "locked" }`: whether first-run setup is finished, the event name (overrides `eventName` in `config/event.json`), and whether Event mode is on. |
+| `data/setup.json` | The welcome wizard and the dashboard's Settings | `{ "done", "name", "locked", "tunnel" }`: whether first-run setup is finished, the event name (overrides `eventName` in `config/event.json`), whether Event mode is on, and the public address to bring back after a restart (`{ "mode": "quick" \| "token", "host" }`). |
 | `data/history.jsonl` | Every change to the setup: rooms, agenda, glossary, event name, AI mode, Event mode | One JSON object per line: `{ "id", "at", "kind", "target", "summary", "before", "after", "undoes"? }`. `before` is what an undo puts back. Only appended to; an undo is a new line pointing at the change it reverted. Deleted rooms stay restorable from here (the dashboard's trash). |
-| `data/secrets.json` | First startup, when `AUTH != off` and `ADMIN_TOKEN`/`INGEST_TOKEN` aren't both set via env | `{ "adminToken": "...", "ingestToken": "..." }`, random 24-character base64url tokens (18 random bytes). Written with file mode `0600`. Whichever of the two you *do* set via env is used in preference to the stored value; the file still fills in the other. |
+| `data/secrets.json` | First startup, when `AUTH != off` and `ADMIN_TOKEN`/`INGEST_TOKEN` aren't both set via env; the dashboard, when you save a Gemini API key or a Cloudflare tunnel token | `{ "adminToken": "...", "ingestToken": "...", "geminiApiKey"?: "...", "tunnelToken"?: "..." }`. Tokens are random 24-character base64url strings (18 random bytes). Written with file mode `0600`. Whichever admin/ingest token you *do* set via env is used in preference to the stored value; the file still fills in the other. A saved `geminiApiKey` wins over `GEMINI_API_KEY`. Never sent to the browser (the dashboard sees only the key's last 4 characters). |
 | `data/transcripts/<stage-id>/<talk-id>/meta.json` | `Store.openTalk` — on every new talk and title change (only when `STORE_TRANSCRIPTS` is not disabled) | `{ "stage", "id", "title", "startedAt", "languages" }`. `stage-id` and `talk-id` are sanitized to `[a-zA-Z0-9_-]`; `talk-id` is an ISO timestamp with `:`/`.` replaced by `-` (e.g. `2026-09-24T18-30-05-123Z`). |
 | `data/transcripts/<stage-id>/<talk-id>/captions.jsonl` | `Store.append` — one line per **finalized** caption segment | Each line: `{ "id", "channel", "lang", "text", "start", "end", "final": true }` (`start`/`end` in ms since the talk started). Read back by `GET /api/stages/:id/export.{srt,vtt,txt,json}`. |
 | `data/latency-<ISO timestamp>.json` | `npm run multi` (`scripts/multi-youtube.js`), on exit/Ctrl+C | Latency/cost report: p50/p90 for original transcription and translation, total cost, system stats, and a per-room breakdown. Not written by the server itself. |
@@ -320,7 +324,8 @@ All under `DATA_DIR` (default `data/`), created on demand.
 
 | Script | Runs | Flags |
 |---|---|---|
-| `npm start` | `node src/server.js` | — |
+| `npm start` | `node src/server.js` | `--mock`, `--local` (engine), `--open` (open the dashboard in the browser once it's listening). |
+| `npm run app` | `node scripts/start.js` | What the double-click **Start OpenCaptions** files run: installs the libraries if they're missing or outdated (`npm install --omit=dev`), starts the server with `--open`, and only opens the dashboard if it's already running. Uses `PORT` from the environment or `.env`. |
 | `npm run setup` | `node scripts/setup.js` | Interactive wizard, no flags — asks for the event name, the AI engine (`gemini`, `local` or `demo`), a Gemini API key (Gemini only), rooms (comma-separated), the language talks are usually given in, caption languages for the audience, the public URL, whether past-talk transcripts should be public too, and the event's time zone. Writes `.env` (`ENGINE`, `GEMINI_API_KEY`, `ADMIN_TOKEN`, `INGEST_TOKEN`, `PUBLIC_URL`) and `config/event.json`, generating admin/ingest tokens if none exist yet. Safe to re-run — see [Files written at runtime](#files-written-at-runtime) for what it backs up. |
 | `npm run mock` | `node src/server.js --mock` | Forces the mock caption engine. |
 | `npm run local` | `node scripts/local.js` | Local mode: finds or starts a Whisper speech server and Ollama, downloads models once, then starts the server with `ENGINE=local`. `--check` (run the end-to-end check instead; also takes the check's `--input`, `--seconds`, `--target`, `--source`), `--asr auto\|builtin\|whispercpp\|whisperkit`, `--asr-model <size>`, `--llm-model <name>`, `--mt-model <name>`, `--build-whisper`, `--no-llm`, `--fallback` (Gemini as the main engine, this computer as the [offline backup](../local.md#offline-backup)). See [Local mode](../local.md). |

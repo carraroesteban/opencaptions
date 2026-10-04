@@ -27,17 +27,16 @@ Objetivo: **cero operadores dedicados durante las charlas**. Una persona de prod
 1. **Server**: una VM chica (2 vCPU / 2 GB alcanzan para 10+ salas) o una notebook dedicada.
    ```bash
    git clone https://github.com/carraroesteban/opencaptions && cd opencaptions
-   npm install && npm run setup # asistente: evento, salas, idiomas, API key, tokens
-   docker compose up -d         # o: npm install && npm start
+   npm install && npm start     # o doble clic en «Start OpenCaptions», o: docker compose up -d
    ```
+   Abrí `http://localhost:8080/admin.html`: el asistente pregunta el evento, las salas y los idiomas, conecta Gemini con tu API key y crea la dirección pública. (Desde la terminal: `npm run setup`.)
 2. **HTTPS (obligatorio para usar micrófonos desde otras máquinas).** Los navegadores solo permiten capturar audio en `localhost` o `https://`. Opciones, de la más rápida a la más prolija:
-   - **Cloudflare Tunnel** (sin abrir puertos, sirve también para el celu del público):
-     `cloudflared tunnel --url http://localhost:8080` → te da `https://xxxx.trycloudflare.com`. Para el evento usá un *named tunnel* con dominio propio (ej. `subs.tuevento.com`).
+   - **Panel → Ajustes → Dirección pública** (Cloudflare Tunnel, sin abrir puertos, sirve también para el celu del público): un clic te da `https://xxxx.trycloudflare.com`. Esa dirección cambia cada vez que se reinicia: para el evento usá **tu propio dominio** (ej. `subs.tuevento.com`) con el token de un túnel creado en Cloudflare, en la misma pantalla.
    - **Caddy** con dominio propio delante del server: `caddy reverse-proxy --from subs.tuevento.com --to localhost:8080` (certificado automático, WebSockets incluidos).
    - **Red local sin internet**: `mkcert` → `HTTPS_CERT=… HTTPS_KEY=… npm start` (hay que instalar la CA de mkcert en cada mini PC).
    - Último recurso para una mini PC: lanzar Chrome con
      `--unsafely-treat-insecure-origin-as-secure=http://IP-DEL-SERVER:8080 --user-data-dir=/tmp/oc`.
-   Poné la URL final en `PUBLIC_URL` (es la que aparece en los QR).
+   Con la dirección pública del panel, los QR la usan solos; con Caddy o mkcert, poné la URL final en `PUBLIC_URL` (es la que aparece en los QR).
    **Nunca abras puertos del router hacia la mini PC ni hacia el server**: el túnel o la VM en la nube hacen que todo sea saliente por el puerto 443.
    **Tokens (seguridad).** Por defecto (`AUTH=auto`) la máquina del server confía solo en sí misma (`localhost`); cualquier otro dispositivo necesita token. Si no definís `ADMIN_TOKEN` / `INGEST_TOKEN`, se generan solos y se imprimen al arrancar (quedan en `data/secrets.json`). Para el evento definilos vos (`openssl rand -base64 24`) y:
    - el **panel** desde otra PC: abrir una vez `https://<server>/admin.html?token=<ADMIN_TOKEN>` (el token se guarda en ese navegador y se borra de la barra de direcciones);

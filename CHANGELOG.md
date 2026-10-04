@@ -13,6 +13,15 @@ All notable changes to this project are documented in this file. The format foll
 - **Safer editing:** real confirmation dialogs instead of browser pop-ups; pasting an agenda shows what will be added and removed before replacing it (`PUT /api/schedule?dryRun=1`); the glossary is a table of terms and corrections instead of raw JSON.
 - **The setup wizard no longer deletes anything silently:** it collects answers, then shows a review of every change. Rooms with transcripts are only removed if ticked, rooms with their own language setup keep it unless ticked, and nothing can be applied in Event mode.
 
+### Added — set up from the browser, no terminal needed
+
+- **API key in the dashboard:** the welcome wizard's AI step and **Settings → Gemini** explain where to get a key, check it with Google and connect it. Rooms on simulated captions switch to Gemini right away. The key is kept in `data/secrets.json` (mode 600), wins over `GEMINI_API_KEY`, and is never sent to a browser. Errors are explained (wrong format, rejected, project can't use Gemini, no free quota left, no internet with "Save it anyway"). `POST /api/ai/key/check`, `PUT` and `DELETE /api/ai/key`.
+- **One-click public address:** the wizard's new "Phones" step and **Settings → Public address** start Cloudflare Tunnel: a free `trycloudflare.com` HTTPS address with no account, or a fixed address on your own domain with a tunnel token. `cloudflared` is downloaded the first time (the Docker image includes it). The link appears once it answers from the internet; it comes back after a restart, reconnects if `cloudflared` stops, and warns when a quick address changed. `POST /api/tunnel`, `TUNNEL`, `TUNNEL_HOST`, `CLOUDFLARED_PATH`. See [Deployment](docs/deployment.md#one-click-public-address).
+- **QR codes never point at `localhost`:** without a public address, a dashboard opened as `localhost` gives phones this computer's Wi-Fi address.
+- **Double-click starters:** `Start OpenCaptions.command` (macOS) and `Start OpenCaptions.bat` (Windows), or `npm run app`. They point to the Node.js download if it's missing, install the libraries the first time, start the server and open the dashboard; started twice, they just reopen it. `--open` on the server opens the dashboard.
+- **Published Docker image:** `ghcr.io/carraroesteban/opencaptions` (amd64, arm64), built by `.github/workflows/docker.yml` on every push to `main` and every `v*` tag. Runs with `docker run` and two named volumes, nothing to clone or build.
+- The setup checklist and the "Simulated mode" badge now lead to Settings instead of `.env`.
+
 ### Changed — a new install starts blank
 
 - `config/event.json` now ships with no event name and one room ("Main stage"); the welcome wizard asks for the rest. `config/glossary.json` ships empty, so no example names are sent to the AI as vocabulary. The old example glossary is in `config/glossary.example.json`.

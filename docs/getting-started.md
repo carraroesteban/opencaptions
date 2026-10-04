@@ -36,7 +36,7 @@ Open these pages in your browser:
 | http://localhost:8080/ | The audience page. Pick a room and a language. |
 | http://localhost:8080/admin.html | The production dashboard with every room's status. |
 
-The first time you open the dashboard, a short welcome wizard asks for your event's name, its rooms and languages, and shows how captions are made and how to connect the sound. Every question can be skipped, and you can reopen it from **Setup wizard** in the dashboard toolbar. To follow this guide as written, keep the example rooms (**Skip, keep these rooms**).
+The first time you open the dashboard, a short welcome wizard asks for your event's name, its rooms and languages, connects the AI, offers a public address for phones and shows how to connect the sound. Every question can be skipped, and you can reopen it from **Settings → Setup wizard**. A new install has one room, `main`; that's all this guide needs until step 5.
 
 Nothing is captioned yet, because no room is receiving audio.
 
@@ -54,13 +54,15 @@ Stop the feed with Ctrl+C. Stop the server with Ctrl+C in the first terminal.
 
 ## 4. Connect Gemini
 
-The quickest way is the setup wizard, which also names your event and rooms and generates access tokens:
+The quickest way is the dashboard: open **Settings → Gemini** (or the wizard's AI step), click **Open AI Studio**, create a key, paste it and click **Check and connect**. OpenCaptions checks the key with Google and switches every room to Gemini straight away, with no restart. Skip to step 5.
+
+From the terminal, the setup script also names your event and rooms and generates access tokens:
 
 ```bash
 npm run setup
 ```
 
-Or do it by hand:
+Or by hand:
 
 
 1. Copy the example configuration:
@@ -95,7 +97,7 @@ Or do it by hand:
 
 ## 5. Caption two rooms at once
 
-In two more terminals, run one feed per room:
+Add a second room: **Dashboard → Rooms → + Room**, with the ID `room-b`. Then, in two more terminals, run one feed per room:
 
 ```bash
 npm run feed -- --stage main   --input samples/talk-en.wav

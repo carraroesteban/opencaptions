@@ -149,9 +149,17 @@
     <section id="start">
       <div class="wrap">
         <p class="eyebrow">Empezar</p>
-        <h2>Miralo funcionando en dos minutos.</h2>
-        <p class="lede">No hace falta API key: los subtítulos son simulados hasta que agregues una.</p>
-<pre><code><span class="c"># Cloná y arrancá en modo demo</span>
+        <h2>Funcionando en pocos minutos.</h2>
+        <p class="lede">Sin terminal. Instalá Node.js, descargá OpenCaptions y hacé doble clic en <b>Start OpenCaptions</b>. El asistente pregunta por tu evento, conecta la IA y crea una dirección pública para los QR.</p>
+        <div class="cta" style="display:flex;gap:12px;flex-wrap:wrap;margin:0 0 28px">
+          <a class="btn primary" href="https://github.com/carraroesteban/opencaptions/archive/refs/heads/main.zip">Descargar OpenCaptions (ZIP)</a>
+          <a class="btn" href="https://nodejs.org/es/download">Instalar Node.js</a>
+        </div>
+<pre><code><span class="c"># O con Docker, sin descargar nada antes</span>
+<span class="p">$</span> docker run -d --name opencaptions -p 127.0.0.1:8080:8080 -v opencaptions-data:/app/data ghcr.io/carraroesteban/opencaptions
+<span class="p">$</span> docker logs opencaptions | grep "Open the dashboard"
+
+<span class="c"># Para desarrolladores: clonar y arrancar en modo demo</span>
 <span class="p">$</span> git clone https://github.com/carraroesteban/opencaptions.git
 <span class="p">$</span> cd opencaptions &amp;&amp; npm install
 <span class="p">$</span> npm run mock            <span class="c"># http://localhost:8080</span>
@@ -162,7 +170,7 @@
 <span class="c"># ¿Listo para un evento real? Configuralo en un minuto</span>
 <span class="p">$</span> npm run setup</code></pre>
         <div class="cta" style="display:flex;gap:12px;flex-wrap:wrap;margin-top:28px">
-          <a class="btn primary" href="https://github.com/carraroesteban/opencaptions#-quick-start">Leer la documentación →</a>
+          <a class="btn primary" href="https://github.com/carraroesteban/opencaptions#quick-start">Leer la documentación →</a>
           <a class="btn" href="https://github.com/carraroesteban/opencaptions/blob/main/docs/operations/runbook.md">Runbook del día del evento</a>
         </div>
       </div>

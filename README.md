@@ -104,6 +104,36 @@ Conferences and summits · universities and schools · places of worship · town
 
 ## Quick start
 
+### Without the terminal
+
+1. Install **Node.js** (the LTS version) from [nodejs.org](https://nodejs.org/en/download). It's free.
+2. Download **[OpenCaptions as a ZIP](https://github.com/carraroesteban/opencaptions/archive/refs/heads/main.zip)** and unzip it.
+3. Double-click **Start OpenCaptions** (`Start OpenCaptions.command` on a Mac, `Start OpenCaptions.bat` on Windows).
+
+The first time, it installs what it needs (about a minute), then opens the dashboard in your browser. The welcome wizard asks for the event name, rooms and languages, connects Gemini with your API key, and can create a public HTTPS address for the QR codes with one click. Keep the window open while you use it; close it to stop OpenCaptions.
+
+<details>
+<summary>The computer says it can't open the file</summary>
+
+- **Mac, "Apple could not verify…":** click **Done**, then open **System Settings → Privacy & Security**, scroll down and click **Open Anyway** next to "Start OpenCaptions". You only do this once. (On older macOS: right-click the file → **Open**.)
+- **Mac, the file opens as text:** open **Terminal**, type `bash ` (with a space), drag the file into the window and press Enter.
+- **Windows, "Windows protected your PC":** click **More info → Run anyway**.
+
+</details>
+
+### With Docker, without downloading the code
+
+```bash
+docker run -d --name opencaptions --restart unless-stopped -p 127.0.0.1:8080:8080 -v opencaptions-data:/app/data -v opencaptions-config:/app/config ghcr.io/carraroesteban/opencaptions
+```
+```bash
+docker logs opencaptions | grep "Open the dashboard"
+```
+
+The second command prints a link that opens the dashboard already signed in; the wizard does the rest, API key and public address included.
+
+### For developers
+
 See it working in two minutes, **no API key needed** (captions are simulated):
 
 ```bash
@@ -119,7 +149,7 @@ Open <http://localhost:8080>, pick a room, and in a second terminal play a sampl
 npm run feed -- --stage main --input samples/talk-en.wav
 ```
 
-Ready for real captions? Get a free API key from [Google AI Studio](https://aistudio.google.com/apikey), then:
+Ready for real captions? Get a free API key from [Google AI Studio](https://aistudio.google.com/apikey) and paste it in **Dashboard → Settings**, or from the terminal:
 
 ```bash
 npm run setup   # event name, rooms, languages and your API key, in about a minute
@@ -156,9 +186,9 @@ Every page and endpoint is listed in the [API reference](docs/reference/api.md#s
 **What you need**
 
 - **One server for the whole event:** a laptop at the venue or a small cloud server, on macOS, Linux or Windows. With Gemini the AI runs in Google's cloud, so one CPU core and 1 GB of RAM are enough for 20 rooms or more.
-- **Node.js 20 or later**, or Docker.
+- **Node.js 20 or later** (the double-click starter tells you if it's missing), or Docker.
 - **A Gemini API key** ([AI Studio](https://aistudio.google.com/apikey)) or a Google Cloud project with Vertex AI. In [local mode](docs/local.md) you need no account at all.
-- **Outbound internet on port 443.** No inbound ports are needed; HTTPS can come from a Cloudflare Tunnel.
+- **Outbound internet on port 443.** No inbound ports are needed; the dashboard can create a public HTTPS address through Cloudflare Tunnel.
 
 **Option A: Node.js**
 
@@ -177,7 +207,7 @@ To keep it running across reboots, use the service files in [`deploy/`](deploy/)
 ```bash
 git clone https://github.com/carraroesteban/opencaptions.git
 cd opencaptions
-cp .env.example .env     # paste your GEMINI_API_KEY in it (without one, captions are simulated)
+cp .env.example .env     # optional settings; the API key can also be pasted in the dashboard
 mkdir -p data            # where transcripts and settings are kept
 docker compose up -d --build
 docker compose logs opencaptions | grep "Open the dashboard"
@@ -185,7 +215,7 @@ docker compose logs opencaptions | grep "Open the dashboard"
 
 The last command prints a link that opens the dashboard already signed in. In Docker, even your own browser counts as another device, so the dashboard asks for that password otherwise.
 
-Add `--profile tunnel` and a `TUNNEL_TOKEN` for public HTTPS through Cloudflare. The image runs as a non-root user on a read-only filesystem.
+To skip the build, use the published image `ghcr.io/carraroesteban/opencaptions` (see [Quick start](#with-docker-without-downloading-the-code)). Public HTTPS: **Dashboard → Settings → Public address**, or add `--profile tunnel` and a `TUNNEL_TOKEN`. The image runs as a non-root user on a read-only filesystem.
 
 | Platform | Server | Room audio agent |
 |---|---|---|
@@ -198,7 +228,7 @@ Full details: [Requirements](docs/requirements.md).
 
 ## Going live
 
-1. **Server.** Run it at the venue or in the cloud, put HTTPS in front and set `PUBLIC_URL`. [Choosing a setup](docs/deployment.md#choose-a-topology).
+1. **Server.** Run it at the venue or in the cloud. For HTTPS, click **Settings → Public address** (free, through Cloudflare), or put your own HTTPS in front and set `PUBLIC_URL`. [Choosing a setup](docs/deployment.md#choose-a-topology).
 2. **Rooms.** The welcome wizard asks for them the first time you open the dashboard. Then paste your agenda and print the QR posters.
 3. **Audio.** Point OBS/vMix at `rtmp://<server>:1935/live/<room>`, or run the small agent on the PC connected to each room's sound desk.
 4. **Screens.** Open the presenter screen next to the stage and add the overlay to your stream.
@@ -285,7 +315,7 @@ For example, a 40-minute talk captioned from English into Spanish costs about **
 - **Para la organización**, un panel con el estado, la demora, el público y el costo de cada sala. Las salas funcionan solas y toman los títulos de la agenda.
 - **Costo:** el software es gratis. Con Gemini, unos US$ 2,2 por hora de charla por sala (el silencio no se cobra). En modo local, nada: corre en tu propia compu y el audio no sale del edificio.
 
-Para probarlo: `npm install && npm run mock`. Para usarlo en un evento: `npm run setup && npm start`. Guía para el día del evento: [event-day.es.md](docs/operations/event-day.es.md).
+Para empezar sin terminal: instalá [Node.js](https://nodejs.org/es/download), descargá [OpenCaptions en ZIP](https://github.com/carraroesteban/opencaptions/archive/refs/heads/main.zip), descomprimilo y hacé doble clic en **Start OpenCaptions**. El asistente pregunta el nombre del evento, las salas y los idiomas, conecta Gemini con tu API key y crea una dirección pública con HTTPS en un clic. Con Docker: `docker run -d -p 127.0.0.1:8080:8080 -v opencaptions-data:/app/data -v opencaptions-config:/app/config ghcr.io/carraroesteban/opencaptions`. Guía para el día del evento: [event-day.es.md](docs/operations/event-day.es.md).
 
 ## Contributing
 
