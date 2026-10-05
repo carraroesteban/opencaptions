@@ -44,7 +44,7 @@ An event can set its own highlight colour with `accent` in `config/event.json`. 
 - **Bricolage Grotesque 800**: headlines and the wordmark (`--font-display`).
 - **Atkinson Hyperlegible Next 400/700**: body, UI and captions (`--font`). It's also the default caption font in the overlay and the projector.
 
-Both load from Google Fonts, with system fonts as fallback, so pages still work on a venue network without internet.
+Both are served by OpenCaptions itself from `public/fonts/` (downloaded once with their licenses by `scripts/fetch-fonts.js`), so no page contacts Google and they work on a venue network without internet. The optional caption fonts in the style editor are served the same way.
 
 ## Light and dark
 

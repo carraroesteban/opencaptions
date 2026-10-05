@@ -14,8 +14,9 @@ test('tokens define the palette and both themes', () => {
   for (const c of ['--ink: #111014', '--paper: #FAF8F3', '--lime: #D4FF3A', '--graphite: #2B2A31', '--fog: #E8E5DD']) assert.ok(css.includes(c), c);
   assert.match(css, /@media \(prefers-color-scheme: dark\)/);
   assert.match(css, /:root\[data-theme='dark'\]/);
-  assert.match(css, /Bricolage\+Grotesque/);
-  assert.match(css, /Atkinson\+Hyperlegible\+Next/);
+  assert.match(css, /@import url\('\/fonts\/brand\.css'\)/, 'fonts are served by OpenCaptions, not Google');
+  assert.match(read('public/fonts/brand.css'), /font-family: 'Bricolage Grotesque'/);
+  assert.match(read('public/fonts/brand.css'), /font-family: 'Atkinson Hyperlegible Next'/);
 });
 
 test('every page uses the shared tokens', () => {
@@ -72,5 +73,14 @@ test('pages use the line icon set, not emoji', () => {
 test('every page people read has a language switch', () => {
   for (const f of ['index', 'watch', 'talk', 'talks', 'admin', 'welcome', 'kit', 'style', 'ingest', 'demo', 'report']) {
     assert.match(read(`public/pages/${f}.js`), /prefsControls\(/, `${f}: no language switch`);
+  }
+});
+
+test('no page loads fonts or styles from Google (visitors\' addresses stay private, and pages work offline)', () => {
+  const files = fs.readdirSync(path.join(ROOT, 'public'), { recursive: true }).map(String).filter((f) => /\.(html|css|js)$/.test(f));
+  const hits = files.filter((f) => /fonts\.(googleapis|gstatic)\.com/.test(fs.readFileSync(path.join(ROOT, 'public', f), 'utf8')));
+  assert.deepEqual(hits, []);
+  for (const f of fs.readdirSync(path.join(ROOT, 'public/fonts')).filter((d) => fs.statSync(path.join(ROOT, 'public/fonts', d)).isDirectory())) {
+    assert.ok(fs.existsSync(path.join(ROOT, 'public/fonts', f, 'OFL.txt')), `${f} ships with its license`);
   }
 });

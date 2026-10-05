@@ -42,7 +42,8 @@ Objetivo: **cero operadores dedicados durante las charlas**. Una persona de prod
 
    **Ajustes → Acceso** muestra qué dispositivos tienen sesión iniciada (y permite cerrarlas) y cambia las contraseñas. El público, el proyector y el overlay **no** necesitan contraseña.
 4. **Alertas en el celular:** Ajustes → Alertas. Con la app gratuita ntfy son dos minutos; mandá una prueba. Avisa si una sala se queda sin sonido, si la IA falla, si una charla se pasa 5 minutos o si se corta internet.
-5. **Facturación y cuotas**: facturación activa en Google AI Studio (el plan gratuito limita las traducciones por minuto). Configurá una **alerta de presupuesto**. Revisá en AI Studio las sesiones Live simultáneas de tu plan; si hay más salas que el límite, repartilas entre dos proyectos (ver [Deployment](../deployment.md#capacity-and-sharding)).
+5. **Facturación y cuotas**: facturación activa en Google AI Studio (el plan gratuito limita las traducciones por minuto, y en ese plan Google puede usar el audio para mejorar sus productos). Configurá una **alerta de presupuesto**. Revisá en AI Studio las sesiones Live simultáneas de tu plan; si hay más salas que el límite, repartilas entre dos proyectos (ver [Deployment](../deployment.md#capacity-and-sharding)).
+   **Avisá a oradores y público** que las charlas se subtitulan con IA, dónde se procesa el audio y si las transcripciones se publican. Hay un aviso listo para usar en [Licencias y responsabilidades](../legal.md#notice-template).
 6. **Salas** (en el asistente o en **Panel → Salas**):
    - *Idioma de la charla*: «Detectar automáticamente» si los hosts o speakers cambian de idioma (presentación en español de una charla en inglés, preguntas bilingües). Fijalo solo si toda la charla es en un idioma. En los dos casos, si el speaker cambia de idioma cada pista lo sigue.
    - *Traducir a*: los idiomas de subtítulos.

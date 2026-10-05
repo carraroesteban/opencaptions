@@ -21,6 +21,7 @@ The docs follow the [Diátaxis](https://diataxis.fr/) framework. Each page has o
 | [Deployment](deployment.md) | How-to | Choose between a venue PC and a cloud server, then install with Docker, Node.js or a system service. |
 | [Networking](networking.md) | How-to | Know which ports and domains are used, and what to do when the venue network blocks something. |
 | [Security](security-guide.md) | Explanation + how-to | Understand the threat model and apply the hardening checklist. |
+| [Licenses and responsibilities](legal.md) | Reference | What OpenCaptions is made of, the AI providers' terms, and what an organizer must tell speakers and the audience. |
 | [Accessibility](accessibility.md) | Explanation + how-to | What's checked (WCAG 2.2 AA, `npm run a11y`), how to test with a screen reader and keyboard, and the known gaps. |
 | [Latency](latency.md) | Explanation + how-to | Understand where the seconds go and tune for lower delay. |
 | [Local mode](local.md) | How-to + explanation | Run speech recognition and translation on your own computer: no API key, no internet, no cost per hour. |

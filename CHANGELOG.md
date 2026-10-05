@@ -15,8 +15,11 @@ All notable changes to this project are documented in this file. The format foll
 - **Guides on the website,** in English and Spanish, for what organizers search for: live captions for conferences, how to caption an event step by step, a FAQ (cost, accuracy, languages, offline use, privacy) and the captioning options compared. Each is an HTML fragment in `site/pages/<lang>/`; `scripts/site.js` gives it the shared layout and links it from the home page's footer. A test checks that every guide has its pair in the other language and that links resolve.
 - The website tells search engines what it is: a generated sitemap (every page, both languages, and the demo video), `robots.txt`, and structured data (the app, the demo video, breadcrumbs, articles and the FAQ's questions).
 
+- **[Licenses and responsibilities](docs/legal.md):** what OpenCaptions is made of and under which licenses, the AI providers' terms (including Gemini's free tier using data to improve Google's products), what organizers must tell speakers and the audience, and a ready-made notice in English and Spanish. The README, the FAQ and both event-day checklists point to it.
+
 ### Changed
 
+- **Fonts are served by OpenCaptions itself** (`public/fonts/`, with their licenses) instead of Google Fonts. No page, including the audience's, sends visitors' addresses to Google any more (some courts in the EU found that unlawful without consent), the fonts work offline in local mode, and the Content-Security-Policy no longer allows Google's font servers. `scripts/fetch-fonts.js` updates them.
 - The website names the warnings people actually see the first time they open the app ("could not verify" on a Mac, "protected your PC" on Windows).
 - CI and release workflows use the current versions of GitHub's actions (no more Node.js 20 deprecation notices).
 

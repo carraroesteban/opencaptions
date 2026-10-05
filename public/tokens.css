@@ -6,7 +6,7 @@
   So lime is a *fill* (highlighter, primary button, live word) with ink on top; where an emphasis colour is needed
   as text or a stroke, use --accent-fg (ink on light, lime on dark). Keep lime to ~10 % of any screen.
 */
-@import url('https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible+Next:ital,wght@0,400;0,700;1,400&family=Bricolage+Grotesque:opsz,wght@12..96,800&display=swap');
+@import url('/fonts/brand.css'); /* served by OpenCaptions itself (scripts/fetch-fonts.js): nothing loads from Google, and it works offline */
 
 /* Digits: Atkinson Hyperlegible Next only ships a slashed zero, which reads as "Ø" in prices, times and counts.
    Numerals come from the system UI font instead; every other character stays Atkinson. */

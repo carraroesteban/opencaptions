@@ -249,13 +249,13 @@ export const fmtClock = (ms) => { const s = Math.max(0, Math.round(ms / 1000)); 
 // ---------- caption styling (shared by overlay.html, screen.html and style.html) ----------
 export const FONTS = {
   system: { label: 'Sistema', css: "system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif" },
-  atkinsonnext: { label: 'Atkinson Hyperlegible Next (OpenCaptions)', google: 'Atkinson Hyperlegible Next', css: "'OC Digits', 'Atkinson Hyperlegible Next', system-ui, sans-serif" },
-  inter: { label: 'Inter', google: 'Inter' },
-  atkinson: { label: 'Atkinson Hyperlegible (máxima legibilidad)', google: 'Atkinson Hyperlegible' },
-  lexend: { label: 'Lexend', google: 'Lexend' },
-  roboto: { label: 'Roboto', google: 'Roboto' },
-  opensans: { label: 'Open Sans', google: 'Open Sans' },
-  montserrat: { label: 'Montserrat', google: 'Montserrat' },
+  atkinsonnext: { label: 'Atkinson Hyperlegible Next (OpenCaptions)', css: "'OC Digits', 'Atkinson Hyperlegible Next', system-ui, sans-serif" },
+  inter: { label: 'Inter', family: 'Inter' },
+  atkinson: { label: 'Atkinson Hyperlegible (máxima legibilidad)', family: 'Atkinson Hyperlegible' },
+  lexend: { label: 'Lexend', family: 'Lexend' },
+  roboto: { label: 'Roboto', family: 'Roboto' },
+  opensans: { label: 'Open Sans', family: 'Open Sans' },
+  montserrat: { label: 'Montserrat', family: 'Montserrat' },
   mono: { label: 'Monoespaciada', css: "ui-monospace, 'SF Mono', Menlo, Consolas, monospace" },
 };
 
@@ -274,14 +274,15 @@ export function toColor(v, alpha) {
 
 export function loadFont(key) {
   const f = FONTS[key] || FONTS.system;
-  if (f.google && !document.querySelector(`link[data-font="${key}"]`)) {
+  // Fonts are served by OpenCaptions (public/fonts/<key>.css); the interface font is always loaded by tokens.css.
+  if (f.family && !document.querySelector(`link[data-font="${key}"]`)) {
     const l = document.createElement('link');
     l.rel = 'stylesheet';
     l.dataset.font = key;
-    l.href = `https://fonts.googleapis.com/css2?family=${f.google.replace(/ /g, '+')}:wght@400;500;600;700;800&display=swap`;
+    l.href = `/fonts/${key}.css`;
     document.head.append(l);
   }
-  return f.css || `'${f.google}', system-ui, sans-serif`;
+  return f.css || `'${f.family}', system-ui, sans-serif`;
 }
 
 /**

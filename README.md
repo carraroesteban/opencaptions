@@ -289,6 +289,7 @@ For example, a 40-minute talk captioned from English into Spanish costs about **
 - **Self-hosted:** transcripts stay on your server. In local mode, audio never leaves the building.
 - **Sign-in for the dashboard** with expiring sessions, an admin and a crew role, signed-in devices you can sign out, two-factor codes, and company sign-in (Google, Microsoft, any OpenID Connect provider). The audience pages are read-only.
 - **No inbound ports, rate limits and strict security headers** by default. Details in the [security guide](docs/security-guide.md).
+- **With Gemini, the room's audio goes to Google.** On the free tier Google may use it to improve its products; for events with personal information, use a paid key or Vertex AI. What organizers should tell speakers and the audience, with a ready-made notice: [Licenses and responsibilities](docs/legal.md).
 
 ## Documentation
 
@@ -303,6 +304,7 @@ For example, a 40-minute talk captioned from English into Spanish costs about **
 | Run it without the cloud | [Local mode](docs/local.md) |
 | Customize the look | [Brand and design system](docs/brand.md) |
 | Change the code | [Architecture](docs/architecture.md) · [Contributing](.github/CONTRIBUTING.md) · [ADRs](docs/adr/) |
+| Check licenses and what you must tell people | [Licenses and responsibilities](docs/legal.md) |
 
 ## Current limitations
 

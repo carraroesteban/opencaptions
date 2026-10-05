@@ -170,7 +170,7 @@ Keep password sign-in on at events unless you're sure of the venue's internet: i
 Every response includes:
 
 ```
-Content-Security-Policy: default-src 'self'; script-src 'self' https://www.youtube.com https://s.ytimg.com; script-src-attr 'none'; style-src 'self' 'sha256-…' https://fonts.googleapis.com; style-src-attr 'none'; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: https://i.ytimg.com; media-src 'self' blob:; worker-src 'self' blob:; connect-src 'self' ws: wss:; frame-src 'self' https://www.youtube.com https://www.youtube-nocookie.com; frame-ancestors 'self'; base-uri 'none'; form-action 'self'; object-src 'none'
+Content-Security-Policy: default-src 'self'; script-src 'self' https://www.youtube.com https://s.ytimg.com; script-src-attr 'none'; style-src 'self' 'sha256-…'; style-src-attr 'none'; font-src 'self' data:; img-src 'self' data: https://i.ytimg.com; media-src 'self' blob:; worker-src 'self' blob:; connect-src 'self' ws: wss:; frame-src 'self' https://www.youtube.com https://www.youtube-nocookie.com; frame-ancestors 'self'; base-uri 'none'; form-action 'self'; object-src 'none'
 X-Content-Type-Options: nosniff
 Referrer-Policy: no-referrer
 Permissions-Policy: microphone=(self), camera=(), geolocation=(), payment=(), usb=()

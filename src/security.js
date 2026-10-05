@@ -134,9 +134,9 @@ const CSP = [
   // Strict for styles too: stylesheets from this server, plus each page's own <style> block by its hash (computed
   // below). No style="" attributes (utility classes in style.css instead): injected markup can't restyle a page,
   // e.g. to hide a warning or overlay a fake button.
-  `style-src 'self' ${STYLE_HASHES} https://fonts.googleapis.com`,
+  `style-src 'self' ${STYLE_HASHES}`,
   "style-src-attr 'none'",
-  "font-src 'self' https://fonts.gstatic.com data:",
+  "font-src 'self' data:",
   "img-src 'self' data: https://i.ytimg.com",
   "media-src 'self' blob:",
   "worker-src 'self' blob:",

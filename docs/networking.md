@@ -14,7 +14,6 @@ All traffic uses TLS on port 443 once HTTPS is configured. Nothing at the venue 
 | OpenCaptions server | `generativelanguage.googleapis.com` (API key) or `<region>-aiplatform.googleapis.com` (Vertex AI) | WSS/HTTPS 443 | Gemini Live Translate and Flash-Lite |
 | Phones, projectors, vMix/OBS | OpenCaptions server | HTTPS/WSS 443 (`/ws/view`) | Pages and captions |
 | Production team | OpenCaptions server | HTTPS/WSS 443 (`/admin.html`, `/ws/admin`) | Dashboard |
-| Browsers | `fonts.googleapis.com`, `fonts.gstatic.com` | HTTPS 443 | Optional caption fonts from the style editor. The pages work without them. |
 | Browsers on `/demo.html` | `www.youtube.com` | HTTPS 443 | YouTube demo player only |
 | Server (optional) | Stream sources | SRT/RTMP/RTSP/UDP/HTTPS | Pulling audio from vMix, OBS or an encoder |
 | Server (optional) | YouTube via `yt-dlp` | HTTPS 443 | Demos and latency tests only |

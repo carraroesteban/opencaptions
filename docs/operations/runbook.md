@@ -26,6 +26,7 @@ A shorter Spanish version for venue crews is in [event-day.es.md](event-day.es.m
 - [ ] Give volunteers and technicians the **crew password** (live controls only), not the admin one. Turn on **two-factor sign-in** in Settings → Access.
 - [ ] Walk through the [hardening checklist](../security-guide.md#hardening-checklist).
 - [ ] Enable billing on the Gemini project and set a budget alert.
+- [ ] **Tell speakers and the audience** that talks are captioned by AI, where the audio is processed and whether transcripts are published (a ready-made notice is in [Licenses and responsibilities](../legal.md#notice-template)). Turn off public transcripts for talks that shouldn't be published.
 - [ ] Check the concurrent Live session limit for your tier. Run a full-scale test with `npm run multi -- --rooms <N> --minutes 3 --playlist <url>`.
 - [ ] If the limit is below your room count, shard rooms across projects ([Deployment](../deployment.md#capacity-and-sharding)).
 
