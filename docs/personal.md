@@ -2,15 +2,15 @@
 
 OpenCaptions isn't only for events. In **personal mode** it captions, and translates if you like, whatever you're listening to on your own computer: a video call in another language, a class, a video, a conversation in the room. For people who are deaf or hard of hearing, for anyone following a call in their second language, and for anyone who wants a transcript of what they heard.
 
-It's the same download as the event version (the [Mac app or Windows launcher](../README.md#without-the-terminal)). The first time you open it, choose **Just for me** on the welcome screen. From then on, OpenCaptions opens straight to your captions.
+It's the same download as the event version (the [Mac app or Windows launcher](../README.md#without-the-terminal)). The first time you open it, the welcome screen asks what you want captions for: choose **Just for me**. OpenCaptions remembers it (in its settings, which survive updates): from then on it opens straight to your captions, and never shows the event side unless you ask for it.
 
 ## Use it
 
-1. **Listen to:** **Microphone** (you, or a conversation around you) or **Computer sound** (what the computer plays).
+1. **Listen to:** **Microphone** (you, or a conversation around you), **Computer sound** (what the computer plays), or **Both** (both sides of a call: what you say and what you hear). With **Both**, use headphones: otherwise the microphone also hears the speakers, and everything is captioned twice.
 2. **Translate to:** a language, or *Don't translate*.
 3. **Start captions.** Captions appear in big text; when translating, the original runs underneath.
 4. **Floating captions** opens a small always-on-top window, to keep the captions over a video call or a movie (Chrome and Edge; other browsers get a picture-in-picture window).
-5. **A− / A+** change the text size. **Transcript** opens everything said, to read, search, summarize or ask about it; **Download** saves it as text.
+5. **A− / A+** change the text size. **Transcript** opens what's being said now, to read, search, summarize or ask about; **Download** saves it as text. **My transcripts** (top right) lists all your past ones.
 
 ### Computer sound
 
@@ -30,9 +30,9 @@ Until one is connected, the captions are simulated, so you can see how it works.
 
 ## Privacy
 
-In personal mode nothing is public, not even on your Wi-Fi: the captions, the transcripts, the summaries and the questions can only be read on this computer, or by a device you've signed in with your password (to read on your phone, for example). Transcripts are kept on this computer (Mac: `~/Library/Application Support/OpenCaptions/data`; Windows: `%LOCALAPPDATA%\OpenCaptions\data`); delete one for good from the dashboard (**Event dashboard → Transcripts → Delete**), or set `RETENTION_DAYS` to delete them automatically after some days. If you record other people, tell them, as you would with any recording.
+In personal mode nothing is public, not even on your Wi-Fi: the captions, the transcripts, the summaries and the questions can only be read on this computer, or by a device you've signed in with your password (to read on your phone, for example). Transcripts are kept on this computer (Mac: `~/Library/Application Support/OpenCaptions/data`; Windows: `%LOCALAPPDATA%\OpenCaptions\data`); delete one for good with **Delete** on its page, or set `RETENTION_DAYS` to delete them automatically after some days. If you record other people, tell them, as you would with any recording.
 
 ## Switch between modes
 
-- **Event dashboard** (top right) opens the event dashboard without leaving personal mode.
-- To go back to events for good, open **Settings → Setup wizard** in the dashboard and finish it: OpenCaptions opens the dashboard again from then on.
+- **Use it for events** (top right) switches OpenCaptions to events: rooms, QR codes, the dashboard. It asks first; your transcripts stay where they are, but the event side never shows them.
+- To come back, open **Settings → Setup wizard** in the dashboard and choose **Just for me**.

@@ -233,6 +233,12 @@ for (const file of fs.readdirSync(OUT, { recursive: true }).map(String).filter((
   const p = path.join(OUT, file);
   let html = fs.readFileSync(p, 'utf8');
   if (html.includes('<link rel="stylesheet" href="/style.css" />')) html = html.replace('<link rel="stylesheet" href="/style.css" />', `${head}\n  <link rel="stylesheet" href="/style.css" />`);
+  // Sharp on high-density screens: an illustration with a 2× file (site/art/<name>@2x.webp, website only, so the
+  // app's download doesn't grow) gets a srcset, and only those screens download it.
+  html = html.replace(/<img([^>]*?) src="\/art\/([\w-]+)\.webp"([^>]*)>/g, (m, a, n, b) => (m.includes('srcset') || !fs.existsSync(path.join(OUT, 'art', `${n}@2x.webp`)) ? m
+    : `<img${a} src="/art/${n}.webp" srcset="/art/${n}.webp 1x, /art/${n}@2x.webp 2x"${b}>`));
+  // A loop's poster shows full size (and stays, with reduced motion): the 2× file when there is one.
+  html = html.replace(/poster="\/art\/([\w-]+)\.webp"/g, (m, n) => (fs.existsSync(path.join(OUT, 'art', `${n}@2x.webp`)) ? `poster="/art/${n}@2x.webp"` : m));
   html = html.replace(/<head>\n?/, (m) => `${m}  <meta http-equiv="Content-Security-Policy" content="${csp(html)}" />\n`);
   fs.writeFileSync(p, html);
 }

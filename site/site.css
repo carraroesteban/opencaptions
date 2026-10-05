@@ -88,9 +88,10 @@ a.btn.primary { background: var(--primary-bg); border-color: var(--primary-bg); 
 
 /* phone mock with live captions */
 .phone { justify-self: center; width: min(360px, 100%); aspect-ratio: 9 / 18; background: var(--bg2); border: 1px solid var(--line-strong); border-radius: 40px; padding: 14px; box-shadow: var(--shadow-lg); position: relative; }
-.phone::before { content: ''; position: absolute; top: 12px; left: 50%; width: 92px; height: 24px; transform: translateX(-50%); background: var(--fg); border-radius: 14px; opacity: .92; }
+/* The Dynamic Island: inside the screen, a little below its top edge, always black (like the real one). */
+.phone::before { content: ''; position: absolute; top: 25px; left: 50%; width: 84px; height: 24px; transform: translateX(-50%); background: #000; border-radius: 14px; z-index: 1; }
 .phone .screen { height: 100%; border-radius: 28px; background: var(--bg); overflow: hidden; display: flex; flex-direction: column; border: 1px solid var(--line); }
-.phone .top { padding: 46px 18px 12px; border-bottom: 1px solid var(--line); }
+.phone .top { padding: 52px 18px 12px; border-bottom: 1px solid var(--line); }
 .phone .top b { font-family: var(--font-display); font-weight: 800; font-size: 18px; letter-spacing: -.01em; }
 .phone .top .row { justify-content: space-between; }
 .phone .pills { display: flex; gap: 6px; margin-top: 10px; }

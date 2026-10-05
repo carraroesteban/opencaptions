@@ -16,7 +16,10 @@
     header h1 { font-size: 18px; margin: 0; display: flex; align-items: center; gap: 8px; }
     header h1 svg { width: 26px; height: 20px; }
     header .spacer { flex: 1; }
-    header a { color: var(--fg2); font-size: 14px; }
+    header a, .linkish { color: var(--fg2); font-size: 14px; }
+    header a { display: inline-flex; align-items: center; gap: 6px; }
+    .linkish { background: none; border: 0; box-shadow: none; padding: 4px; text-decoration: underline; text-underline-offset: 3px; }
+    .linkish:hover { color: var(--fg); background: none; }
     .bar { display: flex; flex-wrap: wrap; align-items: end; gap: 12px; padding: 14px 16px; border-bottom: 1px solid var(--line); background: var(--bg2); }
     .bar .field { margin: 0; }
     #src-label { display: block; }
@@ -47,7 +50,8 @@
   <header>
     <h1><svg viewBox="0 0 878 664" aria-hidden="true"><use href="/brand/sprite.svg#oc-o"/><use href="/brand/sprite.svg#oc-line"/></svg><span>OpenCaptions</span> <span class="chip" id="mode-chip"></span></h1>
     <span class="spacer"></span>
-    <a href="/admin.html?dashboard" id="event-link"></a>
+    <a href="/talks.html" id="mine-link" data-icon="doc"></a>
+    <button type="button" id="to-events" class="linkish"></button>
   </header>
 
   <section class="bar" aria-labelledby="go">
@@ -55,6 +59,7 @@
       <div class="seg" role="radiogroup" id="src">
         <button type="button" role="radio" data-src="mic" data-icon="mic"></button>
         <button type="button" role="radio" data-src="screen" data-icon="monitor"></button>
+        <button type="button" role="radio" data-src="both" data-icon="headphones"></button>
       </div>
     </div>
     <label class="field" id="f-device"><span id="device-label"></span><select id="device"></select></label>

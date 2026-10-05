@@ -49,7 +49,8 @@
     "demo:record": "node scripts/record-demo.js",
     "a11y": "node scripts/a11y.js",
     "package": "node scripts/package-desktop.js",
-    "icons": "node scripts/make-app-icons.js"
+    "icons": "node scripts/make-app-icons.js",
+    "screenshots": "node scripts/screenshots.js"
   },
   "dependencies": {
     "@google/genai": "^2.24.0",

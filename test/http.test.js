@@ -200,6 +200,9 @@ test('“just for me” mode: captions and transcripts only on this computer (or
     assert.equal((await get(`${base}/api/talks`, fromWifi)).status, 401);
     assert.equal((await get(`${base}/api/stages/main/export.txt`, fromWifi)).status, 401);
     assert.equal((await get(`${base}/api/talks`)).status, 200, 'this computer still reads them');
+    // Only the personal room: the event's rooms (and their transcripts) don't show up in "just for me".
+    assert.deepEqual((await (await fetch(`${base}/api/event`)).json()).stages.map((x) => x.id).filter((id) => id !== 'me'), []);
+    assert.ok((await (await fetch(`${base}/api/talks`)).json()).talks.every((x) => x.stage === 'me'));
     const { default: WebSocket } = await import('ws');
     const view = (headers) => new Promise((resolve) => {
       const ws = new WebSocket(`ws://127.0.0.1:${PORT}/ws/view?stage=main`, { headers });
@@ -213,6 +216,11 @@ test('“just for me” mode: captions and transcripts only on this computer (or
     await setMode('event');
   }
   assert.equal((await get(`${base}/api/stages/main/export.txt`, fromWifi)).status, 200, 'event mode: the talk in progress is public again');
+  // Back in event mode, the personal room stays private and out of the event's lists.
+  await fetch(`${base}/api/stages`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id: 'me', name: 'Just for me', targets: ['en'] }) });
+  assert.ok(!(await (await fetch(`${base}/api/event`)).json()).stages.some((x) => x.id === 'me'));
+  assert.equal((await get(`${base}/api/stages/me/export.txt`, fromWifi)).status, 401);
+  await fetch(`${base}/api/stages/me`, { method: 'DELETE' });
 });
 
 test('deleting a transcript that doesn’t exist says so', async () => {

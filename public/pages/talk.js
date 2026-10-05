@@ -105,7 +105,7 @@ function render() {
   });
   if (partial?.text) blocks.push(`<div class="para" aria-hidden="true"><span class="ts"></span><p class="partial">${liveHtml(partial.text)}</p></div>`);
   patchDoc(blocks);
-  $('count').textContent = query ? `${matches} ${t('matches')}` : '';
+  $('count').textContent = query ? `${matches} ${t(matches === 1 ? 'match' : 'matches')}` : '';
   if (following) scrollEnd();
 }
 let qTimer;
@@ -203,3 +203,12 @@ $('dlg-set').addEventListener('click', (e) => { if (e.target === $('dlg-set')) $
 
 select(); renderLangs(); render();
 if (location.hash) document.querySelector(location.hash)?.scrollIntoView({ block: 'center' });
+
+// Delete for good: only for the admin (on this computer no password is asked, so "Just for me" users can).
+$('del').querySelector('.lbl').textContent = t('deleteTalk');
+fetch('/api/auth/me').then((r) => r.json()).then((me) => { if (me.role === 'admin') $('del').classList.remove('hidden'); }).catch(() => {});
+$('del').onclick = async () => {
+  if (!confirm(t('deleteTalkQ'))) return;
+  const r = await fetch(`/api/stages/${encodeURIComponent(stageId)}/talks/${encodeURIComponent(talkId)}`, { method: 'DELETE' });
+  if (r.ok) location.href = '/talks.html';
+};

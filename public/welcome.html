@@ -44,8 +44,17 @@
 
     .q { font-weight: 700; margin: 0 0 10px; }
     .pills { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 24px; }
-    .justme { margin-top: 28px; padding-top: 18px; border-top: 1px solid var(--line); color: var(--fg2); }
-    .justme button { margin-left: 6px; }
+    /* First screen: two big choices, full width (the side illustration steps aside). */
+    .wiz.choosing { grid-template-columns: minmax(0, 1fr); max-width: 1040px; }
+    .wiz.choosing .art { display: none; }
+    .choices { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; margin-top: 28px; }
+    @media (max-width: 700px) { .choices { grid-template-columns: 1fr; } }
+    .choice { display: grid; gap: 6px; align-content: start; text-align: left; padding: 14px 14px 20px; border-radius: 22px; border: 1px solid var(--line); background: var(--bg2); font: inherit; color: inherit; cursor: pointer; transition: border-color var(--dur), transform var(--dur) var(--ease), box-shadow var(--dur); }
+    .choice:hover { border-color: var(--line-strong); transform: translateY(-2px); box-shadow: var(--shadow-lg); }
+    .choice:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
+    .choice img { display: block; width: 100%; height: auto; aspect-ratio: 4 / 3; object-fit: cover; border-radius: 14px; background: #FAF8F3; margin-bottom: 10px; }
+    .choice b { font-family: var(--font-display); font-size: 22px; padding: 0 6px; }
+    .choice span { font-size: 15px; color: var(--fg2); padding: 0 6px; line-height: 1.45; }
     .rowbar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin: -12px 0 24px; }
     .pill { font-size: 15px; padding: 8px 15px; cursor: pointer; }
 
@@ -94,8 +103,11 @@
         <p class="kicker" data-t="k0"></p>
         <h1 data-t="welcomeH"></h1>
         <p class="lede" data-t="welcomeP"></p>
-        <div class="actions"><button class="primary" data-next data-t="start"></button><button class="skip" data-finish data-t="skipAll"></button></div>
-        <p class="justme"><span data-t="meQ"></span> <button type="button" id="just-me" data-t="meBtn"></button></p>
+        <div class="choices">
+          <button type="button" class="choice" data-next><img src="/art/ob-welcome.webp" alt="" width="1200" height="900" /><b data-t="forEvent"></b><span data-t="forEventD"></span></button>
+          <button type="button" class="choice" id="just-me"><img src="/art/just-me.webp" alt="" width="1200" height="896" /><b data-t="meBtn"></b><span data-t="meD"></span></button>
+        </div>
+        <div class="actions"><button class="skip" data-finish data-t="skipAll"></button></div>
       </div>
 
       <div class="step" data-step="name" data-art="ob-name">

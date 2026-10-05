@@ -6,6 +6,8 @@ All notable changes to this project are documented in this file. The format foll
 
 ### Added
 
+- **The welcome screen asks what you want captions for,** with two big illustrated choices: *For an event* or *Just for me*.
+- **Just for me: microphone and computer sound at once** (**Both**), to caption both sides of a call. The page suggests headphones, so the microphone doesn't pick up the speakers.
 - **Just for me (personal mode).** The same app now also captions your own computer: choose **Just for me** on the welcome screen. Listen to the **microphone** (you, a conversation in the room) or the **computer's sound** (a video call, a video, a class: the whole computer on Windows, a tab on a Mac), translate into any of 40 languages, read in big text or in a **floating window** over everything, and keep a transcript to search, summarize or download. Nothing is public in this mode, not even on your Wi-Fi: captions and transcripts need this computer or a sign-in. Guide: [docs/personal.md](docs/personal.md).
 - **Delete a transcript for good** from the dashboard's Transcripts (`DELETE /api/stages/:id/talks/:talk`).
 - **Captions inside Zoom, YouTube Live and Microsoft Teams.** A new **Integrations** page in the dashboard: paste a meeting's or stream's caption link (Zoom's API token, YouTube's Captions ingestion URL, Teams' CART link), pick the room and language, and its captions appear inside the meeting or stream, translated if you like. Each connector shows what it sent or why it fails, and has a **Test** button. Links are kept with the secrets, and only each platform's own address is accepted. Guide: [docs/integrations.md](docs/integrations.md).
@@ -35,6 +37,12 @@ All notable changes to this project are documented in this file. The format foll
 
 ### Changed
 
+- **Just for me stays just for you.** The choice is remembered and the app opens straight to your captions. The personal page has **My transcripts** and a quieter **Use it for events** (it asks first) instead of a link to the event dashboard. In personal mode the room list and the transcript library show only your room, never an event's; in event mode your personal room and its transcripts stay private and out of the event's lists.
+- **Delete a transcript from its own page** (admin only, which includes anyone on the server computer), so personal users never need the event dashboard.
+- **Sharper website:** every illustration has a 2× version for high-resolution screens (served only to them), and the animated loops are now 1600–1800 px wide instead of 960–1080. Upscaled with Higgsfield; the loops stay seamless.
+- The website's phone mockup has its notch inside the screen, as on a real phone (it sat on the bezel, and turned light in dark mode).
+- The transcript screenshot on the website and in the README shows the current page (line icons, not emoji). `npm run screenshots` retakes it from the real app.
+- Transcript search says "1 match", not "1 matches" (and the same in Spanish and Portuguese).
 - **Past transcripts are private by default.** The shipped `config/event.json` made every past talk public, though the docs (and the legal page) said only the talk in progress was. Organizers who want a public library choose it in Settings.
 - **The crew no longer sees stream keys.** Audio addresses reach crew dashboards with only their scheme and host (`rtmp://host/…`): an RTMP key or SRT passphrase stays with the admins.
 - **"Ask the talk" is limited per phone, not per venue.** Phones on one Wi-Fi share a public IP, so 6 questions a minute used to be shared by the whole audience. Now it's 6 per browser (a random id the page keeps), 60 per IP and 30 for the whole server.

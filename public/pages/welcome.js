@@ -13,9 +13,10 @@ document.documentElement.lang = LANG;
 const T = {
   en: {
     title: 'Welcome · OpenCaptions',
-    k0: 'Welcome', welcomeH: 'Let’s get your event ready.', welcomeP: 'A few quick questions, about two minutes. Skip anything you’re not sure about: you can change all of it later from the dashboard.',
-    meQ: 'Not an event? Captions for yourself: your calls, videos and conversations, on this computer.', meBtn: 'Just for me',
-    start: 'Let’s start', skipAll: 'Skip setup, I’ll do it later', back: 'Back', next: 'Continue',
+    k0: 'Welcome', welcomeH: 'What do you want captions for?', welcomeP: 'Pick one. You can change everything later, and switch from one to the other.',
+    forEvent: 'For an event', forEventD: 'Conferences, classes, public meetings: captions on every phone, the screen beside the stage and the livestream. A few questions, about two minutes.',
+    meBtn: 'Just for me', meD: 'Your calls, videos and conversations, on this computer: captions in your language, in big text or a window that floats over everything.',
+    skipAll: 'Skip setup, I’ll do it later', back: 'Back', next: 'Continue',
     k1: 'Step 1 of 7 · Your event', nameH: 'What’s your event called?', namePh: 'e.g. City Design Week 2026', nameHint: 'It appears on the audience’s phones, on the projector screen and on the QR posters.', skipName: 'Skip, decide later',
     k2: 'Step 2 of 7 · Rooms', roomsH: 'Where will people speak?', roomsP: 'One stage or many. Each room gets its own captions link and QR code.', addRoom: '+ Add a room', skipRooms: 'Skip, keep these rooms', roomPh: (i) => `Room ${i}`, remove: 'Remove room',
     presets: [['One room', ['Main Stage']], ['Two rooms', ['Main Stage', 'Room A']], ['Main stage + 3 rooms', ['Main Stage', 'Room A', 'Room B', 'Room C']]],
@@ -49,9 +50,10 @@ const T = {
   },
   es: {
     title: 'Bienvenida · OpenCaptions',
-    k0: 'Bienvenida', welcomeH: 'Preparemos tu evento.', welcomeP: 'Unas pocas preguntas, unos dos minutos. Saltá lo que no sepas: podés cambiar todo después desde el panel.',
-    meQ: '¿No es un evento? Subtítulos para vos: tus llamadas, videos y conversaciones, en esta compu.', meBtn: 'Solo para mí',
-    start: 'Empezar', skipAll: 'Saltar, lo hago después', back: 'Atrás', next: 'Continuar',
+    k0: 'Bienvenida', welcomeH: '¿Para qué querés subtítulos?', welcomeP: 'Elegí una. Podés cambiar todo después, y pasar de una a la otra.',
+    forEvent: 'Para un evento', forEventD: 'Congresos, clases, sesiones públicas: subtítulos en cada celular, en la pantalla junto al escenario y en el streaming. Unas preguntas, unos dos minutos.',
+    meBtn: 'Solo para mí', meD: 'Tus llamadas, videos y conversaciones, en esta compu: subtítulos en tu idioma, con letra grande o en una ventana que flota sobre todo.',
+    skipAll: 'Saltar, lo hago después', back: 'Atrás', next: 'Continuar',
     k1: 'Paso 1 de 7 · Tu evento', nameH: '¿Cómo se llama tu evento?', namePh: 'Ej: Semana del Diseño 2026', nameHint: 'Aparece en los celulares del público, en la pantalla del proyector y en los carteles con QR.', skipName: 'Saltar, lo decido después',
     k2: 'Paso 2 de 7 · Salas', roomsH: '¿Dónde va a hablar la gente?', roomsP: 'Un escenario o varios. Cada sala tiene su propio link de subtítulos y su QR.', addRoom: '+ Agregar una sala', skipRooms: 'Saltar, dejar estas salas', roomPh: (i) => `Sala ${i}`, remove: 'Quitar sala',
     presets: [['Una sala', ['Escenario principal']], ['Dos salas', ['Escenario principal', 'Sala A']], ['Principal + 3 salas', ['Escenario principal', 'Sala A', 'Sala B', 'Sala C']]],
@@ -124,6 +126,7 @@ function show(i) {
   $('err').textContent = '';
   cur = Math.max(0, Math.min(steps.length - 1, i));
   steps.forEach((s, k) => s.classList.toggle('on', k === cur));
+  document.querySelector('.wiz').classList.toggle('choosing', steps[cur].dataset.step === 'welcome');
   [...$('progress').children].forEach((p, k) => p.classList.toggle('on', k <= cur));
   const img = $('art'), src = `/art/${steps[cur].dataset.art}.webp`;
   if (!img.src.endsWith(src)) { img.classList.add('fade'); setTimeout(() => { img.src = src; img.onload = () => img.classList.remove('fade'); }, 150); }

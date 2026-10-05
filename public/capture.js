@@ -30,16 +30,28 @@ export async function openScreenAudio(ctx) {
 }
 
 /**
- * Start capturing. `onPcm(ArrayBuffer)` gets 100 ms of 16 kHz mono PCM16; `onEnded()` runs when the source goes away
- * (a mic unplugged, "Stop sharing" clicked). Returns { stop(), setGain(g), stream, ctx }.
+ * Start capturing `source`: 'mic', 'screen' (what the computer plays) or 'both'. `onPcm(ArrayBuffer)` gets 100 ms
+ * of 16 kHz mono PCM16; `onEnded()` runs when a source goes away (a mic unplugged, "Stop sharing" clicked). Returns { stop(), setGain(g), stream, ctx }.
  */
 export async function capture({ source, deviceId = '', raw = false, channel = 'mix', gain = 1, onPcm, onEnded }) {
   const ctx = new AudioContext();
   try {
-    await ctx.audioWorklet.addModule('/pcm-worklet.js');
-    const { stream, src } = source === 'screen' ? await openScreenAudio(ctx) : await openMic(ctx, { deviceId, raw });
+    // "both": the computer's sound and the microphone, mixed. The screen picker first, before anything else: browsers
+    // only show it right after a click, and the microphone prompt would use that moment up.
+    const inputs = [];
+    const release = () => inputs.forEach((x) => x.stream.getTracks().forEach((tk) => tk.stop()));
+    try {
+      if (source === 'screen' || source === 'both') inputs.push(await openScreenAudio(ctx));
+      if (source !== 'screen') inputs.push(await openMic(ctx, { deviceId, raw }));
+      await ctx.audioWorklet.addModule('/pcm-worklet.js');
+    } catch (e) { release(); throw e; }
     const node = new AudioWorkletNode(ctx, 'pcm-capture', { processorOptions: { channel, gain } });
-    src.connect(node);
+    for (const { src } of inputs) {
+      const level = ctx.createGain();
+      level.gain.value = inputs.length > 1 ? 0.7 : 1; // two sources add up: leave headroom so they don't clip
+      src.connect(level).connect(node);
+    }
+    const stream = new MediaStream(inputs.flatMap((x) => x.stream.getTracks()));
     const mute = ctx.createGain(); mute.gain.value = 0; node.connect(mute).connect(ctx.destination); // keeps the graph pulling
     node.port.onmessage = (e) => onPcm(e.data);
     stream.getAudioTracks().forEach((t) => { t.onended = () => onEnded?.(); });

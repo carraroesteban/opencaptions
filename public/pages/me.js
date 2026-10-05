@@ -13,10 +13,11 @@ import { LANGUAGE_CATALOG } from '/languages.js';
 const $ = (id) => document.getElementById(id);
 const T = {
   en: {
-    chip: 'Just for me', event: 'Event dashboard', src: 'Listen to', mic: 'Microphone', screen: 'Computer sound', device: 'Microphone',
+    chip: 'Just for me', mine: 'My transcripts', toEvents: 'Use it for events', toEventsQ: 'Switch OpenCaptions to events (rooms, QR codes, the dashboard)? Your transcripts stay here, and you can come back to Just for me from the setup wizard.', src: 'Listen to', mic: 'Microphone', screen: 'Computer sound', both: 'Both', device: 'Microphone',
     to: 'Translate to', none: 'Don’t translate', start: 'Start captions', stop: 'Stop',
     hintMic: 'Everything the microphone hears is captioned: you, or a conversation in the room.',
     hintScreen: 'Captions what the computer plays: a call, a video, a class. Your browser asks what to share. On Windows, choose the entire screen and turn on “Share system audio”. On a Mac, choose the tab that’s playing (Chrome or Edge) and turn on its audio.',
+    hintBoth: 'Your microphone and the computer’s sound together: both sides of a call. Use headphones, or the microphone also hears the speakers and everything is captioned twice. The browser asks what to share, as with Computer sound.',
     noAudio: 'No sound was shared. Try again and turn on “Share system audio” (or the tab’s audio).',
     denied: 'The browser didn’t allow it. Check the microphone or screen-sharing permission and try again.',
     ended: 'The sound source stopped (the microphone was unplugged or sharing ended).',
@@ -25,10 +26,11 @@ const T = {
     aiTitle: 'The AI that writes the captions', floating: 'Floating captions', transcript: 'Transcript', download: 'Download (.txt)', room: 'Just for me', ai: { gemini: 'Gemini', local: 'On this computer', mock: 'Simulated' },
   },
   es: {
-    chip: 'Solo para mí', event: 'Panel de eventos', src: 'Escuchar', mic: 'Micrófono', screen: 'Sonido de la compu', device: 'Micrófono',
+    chip: 'Solo para mí', mine: 'Mis transcripciones', toEvents: 'Usarlo para eventos', toEventsQ: '¿Pasar OpenCaptions a eventos (salas, códigos QR, el panel)? Tus transcripciones quedan acá, y podés volver a Solo para mí desde el asistente.', src: 'Escuchar', mic: 'Micrófono', screen: 'Sonido de la compu', both: 'Los dos', device: 'Micrófono',
     to: 'Traducir a', none: 'No traducir', start: 'Empezar a subtitular', stop: 'Detener',
     hintMic: 'Se subtitula todo lo que escucha el micrófono: vos, o una conversación en la sala.',
     hintScreen: 'Subtitula lo que suena en la compu: una llamada, un video, una clase. El navegador te pregunta qué compartir. En Windows, elegí la pantalla completa y activá «Compartir audio del sistema». En Mac, elegí la pestaña que está sonando (Chrome o Edge) y activá su audio.',
+    hintBoth: 'Tu micrófono y el sonido de la compu juntos: los dos lados de una llamada. Usá auriculares, o el micrófono también escucha los parlantes y todo se subtitula dos veces. El navegador te pregunta qué compartir, como con Sonido de la compu.',
     noAudio: 'No se compartió sonido. Probá de nuevo y activá «Compartir audio del sistema» (o el audio de la pestaña).',
     denied: 'El navegador no lo permitió. Revisá el permiso del micrófono o de compartir pantalla y probá de nuevo.',
     ended: 'Se cortó el sonido (se desconectó el micrófono o se dejó de compartir).',
@@ -40,7 +42,7 @@ const T = {
 const t = T[LANG] || T.en;
 document.documentElement.lang = LANG;
 document.title = `OpenCaptions · ${t.chip}`;
-$('event-link').before(prefsControls());
+$('mine-link').before(prefsControls());
 
 await ensureSignedIn();
 const api = async (method, url, body) => {
@@ -52,20 +54,31 @@ const api = async (method, url, body) => {
 
 // ---------- the personal room ----------
 const ROOM = 'me';
-let ev = await getEvent();
+const ev = await getEvent(); // the event's language names
 let S = await api('GET', '/api/setup');
-let room = ev.stages.find((s) => s.id === ROOM);
+// The room comes from the setup (every room): the public list leaves the personal room out in event mode.
+const findRoom = async () => {
+  const st = (await api('GET', '/api/setup')).stages.find((x) => x.id === ROOM);
+  return st && { ...st, languages: ['orig', ...st.targets.filter((x) => x !== st.source)] };
+};
+let room = await findRoom();
 const names = (c) => LANGUAGE_CATALOG[c] || ev.languages[c] || c;
 let to = store.get('me.to', '');
 if (!room) {
   await api('POST', '/api/stages', { id: ROOM, name: t.room, source: 'auto', targets: [to || LANG] });
-  ev = await getEvent();
-  room = ev.stages.find((s) => s.id === ROOM);
+  room = await findRoom();
 }
 
 // ---------- labels ----------
 $('mode-chip').textContent = t.chip;
-$('event-link').textContent = t.event;
+$('mine-link').append(` ${t.mine}`);
+$('to-events').textContent = t.toEvents;
+// Switching to events is deliberate: ask, then the dashboard (its setup wizard if the event isn't set up yet).
+$('to-events').onclick = async () => {
+  if (!confirm(t.toEventsQ)) return;
+  await api('PUT', '/api/setup', { mode: 'event' });
+  location.href = '/admin.html';
+};
 $('src-label').textContent = t.src;
 $('device-label').textContent = t.device;
 $('to-label').textContent = t.to;
@@ -83,8 +96,8 @@ mountIcons();
 let source = store.get('me.source', 'mic');
 function renderSource() {
   for (const b of $('src').children) b.setAttribute('aria-checked', String(b.dataset.src === source));
-  $('f-device').classList.toggle('hidden', source !== 'mic');
-  $('hint').textContent = source === 'mic' ? t.hintMic : t.hintScreen;
+  $('f-device').classList.toggle('hidden', source === 'screen');
+  $('hint').textContent = { mic: t.hintMic, screen: t.hintScreen, both: t.hintBoth }[source];
 }
 $('src').onclick = (e) => {
   const s = e.target.closest('[data-src]')?.dataset.src;
@@ -101,7 +114,7 @@ async function listMics() {
     if (devs.some((d) => d.deviceId === saved)) $('device').value = saved;
   } catch { /* no permission yet: labels come after the first start */ }
 }
-$('device').onchange = () => { store.set('me.device', $('device').value); if (running && source === 'mic') { stop(); start(); } };
+$('device').onchange = () => { store.set('me.device', $('device').value); if (running && source !== 'screen') { stop(); start(); } };
 listMics();
 
 const langs = Object.keys(LANGUAGE_CATALOG).sort((a, b) => names(a).localeCompare(names(b)));
@@ -113,8 +126,7 @@ $('to').onchange = async () => {
   // The room translates into the chosen language (or keeps its last one when translation is off: cheaper to leave).
   if (to && !(room.languages || []).includes(to)) {
     await api('PATCH', `/api/stages/${ROOM}`, { targets: [to] }).catch(() => {});
-    ev = await getEvent();
-    room = ev.stages.find((s) => s.id === ROOM);
+    room = await findRoom();
   }
   view.reconnect();
   render();
@@ -173,7 +185,7 @@ async function start() {
       },
       onEnded: () => { stop(); setStatus(t.ended, 'bad'); },
     });
-    if (source === 'mic') listMics();
+    if (source !== 'screen') listMics();
     ingest = new Socket(() => wsUrl('/ws/ingest', { stage: ROOM, kind: 'personal', label: source }), {
       open() { while (pending.length && ingest?.ready) ingest.send(pending.shift()); },
       message(m) {

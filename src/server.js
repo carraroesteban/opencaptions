@@ -187,7 +187,7 @@ app.get('/api/event', (req, res) => {
     audienceAi: audienceAiEnabled,
     timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
     publicTranscripts: PUBLIC_TRANSCRIPTS,
-    stages: [...stages.values()].map((s) => ({
+    stages: visibleStages().map((s) => ({
       id: s.id,
       name: s.def.name,
       title: s.talk.title,
@@ -306,10 +306,15 @@ let PUBLIC_TRANSCRIPTS = (process.env.PUBLIC_TRANSCRIPTS || setup.publicTranscri
 // Personal mode ("just for me"): the captions are someone's own calls and conversations. Nothing is public: reading
 // them needs this computer or a sign-in, even for other devices on the same Wi-Fi.
 const personal = () => setup.mode === 'personal';
+const PERSONAL_ROOM = 'me'; // the room me.html captions into
+// The rooms people see: in personal mode only the personal one, never the event's rooms (their transcripts included);
+// in event mode never the personal one. Its captions are someone's own calls: private in both modes.
+const visibleStages = () => [...stages.values()].filter((st) => personal() === (st.id === PERSONAL_ROOM));
+const isPrivate = (stageId) => personal() || stageId === PERSONAL_ROOM;
 const isCurrent = (st, talkId) => !talkId || talkId === st.talk.id;
-const canReadTalk = (req, st, talkId) => (!personal() && (PUBLIC_TRANSCRIPTS === 'all' || (PUBLIC_TRANSCRIPTS === 'current' && isCurrent(st, talkId)))) || allows(identify(req, reqUrl(req)), 'crew');
+const canReadTalk = (req, st, talkId) => (!isPrivate(st.id) && (PUBLIC_TRANSCRIPTS === 'all' || (PUBLIC_TRANSCRIPTS === 'current' && isCurrent(st, talkId)))) || allows(identify(req, reqUrl(req)), 'crew');
 const talkAccess = (req, res, next) => (canReadTalk(req, req.stage, req.query.talk || req.params.talk) ? next() : crew(req, res, next));
-const listAccess = (req, res, next) => (PUBLIC_TRANSCRIPTS === 'all' && !personal() ? next() : crew(req, res, next));
+const listAccess = (req, res, next) => (PUBLIC_TRANSCRIPTS === 'all' && !isPrivate(req.params.id) ? next() : crew(req, res, next));
 
 /** All final segments of a talk: from disk, or from memory when STORE_TRANSCRIPTS=false (current talk only). */
 function talkSegs(st, talkId) {
@@ -343,7 +348,7 @@ app.get('/api/talks', (req, res) => {
   const all = (PUBLIC_TRANSCRIPTS === 'all' && !personal()) || signedIn;
   if ((PUBLIC_TRANSCRIPTS === 'none' || personal()) && !signedIn) return res.status(401).json({ error: 'admin token required' });
   const out = [];
-  for (const st of stages.values()) {
+  for (const st of visibleStages()) {
     const saved = all ? store.listTalks(st.id) : [];
     for (const info of [talkInfo(st, st.talk.id), ...saved.filter((t) => t.id !== st.talk.id).map((t) => talkInfo(st, t.id, t))]) {
       if (info && info.segments > 0) out.push(info);
@@ -1010,7 +1015,7 @@ function redactUrl(u) {
 const forCrew = (snap) => ({ ...snap, stages: snap.stages.map((st) => ({ ...st, pull: redactUrl(st.pull), ingest: st.ingest?.kind === 'pull' ? { ...st.ingest, label: redactUrl(st.ingest.label) } : st.ingest })) });
 const redactDef = (d) => (d && typeof d === 'object' && 'pull' in d ? { ...d, pull: redactUrl(d.pull) } : d);
 function snapshot() {
-  const list = [...stages.values()].map((s) => s.status());
+  const list = visibleStages().map((s) => s.status()); // the personal room isn't one of the event's rooms
   return {
     engine: config.engine,
     model: engineLabel(),
@@ -1081,7 +1086,7 @@ server.on('upgrade', (req, socket, head) => {
   if (!wsAllowed(req)) return reject(socket, 429, 'Too Many Requests');
   if (kind !== 'view' && !originAllowed(req)) return reject(socket, 403, 'Forbidden');
   if (kind === 'view' && viewerCount >= MAX_VIEWERS) return reject(socket, 503, 'Service Unavailable');
-  if (kind === 'view' && personal() && !allows(identify(req, url), 'crew')) return reject(socket, 401, 'Unauthorized');
+  if (kind === 'view' && isPrivate(url.searchParams.get('stage')) && !allows(identify(req, url), 'crew')) return reject(socket, 401, 'Unauthorized');
   // Sockets don't take a password in the URL (proxies log URLs): ingest uses a header or a ticket, the dashboard its
   // session cookie.
   const noQuery = new URL(url);
@@ -1292,7 +1297,7 @@ server.listen(config.port, config.host, () => {
   console.log(`  ${tty.c.gray('Press Ctrl+C to stop.')}\n`);
   // --open (the double-click starter): show the dashboard. On this computer it needs no password.
   if (process.argv.includes('--open') && !process.env.OC_DOCKER) {
-    const url = `${tls ? 'https' : 'http'}://localhost:${config.port}/admin.html`;
+    const url = `${tls ? 'https' : 'http'}://localhost:${config.port}/${personal() ? 'me.html' : 'admin.html'}`; // "just for me" opens straight to it
     const [cmd, args] = process.platform === 'darwin' ? ['open', [url]] : process.platform === 'win32' ? ['cmd', ['/c', 'start', '""', url]] : ['xdg-open', [url]];
     try { spawn(cmd, args, { stdio: 'ignore', detached: true, windowsHide: true }).unref(); } catch { /* the address is printed above */ }
   }
