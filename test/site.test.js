@@ -41,7 +41,7 @@ test('internal links resolve and structured data parses', () => {
 test('the sitemap lists every page', () => {
   const map = fs.readFileSync(path.join(OUT, 'sitemap.xml'), 'utf8');
   for (const f of html.filter((x) => x.endsWith('index.html'))) {
-    const url = '/' + path.relative(OUT, f).replace(/index\.html$/, '');
+    const url = '/' + path.relative(OUT, f).split(path.sep).join('/').replace(/index\.html$/, ''); // web paths, also on Windows
     assert.ok(map.includes(`<loc>https://opencaptions.kvza.ar${url}</loc>`), `missing ${url}`);
   }
 });
