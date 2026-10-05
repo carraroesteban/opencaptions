@@ -31,7 +31,7 @@ test('every relative link and anchor in the Markdown files works', () => {
   const broken = [];
   for (const f of files) {
     const md = fs.readFileSync(path.join(ROOT, f), 'utf8').replace(/```[\s\S]*?```/g, '').replace(/`[^`\n]*`/g, ''); // code isn't links
-    for (const [, raw] of md.matchAll(/\]\(([^)\s]+)(?:\s+"[^"]*")?\)|(?:src|href)="([^"]+)"/g).map((m) => [m[0], m[1] || m[2]])) {
+    for (const [, raw] of [...md.matchAll(/\]\(([^)\s]+)(?:\s+"[^"]*")?\)|(?:src|href)="([^"]+)"/g)].map((m) => [m[0], m[1] || m[2]])) {
       if (/^(https?:|mailto:|data:)/.test(raw) || raw.startsWith('/')) continue;
       const [target, hash] = raw.split('#');
       const file = target ? path.normalize(path.join(path.dirname(f), decodeURIComponent(target))) : f;
