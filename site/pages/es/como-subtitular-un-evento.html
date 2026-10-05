@@ -1,0 +1,59 @@
+<!--{
+  "label": "Cómo subtitular un evento",
+  "title": "Cómo poner subtítulos en vivo en un evento · OpenCaptions",
+  "description": "Guía práctica para subtitular en vivo un congreso, una clase o una sesión pública: audio, pantallas, QR, traducción, ensayo y el día del evento.",
+  "h1": "Cómo poner subtítulos en vivo en un evento",
+  "lede": "Un plan práctico para subtitular un congreso, una clase o una sesión pública, desde la consola de sonido hasta la última transcripción. Usa OpenCaptions, pero la mayoría de los consejos sirven para cualquier sistema de subtitulado en vivo.",
+  "pair": "how-to-caption-an-event",
+  "updated": "2026-10-05"
+}-->
+<h2>1. Definí qué necesitás</h2>
+<p>Tres preguntas ordenan todo lo demás:</p>
+<ul>
+  <li><strong>¿Cuántas salas</strong> funcionan al mismo tiempo? Cada una necesita su propia señal de audio.</li>
+  <li><strong>¿Qué idiomas</strong> se hablan en el escenario y en cuáles lee el público? Los subtítulos en el idioma de quien habla ayudan a personas sordas o con hipoacusia, y a cualquiera en una sala ruidosa. Las traducciones ayudan a todos los demás.</li>
+  <li><strong>¿Dónde se ven los subtítulos?</strong> En el celular del público, en una pantalla junto al escenario, en el streaming, o en los tres.</li>
+</ul>
+<p>Pensá también cuánta precisión necesitás. Los subtítulos con IA son rápidos y económicos, pero para actos judiciales o médicos conviene contratar subtitulado humano o revisar las transcripciones después.</p>
+
+<h2>2. Conseguí un audio limpio</h2>
+<p>Los subtítulos son tan buenos como el sonido que les llega. La mejor fuente es una salida de la consola de sonido, no un micrófono apuntando a un parlante.</p>
+<ul>
+  <li>Pedile al técnico de sonido una <strong>salida auxiliar o de matriz</strong> con todos los micrófonos del escenario, sin música ni videos.</li>
+  <li>Conectala a una computadora en la sala con una <strong>placa de audio USB</strong>. Sirve cualquier notebook o mini PC reciente: solo envía audio.</li>
+  <li>Si la sala ya se transmite desde OBS o vMix, OpenCaptions puede tomar ese stream y no necesitás otra computadora.</li>
+</ul>
+
+<h2>3. Prepará el servidor</h2>
+<p>Instalá <a href="https://nodejs.org/es/download">Node.js</a>, descargá OpenCaptions para Mac o Windows y abrilo. El asistente te pide:</p>
+<ol>
+  <li>El nombre del evento y las salas.</li>
+  <li>Los idiomas de cada sala.</li>
+  <li>La IA: una clave gratuita de Gemini desde Google AI Studio, o una IA que corre en tu propia computadora, sin ninguna cuenta.</li>
+  <li>Una dirección web pública, para que los celulares con datos móviles lleguen a los subtítulos. Se crea con un clic.</li>
+</ol>
+<p>Después cargá el <strong>glosario</strong>: nombres de oradores, marcas y términos técnicos. Es lo que más mejora la precisión. Si tenés la agenda en Swapcard, Sessionize o una planilla, pegala también: cada charla toma su título sola y los nombres de los oradores se escriben bien.</p>
+
+<h2>4. Poné los subtítulos donde la gente los vea</h2>
+<ul>
+  <li><strong>Celulares:</strong> imprimí el cartel con QR de cada sala y poné uno en la puerta y otro cerca del escenario. Pedile a quien presenta que lo mencione al empezar cada charla.</li>
+  <li><strong>Pantalla del escenario:</strong> abrí la página de pantalla de la sala en la computadora conectada a la tele o el proyector junto al escenario, y apretá F para pantalla completa. También muestra el QR de la sala.</li>
+  <li><strong>Streaming:</strong> agregá la página de overlay como fuente de navegador en OBS o vMix. Su editor de estilo arma la dirección por vos.</li>
+</ul>
+
+<h2>5. Ensayá</h2>
+<p>El día anterior, o al menos una hora antes de abrir las puertas, probá cada sala unos minutos con voz real:</p>
+<ul>
+  <li>Fijate que el nivel de audio de cada sala se mueva en el panel y que los subtítulos aparezcan en pocos segundos.</li>
+  <li>Escaneá cada QR con un celular con datos móviles, no con el wifi del lugar.</li>
+  <li>Leé la pantalla del escenario desde la última fila. Si cuesta, agrandá la letra.</li>
+  <li>Activá las alertas en tu celular, así te enterás si una sala se queda muda aunque no estés mirando el panel.</li>
+</ul>
+
+<h2>6. El día del evento</h2>
+<p>Activá el <strong>modo evento</strong> cuando abran las puertas: bloquea la configuración para que nada cambie por accidente, y los controles en vivo siguen funcionando. Los voluntarios pueden entrar con la contraseña del equipo, que solo llega a esos controles. Si una charla se pasa de horario, el panel te avisa y empieza la siguiente con un clic.</p>
+<p>Si se corta internet, una notebook en el lugar con la IA local puede tomar todas las salas automáticamente, y la nube vuelve a tomarlas cuando la conexión se estabiliza.</p>
+
+<h2>7. Después del evento</h2>
+<p>La transcripción de cada charla queda lista para leer, buscar y descargar como texto o como archivo de subtítulos (SRT y VTT) para las grabaciones. El informe del evento lista la duración, el público y el costo de IA de cada charla: sirve para los sponsors y para armar el presupuesto del año que viene.</p>
+<p class="note">La lista completa para el día del evento está en la <a href="https://github.com/carraroesteban/opencaptions/blob/main/docs/operations/event-day.es.md">guía del día del evento</a>. Las dudas sobre costo, precisión o privacidad están en las <a href="/es/preguntas-frecuentes/">preguntas frecuentes</a>.</p>

@@ -233,3 +233,32 @@ section.band .eyebrow { color: #A9A6B0; }
 .apps .tile.on svg { background: var(--lime); color: var(--ink); }
 .apps .tile.on { color: var(--paper); }
 @media (max-width: 560px) { .apps .tile { width: 70px; } .apps .tile svg { width: 26px; height: 26px; } }
+
+/* ---- guides (site/pages, rendered by scripts/site.js) ---- */
+.wrap.narrow { max-width: 780px; }
+.doc { padding: 40px 0 72px; }
+.doc .crumbs { font-size: 14px; color: var(--fg2); margin: 8px 0 28px; }
+.doc .crumbs a { color: inherit; }
+.doc h1 { font-size: clamp(36px, 6vw, 58px); line-height: 1.02; letter-spacing: -.035em; margin: 0 0 18px; }
+.doc .lede { max-width: none; }
+.doc .updated { font-size: 14px; color: var(--fg2); margin: 14px 0 36px; }
+.doc h2 { font-size: clamp(26px, 3.6vw, 34px); margin: 48px 0 12px; letter-spacing: -.02em; }
+.doc h3 { font-size: 21px; margin: 32px 0 8px; }
+.doc p, .doc li { font-size: 18px; line-height: 1.65; }
+.doc p { margin: 0 0 16px; }
+.doc ul, .doc ol { padding-left: 1.3em; margin: 0 0 18px; display: grid; gap: 6px; }
+.doc a { color: var(--fg); text-decoration-thickness: 1.5px; text-underline-offset: 3px; }
+.doc .table { overflow-x: auto; margin: 8px 0 24px; border: 1px solid var(--line); border-radius: 14px; }
+.doc table { width: 100%; border-collapse: collapse; font-size: 16px; }
+.doc th, .doc td { text-align: left; vertical-align: top; padding: 12px 14px; border-bottom: 1px solid var(--line); }
+.doc tr:last-child td { border-bottom: 0; }
+.doc th { background: var(--bg2); font-weight: 700; }
+.doc .note { border-left: 3px solid var(--lime, #D4FF3A); background: var(--bg2); padding: 14px 18px; border-radius: 0 12px 12px 0; }
+.doc-cta { margin: 56px 0 0; padding: 28px; border: 1px solid var(--line); border-radius: 22px; background: var(--bg2); box-shadow: var(--shadow-sm); }
+.doc-cta h2 { margin: 0 0 8px; }
+.doc-cta .cta { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 18px; }
+.doc-cta .cta a { text-decoration: none; }
+.doc-more { margin-top: 40px; }
+.doc-more h2 { font-size: 22px; margin: 0 0 10px; }
+.doc-more ul { list-style: none; padding: 0; }
+footer.site .guides { display: flex; gap: 10px 22px; flex-wrap: wrap; flex-basis: 100%; order: 9; }

@@ -1,0 +1,45 @@
+<!--{
+  "label": "Frequently asked questions",
+  "title": "Live captions FAQ: cost, accuracy, languages · OpenCaptions",
+  "description": "OpenCaptions, the free live captioning and translation app for events: what it costs, how accurate it is, which languages it supports and where audio goes.",
+  "h1": "Frequently asked questions",
+  "lede": "What it costs, how well it works and what you need to run it. If your question isn't here, ask it on GitHub.",
+  "pair": "preguntas-frecuentes",
+  "faq": true,
+  "updated": "2026-10-05"
+}-->
+<h2>Cost</h2>
+<h3>Is OpenCaptions free?</h3>
+<p>Yes. The software is free and open source under the MIT license, with no paid plan and no limit on rooms or attendees. You pay only for the AI, if you use the cloud one.</p>
+<h3>How much does the AI cost?</h3>
+<p>With Google's Gemini, about US$2.2 per room-hour of speech, plus US$0.4–0.6 per extra language. Silence is never billed. A 40-minute talk captioned from English into Spanish costs about US$1.80. With local mode, the AI runs on your own computer and costs nothing.</p>
+<h3>Do attendees pay or sign up?</h3>
+<p>No. They scan the room's QR code and read the captions in their phone's browser, with no app, account or payment.</p>
+
+<h2>Quality</h2>
+<h3>How accurate are the captions?</h3>
+<p>Good enough for most talks, classes and meetings, but not as accurate as a professional human captioner. Strong accents, unusual names and crosstalk cause most mistakes. Adding speaker names and specialist terms to the glossary fixes most spelling problems. For legal or medical proceedings, plan a human review of the transcripts.</p>
+<h3>How long is the delay?</h3>
+<p>Captions in the speaker's language usually appear two to three seconds after the words are spoken, and translations three to five seconds after, once the sentence is complete. In local mode, add a few seconds.</p>
+<h3>Which languages does it support?</h3>
+<p>You choose the languages for each room, for example Spanish, English and Portuguese, and the AI translates between them. Speakers can switch language mid-talk: every caption track follows.</p>
+<h3>Does it identify who is speaking?</h3>
+<p>Not automatically. A crew member taps the speaker's name on the dashboard (from the agenda, the host or someone in the Q&amp;A), and from then on captions, transcripts and subtitle files say who is talking.</p>
+
+<h2>Running it</h2>
+<h3>What do I need?</h3>
+<p>A computer to run the server (a laptop, a mini PC or a small cloud server), an audio feed from each room's sound desk, and a screen or projector if you want captions beside the stage. Attendees only need a phone with a browser. One small server handles about ten rooms.</p>
+<h3>Do I need to be technical?</h3>
+<p>No. On a Mac or Windows PC, you install Node.js, download OpenCaptions and open it. A setup wizard asks for the event's name, rooms and languages, connects the AI and creates a public web address for the QR codes. Getting clean audio from the sound desk is the part where a technician helps most.</p>
+<h3>Does it work without internet?</h3>
+<p>Yes, in local mode: speech recognition and translation run on a laptop at the venue, and phones connect over the local Wi-Fi. You can also use the cloud normally and keep the laptop as a backup that takes over if the internet drops.</p>
+<h3>Can I caption a livestream?</h3>
+<p>Yes. An overlay page adds the captions to OBS or vMix, in one or two languages, and OBS or vMix can also send the room's audio to OpenCaptions directly.</p>
+
+<h2>Privacy</h2>
+<h3>Where does the audio go?</h3>
+<p>You run OpenCaptions on your own computer or server, and transcripts stay there. With Gemini, the room's audio is sent to Google for transcription and translation; with Google Cloud's Vertex AI you can keep it in your own project and region. In local mode, audio never leaves the building.</p>
+<h3>Is audio recorded?</h3>
+<p>No. Audio is never written to disk. Only the text transcripts are kept, and you decide who can read them.</p>
+<h3>Who can change the setup?</h3>
+<p>Only people who sign in to the dashboard. Sign-ins expire, volunteers can get a crew role that only reaches the live controls, and you can add two-factor codes or sign in with your company's Google or Microsoft account. The audience pages are read-only.</p>

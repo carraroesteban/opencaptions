@@ -11,6 +11,8 @@ All notable changes to this project are documented in this file. The format foll
 - Three of the *Made for event day* panels are animated too (the laptop that keeps captioning offline, the phone that buzzes, the Q&A).
 - The website's main illustration now moves: a five-second seamless loop (captions appearing on the phones and the stage screen, the audience reading), made with Higgsfield (Kling) from the illustration itself. About 100 KB each. Videos start only when they scroll into view, pause when they leave, and stay still for people who turn on "reduce motion".
 - The QR posters show a small "scan me" pictogram next to the instructions, in black only so it prints anywhere. Posters still fit on one A4 page.
+- **Guides on the website,** in English and Spanish, for what organizers search for: live captions for conferences, how to caption an event step by step, a FAQ (cost, accuracy, languages, offline use, privacy) and the captioning options compared. Each is an HTML fragment in `site/pages/<lang>/`; `scripts/site.js` gives it the shared layout and links it from the home page's footer. A test checks that every guide has its pair in the other language and that links resolve.
+- The website tells search engines what it is: a generated sitemap (every page, both languages, and the demo video), `robots.txt`, and structured data (the app, the demo video, breadcrumbs, articles and the FAQ's questions).
 
 ### Changed
 

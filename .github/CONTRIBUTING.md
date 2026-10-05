@@ -15,7 +15,7 @@ npm run typecheck     # TypeScript checks the JSDoc types in src/ and scripts/ (
 npm run a11y          # accessibility check of every page (axe-core, WCAG 2.2 AA; needs Google Chrome)
 ```
 
-Also useful: `npm run app` (what the desktop launchers run), `npm run site` (the website at http://localhost:8081), `npm run package` (the Mac download in `dist/`) `npm run docs:images` (the diagrams) and `npm run demo:record` (the website's demo video).
+Also useful: `npm run app` (what the desktop launchers run), `npm run site` (the website at http://localhost:8081), `npm run package` (the Mac download in `dist/`) `npm run docs:images` (the diagrams) and `npm run demo:record` (the website's demo video). To add a guide to the website, add `site/pages/en/<slug>.html` and its Spanish pair in `site/pages/es/`, each starting with the JSON header the others have (title, description, `pair`…); the sitemap and the footer links update themselves.
 
 ### End-to-end test
 

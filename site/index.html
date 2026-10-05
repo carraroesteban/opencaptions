@@ -23,6 +23,7 @@
   <meta property="og:image:height" content="630" />
   <meta property="og:locale" content="en_US" />
   <meta name="twitter:card" content="summary_large_image" />
+  <script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"SoftwareApplication","name":"OpenCaptions","url":"https://opencaptions.kvza.ar/","description":"Live captions and translation for conferences, classrooms, town halls and festivals. Every attendee follows along on their phone, in their own language. Free and open source, self-hosted.","inLanguage":"en","applicationCategory":"MultimediaApplication","applicationSubCategory":"Live captioning and translation","operatingSystem":"macOS, Windows, Linux, Docker","softwareVersion":"0.2.0","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"license":"https://opensource.org/licenses/MIT","isAccessibleForFree":true,"downloadUrl":"https://github.com/carraroesteban/opencaptions/releases/latest","codeRepository":"https://github.com/carraroesteban/opencaptions","image":"https://opencaptions.kvza.ar/brand/og.png","screenshot":"https://opencaptions.kvza.ar/media/demo-poster.jpg","featureList":["Live captions on every phone, no app","Real-time translation","Stage screen and livestream overlay","Works offline with a local AI","Transcripts and subtitle files"]},{"@type":"VideoObject","name":"OpenCaptions: a talk captioned live, on the stage screen and on a phone","description":"A real 30-second talk captioned live in Spanish by OpenCaptions, on the stage screen and on a phone in the audience.","thumbnailUrl":"https://opencaptions.kvza.ar/media/demo-poster.jpg","contentUrl":"https://opencaptions.kvza.ar/media/demo.mp4","uploadDate":"2026-10-05","duration":"PT34S","inLanguage":"es"}]}</script>
   <script>/* light by default; the ◐ button switches and remembers */ let t = 'light'; try { t = JSON.parse(localStorage.getItem('oc.theme')) || t; } catch {} document.documentElement.dataset.theme = t; document.querySelector('meta[name=theme-color]').content = t === 'dark' ? '#111014' : '#FAF8F3';</script>
   <link rel="stylesheet" href="/style.css" />
   <link rel="stylesheet" href="/site.css" />
@@ -192,6 +193,7 @@
     <div class="wrap">
       <a class="brand" href="/">OpenCaptions</a>
       <span>Free and open source · MIT license</span>
+      <!--guides--><!--/guides-->
       <a href="https://github.com/carraroesteban/opencaptions">GitHub</a>
       <a href="/es/" hreflang="es">Español</a>
     </div>

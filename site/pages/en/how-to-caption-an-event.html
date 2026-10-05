@@ -1,0 +1,59 @@
+<!--{
+  "label": "How to caption an event",
+  "title": "How to add live captions to an event, step by step · OpenCaptions",
+  "description": "A practical guide to live captioning a conference, class or public meeting: audio, screens, QR codes, translation, rehearsal and the day itself.",
+  "h1": "How to add live captions to an event",
+  "lede": "A practical plan for captioning a conference, a class or a public meeting, from the sound desk to the last transcript. It uses OpenCaptions, but most of the advice applies to any live captioning setup.",
+  "pair": "como-subtitular-un-evento",
+  "updated": "2026-10-05"
+}-->
+<h2>1. Decide what you need</h2>
+<p>Three questions shape everything else:</p>
+<ul>
+  <li><strong>How many rooms</strong> run at the same time? Each one needs its own audio feed.</li>
+  <li><strong>Which languages</strong> do people speak on stage, and which do they read? Captions in the speaker's language help people who are deaf or hard of hearing, and anyone in a noisy room. Translations help everyone else.</li>
+  <li><strong>Where do captions appear?</strong> On attendees' phones, on a screen beside the stage, in the livestream, or all three.</li>
+</ul>
+<p>Also check how much accuracy you need. AI captions are fast and inexpensive, but for legal or medical proceedings you should book a human captioner or review transcripts afterwards.</p>
+
+<h2>2. Get clean audio</h2>
+<p>Captions are only as good as the sound that reaches them. The best source is a feed from the sound desk, not a microphone pointed at a loudspeaker.</p>
+<ul>
+  <li>Ask the audio technician for an <strong>aux or matrix output</strong> with every microphone on stage, and without music or video playback.</li>
+  <li>Connect it to a computer in the room with a <strong>USB audio interface</strong>. Any recent laptop or mini PC works; it only sends audio.</li>
+  <li>If the room is already streamed from OBS or vMix, OpenCaptions can take that stream instead, and you don't need an extra computer.</li>
+</ul>
+
+<h2>3. Set up the server</h2>
+<p>Install <a href="https://nodejs.org/en/download">Node.js</a>, download OpenCaptions for Mac or Windows and open it. The setup wizard asks for:</p>
+<ol>
+  <li>The event's name and your rooms.</li>
+  <li>The languages for each room.</li>
+  <li>The AI: a free Gemini API key from Google AI Studio, or AI that runs on your own computer with no account at all.</li>
+  <li>A public web address, so phones on mobile data can reach the captions. One click creates one.</li>
+</ol>
+<p>Then add your <strong>glossary</strong>: speaker names, brands and specialist terms. It's the single biggest improvement in accuracy. If you have the agenda in Swapcard, Sessionize or a spreadsheet, paste it in too: every talk gets its title automatically, and speakers' names are spelled right.</p>
+
+<h2>4. Put captions where people can see them</h2>
+<ul>
+  <li><strong>Phones:</strong> print the QR poster for each room and put one at the door and one near the stage. Ask the host to mention it at the start of each session.</li>
+  <li><strong>Stage screen:</strong> open the room's screen page on the computer connected to a TV or projector beside the stage, and press F for full screen. It shows the room's QR code too.</li>
+  <li><strong>Livestream:</strong> add the overlay page as a browser source in OBS or vMix. Its style editor builds the address for you.</li>
+</ul>
+
+<h2>5. Rehearse</h2>
+<p>A day before, or at least an hour before doors open, run every room for a few minutes with real speech:</p>
+<ul>
+  <li>Check that each room's audio level moves on the dashboard and that captions appear within a few seconds.</li>
+  <li>Scan each QR code with a phone on mobile data, not the venue Wi-Fi.</li>
+  <li>Read the stage screen from the back row. If it's hard, make the text bigger.</li>
+  <li>Set up alerts on your phone, so you hear about a silent room even when you're away from the dashboard.</li>
+</ul>
+
+<h2>6. On the day</h2>
+<p>Turn on <strong>Event mode</strong> when doors open: it locks the setup so nothing changes by accident, while the live controls keep working. Volunteers can sign in with the crew password, which only reaches those controls. If a talk runs over, the dashboard says so and starts the next one with one click.</p>
+<p>If the internet drops, a laptop at the venue running the local AI can take over every room automatically, and the cloud takes back over when the connection is stable.</p>
+
+<h2>7. After the event</h2>
+<p>Every talk's transcript is ready to read, search and download as text or subtitle files (SRT and VTT) for the recordings. The event report lists each talk's length, audience and AI cost, which is useful for sponsors and for planning next year's budget.</p>
+<p class="note">The full event-day checklist is in the <a href="https://github.com/carraroesteban/opencaptions/blob/main/docs/operations/runbook.md">runbook</a>. Questions about cost, accuracy or privacy are answered in the <a href="/faq/">FAQ</a>.</p>

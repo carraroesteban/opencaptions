@@ -1,0 +1,55 @@
+<!--{
+  "label": "Live captions for conferences",
+  "title": "Live captions for conferences, on every phone · OpenCaptions",
+  "description": "Real-time captions and translation for every room of your conference, on attendees' phones, the stage screen and the livestream. Free, open-source software.",
+  "h1": "Live captions for conferences, on every phone in the room",
+  "lede": "Every session captioned as it happens, and translated into the languages your audience reads. Attendees scan a QR code and follow along on their own phone. No app, no headsets to hand out.",
+  "pair": "subtitulos-en-vivo-para-congresos",
+  "updated": "2026-10-05"
+}-->
+<h2>What attendees get</h2>
+<p>Each room has its own QR code, printed on a poster at the door and shown on the screen next to the stage. Scanning it opens the room's captions in the phone's browser. People pick their language and read along, a few seconds behind the speaker.</p>
+<ul>
+  <li><strong>Captions in their language.</strong> The original words, or a live translation into any language you set up for the room.</li>
+  <li><strong>"What did I miss?"</strong> One tap summarizes the last five minutes, or the whole session, for anyone who arrived late or stepped out.</li>
+  <li><strong>Questions about the talk,</strong> answered only from what the speaker said, with quotes and timestamps.</li>
+  <li><strong>Reading settings:</strong> text size, high-legibility fonts, line spacing, light and dark themes.</li>
+  <li><strong>The transcript afterwards,</strong> to read, search and download.</li>
+</ul>
+
+<h2>What you get as the organizer</h2>
+<ul>
+  <li><strong>Captions on the big screen:</strong> a full-screen page for a projector or TV beside the stage, with the room's QR code.</li>
+  <li><strong>An overlay for the livestream</strong> in OBS or vMix, in one or two languages.</li>
+  <li><strong>One dashboard for every room:</strong> who is live, audio levels, delay, audience and cost, with alerts on your phone when a room loses its sound or a talk runs over.</li>
+  <li><strong>Your agenda imported</strong> from Swapcard, Sessionize or a spreadsheet, so every transcript is named after its talk and speaker names are spelled right.</li>
+  <li><strong>An event report</strong> with every talk's length, audience and cost, ready for sponsors.</li>
+</ul>
+
+<h2>How it works</h2>
+<ol>
+  <li><strong>Connect the audio.</strong> A computer in each room takes a feed from the sound desk (or a browser tab, or a stream from OBS or vMix) and sends it to your OpenCaptions server.</li>
+  <li><strong>The AI listens and translates.</strong> A speech model transcribes the room and translates each sentence, using your glossary for names and specialist terms.</li>
+  <li><strong>Everyone follows along</strong> on their phone, the stage screen and the livestream at the same time.</li>
+</ol>
+<p>The server is a single program that runs on a laptop, a mini PC or a small cloud server. A setup wizard asks for your event's name, rooms and languages, and can create a public web address for the QR codes in one click. For a step-by-step plan, see <a href="/how-to-caption-an-event/">how to caption an event</a>.</p>
+
+<h2>What it costs</h2>
+<p>The software is free and open source. You pay only for the AI, directly to Google, or nothing at all if you run the AI on your own computer.</p>
+<div class="table"><table>
+  <thead><tr><th></th><th>Gemini (cloud)</th><th>Local mode</th></tr></thead>
+  <tbody>
+    <tr><td>Price</td><td>About US$2.2 per room-hour of speech, plus US$0.4–0.6 per extra language</td><td>Free, on your own hardware</td></tr>
+    <tr><td>Silence</td><td>Never billed</td><td>—</td></tr>
+    <tr><td>Best for</td><td>Highest accuracy and lowest delay, many rooms</td><td>Privacy, no internet, no budget</td></tr>
+  </tbody>
+</table></div>
+<p>A 40-minute talk captioned from English into Spanish costs about US$1.80 with Gemini. A three-day conference with four rooms and six hours of talks a day is at most 72 room-hours of speech: up to about US$200 for captions in the original language plus one translation (pauses aren't billed), and the dashboard shows the running total for every room.</p>
+
+<h2>Is AI captioning good enough?</h2>
+<p>For most conferences, yes: captions appear within a few seconds and read naturally. But it's not a professional human captioner. Strong accents, unusual names and people talking over each other cause mistakes. A glossary of names and terms fixes most of the spelling problems, and pinning a room's language helps when speakers mix languages.</p>
+<p class="note">For proceedings where every word matters (legal, medical, formal hearings), use a human captioner, or plan a human review of the transcripts. And captions don't replace sign language interpreters for people whose first language is a sign language.</p>
+
+<h2>Built for real event days</h2>
+<p>Conference Wi-Fi fails. If the venue loses internet, OpenCaptions can switch every room to an AI running on a laptop at the venue and switch back when the connection returns. Event mode locks the setup while you're live, every change can be undone, and volunteers get a crew sign-in that only reaches the live controls.</p>
+<p>See it working in the <a href="/#screens">30-second demo</a>, or read the <a href="/faq/">frequently asked questions</a>.</p>
