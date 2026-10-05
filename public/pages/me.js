@@ -6,7 +6,7 @@ import { prefsControls, LANG } from '/i18n.js';
 import { mountIcons } from '/illustrations.js';
 import { ensureSignedIn } from '/signin.js';
 import { keyPanel } from '/connect.js';
-import { capture, levelDb } from '/capture.js';
+import { capture } from '/capture.js';
 import { floatingCaptions } from '/floating.js';
 import { LANGUAGE_CATALOG } from '/languages.js';
 
@@ -180,12 +180,12 @@ async function start() {
     cap = await capture({
       source, deviceId: $('device').value,
       onPcm: (buf) => {
-        $('lvl').style.width = `${Math.max(0, Math.min(100, ((levelDb(buf) + 60) / 60) * 100))}%`;
         if (ingest?.ready) ingest.send(buf); else { pending.push(buf); if (pending.length > 150) pending.shift(); }
       },
       onEnded: () => { stop(); setStatus(t.ended, 'bad'); },
     });
     if (source !== 'screen') listMics();
+    showMeters();
     ingest = new Socket(() => wsUrl('/ws/ingest', { stage: ROOM, kind: 'personal', label: source }), {
       open() { while (pending.length && ingest?.ready) ingest.send(pending.shift()); },
       message(m) {
@@ -199,12 +199,28 @@ async function start() {
     setStatus(e.code === 'no-audio' ? t.noAudio : /denied|NotAllowed|Permission/i.test(`${e.name} ${e.message}`) ? t.denied : e.message, 'bad');
   }
 }
+// A meter per source (Both: the computer's sound and the microphone), to see that each one is heard.
+let meterLoop = 0;
+function showMeters() {
+  const rows = cap.levels().map(({ kind }) => {
+    const row = document.createElement('div');
+    row.innerHTML = `<span>${esc(t[kind])}</span><span class="m"><i></i></span>`;
+    return row;
+  });
+  $('meters').replaceChildren(...rows);
+  const tick = () => {
+    if (!cap) return;
+    cap.levels().forEach(({ db }, i) => { rows[i].querySelector('i').style.width = `${Math.max(0, Math.min(100, ((db + 60) / 60) * 100))}%`; });
+    meterLoop = requestAnimationFrame(tick);
+  };
+  tick();
+}
 function stop() {
   running = false; goLabel();
   cap?.stop(); cap = null;
   ingest?.close(); ingest = null;
   pending.length = 0;
-  $('lvl').style.width = '0';
+  cancelAnimationFrame(meterLoop); $('meters').replaceChildren();
   setStatus(t.idle);
 }
 $('go').onclick = () => (running ? stop() : start());

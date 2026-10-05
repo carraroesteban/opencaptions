@@ -4,6 +4,8 @@ All notable changes to this project are documented in this file. The format foll
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-10-05
+
 ### Added
 
 - **The welcome screen asks what you want captions for,** with two big illustrated choices: *For an event* or *Just for me*.
@@ -38,8 +40,9 @@ All notable changes to this project are documented in this file. The format foll
 ### Changed
 
 - **Just for me stays just for you.** The choice is remembered and the app opens straight to your captions. The personal page has **My transcripts** and a quieter **Use it for events** (it asks first) instead of a link to the event dashboard. In personal mode the room list and the transcript library show only your room, never an event's; in event mode your personal room and its transcripts stay private and out of the event's lists.
+- **A level meter for each sound source** on the Just for me page: one for the microphone, one for the computer's sound, and both with **Both**, so you can see each one is heard. The meters now line up with the Start button.
 - **Delete a transcript from its own page** (admin only, which includes anyone on the server computer), so personal users never need the event dashboard.
-- **Sharper website:** every illustration has a 2× version for high-resolution screens (served only to them), and the animated loops are now 1600–1800 px wide instead of 960–1080. Upscaled with Higgsfield; the loops stay seamless.
+- **Sharper website:** every illustration has a 2× version for high-resolution screens (served only to them), and the animated loops are now 1600–1800 px wide instead of 960–1080. Upscaled with Higgsfield; the loops stay seamless. The audience, stage, organizer and Just for me illustrations no longer end in an empty band with cut-off legs.
 - The website's phone mockup has its notch inside the screen, as on a real phone (it sat on the bezel, and turned light in dark mode).
 - The transcript screenshot on the website and in the README shows the current page (line icons, not emoji). `npm run screenshots` retakes it from the real app.
 - Transcript search says "1 match", not "1 matches" (and the same in Spanish and Portuguese).

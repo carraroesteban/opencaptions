@@ -27,8 +27,12 @@
     .seg button { border: 0; border-radius: var(--pill); padding: 7px 14px; background: none; }
     .seg button[aria-checked='true'] { background: var(--primary-bg); color: var(--primary-fg); }
     #go { min-width: 190px; }
-    .meter { width: 120px; height: 8px; border-radius: 4px; background: var(--bg3); overflow: hidden; align-self: center; }
-    .meter i { display: block; height: 100%; width: 0; background: var(--accent); transition: width .1s linear; }
+    /* One meter per source, centered on the Start button's height (the bar aligns its items to the bottom). */
+    #meters { align-self: end; min-height: 42px; display: flex; flex-direction: column; justify-content: center; gap: 6px; }
+    #meters:empty { display: none; }
+    #meters div { display: grid; grid-template-columns: auto 120px; align-items: center; gap: 8px; font-size: 13px; color: var(--fg2); }
+    #meters .m { height: 8px; border-radius: 4px; background: var(--bg3); overflow: hidden; }
+    #meters i { display: block; height: 100%; width: 0; background: var(--accent); transition: width .1s linear; }
     .hint { flex-basis: 100%; margin: 0; font-size: 14px; color: var(--fg2); }
     #ai-box { padding: 14px 16px; border-bottom: 1px solid var(--line); }
     #scroll { flex: 1; overflow-y: auto; padding: 24px 20px 40px; }
@@ -43,7 +47,7 @@
     footer button, footer .btn { padding: 8px 11px; font-size: 15px; }
     footer a.btn { text-decoration: none; }
     #pip[aria-pressed='true'] { background: var(--primary-bg); border-color: var(--primary-bg); color: var(--primary-fg); }
-    @media (max-width: 560px) { .meter { display: none; } #go { min-width: 0; flex: 1; } }
+    @media (max-width: 560px) { #meters { display: none; } #go { min-width: 0; flex: 1; } }
   </style>
 </head>
 <body>
@@ -65,7 +69,7 @@
     <label class="field" id="f-device"><span id="device-label"></span><select id="device"></select></label>
     <label class="field"><span id="to-label"></span><select id="to"></select></label>
     <button class="primary" id="go" type="button"></button>
-    <div class="meter" aria-hidden="true"><i id="lvl"></i></div>
+    <div id="meters" aria-hidden="true"></div>
     <p class="hint" id="hint"></p>
   </section>
 
