@@ -4,7 +4,7 @@ OpenCaptions exists so that everyone in the room can follow the talk. Its own pa
 
 ## What's checked automatically
 
-`npm run a11y` opens every page in headless Chrome and runs [axe-core](https://github.com/dequelabs/axe-core) against **WCAG 2.2 level AA** plus axe's best practices: colour contrast, names and labels for every control, headings and landmarks, ARIA use, and more. It runs each page in light and dark themes, in Spanish and English, and CI runs it on every push. As of version 0.2.0 every page passes.
+`npm run a11y` opens every page in headless Chrome and runs [axe-core](https://github.com/dequelabs/axe-core) against **WCAG 2.2 level AA** plus axe's best practices: colour contrast, names and labels for every control, headings and landmarks, ARIA use, and more. It runs each page in light and dark themes, in Spanish and English, and CI runs it on every push. It also builds the website ([opencaptions.kvza.ar](https://opencaptions.kvza.ar)) and checks every page in its sitemap (`npm run a11y -- site:` checks only the website). Every page passes. The public [accessibility statement](https://opencaptions.kvza.ar/accessibility/) summarizes this page for readers.
 
 | Page | What it is |
 |---|---|

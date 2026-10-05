@@ -168,7 +168,7 @@
           </div>
           <img class="art" src="/art/start.webp" alt="An organizer at home the night before the event, opening OpenCaptions on a laptop while the QR posters print" loading="lazy" />
         </div>
-<pre><code><span class="c"># Or with Docker, nothing to download first</span>
+<pre tabindex="0" role="region" aria-label="Commands to install and run OpenCaptions"><code><span class="c"># Or with Docker, nothing to download first</span>
 <span class="p">$</span> docker run -d --name opencaptions -p 127.0.0.1:8080:8080 -v opencaptions-data:/app/data ghcr.io/carraroesteban/opencaptions
 <span class="p">$</span> docker logs opencaptions | grep "Open the dashboard"
 

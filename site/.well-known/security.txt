@@ -1,0 +1,6 @@
+# OpenCaptions: how to report a security problem (RFC 9116)
+Contact: https://github.com/carraroesteban/opencaptions/security/advisories/new
+Policy: https://github.com/carraroesteban/opencaptions/blob/main/.github/SECURITY.md
+Preferred-Languages: en, es
+Canonical: https://opencaptions.kvza.ar/.well-known/security.txt
+Expires: 2027-10-05T00:00:00.000Z

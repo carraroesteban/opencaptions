@@ -273,7 +273,8 @@ section.band .eyebrow { color: #A9A6B0; }
 .doc-more { margin-top: 40px; }
 .doc-more h2 { font-size: 22px; margin: 0 0 10px; }
 .doc-more ul { list-style: none; padding: 0; }
-footer.site .guides { display: flex; gap: 10px 22px; flex-wrap: wrap; flex-basis: 100%; order: 9; }
+footer.site .guides, footer.site .legal { display: flex; gap: 10px 22px; flex-wrap: wrap; flex-basis: 100%; order: 9; }
+footer.site .legal { order: 10; font-size: 13px; }
 
 /* ---- by the numbers (under the hero illustration) ---- */
 .stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0; margin-top: 40px; border: 1px solid var(--line); border-radius: 22px; background: var(--bg2); overflow: hidden; }

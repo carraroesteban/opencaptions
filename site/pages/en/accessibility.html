@@ -1,0 +1,40 @@
+<!--{
+  "label": "Accessibility",
+  "title": "Accessibility statement · OpenCaptions",
+  "description": "How OpenCaptions and this website are checked against WCAG 2.2 AA, what works for people who use screen readers, keyboards or magnifiers, the known limits, and how to report a problem.",
+  "h1": "Accessibility statement",
+  "lede": "OpenCaptions exists so that everyone in the room can follow the talk. Its own pages, and this website, have to work for everyone too.",
+  "pair": "accesibilidad",
+  "legal": true,
+  "updated": "2026-10-05"
+}-->
+<h2>Our target</h2>
+<p>We aim for <strong>WCAG 2.2 level AA</strong> on every page of OpenCaptions (the captions pages, the stage screen, the dashboard and the setup wizard) and on this website.</p>
+
+<h2>How we check</h2>
+<ul>
+  <li><strong>Automatically, on every change.</strong> Every page of the software and of this website is opened in Chrome, in light and dark themes and in Spanish and English, and tested with <a href="https://github.com/dequelabs/axe-core">axe-core</a> against WCAG 2.2 AA, and a failure stops the build. All pages pass today.</li>
+  <li><strong>By hand:</strong> the documentation has a checklist for keyboard-only use, screen readers (VoiceOver, TalkBack, NVDA), 200% zoom and reading the stage screen from the back row. We recommend running it before every event.</li>
+</ul>
+<p>Automated tests find only part of the problems. The most useful checks are the ones done by people who use assistive technology every day, and we welcome them.</p>
+
+<h2>What works</h2>
+<ul>
+  <li><strong>Screen readers read each caption once,</strong> when the sentence is complete, instead of every word as the line is rewritten.</li>
+  <li><strong>Reading settings on phones:</strong> text size, line spacing, high-legibility fonts (Atkinson Hyperlegible, Lexend), light and dark themes, and captions floating over other apps.</li>
+  <li><strong>Keyboard:</strong> every control is a real button, link or field, focus is always visible, and dialogs keep focus inside and close with Esc.</li>
+  <li><strong>Colour is never the only signal:</strong> statuses and alerts always have words too. Text meets the 4.5:1 contrast ratio in both themes.</li>
+  <li><strong>Motion</strong> stops when your system asks for reduced motion, including this website's animations and videos.</li>
+</ul>
+
+<h2>Known limits</h2>
+<ul>
+  <li>The <strong>stream overlay and the stage screen</strong> are visual by design. People who use a screen reader follow the same captions on their phone; the stage screen shows the QR code for it.</li>
+  <li><strong>Captions are written by AI.</strong> They're fast, but not as accurate as a professional captioner, especially with strong accents, names and people talking over each other.</li>
+  <li><strong>Sign language</strong> isn't produced. Captions don't replace interpreters for people whose first language is a sign language.</li>
+  <li>The <strong>dashboard and the setup wizard</strong> have been tested less with screen readers than the pages the audience uses.</li>
+</ul>
+
+<h2>Report a problem</h2>
+<p>If something in OpenCaptions or on this website is hard or impossible to use, please <a href="https://github.com/carraroesteban/opencaptions/issues/new?labels=accessibility">open an issue on GitHub with the label "accessibility"</a>. We treat accessibility problems as bugs. If you're at an event, also tell its organizers: they can switch fonts, sizes and colours on the spot.</p>
+<p>The technical details are in the project's <a href="https://github.com/carraroesteban/opencaptions/blob/main/docs/accessibility.md">accessibility documentation</a>.</p>

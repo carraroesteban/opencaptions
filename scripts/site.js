@@ -33,10 +33,12 @@ fs.rmSync(path.join(OUT, 'pages'), { recursive: true, force: true }); // sources
 const UI = {
   en: { home: '/', features: 'Features', how: 'How it works', pricing: 'Pricing', other: 'es', otherName: 'Español', theme: 'Light / dark',
     crumbs: 'Breadcrumb', more: 'More guides', ctaH: 'Try it at your next event', ctaP: 'Free and open source. Install Node.js, download OpenCaptions and the setup wizard does the rest.',
-    mac: 'Download for Mac', win: 'Download for Windows', demo: 'Watch the 30-second demo', license: 'Free and open source · MIT license', updated: 'Updated' },
+    mac: 'Download for Mac', win: 'Download for Windows', demo: 'Watch the 30-second demo', license: 'Free and open source · MIT license', updated: 'Updated',
+    conduct: 'Code of conduct', security: 'Security', mit: 'MIT license' },
   es: { home: '/es/', features: 'Funciones', how: 'Cómo funciona', pricing: 'Precios', other: 'en', otherName: 'English', theme: 'Claro / oscuro',
     crumbs: 'Ruta', more: 'Más guías', ctaH: 'Probalo en tu próximo evento', ctaP: 'Gratis y de código abierto. Instalá Node.js, descargá OpenCaptions y el asistente hace el resto.',
-    mac: 'Descargar para Mac', win: 'Descargar para Windows', demo: 'Ver la demo de 30 segundos', license: 'Gratis y de código abierto · licencia MIT', updated: 'Actualizado' },
+    mac: 'Descargar para Mac', win: 'Descargar para Windows', demo: 'Ver la demo de 30 segundos', license: 'Gratis y de código abierto · licencia MIT', updated: 'Actualizado',
+    conduct: 'Código de conducta', security: 'Seguridad', mit: 'Licencia MIT' },
 };
 const DL = 'https://github.com/carraroesteban/opencaptions/releases/latest/download/';
 const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -56,6 +58,18 @@ for (const lang of ['en', 'es']) {
   }
 }
 const pairOf = (p) => pages.find((q) => q.lang !== p.lang && q.slug === p.pair);
+const guidesOf = (lang) => pages.filter((p) => p.lang === lang && !p.legal);
+// The footer's second row: the policies (privacy, accessibility as pages here; the rest live on GitHub).
+const GH = 'https://github.com/carraroesteban/opencaptions/blob/main';
+const legalRow = (lang) => [
+  ...pages.filter((p) => p.lang === lang && p.legal).map((p) => `<a href="${urlOf(lang, p.slug)}">${esc(p.label)}</a>`),
+  `<a href="${GH}/.github/CODE_OF_CONDUCT.md">${UI[lang].conduct}</a>`,
+  `<a href="${GH}/.github/SECURITY.md">${UI[lang].security}</a>`,
+  `<a href="${GH}/LICENSE">${UI[lang].mit}</a>`,
+].join('');
+// Pages can say different things depending on whether visitor statistics are on (SITE_GOATCOUNTER).
+const statsOn = /^[a-z0-9-]+$/.test((process.env.SITE_GOATCOUNTER || '').trim());
+const withStats = (html) => html.replace(/<!--if-stats-->([\s\S]*?)<!--\/if-stats-->/g, statsOn ? '$1' : '').replace(/<!--if-no-stats-->([\s\S]*?)<!--\/if-no-stats-->/g, statsOn ? '' : '$1');
 
 function render(p) {
   const t = UI[p.lang], url = urlOf(p.lang, p.slug), pair = pairOf(p);
@@ -74,7 +88,7 @@ function render(p) {
     const qa = [...p.body.matchAll(/<h3[^>]*>([\s\S]*?)<\/h3>([\s\S]*?)(?=<h[23][^>]*>|$)/g)].map(([, q, a]) => ({ '@type': 'Question', name: text(q), acceptedAnswer: { '@type': 'Answer', text: text(a) } }));
     graph.push({ '@type': 'FAQPage', mainEntity: qa });
   }
-  const more = pages.filter((q) => q.lang === p.lang && q !== p).map((q) => `<li><a href="${urlOf(q.lang, q.slug)}">${esc(q.label)}</a></li>`).join('');
+  const more = guidesOf(p.lang).filter((q) => q !== p).map((q) => `<li><a href="${urlOf(q.lang, q.slug)}">${esc(q.label)}</a></li>`).join('');
   return `<!doctype html>
 <html lang="${p.lang}">
 <head>
@@ -124,13 +138,13 @@ function render(p) {
       <h1>${p.h1}</h1>
       <p class="lede">${p.lede}</p>
       <p class="updated">${t.updated}: <time datetime="${p.updated}">${p.updated}</time></p>
-${p.body.trim().split('\n').map((l) => '      ' + l).join('\n')}
-      <aside class="doc-cta">
+${withStats(p.body).trim().split('\n').map((l) => '      ' + l).join('\n')}
+      ${p.legal ? '' : `<aside class="doc-cta">
         <h2>${t.ctaH}</h2>
         <p>${t.ctaP}</p>
         <div class="cta"><a class="btn primary" href="${DL}OpenCaptions-mac.zip">${t.mac}</a><a class="btn primary" href="${DL}OpenCaptions-windows.zip">${t.win}</a><a class="btn" href="${t.home}#screens">${t.demo}</a></div>
       </aside>
-      <nav class="doc-more" aria-label="${t.more}"><h2>${t.more}</h2><ul>${more}</ul></nav>
+      <nav class="doc-more" aria-label="${t.more}"><h2>${t.more}</h2><ul>${more}</ul></nav>`}
     </article>
   </main>
 
@@ -140,6 +154,7 @@ ${p.body.trim().split('\n').map((l) => '      ' + l).join('\n')}
       <span>${t.license}</span>
       <a href="https://github.com/carraroesteban/opencaptions">GitHub</a>
       <a href="${otherUrl}" hreflang="${t.other}">${t.otherName}</a>
+      <span class="legal">${legalRow(p.lang)}</span>
     </div>
   </footer>
   <script src="/site.js" defer></script>
@@ -156,8 +171,8 @@ for (const p of pages) {
 // The home pages link to the guides in their own language (between the <!--guides--> markers in the footer).
 for (const lang of ['en', 'es']) {
   const file = path.join(OUT, lang === 'en' ? 'index.html' : 'es/index.html');
-  const links = pages.filter((p) => p.lang === lang).map((p) => `<a href="${urlOf(lang, p.slug)}">${esc(p.label)}</a>`).join('');
-  fs.writeFileSync(file, fs.readFileSync(file, 'utf8').replace(/<!--guides-->[\s\S]*?<!--\/guides-->/, `<!--guides--><span class="guides">${links}</span><!--/guides-->`));
+  const links = guidesOf(lang).map((p) => `<a href="${urlOf(lang, p.slug)}">${esc(p.label)}</a>`).join('');
+  fs.writeFileSync(file, fs.readFileSync(file, 'utf8').replace(/<!--guides-->[\s\S]*?<!--\/guides-->/, `<!--guides--><span class="guides">${links}</span><span class="legal">${legalRow(lang)}</span><!--/guides-->`));
 }
 
 // ---------------------------------------------------------------- sitemap
@@ -207,7 +222,7 @@ for (const file of fs.readdirSync(OUT, { recursive: true }).map(String).filter((
   if (html.includes('<link rel="stylesheet" href="/style.css" />')) fs.writeFileSync(p, html.replace('<link rel="stylesheet" href="/style.css" />', `${head}\n  <link rel="stylesheet" href="/style.css" />`));
 }
 
-console.log(`site assembled in ${path.relative(process.cwd(), OUT) || '.'} (${pages.length} guides)`);
+console.log(`site assembled in ${path.relative(process.cwd(), OUT) || '.'} (${pages.length} pages)`);
 
 if (process.argv.includes('--serve')) {
   const { default: express } = await import('express');

@@ -1,0 +1,40 @@
+<!--{
+  "label": "Accesibilidad",
+  "title": "Declaración de accesibilidad · OpenCaptions",
+  "description": "Cómo se verifican OpenCaptions y este sitio con WCAG 2.2 AA, qué funciona para quienes usan lectores de pantalla, teclado o lupa, los límites conocidos y cómo reportar un problema.",
+  "h1": "Declaración de accesibilidad",
+  "lede": "OpenCaptions existe para que todas las personas de la sala puedan seguir la charla. Sus propias páginas, y este sitio, también tienen que funcionar para todos.",
+  "pair": "accessibility",
+  "legal": true,
+  "updated": "2026-10-05"
+}-->
+<h2>Nuestro objetivo</h2>
+<p>Apuntamos a <strong>WCAG 2.2 nivel AA</strong> en todas las páginas de OpenCaptions (los subtítulos, la pantalla del escenario, el panel y el asistente) y en este sitio.</p>
+
+<h2>Cómo lo verificamos</h2>
+<ul>
+  <li><strong>Automáticamente, en cada cambio.</strong> Cada página del software y de este sitio se abre en Chrome, en modo claro y oscuro y en español e inglés, y se prueba con <a href="https://github.com/dequelabs/axe-core">axe-core</a> según WCAG 2.2 AA, y una falla frena la compilación. Hoy pasan todas las páginas.</li>
+  <li><strong>A mano:</strong> la documentación tiene una lista para probar solo con teclado, con lectores de pantalla (VoiceOver, TalkBack, NVDA), con zoom al 200 % y leyendo la pantalla del escenario desde la última fila. Recomendamos hacerla antes de cada evento.</li>
+</ul>
+<p>Las pruebas automáticas encuentran solo una parte de los problemas. Las verificaciones más útiles son las de personas que usan tecnologías de apoyo todos los días, y son bienvenidas.</p>
+
+<h2>Qué funciona</h2>
+<ul>
+  <li><strong>Los lectores de pantalla leen cada subtítulo una sola vez,</strong> cuando la oración está completa, en lugar de cada palabra mientras la línea se reescribe.</li>
+  <li><strong>Ajustes de lectura en el celular:</strong> tamaño de letra, interlineado, tipografías de alta legibilidad (Atkinson Hyperlegible, Lexend), modo claro y oscuro, y subtítulos flotando sobre otras apps.</li>
+  <li><strong>Teclado:</strong> cada control es un botón, enlace o campo real, el foco siempre se ve, y los diálogos mantienen el foco adentro y se cierran con Esc.</li>
+  <li><strong>El color nunca es la única señal:</strong> los estados y las alertas siempre tienen texto. El texto cumple el contraste de 4,5:1 en ambos modos.</li>
+  <li><strong>El movimiento</strong> se detiene cuando tu sistema pide reducirlo, incluidas las animaciones y videos de este sitio.</li>
+</ul>
+
+<h2>Límites conocidos</h2>
+<ul>
+  <li>El <strong>overlay para streaming y la pantalla del escenario</strong> son visuales por diseño. Quienes usan lector de pantalla siguen los mismos subtítulos en su celular; la pantalla del escenario muestra el QR para eso.</li>
+  <li><strong>Los subtítulos los escribe una IA.</strong> Son rápidos, pero no tan precisos como un estenotipista profesional, sobre todo con acentos marcados, nombres y gente hablando a la vez.</li>
+  <li><strong>No se genera lengua de señas.</strong> Los subtítulos no reemplazan a intérpretes para quienes tienen una lengua de señas como primera lengua.</li>
+  <li>El <strong>panel y el asistente de configuración</strong> se probaron menos con lectores de pantalla que las páginas que usa el público.</li>
+</ul>
+
+<h2>Reportá un problema</h2>
+<p>Si algo de OpenCaptions o de este sitio es difícil o imposible de usar, <a href="https://github.com/carraroesteban/opencaptions/issues/new?labels=accessibility">abrí un issue en GitHub con la etiqueta «accessibility»</a>. Tratamos los problemas de accesibilidad como errores. Si estás en un evento, contáselo también a los organizadores: pueden cambiar tipografías, tamaños y colores en el momento.</p>
+<p>Los detalles técnicos están en la <a href="https://github.com/carraroesteban/opencaptions/blob/main/docs/accessibility.md">documentación de accesibilidad</a> del proyecto.</p>
