@@ -15,6 +15,7 @@ OpenCaptions is released under the [MIT license](../LICENSE). Anyone may use, co
 | ffmpeg in the Docker image | Same | GPL / LGPL, from Debian | Installed from Debian's packages; their sources are at [sources.debian.org](https://sources.debian.org/src/ffmpeg/). |
 | [cloudflared](https://github.com/cloudflare/cloudflared) | The one-click public address | Apache-2.0 | Downloaded on first use, or included in the Docker image. Using Cloudflare's tunnel means accepting [Cloudflare's terms](https://www.cloudflare.com/website-terms/). |
 | Fonts: Atkinson Hyperlegible Next, Bricolage Grotesque, and the caption fonts Inter, Atkinson Hyperlegible, Lexend, Roboto, Open Sans and Montserrat | Interface and captions | SIL Open Font License 1.1 | Included in `public/fonts/`, each with its license and copyright ([list](../public/fonts/README.md)). Served by OpenCaptions itself, so pages don't contact Google. |
+| Sample talks in `samples/` | Demos and tests | Part of this repository | Fictional scripts read by [Kokoro](https://huggingface.co/hexgrad/Kokoro-82M), an open text-to-speech model under Apache-2.0, so the recordings can be shared and used commercially. `scripts/make-samples.sh` rebuilds them. |
 | Illustrations and animations in `public/art/` and `site/media/` | Interface and website | Part of this repository | Generated for OpenCaptions with Higgsfield (GPT Image 2.5 and Kling), from prompts and drawings made for the project. |
 
 ## The AI you connect

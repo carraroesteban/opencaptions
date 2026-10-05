@@ -29,6 +29,7 @@ All notable changes to this project are documented in this file. The format foll
 
 ### Fixed
 
+- **The sample talks are read by Kokoro now,** an open text-to-speech model (Apache-2.0). They used to be made with the voices built into macOS, whose license doesn't allow sharing what they say. Same scripts and length; Whisper still transcribes them with no errors. `scripts/make-samples.sh` rebuilds them on any system with Python and ffmpeg.
 - The documentation link test used a JavaScript feature missing from Node.js 20, so CI failed there.
 
 ## [0.2.0] - 2026-10-04

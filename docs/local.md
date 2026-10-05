@@ -220,12 +220,12 @@ Keep these servers on a trusted network: they have no authentication of their ow
 
 `npm run local -- --check` streams 30 seconds of a bundled sample in real time through the speech server, then translates a few sentences. *Behind the speaker* is how far the committed words trail the audio, averaged over the run.
 
-The bundled samples ([`samples/`](../samples/)) are fictional talks read by a synthetic voice (rebuild them with `scripts/make-samples.sh`). Clean, evenly paced speech is the best case for Whisper, so use them to check delay and speed, and expect more mistakes on real speakers.
+The bundled samples ([`samples/`](../samples/)) are fictional talks read by a synthetic voice, [Kokoro](https://huggingface.co/hexgrad/Kokoro-82M) (rebuild them with `scripts/make-samples.sh`). Clean, evenly paced speech is the best case for Whisper, so use them to check delay and speed, and expect more mistakes on real speakers.
 
 | Machine | Whisper | Talk | Word error rate | First words (provisional) | Committed words behind the speaker | Time per pass | Translation per sentence |
 |---|---|---|---|---|---|---|---|
-| MacBook Pro, Apple M3 Pro (11 cores), bundled server on the CPU | small | English sample | 1.0 % | 1.4 s | about 3.9 s | 1.0 s | 0.6 s (gemma3:4b) |
-| MacBook Pro, Apple M3 Pro (11 cores), bundled server on the CPU | small | Spanish sample | 0.0 % | 1.5 s | about 3.4 s | 1.3 s | 0.7 s (gemma3:4b) |
+| MacBook Pro, Apple M3 Pro (11 cores), bundled server on the CPU | small | English sample | 0.0 % | 1.5 s | about 3.9 s | 1.0 s | 0.6 s (gemma3:4b) |
+| MacBook Pro, Apple M3 Pro (11 cores), bundled server on the CPU | small | Spanish sample | 0.0 % | 1.4 s | about 4.7 s | 1.8 s | 0.7 s (gemma3:4b) |
 
 On real recorded talks (room microphones, accents, applause), `small` made about 9 % word errors in English and 18 % in Spanish on a 4-core Linux VM, about 4–5 s behind the speaker. `base` was faster but made more than twice as many mistakes, too many for Spanish.
 
