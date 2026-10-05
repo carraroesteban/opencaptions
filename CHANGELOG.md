@@ -31,6 +31,22 @@ All notable changes to this project are documented in this file. The format foll
 
 ### Fixed
 
+- The Windows app printed "[glossary] reload failed … ENOENT" at every start, because there's no glossary file until you save one. A missing glossary is now simply empty, and saving one later still applies it straight away.
+- **Security: other websites could change settings through the server computer's browser.** On the computer running OpenCaptions no password is asked, and those requests skipped the check that refuses changes sent from another website. A page open in the organizer's browser could have restarted rooms, started a new talk or turned event mode on and off. Every change from a browser must now come from OpenCaptions' own pages. Scripts are unaffected. A test covers it.
+- **Signing a device out now also cuts its open dashboard.** Before, a lost laptop that was signed out kept receiving the rooms' live status until someone reloaded its page.
+- **The transcript library could freeze live captions.** Listing past talks re-read every saved transcript once per talk, on the thread that also sends captions: with 60 one-hour talks each visit to `/talks.html` took about 1.8 s, during which no captions went out. Summaries and recently read transcripts are now cached until their files change (0.2 s the first time, about 5 ms after).
+- **A glossary typo could garble every caption.** A correction whose "from" was only `|` or spaces matched the empty string, so its replacement was written after almost every word of every live caption. Such corrections are now refused when saved and ignored if they're already in the file.
+- With `RETENTION_DAYS` set, a stray file in the transcripts folder (such as the `.DS_Store` macOS Finder creates) crashed the server at startup.
+- A crew member sending a room change they aren't allowed to make is refused before anything else happens. Their audio address used to be looked up on the network first.
+- Transcript downloads build their file name only from safe characters. A link with a quote in the language could produce a broken `Content-Disposition` header.
+- Five dashboard and demo messages stayed in Spanish for English users ("No se pudo iniciar", "(opcional)" and others): their dictionary entries had a space at the edge, which the lookup never matched.
+- Renaming the event together with an invalid time zone renamed it in memory and in the history, but not on disk, and answered with an error. Now nothing changes unless everything is valid.
+- Searching a transcript for "amp" or "lt" no longer garbles `&` and `<` in the text.
+- **Linux service install:** the steps in `deploy/opencaptions.service` left `.env` owned by root with `chmod 600`, so the server (running as the `opencaptions` user) couldn't read it and silently ignored the passwords, public address and API key there. The steps now give the file to that user.
+- `npm run setup` now makes `.env` readable only by you even when the file already existed (copied from `.env.example`). Before, only a new file got those permissions.
+- **macOS room agent** (`deploy/com.opencaptions.agent.plist`): the ingest password moved from the command line, where any user could see it with `ps`, to `EnvironmentVariables`; the file is `chmod 600` when installed, and the steps say where `node` is on Apple Silicon Macs.
+- A phone that went to sleep during a talk could show frozen captions when it woke up, until the connection timed out. The captions page now reconnects by itself after more than 20 seconds in the background and reloads what was said.
+- The QR kit's warning about an address phones can't open now points to the dashboard's Settings instead of the `PUBLIC_URL` variable.
 - **The sample talks are read by Kokoro now,** an open text-to-speech model (Apache-2.0). They used to be made with the voices built into macOS, whose license doesn't allow sharing what they say. Same scripts and length; Whisper still transcribes them with no errors. `scripts/make-samples.sh` rebuilds them on any system with Python and ffmpeg.
 - The documentation link test used a JavaScript feature missing from Node.js 20, so CI failed there.
 

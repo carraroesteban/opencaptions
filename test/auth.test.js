@@ -254,6 +254,19 @@ function totp(secret, step) {
   const o = h[h.length - 1] & 15;
   return String((h.readUInt32BE(o) & 0x7fffffff) % 1_000_000).padStart(6, '0');
 }
+test('signing a device out also closes its open dashboard connection', async () => {
+  const lost = browser(), me = browser();
+  await lost.call('POST', '/api/auth/login', { password: ADMIN, device: 'Lost laptop' });
+  await me.call('POST', '/api/auth/login', { password: ADMIN, device: 'Mine' });
+  const ws = new WebSocket(`ws://127.0.0.1:${PORT}/ws/admin`, { headers: { cookie: `oc_session=${lost.jar.get('oc_session')}`, origin: base } });
+  const closed = new Promise((resolve) => ws.on('close', (code) => resolve(code)));
+  await new Promise((resolve) => ws.once('message', resolve)); // connected and receiving
+  const pid = (await me.call('GET', '/api/auth/sessions')).body.find((s) => s.device === 'Lost laptop').id;
+  assert.equal((await me.call('DELETE', `/api/auth/sessions/${pid}`, null, { origin: base })).status, 200);
+  assert.equal(await Promise.race([closed, new Promise((r) => setTimeout(() => r('still open'), 3000))]), 4001);
+});
+
+
 test('two-factor: the admin password then also needs a code from the app, and alone opens nothing', async () => {
   const admin = browser();
   await admin.call('POST', '/api/auth/login', { password: ADMIN, device: 'Office PC' });

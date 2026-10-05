@@ -92,6 +92,9 @@ function sessionOf(req) {
   return s;
 }
 
+/** Still signed in? (A device signed out from the dashboard, or expired, must lose its open sockets too.) */
+export const isSessionActive = (s) => sessions.get(s.hash) === s && s.expiresAt > Date.now();
+
 /** Signed-in devices, newest activity first (never the cookie or its hash). */
 export function listSessions(current) {
   return [...sessions.values()].filter((s) => s.expiresAt > Date.now()).sort((a, b) => b.lastSeen - a.lastSeen)
@@ -128,10 +131,12 @@ export function identify(req, url) {
 export const allows = (who, need) => !!who && RANK[who.role] >= RANK[need];
 
 /**
- * A browser that signed in with a cookie only sends requests from our own pages: refuse changes coming from
- * another site (SameSite=Strict already stops most; this covers old browsers and same-site subdomains).
+ * Our pages only send changes from our own origin: refuse changes coming from another site. For a signed-in
+ * browser SameSite=Strict already stops most; on this computer (no password) and with AUTH=off this is the only
+ * thing that keeps any website open in the organizer's browser from posting to localhost. Scripts send no
+ * Origin header and pass.
  */
-export const sameOrigin = (req, who) => who?.via !== 'session' || ['GET', 'HEAD', 'OPTIONS'].includes(req.method) || originAllowed(req);
+export const sameOrigin = (req, who) => who?.via === 'token' || ['GET', 'HEAD', 'OPTIONS'].includes(req.method) || originAllowed(req);
 
 /** The person behind the current request, for the History (set by the server's auth middleware). */
 export const actor = new AsyncLocalStorage();

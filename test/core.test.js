@@ -1,7 +1,10 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { CaptionTrack } from '../src/captions.js';
-import { toSRT, toVTT, toTXT } from '../src/store.js';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { Store, toSRT, toVTT, toTXT } from '../src/store.js';
 import { ffmpegArgs } from '../src/pull.js';
 import { rms, Chunker } from '../src/audio.js';
 
@@ -102,4 +105,22 @@ test('speaker labels: VTT voice tags on every cue, SRT and TXT name the speaker 
 test('WebVTT escapes & < > in captions and speaker names (the file stays valid)', () => {
   const vtt = toVTT([{ start: 0, end: 2000, text: 'Q&A starts <now>', spk: 'Audience (Q&A)' }]);
   assert.match(vtt, /<v Audience \(Q&amp;A\)>Q&amp;A starts &lt;now&gt;\n/);
+});
+
+test('saved talks: summaries and transcripts are cached, but never stale', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'oc-store-'));
+  try {
+    const store = new Store(dir, { enabled: true });
+    store.openTalk('main', { id: 't1', title: 'One', startedAt: 1 }, ['orig', 'es']);
+    store.append('main', 't1', { channel: 'orig', text: 'Hello.', start: 0, end: 1000 });
+    store.append('main', 't1', { channel: 'es', text: 'Hola.', start: 0, end: 1000 });
+    assert.deepEqual(store.listTalks('main').map((t) => [t.segments, t.origSegments, t.durationMs]), [[2, 1, 1000]]);
+    assert.equal(store.readTalk('main', 't1').length, 2);
+    store.append('main', 't1', { channel: 'orig', text: 'Bye.', start: 1000, end: 2500 });
+    assert.deepEqual(store.listTalks('main').map((t) => [t.segments, t.origSegments, t.durationMs]), [[3, 2, 2500]], 'a new line shows up');
+    assert.equal(store.readTalk('main', 't1').length, 3);
+    fs.writeFileSync(path.join(dir, 'transcripts', '.DS_Store'), ''); // Finder's file must not break listing or retention
+    assert.equal(store.listTalks('main').length, 1);
+    new Store(dir, { enabled: true, retentionDays: 30 });
+  } finally { fs.rmSync(dir, { recursive: true, force: true }); }
 });

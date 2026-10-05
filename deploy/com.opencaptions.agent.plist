@@ -1,7 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!-- macOS: starts the stage agent at login and keeps it running.
-     1. Edit the stage / device / server / token below (device index from `node scripts/agent.js --list-devices`).
-     2. cp deploy/com.opencaptions.agent.plist ~/Library/LaunchAgents/ && launchctl load ~/Library/LaunchAgents/com.opencaptions.agent.plist
+     1. Edit the stage / device / server / password below (device index from `node scripts/agent.js --list-devices`),
+        and the path to node: run `which node` (Apple Silicon with Homebrew: /opt/homebrew/bin/node).
+        The password goes in EnvironmentVariables, not in the arguments, where any user could see it with `ps`.
+     2. cp deploy/com.opencaptions.agent.plist ~/Library/LaunchAgents/ && chmod 600 ~/Library/LaunchAgents/com.opencaptions.agent.plist && launchctl load ~/Library/LaunchAgents/com.opencaptions.agent.plist
      3. The first time, macOS asks for microphone permission for "node". Logs: /tmp/opencaptions-agent.log -->
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
@@ -14,9 +16,12 @@
     <string>--stage</string><string>room-a</string>
     <string>--device</string><string>0</string>
     <string>--server</string><string>wss://subs.example.com</string>
-    <string>--token</string><string>change-me</string>
     <string>--quiet</string>
   </array>
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>INGEST_TOKEN</key><string>change-me</string>
+  </dict>
   <key>RunAtLoad</key><true/>
   <key>KeepAlive</key><true/>
   <key>StandardOutPath</key><string>/tmp/opencaptions-agent.log</string>

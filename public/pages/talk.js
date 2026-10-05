@@ -58,10 +58,10 @@ const select = () => { segs = all.filter((s) => s.channel === lang).sort((a, b) 
 // ---- rendering: paragraphs split on pauses, timestamps, search highlight ----
 let query = '';
 const hl = (text) => {
-  const safe = esc(text);
-  if (!query) return safe;
-  const re = new RegExp(query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
-  return safe.replace(re, (m) => `<mark>${m}</mark>`);
+  if (!query) return esc(text);
+  // Match on the raw text, then escape each piece: searching "amp" must not land inside "&amp;".
+  const re = new RegExp(`(${query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+  return String(text).split(re).map((part, i) => (i % 2 ? `<mark>${esc(part)}</mark>` : esc(part))).join('');
 };
 function paragraphs() {
   const out = [];

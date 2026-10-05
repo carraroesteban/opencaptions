@@ -3,7 +3,7 @@
 #   sudo git clone https://github.com/carraroesteban/opencaptions /opt/opencaptions
 #   cd /opt/opencaptions && sudo npm ci --omit=dev
 #   sudo cp .env.example .env && sudo nano .env        # optional: PUBLIC_URL, your own passwords (the API key can be pasted in the dashboard)
-#   sudo mkdir -p data local && sudo chown -R opencaptions: data local config && sudo chmod 600 .env
+#   sudo mkdir -p data local && sudo chown -R opencaptions: data local config .env && sudo chmod 600 .env   # the server reads .env itself
 #   sudo cp deploy/opencaptions.service /etc/systemd/system/ && sudo systemctl enable --now opencaptions
 #   journalctl -u opencaptions -f
 [Unit]

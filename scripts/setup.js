@@ -105,6 +105,7 @@ if (!(await yes('Write .env and config/event.json?'))) { console.log('Nothing wr
 
 for (const f of [ENV, EVENT]) if (fs.existsSync(f)) fs.copyFileSync(f, f + '.bak');
 fs.writeFileSync(ENV, Object.entries(env).map(([k, v]) => `${k}=${v ?? ''}`).join('\n') + '\n', { mode: 0o600 });
+try { fs.chmodSync(ENV, 0o600); } catch { /* Windows */ } // `mode` only applies to a new file: an existing .env keeps its permissions
 fs.writeFileSync(EVENT, JSON.stringify(event, null, 2) + '\n');
 // Rooms edited from the dashboard live in data/stages.json and win over event.json when newer: start fresh.
 const runtime = path.join(ROOT, 'data', 'stages.json');

@@ -39,7 +39,6 @@ const limiter = {
   take() { this.times.push(Date.now()); },
   backoff(ms) { this.cooldownUntil = Math.max(this.cooldownUntil, Date.now() + ms); },
 };
-export const mtLimiter = limiter;
 
 let thinkingSupported = true;
 function withTimeout(promise, ms) {

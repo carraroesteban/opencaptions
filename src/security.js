@@ -242,5 +242,3 @@ export async function checkPullUrl(input, { httpOnly = false } = {}) {
     if (isHttp && kind !== 'public' && !ALLOW_PRIVATE) throw new Error(`${host} is a private/loopback address (set PULL_ALLOW_PRIVATE=1 to allow LAN HTTP sources)`);
   }
 }
-
-export const _test = { ipKind };

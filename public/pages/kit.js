@@ -11,13 +11,13 @@ const UI = {
   es: {
     title: 'Kit de QR', home: 'Panel de producción', h: 'Kit de QR para las salas',
     intro: 'Un cartel A4 por sala: pegalo en la entrada y junto al escenario. El público escanea, elige idioma y sigue los subtítulos en el celular (y puede pedir un resumen de lo que se perdió).',
-    warn: (u) => `⚠ Estos QR apuntan a <b>${u}</b>, que el público no puede abrir. Configurá <code>PUBLIC_URL</code> con la dirección del evento (HTTPS, o la IP de esta computadora en la red del lugar) y recargá esta página.`,
+    warn: (u) => `⚠ Estos QR apuntan a <b>${u}</b>, que el público no puede abrir. Creá una dirección pública en <a href="/admin.html#settings">Ajustes</a> del panel (o abrí el panel desde la IP de esta computadora en el Wi-Fi del lugar) y recargá esta página.`,
     rooms: 'Salas:', all: 'Todas', bi: 'Agregar inglés debajo', print: 'Imprimir / guardar PDF',
   },
   en: {
     title: 'QR kit', home: 'Production dashboard', h: 'QR kit for your rooms',
     intro: 'One A4 poster per room: put it at the door and next to the stage. People scan it, pick a language and follow the captions on their phone (and can ask for a summary of what they missed).',
-    warn: (u) => `⚠ These QR codes point to <b>${u}</b>, which the audience can’t open. Set <code>PUBLIC_URL</code> to the event’s address (HTTPS, or this computer’s IP on the venue network) and reload this page.`,
+    warn: (u) => `⚠ These QR codes point to <b>${u}</b>, which the audience can’t open. Create a public address in the dashboard’s <a href="/admin.html#settings">Settings</a> (or open the dashboard from this computer’s IP on the venue Wi-Fi) and reload this page.`,
     rooms: 'Rooms:', all: 'All', bi: 'Add Spanish underneath', print: 'Print / save as PDF',
   },
 };

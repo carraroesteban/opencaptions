@@ -97,7 +97,7 @@ Or by hand:
 
 ## 5. Caption two rooms at once
 
-Add a second room: **Dashboard → Rooms → + Room**, with the ID `room-b`. Then, in two more terminals, run one feed per room:
+Add a second room: **Dashboard → Rooms → New room**, with the ID `room-b`. Then, in two more terminals, run one feed per room:
 
 ```bash
 npm run feed -- --stage main   --input samples/talk-en.wav

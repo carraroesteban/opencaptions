@@ -30,7 +30,8 @@ There are three passwords (`src/auth.js`), auto-generated and printed on first s
 
 1. **A session cookie** (`oc_session`): what the dashboard uses. `POST /api/auth/login` (or [company sign-in](#sign-in))
    sets it; it's `HttpOnly`, `SameSite=Strict`, expires after `SESSION_HOURS`, and changes (`POST`/`PUT`/`PATCH`/`DELETE`)
-   made with it must carry an allowed `Origin`.
+   made with it must carry an allowed `Origin`. So must changes from a browser on the server computer itself (no
+   password there) and with `AUTH=off`; clients that send no `Origin` (scripts, curl, the agent) are unaffected.
 2. **A password**: `Authorization: Bearer <password>` (preferred), an `x-admin-token` / `x-ingest-token` header, or
    `?token=` — accepted on HTTP **GET** only, never on WebSocket upgrades (browsers use a ticket from
    `POST /api/ingest/ticket` for audio, and the session cookie for the dashboard). While
@@ -733,6 +734,8 @@ ws.onmessage = (e) => {
 `wss://host/ws/admin`
 
 **Auth**: the dashboard's session cookie (crew or admin), or a password in the `Authorization` header. **Origin check**: yes.
+A connection opened with a session cookie is closed with code `4001` (`signed out`) within a second of that session being
+signed out or expiring.
 
 Server → client:
 

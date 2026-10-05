@@ -186,7 +186,8 @@ export const LANG = (() => {
   return b.startsWith('es') ? 'es' : b.startsWith('pt') ? 'pt' : 'en';
 })();
 
-const dict = DICTS[LANG] || null;
+// Looked up by trimmed text (see tr), so keys are trimmed too: "No se pudo iniciar: " must still match.
+const dict = DICTS[LANG] ? Object.fromEntries(Object.entries(DICTS[LANG]).map(([k, v]) => [k.trim(), v.trim()])) : null;
 const patterns = PATTERNS[LANG] || [];
 
 /** Translate a single UI string (for alerts, prompts, confirms). */

@@ -20,9 +20,11 @@ export class Store {
   purge() {
     const cutoff = Date.now() - this.retentionDays * 86400000;
     let n = 0;
-    for (const stage of fs.existsSync(this.dir) ? fs.readdirSync(this.dir) : []) {
+    // Only folders: a stray file (Finder's .DS_Store) must not crash the server at startup.
+    const dirs = (d) => (fs.existsSync(d) ? fs.readdirSync(d, { withFileTypes: true }).filter((e) => e.isDirectory()).map((e) => e.name) : []);
+    for (const stage of dirs(this.dir)) {
       const sd = path.join(this.dir, stage);
-      for (const talk of fs.readdirSync(sd)) {
+      for (const talk of dirs(sd)) {
         const td = path.join(sd, talk);
         try {
           if (fs.statSync(td).mtimeMs < cutoff) { fs.rmSync(td, { recursive: true, force: true }); n++; }
@@ -31,6 +33,9 @@ export class Store {
     }
     if (n) console.log(`[store] retention: deleted ${n} talk(s) older than ${this.retentionDays} days`);
   }
+
+  #summaries = new Map(); // meta.json path → { key, value }
+  #parsed = new Map(); // captions.jsonl path → { key, segs }, least recently used first
 
   #talkDir(stage, talk) {
     return path.join(this.dir, safe(stage), safe(talk));
@@ -52,26 +57,50 @@ export class Store {
     }
   }
 
+  /** Saved talks of a room, newest first, with their size. Cached per talk until its files change: the
+   * transcript library is public and must not re-read every recording on each visit. */
   listTalks(stage) {
     const d = path.join(this.dir, safe(stage));
     if (!fs.existsSync(d)) return [];
     return fs.readdirSync(d)
       .map((id) => {
         try {
-          const meta = JSON.parse(fs.readFileSync(path.join(d, id, 'meta.json'), 'utf8'));
+          const mf = path.join(d, id, 'meta.json');
           const f = path.join(d, id, 'captions.jsonl');
-          const segments = fs.existsSync(f) ? fs.readFileSync(f, 'utf8').split('\n').filter(Boolean).length : 0;
-          return { ...meta, segments };
+          const ms = fs.statSync(mf), cs = fs.existsSync(f) ? fs.statSync(f) : null;
+          const key = `${ms.mtimeMs}/${cs?.mtimeMs}/${cs?.size}`;
+          const hit = this.#summaries.get(mf);
+          if (hit?.key === key) return hit.value;
+          const meta = JSON.parse(fs.readFileSync(mf, 'utf8'));
+          const segs = cs ? this.readTalk(stage, id) : [];
+          const value = {
+            ...meta,
+            segments: segs.length, // every channel, as stored (docs/reference/api.md)
+            origSegments: segs.filter((x) => x.channel === 'orig').length,
+            durationMs: segs.reduce((m, x) => Math.max(m, x.end || 0), 0),
+            channels: [...new Set(segs.map((x) => x.channel))],
+          };
+          this.#summaries.set(mf, { key, value });
+          return value;
         } catch { return null; }
       })
       .filter((t) => t && t.segments > 0)
       .sort((a, b) => b.startedAt - a.startedAt);
   }
 
+  /** Every saved line of a talk. The last few talks read are kept parsed until their file changes (callers must
+   * not modify the array). */
   readTalk(stage, talkId) {
     const f = path.join(this.#talkDir(stage, talkId), 'captions.jsonl');
-    if (!fs.existsSync(f)) return [];
-    return fs.readFileSync(f, 'utf8').split('\n').filter(Boolean).map((l) => JSON.parse(l));
+    let st;
+    try { st = fs.statSync(f); } catch { return []; }
+    const key = `${st.mtimeMs}/${st.size}`;
+    const hit = this.#parsed.get(f);
+    if (hit?.key === key) { this.#parsed.delete(f); this.#parsed.set(f, hit); return hit.segs; } // most recent last
+    const segs = fs.readFileSync(f, 'utf8').split('\n').filter(Boolean).map((l) => { try { return JSON.parse(l); } catch { return null; } }).filter(Boolean);
+    this.#parsed.set(f, { key, segs });
+    if (this.#parsed.size > 20) this.#parsed.delete(this.#parsed.keys().next().value);
+    return segs;
   }
 }
 

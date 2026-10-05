@@ -73,7 +73,7 @@ flowchart LR
 | Spoofing "localhost" | A request sent through a tunnel or proxy on the same machine, or DNS rebinding | Local trust requires a loopback socket, a `localhost`/`127.0.0.1` Host header **and** no proxy headers (`X-Forwarded-For`, `CF-Connecting-IP`, `Forwarded`…). Set `AUTH=token` to disable local trust. |
 | **Tampering** with captions | Injecting audio into a room | Ingest needs `INGEST_TOKEN`. A new ingest replaces the previous one, which is visible on the dashboard. |
 | Cross-site WebSocket hijacking | A malicious page drives the admin socket with the operator's session | Browser `Origin` must match the server's host, `PUBLIC_URL` or `ALLOWED_ORIGINS` for `/ws/admin` and `/ws/ingest`; the session cookie is `SameSite=Strict` |
-| Cross-site request forgery | A form on another site posts to the admin API | The session cookie is `SameSite=Strict`, and changes made with it must carry this server's `Origin`. Scripts send a header (`Authorization`); a password in the URL is only accepted on GET. No CORS is enabled. |
+| Cross-site request forgery | A form on another site posts to the admin API | The session cookie is `SameSite=Strict`, and every change from a browser must carry this server's `Origin`, including on the server computer itself, where no password is asked (otherwise any website open there could post to `localhost`). Scripts send a header (`Authorization`); a password in the URL is only accepted on GET. No CORS is enabled. |
 | Stored cross-site scripting | A room name or caption containing `<script>` | All dynamic text is HTML-escaped before rendering. Content-Security-Policy restricts script, frame and connection sources. Room fields are validated (id `[a-z0-9_-]{1,40}`, language codes, length limits). |
 | Clickjacking | Embedding the dashboard in a hidden frame | `frame-ancestors 'self'` and `X-Frame-Options: SAMEORIGIN`. Overlays load as vMix/OBS browser inputs, not frames. |
 | **Repudiation** | "Who changed the room?" | Every setup change in the History says who made it: the signed-in device's name or the work account. Company sign-in gives each person their own identity. See [known gaps](#known-gaps). |
@@ -134,7 +134,7 @@ The dashboard and the welcome wizard show a sign-in screen on any device other t
 
 - **Sessions expire** after `SESSION_HOURS` (24 by default). The server stores only a hash of each session.
 - **Each device has a name** ("Stage left tablet"), shown in **Settings → Access → Signed-in devices**, where any session can be signed out, or every other one at once. The History records who made each change.
-- **Changes from other websites are refused:** a signed-in browser's requests must come from the dashboard itself (the cookie is `SameSite=Strict`, and the server checks the `Origin`).
+- **Changes from other websites are refused:** a browser's requests must come from the dashboard itself (the cookie is `SameSite=Strict`, and the server checks the `Origin`), on the server computer too.
 - **Wrong passwords** count towards the lockout (20 per 10 minutes per address).
 
 Scripts, the room agent and Prometheus send a password as `Authorization: Bearer <password>`. The crew password is enough for `/metrics`.

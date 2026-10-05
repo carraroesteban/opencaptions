@@ -156,7 +156,7 @@ stateDiagram-v2
 | Session alive but silent while people talk | Watchdog: 20 s of speech without text | Force a fresh session |
 | Translation throttled (HTTP 429) or slow | Error or timeout | Back off and retry. Provisional updates are dropped first. The primary language temporarily falls back to Live's own translation. |
 | Venue network drop | Agent socket closes, or no server message for 6 s (half-dead connection) | The agent reconnects forever and keeps about 15 s of audio |
-| Phone vanishes without closing (Wi-Fi roam, sleep) | No pong to the 25 s ping | The server drops it after about 50 s; slow clients with over 1 MB queued are dropped too. They reconnect and get the history. |
+| Phone vanishes without closing (Wi-Fi roam, sleep) | No pong to the 25 s ping | The server drops it after about 50 s; slow clients with over 1 MB queued are dropped too. They reconnect and get the history. The phone page also reconnects by itself when it comes back after more than 20 s in the background, so a phone that slept never shows a frozen page. |
 | Malformed input (oversized frame, bad URL, stream that isn't live yet) | Socket/stream error | Logged; the connection or pull is closed or retried, the process keeps serving every other room |
 | Talk rollover while a translation is in flight | — | Translators are bound to their talk: the late sentence is stored in the talk it belongs to, never duplicated or moved to the next one |
 | Server restart | Clients see the socket close | Pages, projectors and agents reconnect automatically. Rooms are reloaded from config or `data/stages.json`. |

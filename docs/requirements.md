@@ -73,7 +73,7 @@ You can capture audio in two ways.
 
 | Client | Requirement |
 |---|---|
-| Audience phones | Any current mobile browser (iOS Safari 15+, Chrome for Android). About 1 kbps per viewer for captions. Listening to the translated voice uses about 384 kbps. |
+| Audience phones | Any current mobile browser (iOS Safari 15.4+, Chrome for Android 105+). About 1 kbps per viewer for captions. Listening to the translated voice uses about 384 kbps. |
 | Projector | Any browser in full screen, typically the venue PC's second output. |
 | vMix | *Web Browser* input at 1920×1080. |
 | OBS | *Browser Source* at 1920×1080. |

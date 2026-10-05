@@ -22,6 +22,8 @@ Option 3 (`AUTH=auto`). A request counts as local only when:
 - its Host header is `localhost` or a loopback IP (this blocks DNS rebinding), and
 - it has no proxy headers, so a tunnel on the same machine isn't trusted.
 
+Other websites open in the operator's browser can still send requests to `localhost`. So a change (`POST`, `PUT`, `PATCH`, `DELETE`) that carries an `Origin` header must carry this server's own, even from a local request. Scripts send no `Origin` and are unaffected. (Added in 2026-10, after an audit found that local requests skipped this check.)
+
 Missing tokens are generated into `data/secrets.json` and printed at startup. `AUTH=token` and `AUTH=off` are available for stricter and lab setups. For SSO we recommend an identity-aware proxy instead of building accounts (option 4).
 
 ## Consequences

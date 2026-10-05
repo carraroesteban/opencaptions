@@ -80,6 +80,12 @@ const sock = new Socket(() => wsUrl('/ws/view', {
   binary(ab) { if (listening) player.push(ab); },
   close(e) { if (e.code === 4004) location.href = '/'; },
 });
+// A phone waking from sleep can hold a dead socket for minutes: after a long absence, reconnect (history comes back).
+let hiddenAt = 0;
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'hidden') hiddenAt = Date.now();
+  else if (hiddenAt && Date.now() - hiddenAt > 20000) sock.reconnect();
+});
 
 function onHello(m) {
   hello = m;

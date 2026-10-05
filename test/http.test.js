@@ -140,3 +140,27 @@ test('the agenda\'s time zone can be set from the browser (the wizard), and must
   assert.equal(typeof s.timezone, 'string');
   assert.equal(typeof s.timezoneFixed, 'boolean');
 });
+
+test('no password on this computer, but other websites can’t post to it (CSRF)', async () => {
+  const post = (headers) => new Promise((resolve, reject) => {
+    const req = http.request(`${base}/api/stages/main/restart`, { method: 'POST', headers: { 'content-type': 'text/plain', ...headers } }, (res) => { res.resume(); resolve(res.statusCode); });
+    req.on('error', reject);
+    req.end('');
+  });
+  assert.equal(await post({ origin: 'https://evil.example' }), 403, 'a page on another site, in the organizer’s browser');
+  assert.equal(await post({ origin: base }), 200, 'our own dashboard');
+  assert.equal(await post({}), 200, 'a script (no Origin header)');
+});
+
+test('a rename with a bad time zone changes nothing (no half-applied setup)', async () => {
+  const put = (body) => fetch(`${base}/api/setup`, { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
+  const before = (await (await fetch(`${base}/api/event`)).json()).name;
+  assert.equal((await put({ name: 'Half applied', timezone: 'Not/AZone' })).status, 400);
+  assert.equal((await (await fetch(`${base}/api/event`)).json()).name, before);
+});
+
+test('a glossary correction with nothing to look for is refused (it would match everywhere)', async () => {
+  const put = (replacements) => fetch(`${base}/api/glossary`, { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ vocabulary: [], replacements }) });
+  assert.equal((await put([{ from: ' | ', to: 'X' }])).status, 400);
+  assert.equal((await put([{ from: 'tele health | tele-health', to: 'telehealth' }])).status, 200);
+});

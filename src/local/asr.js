@@ -179,8 +179,6 @@ export async function asrReachable(timeoutMs = 3000) {
 // One speech server usually works on one request at a time (whisper.cpp holds a lock), so we queue here:
 // final passes (they commit words) in arrival order; provisional passes only when the server is idle.
 const slots = { active: 0, waiters: [] };
-export const asrLoad = () => ({ active: slots.active, queued: slots.waiters.length });
-
 export async function withAsrSlot(fn, { final = true } = {}) {
   const max = Math.max(1, config.localAsrConcurrency);
   if (!final && (slots.active >= max || slots.waiters.length)) return undefined; // busy: skip this provisional pass

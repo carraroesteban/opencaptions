@@ -16,7 +16,7 @@ import { checkKey, saveKey, keyInfo, looksLikeKey, readSecret, saveSecret } from
 import { Tunnel, tunnelOrigin } from './tunnel.js';
 import * as tty from './tty.js';
 import { Alerts, publicConfig, mergeChannels } from './alerts.js';
-import { identify, allows, sameOrigin, actor, roleFor, createSession, clearCookie, cookieValue, listSessions, endSessions, changePassword, passwordFromEnv, twoFactorOn, twoFactorSecret, checkCode, startTwoFactor, confirmTwoFactor, disableTwoFactor, cleanDevice } from './auth.js';
+import { identify, allows, sameOrigin, isSessionActive, actor, roleFor, createSession, clearCookie, cookieValue, listSessions, endSessions, changePassword, passwordFromEnv, twoFactorOn, twoFactorSecret, checkCode, startTwoFactor, confirmTwoFactor, disableTwoFactor, cleanDevice } from './auth.js';
 import { oidc, oidcEnabled, roleForEmail, startFlow, finishFlow, redirectFor } from './oidc.js';
 import { resetClient } from './genai.js';
 import { Glossary } from './glossary.js';
@@ -208,15 +208,16 @@ app.post('/api/stages', admin, unlocked, async (req, res) => {
 app.patch('/api/stages/:id', crew, getStage, async (req, res) => {
   const st = req.stage;
   const b = req.body || {};
+  // Who may change what comes first: the crew must not even get a pull URL resolved.
+  const setupKeys = Object.keys(b).filter((k) => k !== 'title');
+  if (setupKeys.length && req.who.role !== 'admin') return res.status(403).json({ error: 'the crew can rename the current talk, not change the room', role: req.who.role });
+  if (setup.locked && setupKeys.length) return res.status(423).json(LOCKED);
   const def = normalizeStage({ ...st.def, ...b, id: st.id });
   try {
     validateStage(def);
     if (b.pull) await checkPullUrl(b.pull);
   } catch (e) { return res.status(400).json({ error: e.message }); }
   const old = st.def;
-  const setupKeys = Object.keys(b).filter((k) => k !== 'title');
-  if (setupKeys.length && req.who.role !== 'admin') return res.status(403).json({ error: 'the crew can rename the current talk, not change the room', role: req.who.role });
-  if (setup.locked && setupKeys.length) return res.status(423).json(LOCKED);
   // Only a real change touches the room: saving the dialog must not restart audio or clear viewers' screens.
   if ('title' in b && (b.title || '') !== (st.talk.title || '')) st.setTitle(b.title || '');
   const langsChanged = def.source !== old.source || def.targets.join() !== old.targets.join() || def.translation !== old.translation;
@@ -302,15 +303,21 @@ function talkSegs(st, talkId) {
   if (id !== st.talk.id) return [];
   return Object.keys(st.tracks).flatMap((ch) => st.history(ch, 5000)).sort((a, b) => a.start - b.start);
 }
-function talkInfo(st, talkId) {
+/** @param {any} [saved] the talk's entry from store.listTalks, when the caller already has it */
+function talkInfo(st, talkId, saved) {
   const id = talkId || st.talk.id;
   const live = id === st.talk.id;
-  const meta = live ? { stage: st.id, ...st.talk, languages: st.languages } : store.listTalks(st.id).find((t) => t.id === id);
-  if (!meta) return null;
+  const base = (meta, sum) => ({ stage: st.id, stageName: st.def.name, id, title: meta.title || '', speaker: meta.speaker || '', startedAt: meta.startedAt, languages: meta.languages || st.languages, channels: sum.channels, segments: sum.segments, durationMs: sum.durationMs, live: live && st.engines.size > 0 && !st.gated, current: live });
+  if (!live) { // a saved talk: its summary is cached by the store
+    const m = saved || store.listTalks(st.id).find((t) => t.id === id);
+    return m ? base(m, { channels: m.channels, segments: m.origSegments, durationMs: m.durationMs }) : null;
+  }
   const segs = talkSegs(st, id);
-  const durationMs = segs.reduce((m, x) => Math.max(m, x.end || 0), 0);
-  const channels = [...new Set(segs.map((x) => x.channel))];
-  return { stage: st.id, stageName: st.def.name, id, title: meta.title || '', speaker: meta.speaker || '', startedAt: meta.startedAt, languages: meta.languages || st.languages, channels, segments: segs.filter((x) => x.channel === 'orig').length, durationMs, live: live && st.engines.size > 0 && !st.gated, current: live };
+  return base({ ...st.talk, languages: st.languages }, {
+    channels: [...new Set(segs.map((x) => x.channel))],
+    segments: segs.filter((x) => x.channel === 'orig').length,
+    durationMs: segs.reduce((m, x) => Math.max(m, x.end || 0), 0),
+  });
 }
 
 app.get('/api/stages/:id/talks', getStage, listAccess, (req, res) => res.json(store.listTalks(req.params.id)));
@@ -321,10 +328,8 @@ app.get('/api/talks', (req, res) => {
   if (PUBLIC_TRANSCRIPTS === 'none' && !all) return res.status(401).json({ error: 'admin token required' });
   const out = [];
   for (const st of stages.values()) {
-    const ids = all ? store.listTalks(st.id).map((t) => t.id) : [];
-    if (!ids.includes(st.talk.id)) ids.unshift(st.talk.id);
-    for (const id of ids) {
-      const info = talkInfo(st, id);
+    const saved = all ? store.listTalks(st.id) : [];
+    for (const info of [talkInfo(st, st.talk.id), ...saved.filter((t) => t.id !== st.talk.id).map((t) => talkInfo(st, t.id, t))]) {
       if (info && info.segments > 0) out.push(info);
     }
   }
@@ -345,7 +350,7 @@ app.get('/api/stages/:id/export.:fmt', getStage, talkAccess, (req, res) => {
   const all = talkSegs(st, talkId);
   const segs = all.filter((s) => s.channel === channel);
   const fmt = req.params.fmt;
-  const name = `${st.id}-${talkId}-${req.query.lang || 'orig'}.${fmt}`;
+  const name = `${st.id}-${talkId}-${req.query.lang || 'orig'}.${fmt}`.replace(/[^\w.-]/g, '_'); // query values: never raw in a header
   res.set('Content-Disposition', `${req.query.inline ? 'inline' : 'attachment'}; filename="${name}"`);
   if (fmt === 'srt') return res.type('application/x-subrip').send(toSRT(segs));
   if (fmt === 'vtt') return res.type('text/vtt').send(toVTT(segs));
@@ -601,10 +606,12 @@ app.get('/api/setup', crew, (req, res) => {
 app.put('/api/setup', admin, (req, res) => {
   const b = req.body || {};
   const patch = {};
+  // Check everything before changing anything: a bad time zone must not leave a half-applied rename.
+  const name = String(b.name || '').trim().slice(0, 80);
+  if ('name' in b && !name) return res.status(400).json({ error: 'name required' });
+  if ('timezone' in b && !zoneOk(String(b.timezone || ''))) return res.status(400).json({ error: 'unknown time zone' });
+  if (setup.locked && ('name' in b || 'timezone' in b)) return res.status(423).json(LOCKED);
   if ('name' in b) {
-    if (setup.locked) return res.status(423).json(LOCKED);
-    const name = String(b.name || '').trim().slice(0, 80);
-    if (!name) return res.status(400).json({ error: 'name required' });
     if (name !== config.event.name) patch.change = recordChange({ kind: 'event.rename', summary: `Event renamed to "${name}"`, before: config.event.name, after: name }).id;
     patch.name = config.event.name = name;
     config.event.named = true;
@@ -612,8 +619,6 @@ app.put('/api/setup', admin, (req, res) => {
   if ('done' in b) patch.done = !!b.done;
   if ('timezone' in b) {
     const tz = String(b.timezone || '');
-    if (!zoneOk(tz)) return res.status(400).json({ error: 'unknown time zone' });
-    if (setup.locked) return res.status(423).json(LOCKED);
     patch.timezone = tz;
     if (!tzFixed) process.env.TZ = tz; // Node reads TZ again on the next date
   }
@@ -961,8 +966,9 @@ server.on('upgrade', (req, socket, head) => {
   // session cookie.
   const noQuery = new URL(url);
   noQuery.searchParams.delete('token');
-  const ok = kind === 'ingest' ? useTicket(url.searchParams.get('ticket')) || allows(identify(req, noQuery), 'ingest')
-    : kind === 'admin' ? allows(identify(req, noQuery), 'crew') : true;
+  const who = kind === 'view' ? null : identify(req, noQuery);
+  const ok = kind === 'ingest' ? useTicket(url.searchParams.get('ticket')) || allows(who, 'ingest')
+    : kind === 'admin' ? allows(who, 'crew') : true;
   if (!ok && !noteAuthFailure(req)) return reject(socket, 429, 'Too Many Requests');
   wss.handleUpgrade(req, socket, head, (ws) => {
     // Protocol violations (oversized frame, invalid UTF-8…) emit 'error' on the socket: log, never crash.
@@ -971,7 +977,7 @@ server.on('upgrade', (req, socket, head) => {
       if (!ok) return ws.close(4001, `bad ${kind} token`);
       if (kind === 'ingest') onIngest(ws, url);
       else if (kind === 'view') onView(ws, url);
-      else onAdmin(ws);
+      else onAdmin(ws, who);
     } catch (e) {
       ws.close(1011, e.message);
     }
@@ -1085,7 +1091,8 @@ function onView(ws, url) {
   });
 }
 
-function onAdmin(ws) {
+function onAdmin(ws, who) {
+  ws.session = who?.session || null; // signed in with a cookie: dropped once that device is signed out
   admins.add(ws);
   sendJson(ws, { type: 'logs', logs: [...stages.values()].flatMap((s) => s.logs).sort((a, b) => a.t - b.t).slice(-150) });
   ws.on('close', () => admins.delete(ws));
@@ -1094,7 +1101,10 @@ function onAdmin(ws) {
 function broadcastAdmin(obj) {
   if (!admins.size) return;
   const msg = JSON.stringify(obj);
-  for (const ws of admins) if (ws.readyState === 1) ws.send(msg);
+  for (const ws of admins) {
+    if (ws.session && !isSessionActive(ws.session)) { ws.close(4001, 'signed out'); continue; }
+    if (ws.readyState === 1) ws.send(msg);
+  }
 }
 
 setInterval(() => broadcastAdmin({ type: 'status', ...snapshot() }), 1000);
