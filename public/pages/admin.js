@@ -26,7 +26,7 @@ setAccent(ev.accent);
 let last = null;
 let locked = false;
 const logs = [];
-const VIEWS = isCrew ? ['live', 'screens', 'transcripts', 'history'] : ['live', 'rooms', 'agenda', 'glossary', 'screens', 'transcripts', 'history', 'settings'];
+const VIEWS = isCrew ? ['live', 'screens', 'transcripts', 'history'] : ['live', 'rooms', 'agenda', 'glossary', 'screens', 'integrations', 'transcripts', 'history', 'settings'];
 let view = 'live';
 let screensRoom = null;
 let txRoom = null;
@@ -53,6 +53,21 @@ const L = {
     agendaSave: 'Reemplazar la agenda', agendaSame: 'Es igual a la agenda actual: no hay nada que cambiar.', agendaSaved: (n) => `Agenda guardada: ${n} charlas.`, more: (n) => `y ${n} más`,
     glossSaved: (t, c) => `Glosario guardado: ${t} términos, ${c} correcciones.`, unsaved: 'Cambios sin guardar', anyLang: 'Todos',
     renamed: (n) => `El evento ahora se llama «${n}».`,
+    conn: {
+      titles: { zoom: 'Subtítulos en Zoom', youtube: 'Subtítulos en YouTube Live', teams: 'Subtítulos en Microsoft Teams', webhook: 'Webhook' },
+      names: { zoom: 'Zoom', youtube: 'YouTube Live', teams: 'Teams', webhook: 'Webhook' },
+      help: {
+        zoom: 'En la reunión o el webinar, como anfitrión: Subtítulos → servicio de subtítulos de terceros → «Copiar el token de API», y pegalo acá. Cada reunión tiene su propio enlace. Si la opción no aparece, activá «Permitir el uso del token de API de subtítulos» en la configuración web de Zoom.',
+        youtube: 'En YouTube Studio → Transmitir en vivo → la configuración de tu transmisión → Subtítulos: activalos, elegí «Publicar subtítulos en una URL» (HTTP POST) y copiá la URL de ingesta de subtítulos. Una sola fuente de subtítulos por transmisión.',
+        teams: 'En las opciones de la reunión (calendario de Teams → la reunión → Opciones de reunión): activá «Proporcionar subtítulos CART», guardá y copiá el enlace CART.',
+        webhook: 'Una dirección https:// tuya. Cada envío es JSON, firmado con HMAC-SHA256 en el encabezado X-OpenCaptions-Signature; la clave secreta aparece una sola vez, al conectar.',
+      },
+      none: 'Todavía no hay nada conectado. Elegí arriba dónde mostrar los subtítulos.',
+      orig: 'Original (lo que se habla)', waiting: 'esperando subtítulos', sent: (n, a) => `✓ ${n} enviados · hace ${a}`, failed: (e) => `✗ ${e}`,
+      deleted: 'sala eliminada', test: 'Probar', remove: 'Quitar', tested: 'Enviamos una línea de prueba.', removed: 'Desconectado.',
+      connected: (n) => `${n} conectado.`, secret: (k) => `Guardá esta clave para verificar los envíos (no se vuelve a mostrar):\n\n${k}`,
+    },
+    txDelete: (n) => `¿Eliminar para siempre la transcripción «${n}»? No se puede deshacer.`,
     wizardLocked: 'Desactivá el modo evento para usar el asistente: puede cambiar salas e idiomas.',
     noTalks: 'Todavía no hay transcripciones en esta sala.', read: 'Leer', segs: (n) => `${n} frases`,
     k: {
@@ -90,6 +105,21 @@ const L = {
     agendaSave: 'Replace the agenda', agendaSame: 'It’s the same as the current agenda: nothing to change.', agendaSaved: (n) => `Agenda saved: ${n} talks.`, more: (n) => `and ${n} more`,
     glossSaved: (t, c) => `Glossary saved: ${t} terms, ${c} corrections.`, unsaved: 'Unsaved changes', anyLang: 'All',
     renamed: (n) => `The event is now called “${n}”.`,
+    conn: {
+      titles: { zoom: 'Captions in Zoom', youtube: 'Captions in YouTube Live', teams: 'Captions in Microsoft Teams', webhook: 'Webhook' },
+      names: { zoom: 'Zoom', youtube: 'YouTube Live', teams: 'Teams', webhook: 'Webhook' },
+      help: {
+        zoom: 'In the meeting or webinar, as host: Captions → third-party captioning service → "Copy the API token", and paste it here. Each meeting has its own link. If the option is missing, turn on "Allow use of caption API token" in Zoom\'s web settings.',
+        youtube: 'In YouTube Studio → Go live → your stream\'s settings → Closed captions: turn them on, choose "POST captions to URL" (HTTP POST) and copy the Captions ingestion URL. One caption source per stream.',
+        teams: 'In the meeting options (Teams calendar → the meeting → Meeting options): turn on "Provide CART captions", save, and copy the CART link.',
+        webhook: 'An https:// address of yours. Each request is JSON, signed with HMAC-SHA256 in the X-OpenCaptions-Signature header; the secret is shown once, when you connect.',
+      },
+      none: 'Nothing connected yet. Choose above where to show the captions.',
+      orig: 'Original (what is spoken)', waiting: 'waiting for captions', sent: (n, a) => `✓ ${n} sent · ${a} ago`, failed: (e) => `✗ ${e}`,
+      deleted: 'room deleted', test: 'Test', remove: 'Remove', tested: 'Sent a test line.', removed: 'Disconnected.',
+      connected: (n) => `${n} connected.`, secret: (k) => `Keep this secret to verify the requests (it isn't shown again):\n\n${k}`,
+    },
+    txDelete: (n) => `Delete the transcript “${n}” for good? This can’t be undone.`,
     wizardLocked: 'Turn off Event mode to use the setup wizard: it can change rooms and languages.',
     noTalks: 'No transcripts in this room yet.', read: 'Read', segs: (n) => `${n} lines`,
     k: {
@@ -130,6 +160,7 @@ const api = async (method, url, body, { quiet = false } = {}) => {
 try {
   const setup = await api('GET', '/api/setup', null, { quiet: true });
   if (!setup.done && !qs.has('dashboard') && !isCrew) { location.replace('/welcome.html'); await new Promise(() => {}); }
+  if (setup.mode === 'personal' && !qs.has('dashboard') && !isCrew) { location.replace('/me.html'); await new Promise(() => {}); } // "just for me"
   setLocked(!!setup.locked);
 } catch { /* signed out meanwhile: askToken() shows the sign-in */ }
 // Signed out (expired, or signed out from another device): one sign-in screen, then start over.
@@ -221,6 +252,7 @@ function refreshView() {
   else if (view === 'agenda') loadAgenda();
   else if (view === 'glossary') loadGlossary();
   else if (view === 'screens') loadScreens();
+  else if (view === 'integrations') loadIntegrations();
   else if (view === 'transcripts') loadTranscripts();
   else if (view === 'history') loadHistory();
   else if (view === 'settings') loadSettings();
@@ -636,12 +668,14 @@ async function loadAgenda() {
     ? Object.entries(byRoom).map(([room, es]) => `<section class="card flush"><table class="table"><thead><tr><th colspan="3">${esc(names[room] || room)}</th></tr></thead><tbody>${es.map((e) => `<tr><td class="u-w120">${esc(when(e.start))}</td><td><b>${esc(e.title)}</b></td><td class="hide-sm muted-note">${esc(e.speaker || '')}</td></tr>`).join('')}</tbody></table></section>`).join('')
     : `<p class="muted-note">${esc(t.agendaNone)}</p>`;
   $('agenda-diff').classList.add('hidden');
+  loadImportSource();
   setLocked(locked);
 }
 const key = (e) => `${e.stage}|${e.start}|${e.title}`;
 $('agenda-preview').dataset.setup = '';
-$('agenda-preview').onclick = async () => {
-  const r = await api('PUT', '/api/schedule?dryRun=1', { csv: $('agenda-text').value });
+/** Show what an agenda would change (pasted, or imported from Sessionize / a calendar), then save it on request. */
+async function previewAgenda(preview, commit) {
+  const r = await preview();
   const cur = await (await fetch('/api/schedule')).json();
   const oldK = new Set(cur.map(key)), newK = new Set(r.entries.map(key));
   const added = r.entries.filter((e) => !oldK.has(key(e))), removed = cur.filter((e) => !newK.has(key(e)));
@@ -657,15 +691,86 @@ $('agenda-preview').onclick = async () => {
     </div>
     ${same ? '' : `<div class="rowbar u-mt12"><span class="spacer"></span><button class="primary" id="agenda-save" data-setup>${icon('check')} ${esc(t.agendaSave)}</button></div>`}`;
   $('agenda-diff').classList.remove('hidden');
+  $('agenda-diff').scrollIntoView({ block: 'nearest', behavior: 'smooth' });
   const save = $('agenda-save');
   if (save) save.onclick = async () => {
-    const res = await api('PUT', '/api/schedule', { csv: $('agenda-text').value });
+    const res = await commit();
     toast(t.agendaSaved(res.count), { undo: res.change });
-    $('agenda-text').value = '';
     await refreshSchedule();
     loadAgenda();
   };
+}
+$('agenda-preview').onclick = () => previewAgenda(
+  () => api('PUT', '/api/schedule?dryRun=1', { csv: $('agenda-text').value }),
+  async () => { const res = await api('PUT', '/api/schedule', { csv: $('agenda-text').value }); $('agenda-text').value = ''; return res; },
+);
+// Import from Sessionize or a calendar link: same preview, then the server fetches it again to save.
+$('import-source').onchange = () => { $('import-ref').placeholder = $('import-source').value === 'ics' ? 'https://calendar.google.com/calendar/ical/…/basic.ics' : 'https://sessionize.com/api/v2/…/view/All'; };
+$('import-form').onsubmit = (e) => {
+  e.preventDefault();
+  const body = { source: $('import-source').value, ref: $('import-ref').value.trim() };
+  if (!body.ref) return $('import-ref').focus();
+  previewAgenda(() => api('POST', '/api/schedule/import?dryRun=1', body), () => api('POST', '/api/schedule/import', body)).catch(() => { /* toast shown */ });
 };
+$('import-again').onclick = () => previewAgenda(() => api('POST', '/api/schedule/import?dryRun=1', { again: true }), () => api('POST', '/api/schedule/import', { again: true })).catch(() => { /* toast shown */ });
+async function loadImportSource() {
+  const src = await api('GET', '/api/schedule/source', null, { quiet: true }).catch(() => null);
+  $('import-again').classList.toggle('hidden', !src);
+  if (src) $('import-again').title = `${src.source === 'sessionize' ? 'Sessionize' : tr('Calendario')} · ${src.label}`;
+}
+
+// ---------- Integrations: captions into Zoom, YouTube Live, Teams; webhooks (src/integrations.js) ----------
+let conns = [];
+async function loadIntegrations() {
+  conns = (await api('GET', '/api/integrations')).connectors;
+  const names = Object.fromEntries(ev.stages.map((x) => [x.id, x.name]));
+  const langName = (l) => (l === 'orig' ? t.conn.orig : langLabel(l, ev.languages));
+  const status = (s) => (s.state === 'error' ? `<span class="chip bad">${esc(t.conn.failed(s.lastError || '?'))}</span>` : s.sent ? `<span class="chip ok">${esc(t.conn.sent(s.sent, ago(s.lastAt)))}</span>` : `<span class="chip">${esc(t.conn.waiting)}</span>`);
+  $('conn-list').innerHTML = conns.length
+    ? `<table class="table">${conns.map((c) => `<tr><td><b>${esc(t.conn.names[c.type])}</b><div class="muted-note">${esc(names[c.stage] || `${c.stage} · ${t.conn.deleted}`)} · ${esc(langName(c.lang))}</div><div class="muted-note hide-sm"><code>${esc(c.link)}</code></div></td>
+      <td>${status(c.status)}</td>
+      <td class="r"><button data-conn-test="${esc(c.id)}">${esc(t.conn.test)}</button> <button class="danger" data-conn-del="${esc(c.id)}">${esc(t.conn.remove)}</button></td></tr>`).join('')}</table>`
+    : `<p class="empty">${esc(t.conn.none)}</p>`;
+}
+setInterval(() => { if (view === 'integrations' && !$('dlg-conn').open) loadIntegrations().catch(() => {}); }, 3000);
+$('conn-list').onclick = async (e) => {
+  const test = e.target.closest('[data-conn-test]')?.dataset.connTest, del = e.target.closest('[data-conn-del]')?.dataset.connDel;
+  if (test) { await api('POST', `/api/integrations/${test}/test`); toast(t.conn.tested); setTimeout(loadIntegrations, 1500); }
+  if (del) { await api('DELETE', `/api/integrations/${del}`); toast(t.conn.removed); loadIntegrations(); }
+};
+let connType = '';
+const fc = $('f-conn');
+function connLangs() {
+  const st = ev.stages.find((x) => x.id === fc.stage.value);
+  fc.lang.innerHTML = (st?.languages || ['orig']).map((l) => `<option value="${esc(l)}">${esc(l === 'orig' ? t.conn.orig : langLabel(l, ev.languages))}</option>`).join('');
+}
+fc.stage.onchange = connLangs;
+document.querySelector('section.view[data-view="integrations"]').addEventListener('click', (e) => {
+  const type = e.target.closest('[data-connect]')?.dataset.connect;
+  if (!type) return;
+  connType = type;
+  $('conn-title').textContent = t.conn.titles[type];
+  $('conn-help').textContent = t.conn.help[type];
+  fc.stage.innerHTML = ev.stages.map((x) => `<option value="${esc(x.id)}">${esc(x.name)}</option>`).join('');
+  connLangs();
+  fc.url.value = '';
+  fc.url.placeholder = { zoom: 'https://wmcapi.zoom.us/closedcaption?id=…', youtube: 'http://upload.youtube.com/closedcaption?cid=…', teams: 'https://api.captions.office.microsoft.com/cartcaption?meetingid=…', webhook: 'https://…' }[type];
+  $('conn-events').classList.toggle('hidden', type !== 'webhook');
+  $('conn-err').textContent = '';
+  $('dlg-conn').showModal();
+});
+fc.addEventListener('submit', async (e) => {
+  if (e.submitter?.value !== 'ok') return;
+  e.preventDefault();
+  const events = [fc['ev-caption'].checked && 'caption', fc['ev-talk'].checked && 'talk.ended'].filter(Boolean);
+  try {
+    const c = await api('POST', '/api/integrations', { type: connType, stage: fc.stage.value, lang: fc.lang.value, url: fc.url.value.trim(), events }, { quiet: true });
+    $('dlg-conn').close();
+    toast(t.conn.connected(t.conn.names[connType]));
+    if (c.secret) alert(t.conn.secret(c.secret));
+    loadIntegrations();
+  } catch (err) { $('conn-err').textContent = tr(err.message); }
+});
 
 // ---------- Glossary ----------
 let gloss = { vocabulary: [], replacements: [] };
@@ -704,7 +809,8 @@ $('gloss-save').onclick = async () => {
   toast(t.glossSaved(r.vocabulary.length, r.replacements.length), { undo: r.change });
   loadGlossary();
 };
-for (const id of ['add', 'term-in', 'rep-add', 'gloss-save', 'name-in', 'agenda-text', 'lang-add', 'tx-access']) $(id).dataset.setup = '';
+for (const id of ['add', 'term-in', 'rep-add', 'gloss-save', 'name-in', 'agenda-text', 'lang-add', 'tx-access', 'import-ref', 'import-source', 'import-again']) $(id).dataset.setup = '';
+$('import-form').querySelector('button:not([type])').dataset.setup = '';
 $('lang-form').querySelector('button').dataset.setup = '';
 $('term-form').querySelector('button').dataset.setup = '';
 $('name-form').querySelector('button').dataset.setup = '';
@@ -756,8 +862,14 @@ async function renderTranscripts() {
   const talks = await api('GET', `/api/stages/${encodeURIComponent(st.id)}/talks`);
   $('tx-list').innerHTML = talks.length ? `<table class="table">${talks.map((x) => `<tr><td><b>${esc(x.title || tr('Sin título'))}</b><div class="muted-note">${esc(when(x.startedAt))} · ${esc(t.segs(x.segments))}</div></td>
     <td class="hide-sm">${st.languages.map((l) => `<div class="muted-note"><b>${esc(langLabel(l, ev.languages))}</b>: ${['srt', 'vtt', 'txt'].map((f) => `<a href="/api/stages/${st.id}/export.${f}?lang=${l}&talk=${encodeURIComponent(x.id)}">${f}</a>`).join(' · ')}</div>`).join('')}</td>
-    <td class="r"><a href="/talk.html?stage=${encodeURIComponent(st.id)}&talk=${encodeURIComponent(x.id)}" target="_blank"><button tabindex="-1">${icon('doc')} ${esc(t.read)}</button></a></td></tr>`).join('')}</table>` : `<p class="empty">${esc(t.noTalks)}</p>`;
+    <td class="r"><a href="/talk.html?stage=${encodeURIComponent(st.id)}&talk=${encodeURIComponent(x.id)}" target="_blank"><button tabindex="-1">${icon('doc')} ${esc(t.read)}</button></a>${isCrew ? '' : ` <button class="danger" data-tx-del="${esc(x.id)}" data-tx-title="${esc(x.title || '')}">${esc(tr('Eliminar'))}</button>`}</td></tr>`).join('')}</table>` : `<p class="empty">${esc(t.noTalks)}</p>`;
 }
+$('tx-list').onclick = async (e) => {
+  const b = e.target.closest('[data-tx-del]');
+  if (!b || !confirm(t.txDelete(b.dataset.txTitle || tr('Sin título')))) return;
+  await api('DELETE', `/api/stages/${encodeURIComponent($('tx-room').value)}/talks/${encodeURIComponent(b.dataset.txDel)}`);
+  renderTranscripts();
+};
 $('tx-room').onchange = () => { txRoom = $('tx-room').value; renderTranscripts(); };
 function openExport(st) {
   txRoom = st.id;

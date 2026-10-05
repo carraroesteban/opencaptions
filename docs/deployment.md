@@ -95,6 +95,7 @@ You can install in several ways. They are equivalent at runtime.
 | [Docker Compose](#docker-compose) | Linux servers and cloud VMs. Reproducible and isolated. |
 | [Node.js directly](#nodejs-directly) | macOS and Windows laptops, development, venue PCs |
 | [systemd service](#systemd-service-linux-without-docker) | Linux servers when you don't want Docker |
+| [Render, Fly.io or Railway](#cloud-platforms-render-flyio-railway) | A public server with HTTPS in a few minutes, no machine to look after |
 
 ### Is Docker worth it?
 
@@ -209,6 +210,46 @@ To keep it running after you close the terminal:
 ### systemd service (Linux without Docker)
 
 `deploy/opencaptions.service` runs the server as an unprivileged user with systemd sandboxing. The install steps are in the comments at the top of the file. It listens on `127.0.0.1` only and expects a tunnel or reverse proxy in front.
+
+## Cloud platforms: Render, Fly.io, Railway
+
+The repository has ready-made settings for three hosting platforms. Each runs the Docker image with a **persistent disk** for `data/` (settings, passwords, transcripts, and here also the glossary and agenda), HTTPS, and **never sleeps**: a server that sleeps when idle would cut the captions in the middle of a talk. That rules out free plans that sleep or have no disk.
+
+On all three, OpenCaptions finds its public address by itself (QR codes and links use it), and trusts the platform's proxy (`TRUST_PROXY=1`). Every device needs the admin password: the first start prints **Open the dashboard** with a link that signs you in, in the platform's logs. Paste the Gemini key in the dashboard, or set `GEMINI_API_KEY` in the platform's environment.
+
+### Render
+
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/carraroesteban/opencaptions)
+
+The button reads `render.yaml`: a web service on the smallest paid instance (`0.5c-512mb`, about 100 MB used with 1000 phones in our load test; choose `1c-2g` for big events) with a 5 GB disk. Render asks for `GEMINI_API_KEY` (optional). The address is `https://<name>.onrender.com`; add your own domain in Render's settings.
+
+### Fly.io
+
+With the [Fly CLI](https://fly.io/docs/flyctl/install/), from a copy of the repository:
+
+```bash
+fly launch --copy-config --no-deploy
+```
+
+```bash
+fly volumes create data --size 1
+```
+
+```bash
+fly deploy
+```
+
+`fly launch` asks for a unique app name (the address becomes `https://<name>.fly.dev`) and a region: pick the one closest to your audience. `fly.toml` keeps one machine always running with 1 GB of memory. The dashboard link is in `fly logs`.
+
+### Railway
+
+In Railway, **New project → Deploy from GitHub repo**, and choose your fork of OpenCaptions. `railway.json` builds the Dockerfile and checks `/healthz`. Then, in the service:
+
+1. **Settings → Networking → Generate domain** (or add yours).
+2. Right-click the service → **Attach volume**, mount path `/app/data`.
+3. **Variables**: `TRUST_PROXY=1`, `GLOSSARY=/app/data/glossary.json`, `SCHEDULE=/app/data/schedule.json`, and optionally `GEMINI_API_KEY`.
+
+The dashboard link is in the deployment's logs.
 
 ## HTTPS
 

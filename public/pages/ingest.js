@@ -2,6 +2,7 @@
 import { qs, esc, store, wsUrl, Socket, getEvent, langLabel, takeUrlToken, ingestTicket } from '/common.js';
 import { localize, prefsControls, tr } from '/i18n.js';
 import { icon } from '/illustrations.js';
+import { openMic, openScreenAudio } from '/capture.js';
 const goLabel = (on) => { $('go').innerHTML = on ? `${icon('stop')} <span>Detener</span>` : `${icon('play')} <span>Empezar a transcribir</span>`; };
 document.getElementById('conn').before(prefsControls());
 const $ = (id) => document.getElementById(id);
@@ -48,19 +49,17 @@ listDevices();
 async function getSource() {
   const m = $('mode').value;
   if (m === 'mic') {
-    stream = await navigator.mediaDevices.getUserMedia({ audio: {
-      deviceId: $('device').value ? { exact: $('device').value } : undefined,
-      // Raw console feed: disable voice-call processing.
-      echoCancellation: false, noiseSuppression: false, autoGainControl: false, channelCount: 2,
-    } });
+    let src;
+    ({ stream, src } = await openMic(ctx, { deviceId: $('device').value, raw: true })); // raw console feed: no voice-call processing
     listDevices();
-    return ctx.createMediaStreamSource(stream);
+    return src;
   }
   if (m === 'tab') {
-    stream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false }, systemAudio: 'include' });
-    if (!stream.getAudioTracks().length) throw new Error('No se compartió audio: marcá "Compartir audio de la pestaña".');
-    stream.getVideoTracks().forEach((t) => (t.enabled = false));
-    return ctx.createMediaStreamSource(new MediaStream(stream.getAudioTracks()));
+    try {
+      let src;
+      ({ stream, src } = await openScreenAudio(ctx));
+      return src;
+    } catch (e) { throw e.code === 'no-audio' ? new Error('No se compartió audio: marcá "Compartir audio de la pestaña".') : e; }
   }
   media = new Audio();
   media.crossOrigin = 'anonymous';

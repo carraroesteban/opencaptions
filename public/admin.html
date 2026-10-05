@@ -209,6 +209,7 @@
         <a href="#agenda" data-admin data-view="agenda" data-icon="calendar">Agenda</a>
         <a href="#glossary" data-admin data-view="glossary" data-icon="book">Glosario</a>
         <a href="#screens" data-view="screens" data-icon="qr">Pantallas y QR</a>
+        <a href="#integrations" data-admin data-view="integrations" data-icon="link">Integraciones</a>
         <a href="#transcripts" data-view="transcripts" data-icon="doc">Transcripciones</a>
         <span class="sep"></span>
         <a href="#history" data-view="history" data-icon="refresh">Historial</a>
@@ -271,6 +272,16 @@
           <div class="rowbar"><button id="agenda-preview" data-icon="eye">Ver qué cambia</button><span class="spacer"></span></div>
           <div id="agenda-diff" class="hidden" data-no-i18n></div>
         </section>
+        <section class="card u-stack12">
+          <h2 class="u-m0 u-fs20">Importar</h2>
+          <p class="muted-note u-m0">Desde Sessionize (API / Embed → un endpoint con «All») o un enlace de calendario (.ics): la sala es el lugar del evento y el título, su nombre. Las salas se reconocen por su nombre.</p>
+          <form class="rowbar" id="import-form">
+            <select id="import-source" aria-label="Origen"><option value="sessionize">Sessionize</option><option value="ics">Calendario (.ics)</option></select>
+            <input id="import-ref" class="u-grow" aria-label="Enlace" placeholder="https://sessionize.com/api/v2/…/view/All" />
+            <button data-icon="eye">Ver qué cambia</button>
+            <button type="button" id="import-again" class="hidden" data-icon="refresh">Importar de nuevo</button>
+          </form>
+        </section>
       </section>
 
       <!-- GLOSSARY -->
@@ -305,6 +316,32 @@
       </section>
 
       <!-- TRANSCRIPTS -->
+      <section class="view" data-view="integrations">
+        <p class="lede">Llevá los subtítulos adonde ya está tu público: una reunión de Zoom o Teams, una transmisión de YouTube, o cualquier sistema con un webhook.</p>
+        <h2 class="sec">Subtítulos en tus reuniones y transmisiones</h2>
+        <div class="tools">
+          <button class="card tool u-left" type="button" data-connect="zoom"><b data-icon="monitor">Zoom</b><span>Subtítulos (y traducción) dentro de la reunión o el webinar, para todos los participantes.</span></button>
+          <button class="card tool u-left" type="button" data-connect="youtube"><b data-icon="film">YouTube Live</b><span>Subtítulos en la transmisión en vivo, que el público activa con el botón CC.</span></button>
+          <button class="card tool u-left" type="button" data-connect="teams"><b data-icon="chat">Microsoft Teams</b><span>Subtítulos CART dentro de la reunión de Teams.</span></button>
+          <button class="card tool u-left" type="button" data-connect="webhook"><b data-icon="link">Webhook</b><span>Cada subtítulo y cada charla terminada, en JSON firmado, a tu sistema (intranet, archivo, Zapier, Make).</span></button>
+        </div>
+        <h2 class="sec">Conectadas</h2>
+        <div class="card flush" id="conn-list" data-no-i18n></div>
+        <h2 class="sec">Ya incluidas</h2>
+        <div class="tools">
+          <a class="card tool" href="#agenda"><b data-icon="calendar">Sessionize y calendarios</b><span>Importá la agenda desde Sessionize o un enlace de calendario (Google, Outlook).</span></a>
+          <a class="card tool" href="#settings"><b data-icon="alert">Slack, Teams, Telegram, Discord</b><span>Alertas al celular del equipo cuando algo necesita atención.</span></a>
+          <a class="card tool" href="#screens"><b data-icon="monitor">OBS y vMix</b><span>Overlay transparente para el streaming, y audio por RTMP o SRT.</span></a>
+          <a class="card tool" href="https://github.com/carraroesteban/opencaptions/blob/main/docs/security-guide.md#company-sign-in" target="_blank" rel="noopener"><b data-icon="shield">Google y Microsoft</b><span>Inicio de sesión con las cuentas de la empresa (OpenID Connect).</span></a>
+        </div>
+        <h2 class="sec">En la nube, en minutos</h2>
+        <div class="tools">
+          <a class="card tool" href="https://render.com/deploy?repo=https://github.com/carraroesteban/opencaptions" target="_blank" rel="noopener"><b data-icon="cloud">Render</b><span>Un clic: servidor con HTTPS y disco para los datos.</span></a>
+          <a class="card tool" href="https://github.com/carraroesteban/opencaptions/blob/main/docs/deployment.md#flyio" target="_blank" rel="noopener"><b data-icon="cloud">Fly.io</b><span>Tres comandos, cerca de tu público.</span></a>
+          <a class="card tool" href="https://github.com/carraroesteban/opencaptions/blob/main/docs/deployment.md#railway" target="_blank" rel="noopener"><b data-icon="cloud">Railway</b><span>Desde el repositorio de GitHub, con un volumen para los datos.</span></a>
+        </div>
+      </section>
+
       <section class="view" data-view="transcripts">
         <p class="lede">Todo lo que se dijo en cada charla, para leer, buscar y descargar en cada idioma.</p>
         <div class="rowbar"><label class="row">Sala <select id="tx-room"></select></label><span class="spacer"></span><a href="/report.html" target="_blank"><button data-icon="dashboard" tabindex="-1">Informe del evento</button></a><a href="/talks.html" target="_blank"><button data-icon="doc" tabindex="-1">Abrir la biblioteca pública</button></a></div>
@@ -380,6 +417,21 @@
   </div>
 
   <!-- dialogs -->
+  <dialog id="dlg-conn"><form method="dialog" id="f-conn" class="u-stack12">
+    <h3 class="u-m0" id="conn-title"></h3>
+    <p class="muted-note u-m0" id="conn-help" data-no-i18n></p>
+    <div class="row u-stretch">
+      <label class="field u-grow">Sala<select name="stage" required></select></label>
+      <label class="field u-grow">Idioma de los subtítulos<select name="lang"></select></label>
+    </div>
+    <label class="field">Enlace<input name="url" required autocomplete="off" spellcheck="false" /></label>
+    <fieldset class="field hidden" id="conn-events"><legend>Enviar</legend>
+      <label class="row"><input type="checkbox" name="ev-caption" checked /> Cada subtítulo</label>
+      <label class="row"><input type="checkbox" name="ev-talk" checked /> Cada charla terminada (con el enlace a la transcripción)</label>
+    </fieldset>
+    <p class="muted-note u-m0 u-bad" id="conn-err" role="alert"></p>
+    <div class="dlg-actions"><button value="cancel" formnovalidate>Cancelar</button><button class="primary" id="conn-save" value="ok" data-icon="link">Conectar</button></div>
+  </form></dialog>
   <dialog id="dlg-edit"><form method="dialog" id="f-edit" class="u-stack12">
     <h3 class="u-m0" id="edit-title">Sala</h3>
     <div class="row u-stretch">

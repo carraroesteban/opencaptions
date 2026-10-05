@@ -44,6 +44,8 @@
 
     .q { font-weight: 700; margin: 0 0 10px; }
     .pills { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 24px; }
+    .justme { margin-top: 28px; padding-top: 18px; border-top: 1px solid var(--line); color: var(--fg2); }
+    .justme button { margin-left: 6px; }
     .rowbar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin: -12px 0 24px; }
     .pill { font-size: 15px; padding: 8px 15px; cursor: pointer; }
 
@@ -93,6 +95,7 @@
         <h1 data-t="welcomeH"></h1>
         <p class="lede" data-t="welcomeP"></p>
         <div class="actions"><button class="primary" data-next data-t="start"></button><button class="skip" data-finish data-t="skipAll"></button></div>
+        <p class="justme"><span data-t="meQ"></span> <button type="button" id="just-me" data-t="meBtn"></button></p>
       </div>
 
       <div class="step" data-step="name" data-art="ob-name">

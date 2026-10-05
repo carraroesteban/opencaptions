@@ -14,6 +14,7 @@ const T = {
   en: {
     title: 'Welcome · OpenCaptions',
     k0: 'Welcome', welcomeH: 'Let’s get your event ready.', welcomeP: 'A few quick questions, about two minutes. Skip anything you’re not sure about: you can change all of it later from the dashboard.',
+    meQ: 'Not an event? Captions for yourself: your calls, videos and conversations, on this computer.', meBtn: 'Just for me',
     start: 'Let’s start', skipAll: 'Skip setup, I’ll do it later', back: 'Back', next: 'Continue',
     k1: 'Step 1 of 7 · Your event', nameH: 'What’s your event called?', namePh: 'e.g. City Design Week 2026', nameHint: 'It appears on the audience’s phones, on the projector screen and on the QR posters.', skipName: 'Skip, decide later',
     k2: 'Step 2 of 7 · Rooms', roomsH: 'Where will people speak?', roomsP: 'One stage or many. Each room gets its own captions link and QR code.', addRoom: '+ Add a room', skipRooms: 'Skip, keep these rooms', roomPh: (i) => `Room ${i}`, remove: 'Remove room',
@@ -49,6 +50,7 @@ const T = {
   es: {
     title: 'Bienvenida · OpenCaptions',
     k0: 'Bienvenida', welcomeH: 'Preparemos tu evento.', welcomeP: 'Unas pocas preguntas, unos dos minutos. Saltá lo que no sepas: podés cambiar todo después desde el panel.',
+    meQ: '¿No es un evento? Subtítulos para vos: tus llamadas, videos y conversaciones, en esta compu.', meBtn: 'Solo para mí',
     start: 'Empezar', skipAll: 'Saltar, lo hago después', back: 'Atrás', next: 'Continuar',
     k1: 'Paso 1 de 7 · Tu evento', nameH: '¿Cómo se llama tu evento?', namePh: 'Ej: Semana del Diseño 2026', nameHint: 'Aparece en los celulares del público, en la pantalla del proyector y en los carteles con QR.', skipName: 'Saltar, lo decido después',
     k2: 'Paso 2 de 7 · Salas', roomsH: '¿Dónde va a hablar la gente?', roomsP: 'Un escenario o varios. Cada sala tiene su propio link de subtítulos y su QR.', addRoom: '+ Agregar una sala', skipRooms: 'Saltar, dejar estas salas', roomPh: (i) => `Sala ${i}`, remove: 'Quitar sala',
@@ -224,7 +226,7 @@ document.addEventListener('click', async (e) => {
     try { await save[steps[cur].dataset.step]?.(); show(cur + 1); } catch (err) { fail(err); } finally { b.disabled = false; }
   }
   if (b.hasAttribute('data-finish')) {
-    try { await api('PUT', '/api/setup', { done: true }); } catch (err) { return fail(err); }
+    try { await api('PUT', '/api/setup', { done: true, mode: 'event' }); } catch (err) { return fail(err); }
     location.href = '/admin.html';
   }
 });
@@ -337,3 +339,10 @@ function renderSummary() {
 }
 
 show(start >= 0 ? start : 0);
+
+// "Just for me": personal captions on this computer (me.html) instead of an event. The dashboard opens it from now on;
+// finishing this wizard later switches back to event mode.
+$('just-me').onclick = async () => {
+  try { await api('PUT', '/api/setup', { done: true, mode: 'personal' }); } catch (err) { return fail(err); }
+  location.href = '/me.html';
+};

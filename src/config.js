@@ -45,7 +45,9 @@ const engineDefaults = (eng) => ({
 export const config = {
   port: Number(env.PORT || 8080),
   host: env.HOST || '0.0.0.0',
-  publicUrl: (env.PUBLIC_URL || event.publicUrl || '').replace(/\/$/, ''),
+  // On a hosting platform the public address is known without asking: Render, Fly.io and Railway say it.
+  publicUrl: (env.PUBLIC_URL || event.publicUrl || env.RENDER_EXTERNAL_URL || (env.FLY_APP_NAME ? `https://${env.FLY_APP_NAME}.fly.dev` : '')
+    || (env.RAILWAY_PUBLIC_DOMAIN ? `https://${env.RAILWAY_PUBLIC_DOMAIN}` : '')).replace(/\/$/, ''),
   engine,
   // The engine chosen at start. `engine` itself can change at runtime (offline backup, see src/failover.js).
   primaryEngine: engine,

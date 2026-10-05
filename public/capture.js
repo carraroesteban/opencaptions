@@ -1,0 +1,61 @@
+// Audio capture shared by the audio page (ingest.html) and the personal page (me.html): a microphone, or the sound of a
+// tab or the whole computer (screen sharing with audio), turned into 16 kHz PCM16 chunks by /pcm-worklet.js.
+
+/** A microphone. `raw`: no voice processing (a sound desk); otherwise the browser cleans up a laptop mic. */
+export async function openMic(ctx, { deviceId = '', raw = false } = {}) {
+  const stream = await navigator.mediaDevices.getUserMedia({ audio: {
+    deviceId: deviceId ? { exact: deviceId } : undefined,
+    echoCancellation: !raw, noiseSuppression: !raw, autoGainControl: !raw, channelCount: raw ? 2 : 1,
+  } });
+  return { stream, src: ctx.createMediaStreamSource(stream) };
+}
+
+/**
+ * What the computer plays: the browser asks which tab, window or screen to share. Chrome and Edge on Windows can
+ * share the whole computer's sound ("Share system audio"); elsewhere, a tab's sound (a call or video in a tab).
+ * Throws `no-audio` when the person shared without sound.
+ */
+export async function openScreenAudio(ctx) {
+  const stream = await navigator.mediaDevices.getDisplayMedia({
+    video: true, // required by browsers to show the picker; the picture is never used
+    audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false },
+    systemAudio: 'include', windowAudio: 'system', selfBrowserSurface: 'exclude',
+  });
+  if (!stream.getAudioTracks().length) {
+    stream.getTracks().forEach((t) => t.stop());
+    throw Object.assign(new Error('no-audio'), { code: 'no-audio' });
+  }
+  stream.getVideoTracks().forEach((t) => (t.enabled = false));
+  return { stream, src: ctx.createMediaStreamSource(new MediaStream(stream.getAudioTracks())) };
+}
+
+/**
+ * Start capturing. `onPcm(ArrayBuffer)` gets 100 ms of 16 kHz mono PCM16; `onEnded()` runs when the source goes away
+ * (a mic unplugged, "Stop sharing" clicked). Returns { stop(), setGain(g), stream, ctx }.
+ */
+export async function capture({ source, deviceId = '', raw = false, channel = 'mix', gain = 1, onPcm, onEnded }) {
+  const ctx = new AudioContext();
+  try {
+    await ctx.audioWorklet.addModule('/pcm-worklet.js');
+    const { stream, src } = source === 'screen' ? await openScreenAudio(ctx) : await openMic(ctx, { deviceId, raw });
+    const node = new AudioWorkletNode(ctx, 'pcm-capture', { processorOptions: { channel, gain } });
+    src.connect(node);
+    const mute = ctx.createGain(); mute.gain.value = 0; node.connect(mute).connect(ctx.destination); // keeps the graph pulling
+    node.port.onmessage = (e) => onPcm(e.data);
+    stream.getAudioTracks().forEach((t) => { t.onended = () => onEnded?.(); });
+    if (ctx.state !== 'running') { try { await ctx.resume(); } catch { /* needs a click */ } }
+    return {
+      ctx, stream,
+      setGain: (g) => node.port.postMessage({ gain: g }),
+      stop: () => { stream.getTracks().forEach((t) => t.stop()); ctx.close(); },
+    };
+  } catch (e) { ctx.close(); throw e; }
+}
+
+/** Level of one PCM16 chunk in dBFS (-∞…0), for a meter. */
+export function levelDb(buf) {
+  const i16 = new Int16Array(buf);
+  let sum = 0;
+  for (let i = 0; i < i16.length; i++) sum += (i16[i] / 32768) ** 2;
+  return 20 * Math.log10(Math.sqrt(sum / i16.length) || 1e-6);
+}

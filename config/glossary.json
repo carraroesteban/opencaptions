@@ -1,5 +1,9 @@
 {
-  "_doc": "Your event's glossary (empty by default; Dashboard → Glossary edits this file). vocabulary: names and terms that bias speech recognition (sent to the AI as custom vocabulary). replacements: deterministic fixes applied to every caption (case-insensitive, whole words). Use 'lang' to restrict a rule to one channel ('orig', 'es', 'en', ...). See config/glossary.example.json.",
   "vocabulary": [],
-  "replacements": []
+  "replacements": [
+    {
+      "from": "piano",
+      "to": "pianno"
+    }
+  ]
 }

@@ -22,6 +22,8 @@ import { resetClient } from './genai.js';
 import { Glossary } from './glossary.js';
 import { Stage } from './stage.js';
 import { Store, toSRT, toVTT, toTXT } from './store.js';
+import { Integrations } from './integrations.js';
+import { fromSessionize, fromIcs } from './agenda-import.js';
 import { PullSource } from './pull.js';
 import { systemStats } from './system.js';
 import { summarize, ask, audienceAiEnabled, assistStats } from './assist.js';
@@ -68,6 +70,7 @@ function addStage(def) {
   st.on('log', (entry) => broadcastAdmin({ type: 'log', ...entry }));
   stages.set(def.id, st);
   if (def.pull) startPull(st, def.pull, def.loop);
+  integrations?.attachAll(); // a restored room gets its Zoom/YouTube/Teams/webhook connectors back
   return st;
 }
 
@@ -77,6 +80,7 @@ function removeStage(id) {
   stopPull(id);
   st.destroy();
   stages.delete(id);
+  integrations?.attachAll();
 }
 
 function startPull(st, url, loop, opts = {}) {
@@ -96,7 +100,9 @@ if (!process.env.STAGES && fs.existsSync(STAGES_FILE) && fs.statSync(STAGES_FILE
   try { initial = JSON.parse(fs.readFileSync(STAGES_FILE, 'utf8')); } catch { /* use config */ }
 }
 fs.mkdirSync(config.dataDir, { recursive: true });
+let integrations = null; // created once the rooms exist (below)
 for (const def of initial) addStage(def);
+integrations = new Integrations({ stages, talkUrl: (stage, talk) => `${config.publicUrl || lanUrl() || `http://localhost:${config.port}`}/talk.html?stage=${encodeURIComponent(stage)}&talk=${encodeURIComponent(talk)}` });
 
 // First-run setup (the dashboard's welcome wizard): what the organizer chose is kept in data/setup.json.
 const SETUP_FILE = path.join(config.dataDir, 'setup.json');
@@ -297,10 +303,13 @@ app.post('/api/stages/:id/restart', crew, getStage, (req, res) => {
 const TRANSCRIPT_MODES = ['current', 'all', 'none'];
 const transcriptsFixed = !!process.env.PUBLIC_TRANSCRIPTS;
 let PUBLIC_TRANSCRIPTS = (process.env.PUBLIC_TRANSCRIPTS || setup.publicTranscripts || config.event.publicTranscripts || 'current').toLowerCase();
+// Personal mode ("just for me"): the captions are someone's own calls and conversations. Nothing is public: reading
+// them needs this computer or a sign-in, even for other devices on the same Wi-Fi.
+const personal = () => setup.mode === 'personal';
 const isCurrent = (st, talkId) => !talkId || talkId === st.talk.id;
-const canReadTalk = (req, st, talkId) => PUBLIC_TRANSCRIPTS === 'all' || (PUBLIC_TRANSCRIPTS === 'current' && isCurrent(st, talkId)) || allows(identify(req, reqUrl(req)), 'crew');
+const canReadTalk = (req, st, talkId) => (!personal() && (PUBLIC_TRANSCRIPTS === 'all' || (PUBLIC_TRANSCRIPTS === 'current' && isCurrent(st, talkId)))) || allows(identify(req, reqUrl(req)), 'crew');
 const talkAccess = (req, res, next) => (canReadTalk(req, req.stage, req.query.talk || req.params.talk) ? next() : crew(req, res, next));
-const listAccess = (req, res, next) => (PUBLIC_TRANSCRIPTS === 'all' ? next() : crew(req, res, next));
+const listAccess = (req, res, next) => (PUBLIC_TRANSCRIPTS === 'all' && !personal() ? next() : crew(req, res, next));
 
 /** All final segments of a talk: from disk, or from memory when STORE_TRANSCRIPTS=false (current talk only). */
 function talkSegs(st, talkId) {
@@ -330,8 +339,9 @@ app.get('/api/stages/:id/talks', getStage, listAccess, (req, res) => res.json(st
 
 // Public library of talks (what the audience may read): used by /talks.html.
 app.get('/api/talks', (req, res) => {
-  const all = PUBLIC_TRANSCRIPTS === 'all' || allows(identify(req, reqUrl(req)), 'crew');
-  if (PUBLIC_TRANSCRIPTS === 'none' && !all) return res.status(401).json({ error: 'admin token required' });
+  const signedIn = allows(identify(req, reqUrl(req)), 'crew');
+  const all = (PUBLIC_TRANSCRIPTS === 'all' && !personal()) || signedIn;
+  if ((PUBLIC_TRANSCRIPTS === 'none' || personal()) && !signedIn) return res.status(401).json({ error: 'admin token required' });
   const out = [];
   for (const st of stages.values()) {
     const saved = all ? store.listTalks(st.id) : [];
@@ -341,6 +351,18 @@ app.get('/api/talks', (req, res) => {
   }
   out.sort((a, b) => b.startedAt - a.startedAt);
   res.json({ publicTranscripts: PUBLIC_TRANSCRIPTS, talks: out });
+});
+
+// Delete a transcript for good (someone's private call in personal mode, a talk that mustn't be kept). The talk in
+// progress is closed first, so its next words start a new one.
+app.delete('/api/stages/:id/talks/:talk', admin, getStage, (req, res) => {
+  const st = req.stage, id = req.params.talk;
+  if (!store.hasTalk(st.id, id)) return res.status(404).json({ error: 'unknown talk' });
+  const info = talkInfo(st, id);
+  if (id === st.talk.id) st.newTalk('', '');
+  store.removeTalk(st.id, id);
+  recordChange({ kind: 'talk.delete', target: st.id, summary: `Transcript "${info?.title || id}" deleted` });
+  res.json({ ok: true });
 });
 
 app.get('/api/stages/:id/talks/:talk', getStage, talkAccess, (req, res) => {
@@ -475,6 +497,23 @@ setInterval(() => {
     tunnel: tunnel.status(),
   });
 }, Number(process.env.ALERTS_TICK_MS || 5000)).unref();
+// Connectors (src/integrations.js): captions into Zoom, YouTube Live and Teams, and webhooks. Allowed in Event mode:
+// a Zoom caption link only exists once the meeting has started.
+app.get('/api/integrations', admin, (req, res) => res.json({ connectors: integrations.list() }));
+app.post('/api/integrations', admin, async (req, res) => {
+  try {
+    const c = await integrations.add(req.body || {});
+    recordChange({ kind: 'integration.add', summary: `${c.type} connected to room "${stages.get(c.stage)?.def.name || c.stage}"` });
+    res.json(c);
+  } catch (e) { res.status(400).json({ error: e.message }); }
+});
+app.delete('/api/integrations/:id', admin, (req, res) => {
+  if (!integrations.remove(req.params.id)) return res.status(404).json({ error: 'unknown connector' });
+  recordChange({ kind: 'integration.remove', summary: 'Connector removed' });
+  res.json({ ok: true });
+});
+app.post('/api/integrations/:id/test', admin, (req, res) => (integrations.test(req.params.id) ? res.json({ ok: true }) : res.status(404).json({ error: 'unknown connector' })));
+
 app.get('/api/alerts', admin, (req, res) => res.json(publicConfig(alerts.cfg)));
 app.put('/api/alerts', admin, (req, res) => {
   try {
@@ -596,6 +635,7 @@ app.get('/api/setup', crew, (req, res) => {
     timezone: Intl.DateTimeFormat().resolvedOptions().timeZone, // what the agenda's HH:MM times mean
     timezoneFixed: tzFixed,
     languages: config.event.languages,
+    mode: setup.mode === 'personal' ? 'personal' : 'event',
     addedLanguages: setup.languages || {},
     publicTranscripts: PUBLIC_TRANSCRIPTS,
     publicTranscriptsFixed: transcriptsFixed,
@@ -640,6 +680,7 @@ app.put('/api/setup', admin, (req, res) => {
     config.event.named = true;
   }
   if ('done' in b) patch.done = !!b.done;
+  if ('mode' in b) patch.mode = b.mode === 'personal' ? 'personal' : 'event'; // "just for me" or an event
   if ('timezone' in b) {
     const tz = String(b.timezone || '');
     patch.timezone = tz;
@@ -799,24 +840,44 @@ app.post('/api/tunnel', admin, unlocked, (req, res) => {
 });
 
 app.get('/api/schedule', (req, res) => res.json(schedule.entries.map((e) => ({ ...e, startIso: new Date(e.start).toISOString() }))));
+/** Save (or with dryRun just preview) an agenda: pasted CSV, entries, or rows from an import. */
+function saveAgenda(input, { dryRun = false, byName = false } = {}) {
+  // Pasted text and imports are matched to the rooms that exist (by id or name); rows for other rooms are skipped.
+  const rooms = byName ? [...stages.values()].map((s) => ({ id: s.id, name: s.def.name })) : undefined;
+  const before = schedule.entries.map((e) => ({ ...e }));
+  const entries = /** @type {any} */ (dryRun ? parseSchedule(input, new Date(), { rooms }) : schedule.set(input, { rooms }));
+  const unknown = [...new Set(entries.map((e) => e.stage))].filter((id) => !stages.has(id));
+  const skipped = entries.skipped || [];
+  const change = dryRun ? null : recordChange({ kind: 'agenda.set', summary: `Agenda saved (${before.length} → ${entries.length} talks)`, before, after: entries.map((e) => ({ ...e })) });
+  return { ok: true, change: change?.id ?? null, count: entries.length, unknownRooms: unknown, skipped: { count: skipped.length, rooms: [...new Set(skipped.map((x) => x.room))].slice(0, 20) },
+    ...(dryRun ? { entries: entries.map((e) => ({ ...e, startIso: new Date(e.start).toISOString() })) } : {}) };
+}
 app.put('/api/schedule', admin, unlocked, (req, res) => {
   try {
     const csv = typeof req.body?.csv === 'string' ? req.body.csv : null;
-    // Pasted text is matched to the rooms that exist (by id or name); rows for other rooms are skipped.
-    const rooms = csv != null ? [...stages.values()].map((s) => ({ id: s.id, name: s.def.name })) : undefined;
-    const input = csv ?? req.body?.entries ?? req.body;
-    const before = schedule.entries.map((e) => ({ ...e }));
-    // ?dryRun=1: parse and report, without saving (the dashboard's preview before replacing the agenda).
-    const entries = /** @type {any} */ (req.query.dryRun ? parseSchedule(input, new Date(), { rooms }) : schedule.set(input, { rooms }));
-    const unknown = [...new Set(entries.map((e) => e.stage))].filter((id) => !stages.has(id));
-    const skipped = entries.skipped || [];
-    const change = req.query.dryRun ? null : recordChange({ kind: 'agenda.set', summary: `Agenda saved (${before.length} → ${entries.length} talks)`, before, after: entries.map((e) => ({ ...e })) });
-    res.json({ ok: true, change: change?.id ?? null, count: entries.length, unknownRooms: unknown, skipped: { count: skipped.length, rooms: [...new Set(skipped.map((x) => x.room))].slice(0, 20) },
-      ...(req.query.dryRun ? { entries: entries.map((e) => ({ ...e, startIso: new Date(e.start).toISOString() })) } : {}) });
+    res.json(saveAgenda(csv ?? req.body?.entries ?? req.body, { dryRun: !!req.query.dryRun, byName: csv != null }));
+  } catch (e) { res.status(400).json({ error: e.message }); }
+});
+// Import from Sessionize or a calendar link (src/agenda-import.js). The source is remembered for "Import again"; it's
+// kept with the secrets because a calendar's private address (Google's "secret address in iCal format") is one.
+app.get('/api/schedule/source', admin, (req, res) => {
+  let src = null;
+  try { src = JSON.parse(readSecret('agendaSource') || 'null'); } catch { /* none */ }
+  res.json(src ? { source: src.source, label: src.source === 'sessionize' ? src.ref : (() => { try { return new URL(src.ref.replace(/^webcal:/i, 'https:')).host; } catch { return ''; } })() } : null);
+});
+app.post('/api/schedule/import', admin, unlocked, async (req, res) => {
+  try {
+    let { source, ref } = req.body || {};
+    if (req.body?.again) ({ source, ref } = JSON.parse(readSecret('agendaSource') || '{}'));
+    if (!['sessionize', 'ics'].includes(source)) return res.status(400).json({ error: 'source: sessionize or ics' });
+    const rows = source === 'sessionize' ? await fromSessionize(ref) : await fromIcs(ref);
+    if (!rows.length) return res.status(400).json({ error: 'no talks with a start time were found there' });
+    const out = saveAgenda(rows, { dryRun: !!req.query.dryRun, byName: true });
+    if (!req.query.dryRun) saveSecret('agendaSource', JSON.stringify({ source, ref: String(ref) }));
+    res.json(out);
   } catch (e) { res.status(400).json({ error: e.message }); }
 });
 
-// Crew only: a glossary can hold names that aren't public yet (an unannounced product, a surprise speaker).
 app.get('/api/glossary', crew, (req, res) => res.json(glossary.data));
 app.put('/api/glossary', admin, unlocked, (req, res) => {
   try {
@@ -1020,6 +1081,7 @@ server.on('upgrade', (req, socket, head) => {
   if (!wsAllowed(req)) return reject(socket, 429, 'Too Many Requests');
   if (kind !== 'view' && !originAllowed(req)) return reject(socket, 403, 'Forbidden');
   if (kind === 'view' && viewerCount >= MAX_VIEWERS) return reject(socket, 503, 'Service Unavailable');
+  if (kind === 'view' && personal() && !allows(identify(req, url), 'crew')) return reject(socket, 401, 'Unauthorized');
   // Sockets don't take a password in the URL (proxies log URLs): ingest uses a header or a ticket, the dashboard its
   // session cookie.
   const noQuery = new URL(url);

@@ -122,5 +122,9 @@ test('saved talks: summaries and transcripts are cached, but never stale', () =>
     fs.writeFileSync(path.join(dir, 'transcripts', '.DS_Store'), ''); // Finder's file must not break listing or retention
     assert.equal(store.listTalks('main').length, 1);
     new Store(dir, { enabled: true, retentionDays: 30 });
+    assert.ok(store.removeTalk('main', 't1'), 'a transcript can be deleted for good');
+    assert.equal(store.listTalks('main').length, 0);
+    assert.equal(store.readTalk('main', 't1').length, 0, 'nothing cached is left behind');
+    assert.equal(store.removeTalk('main', 't1'), false);
   } finally { fs.rmSync(dir, { recursive: true, force: true }); }
 });

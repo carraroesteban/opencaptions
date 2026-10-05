@@ -44,7 +44,7 @@ after(() => {
 });
 
 test('every page has an icon, and the icons are served', async () => {
-  for (const page of ['/', '/watch.html', '/talk.html', '/talks.html', '/admin.html', '/kit.html', '/style.html', '/ingest.html', '/demo.html', '/screen.html', '/overlay.html', '/welcome.html']) {
+  for (const page of ['/', '/watch.html', '/talk.html', '/talks.html', '/admin.html', '/kit.html', '/style.html', '/ingest.html', '/demo.html', '/screen.html', '/overlay.html', '/welcome.html', '/me.html']) {
     const { status, body } = await get(base + page);
     assert.equal(status, 200, page);
     assert.match(body, /rel="icon" href="\/brand\/icon\.svg"/, page);
@@ -189,4 +189,32 @@ test('“ask the talk” is limited per browser, not per venue IP', async () => 
   for (let i = 0; i < 6; i++) await ask('phone-one-1234');
   assert.equal((await ask('phone-one-1234')).status, 429, 'the 7th question in a minute from one phone');
   assert.notEqual((await ask('phone-two-5678')).status, 429, 'another phone behind the same IP still can');
+});
+
+test('“just for me” mode: captions and transcripts only on this computer (or signed in)', async () => {
+  const setMode = (mode) => fetch(`${base}/api/setup`, { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ mode }) });
+  const fromWifi = { host: `phone.example:${PORT}` }; // not "localhost": another device on the network
+  assert.equal((await setMode('personal')).status, 200);
+  try {
+    assert.equal((await (await fetch(`${base}/api/setup`)).json()).mode, 'personal');
+    assert.equal((await get(`${base}/api/talks`, fromWifi)).status, 401);
+    assert.equal((await get(`${base}/api/stages/main/export.txt`, fromWifi)).status, 401);
+    assert.equal((await get(`${base}/api/talks`)).status, 200, 'this computer still reads them');
+    const { default: WebSocket } = await import('ws');
+    const view = (headers) => new Promise((resolve) => {
+      const ws = new WebSocket(`ws://127.0.0.1:${PORT}/ws/view?stage=main`, { headers });
+      ws.on('open', () => { ws.close(); resolve('open'); });
+      ws.on('unexpected-response', (req, res) => resolve(res.statusCode));
+      ws.on('error', () => resolve('error'));
+    });
+    assert.equal(await view(fromWifi), 401);
+    assert.equal(await view({}), 'open');
+  } finally {
+    await setMode('event');
+  }
+  assert.equal((await get(`${base}/api/stages/main/export.txt`, fromWifi)).status, 200, 'event mode: the talk in progress is public again');
+});
+
+test('deleting a transcript that doesn’t exist says so', async () => {
+  assert.equal((await fetch(`${base}/api/stages/main/talks/not-a-talk`, { method: 'DELETE' })).status, 404);
 });

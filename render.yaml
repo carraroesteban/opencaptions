@@ -1,0 +1,22 @@
+# Render Blueprint: the "Deploy to Render" button (docs/deployment.md) reads this file.
+# A web service from the Dockerfile with a disk for data/ (settings, passwords, transcripts). Disks need a paid
+# instance; the free one also sleeps when idle, which would cut the captions during an event.
+services:
+  - type: web
+    name: opencaptions
+    runtime: docker
+    plan: 0.5c-512mb # the smallest paid size: ~100 MB used with 1000 phones in our load test. Pick 1c-2g for big events.
+    healthCheckPath: /healthz
+    envVars:
+      - key: TRUST_PROXY # Render's proxy is the only way in: believe its X-Forwarded-* headers (HTTPS, client IP)
+        value: "1"
+      - key: GLOSSARY # keep the glossary and the agenda on the disk too
+        value: /app/data/glossary.json
+      - key: SCHEDULE
+        value: /app/data/schedule.json
+      - key: GEMINI_API_KEY # optional: it can also be pasted in the dashboard
+        sync: false
+    disk:
+      name: data
+      mountPath: /app/data
+      sizeGB: 5 # Render's minimum step

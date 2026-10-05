@@ -6,12 +6,15 @@ Key facts:
 - Captions appear about 2–3 seconds after the words are spoken; translations 3–5 seconds after (measured in a three-room rehearsal with 150 phones).
 - One small server (1 CPU, 512 MB) handles about 10 rooms.
 - Downloads for macOS and Windows, a Docker image, or Node.js from source. A setup wizard asks for the event, rooms and languages.
+- Also for one person: "Just for me" captions and translates whatever a computer plays (a video call, a class, a video; the whole computer on Windows, a browser tab on Mac) or what its microphone hears, in big text or a floating window. Private: nothing is shared.
+- Sends captions into Zoom, Microsoft Teams (CART) and YouTube Live, and to webhooks; imports the agenda from Sessionize or a calendar link. About 40 caption languages.
 - Not a replacement for professional human captioning where every word must be exact, or for sign language interpretation.
 
 ## Guides
 
 - [Live captions for conferences](https://opencaptions.kvza.ar/live-captions-for-conferences/): what attendees and organizers get, cost and accuracy
 - [How to add live captions to an event](https://opencaptions.kvza.ar/how-to-caption-an-event/): step by step, from the sound desk to the transcripts
+- [Live captions for your calls and videos](https://opencaptions.kvza.ar/live-captions-for-video-calls/): personal use, on your own computer
 - [FAQ](https://opencaptions.kvza.ar/faq/): cost, accuracy, delay, languages, offline use and privacy
 - [Live captioning options compared](https://opencaptions.kvza.ar/alternatives/): human captioners, interpreters, AI services and OpenCaptions
 
@@ -19,6 +22,7 @@ Key facts:
 
 - [Subtítulos en vivo para congresos](https://opencaptions.kvza.ar/es/subtitulos-en-vivo-para-congresos/)
 - [Cómo poner subtítulos en vivo en un evento](https://opencaptions.kvza.ar/es/como-subtitular-un-evento/)
+- [Subtítulos en vivo para tus llamadas y videos](https://opencaptions.kvza.ar/es/subtitulos-en-vivo-para-videollamadas/)
 - [Preguntas frecuentes](https://opencaptions.kvza.ar/es/preguntas-frecuentes/)
 - [Opciones de subtitulado en vivo comparadas](https://opencaptions.kvza.ar/es/alternativas/)
 

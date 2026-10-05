@@ -28,7 +28,7 @@ if (!CHROME) { tty.fail('Chrome not found: set CHROME=/path/to/chrome'); process
 
 const PAGES = [
   '/', '/watch.html?stage=main', '/talk.html?stage=main', '/talks.html', '/screen.html?stage=main', '/overlay.html?stage=main&bg=ink',
-  '/admin.html?dashboard', '/admin.html?dashboard#rooms', '/admin.html?dashboard#settings', '/welcome.html', '/welcome.html#rooms',
+  '/admin.html?dashboard', '/admin.html?dashboard#rooms', '/admin.html?dashboard#agenda', '/admin.html?dashboard#integrations', '/admin.html?dashboard#settings', '/welcome.html', '/welcome.html#rooms', '/me.html',
   '/ingest.html', '/demo.html', '/kit.html', '/style.html', '/report.html',
 ].filter((p) => p.includes(only));
 

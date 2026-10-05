@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#FAF8F3" media="(prefers-color-scheme: light)" />
+  <meta name="theme-color" content="#111014" media="(prefers-color-scheme: dark)" />
+  <link rel="icon" href="/favicon.ico" sizes="32x32" />
+  <link rel="icon" href="/brand/icon.svg" type="image/svg+xml" />
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+  <title>OpenCaptions</title>
+  <link rel="stylesheet" href="/style.css" />
+  <style>
+    body { display: flex; flex-direction: column; height: 100dvh; overflow: hidden; }
+    header { display: flex; align-items: center; gap: 10px; padding: 10px 16px; border-bottom: 1px solid var(--line); background: var(--bg); }
+    header h1 { font-size: 18px; margin: 0; display: flex; align-items: center; gap: 8px; }
+    header h1 svg { width: 26px; height: 20px; }
+    header .spacer { flex: 1; }
+    header a { color: var(--fg2); font-size: 14px; }
+    .bar { display: flex; flex-wrap: wrap; align-items: end; gap: 12px; padding: 14px 16px; border-bottom: 1px solid var(--line); background: var(--bg2); }
+    .bar .field { margin: 0; }
+    #src-label { display: block; }
+    .seg { display: inline-flex; border: 1px solid var(--line); border-radius: var(--pill); padding: 3px; gap: 3px; background: var(--bg); }
+    .seg button { border: 0; border-radius: var(--pill); padding: 7px 14px; background: none; }
+    .seg button[aria-checked='true'] { background: var(--primary-bg); color: var(--primary-fg); }
+    #go { min-width: 190px; }
+    .meter { width: 120px; height: 8px; border-radius: 4px; background: var(--bg3); overflow: hidden; align-self: center; }
+    .meter i { display: block; height: 100%; width: 0; background: var(--accent); transition: width .1s linear; }
+    .hint { flex-basis: 100%; margin: 0; font-size: 14px; color: var(--fg2); }
+    #ai-box { padding: 14px 16px; border-bottom: 1px solid var(--line); }
+    #scroll { flex: 1; overflow-y: auto; padding: 24px 20px 40px; }
+    #text { font-size: var(--size, 28px); line-height: 1.45; font-family: var(--read-font, var(--font)); max-width: 860px; margin: 0 auto; }
+    #text p { margin: 0 0 .6em; }
+    #text p.old { color: var(--fg2); }
+    #text .empty { color: var(--fg2); font-size: 18px; margin-top: 16vh; text-align: center; }
+    #orig { border-top: 1px solid var(--line); padding: 10px 20px; font-size: 16px; color: var(--translation); background: var(--bg2); min-height: 2.8em; }
+    #orig b { color: var(--fg2); font-size: 11px; letter-spacing: .1em; text-transform: uppercase; margin-right: 8px; }
+    footer { display: flex; gap: 6px; padding: 10px 12px calc(10px + env(safe-area-inset-bottom)); border-top: 1px solid var(--line); background: var(--bg); align-items: center; flex-wrap: wrap; }
+    footer .spacer { flex: 1; }
+    footer button, footer .btn { padding: 8px 11px; font-size: 15px; }
+    footer a.btn { text-decoration: none; }
+    #pip[aria-pressed='true'] { background: var(--primary-bg); border-color: var(--primary-bg); color: var(--primary-fg); }
+    @media (max-width: 560px) { .meter { display: none; } #go { min-width: 0; flex: 1; } }
+  </style>
+</head>
+<body>
+  <header>
+    <h1><svg viewBox="0 0 878 664" aria-hidden="true"><use href="/brand/sprite.svg#oc-o"/><use href="/brand/sprite.svg#oc-line"/></svg><span>OpenCaptions</span> <span class="chip" id="mode-chip"></span></h1>
+    <span class="spacer"></span>
+    <a href="/admin.html?dashboard" id="event-link"></a>
+  </header>
+
+  <section class="bar" aria-labelledby="go">
+    <div class="field"><span id="src-label"></span>
+      <div class="seg" role="radiogroup" id="src">
+        <button type="button" role="radio" data-src="mic" data-icon="mic"></button>
+        <button type="button" role="radio" data-src="screen" data-icon="monitor"></button>
+      </div>
+    </div>
+    <label class="field" id="f-device"><span id="device-label"></span><select id="device"></select></label>
+    <label class="field"><span id="to-label"></span><select id="to"></select></label>
+    <button class="primary" id="go" type="button"></button>
+    <div class="meter" aria-hidden="true"><i id="lvl"></i></div>
+    <p class="hint" id="hint"></p>
+  </section>
+
+  <section id="ai-box" class="hidden" aria-label="AI"><p class="u-m0" id="ai-note"></p><div id="ai-key"></div></section>
+
+  <div id="scroll" role="main" aria-live="polite"><div id="text"></div></div>
+  <div id="orig" class="hidden" role="complementary"><b id="orig-label"></b><span></span></div>
+
+  <footer>
+    <button type="button" id="smaller" aria-label="A−">A−</button>
+    <button type="button" id="bigger" aria-label="A+">A+</button>
+    <span class="chip" id="status" role="status"></span>
+    <span class="spacer"></span>
+    <button type="button" id="pip" class="hidden" data-icon="pin" aria-pressed="false"></button>
+    <a class="btn" id="doc" target="_blank" rel="noopener" data-icon="doc"></a>
+    <a class="btn" id="download" data-icon="download"></a>
+  </footer>
+  <script type="module" src="/pages/me.js"></script>
+</body>
+</html>

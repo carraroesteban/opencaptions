@@ -38,6 +38,10 @@ OpenCaptions is the complete toolkit for doing that at a real event. It is free,
 
 **Yours to own.** MIT-licensed and self-hosted, with no lock-in and no tracking. Use Google Gemini for the best quality, or run everything on your own hardware so that no audio leaves the building.
 
+## Also just for you
+
+Not running an event? Choose **Just for me** the first time you open the app, and OpenCaptions captions whatever you're listening to on your own computer: a video call in another language, a class, a video, or the conversation around you. Translated into your language if you like, in big text and in a small window that floats over everything. Nothing is shared with anyone. [How it works](docs/personal.md).
+
 ## Made for every kind of event
 
 <p align="center"><img src="public/art/hero.webp" width="820" alt="An audience following live captions on their phones while a speaker presents on stage" /></p>
@@ -73,6 +77,7 @@ Conferences and summits · universities and schools · places of worship · town
 - **Visual style editor** for fonts, colors and layout. It builds the URL for you.
 - **Multilingual speakers.** When a host switches language mid-sentence, every caption language follows.
 - **Any audio source:** the sound desk through a PC, a browser tab, or OBS/vMix streaming straight to the server (RTMP, SRT, HLS).
+- **Captions in Zoom, YouTube Live and Microsoft Teams:** paste the meeting's or stream's caption link and the room's captions, in any language, appear inside it. Webhooks send them anywhere else.
 
 </td>
 <td width="33%" valign="top">
@@ -88,6 +93,7 @@ Conferences and summits · universities and schools · places of worship · town
 - **Printable QR posters** for every room, in one click.
 - **Glossary** so names, brands and specialist terms are spelled right.
 - **Offline backup:** if the venue loses internet, captions switch to AI running on your laptop and come back to the cloud on their own.
+- **Agenda from Sessionize or a calendar link** (Google, Outlook): talks get their titles and speakers by themselves.
 - **Alerts on your phone** through ntfy, Telegram, Slack, Discord or a webhook, when a room loses its sound, the AI keeps failing, a talk runs over or the internet drops.
 - **Event report:** every talk with its length, words, audience and AI cost, printable or as a spreadsheet.
 - **Secure by default:** signed-in sessions, a crew role for volunteers, optional two-factor or company sign-in, and no inbound ports needed.
@@ -125,6 +131,12 @@ The launchers aren't signed with a paid Apple or Microsoft certificate yet, so t
 - **Windows, "Windows protected your PC":** click **More info → Run anyway**. If an antivirus blocks the launcher, open the `app` folder and double-click `Start OpenCaptions.bat`.
 
 </details>
+
+### In the cloud, in a few minutes
+
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/carraroesteban/opencaptions)
+
+A public server with HTTPS and a disk for your data, nothing to install. Fly.io and Railway are ready too: [Cloud platforms](docs/deployment.md#cloud-platforms-render-flyio-railway).
 
 ### With Docker, without downloading the code
 
@@ -302,6 +314,8 @@ For example, a 40-minute talk captioned from English into Spanish costs about **
 | Run the event day | [Runbook](docs/operations/runbook.md) · [Troubleshooting](docs/operations/troubleshooting.md) |
 | Look up a setting or an endpoint | [Configuration](docs/reference/configuration.md) · [API](docs/reference/api.md) |
 | Run it without the cloud | [Local mode](docs/local.md) |
+| Send captions to Zoom, YouTube, Teams or a webhook; import the agenda | [Integrations](docs/integrations.md) |
+| Caption your own calls, videos and conversations | [Just for me](docs/personal.md) |
 | Customize the look | [Brand and design system](docs/brand.md) |
 | Change the code | [Architecture](docs/architecture.md) · [Contributing](.github/CONTRIBUTING.md) · [ADRs](docs/adr/) |
 | Check licenses and what you must tell people | [Licenses and responsibilities](docs/legal.md) |

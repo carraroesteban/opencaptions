@@ -259,6 +259,19 @@ curl -X DELETE http://localhost:8080/api/stages/main/pull -H "Authorization: Bea
 
 What's sent, and when (`src/alerts.js`): a room's audio source disconnected for 1 minute (only if it had one and the agenda says the room is on, or it has no agenda), connected but no sound for 1 minute, a very low level for 2 more minutes, the AI reconnecting for 1 minute, translations throttled for 2 minutes, captions over 6 s late for 3 minutes, a talk 5 minutes past the agenda, the offline backup switching, no internet and no backup for 30 s, the public address down for 30 s or a quick address changing. Each one once, plus once more when it's over. At most 20 messages per 10 minutes; the rest are summed up in one. The generic webhook gets `{ source: "opencaptions", event, room, severity, resolved, title, text, at }`.
 
+### Integrations (connectors)
+
+Send a room's final captions to Zoom, YouTube Live, Microsoft Teams or a webhook (`src/integrations.js`, how-to in [Integrations](../integrations.md)). Allowed in Event mode.
+
+| Method & path | Auth | Notes |
+|---|---|---|
+| `GET /api/integrations` | Admin | `{ connectors: [{ id, type, stage, lang, events, link, status: { state: "idle" \| "ok" \| "error", sent, failed, lastError, lastAt } }] }`. `link` is only the host and path: the full link is a credential. |
+| `POST /api/integrations` | Admin | Body `{ type: "zoom" \| "youtube" \| "teams" \| "webhook", stage, lang: "orig" \| <language>, url, events?: ["caption", "talk.ended"] }` (`events` for webhooks only). `400` with the reason if the link isn't that platform's (`*.zoom.us/closedcaption`, `upload.youtube.com/closedcaption?cid=…`, `api.captions.office.microsoft.com/cartcaption`) or the webhook isn't a public `https://` address. A webhook's answer includes its `secret`, once. Saved in `data/secrets.json`. |
+| `DELETE /api/integrations/:id` | Admin | Disconnect. |
+| `POST /api/integrations/:id/test` | Admin | Send one test line now. |
+
+What each platform receives: Zoom, `POST <link>&seq=N&lang=<region>` with the caption as `text/plain; charset=utf-8`; YouTube, `POST <link>&seq=N` with `<UTC time, YYYY-MM-DDTHH:MM:SS.mmm>\n<caption>\n` as `text/plain`; Teams, `POST <link>` unchanged, with lines of up to 120 characters. `seq` (Zoom, YouTube) grows by one per caption, not per retry. Webhooks get JSON (`caption`, `talk.ended`, `test`), signed in `X-OpenCaptions-Signature: sha256=<HMAC-SHA256 of the body>`; the payloads are in [Integrations](../integrations.md#webhooks).
+
 ### Transcripts & exports
 
 | Method & path | Auth | Notes |
@@ -266,6 +279,7 @@ What's sent, and when (`src/alerts.js`): a room's audio source disconnected for 
 | `GET /api/talks` | Depends on `PUBLIC_TRANSCRIPTS` | Cross-room library of talks — powers `/talks.html`. |
 | `GET /api/stages/:id/talks` | Admin (public if `PUBLIC_TRANSCRIPTS=all`) | List **saved** talks for one room. |
 | `GET /api/stages/:id/talks/:talk` | Depends on `PUBLIC_TRANSCRIPTS` and which talk | One talk's metadata (`talkInfo`, below). `:talk` is a saved talk id, or the literal `current`. |
+| `DELETE /api/stages/:id/talks/:talk` | Admin | Delete a saved transcript for good (captions and metadata); the talk in progress is closed first. Recorded in the history (not undoable). `404` if there's no such talk. |
 | `GET /api/stages/:id/export.:fmt` | Public for the **talk in progress**; admin for past talks | Download/stream a talk's captions. |
 
 Access to a specific talk — its listing, metadata, export, [summary and ask](#audience-ai-summaries--ask) — is
@@ -484,7 +498,9 @@ to press "New talk" between sessions — see the `nextTalk`/`next` fields on the
 | Method & path | Auth | Notes |
 |---|---|---|
 | `GET /api/schedule` | Public | The full agenda, sorted by start time. |
-| `PUT /api/schedule` | Admin | Replace the whole agenda (CSV, or a list of entries). |
+| `PUT /api/schedule` | Admin | Replace the whole agenda (CSV, or a list of entries). `?dryRun=1` previews: `{ count, entries, unknownRooms, skipped }` without saving. |
+| `POST /api/schedule/import` | Admin | Body `{ source: "sessionize" \| "ics", ref }` (the Sessionize API link or id, or a calendar link; `webcal://` works), or `{ again: true }` for the last source. Same answer as `PUT`, `?dryRun=1` too. Rooms are matched by name or id. The source is remembered in `data/secrets.json` (a calendar's private address is a secret). |
+| `GET /api/schedule/source` | Admin | The last import source, `{ source, label }` (Sessionize id, or the calendar's host), or `null`. |
 
 `GET /api/schedule` response — one entry per slot:
 

@@ -90,6 +90,18 @@ export class Store {
 
   /** Every saved line of a talk. The last few talks read are kept parsed until their file changes (callers must
    * not modify the array). */
+  hasTalk(stage, talkId) { return fs.existsSync(this.#talkDir(stage, talkId)); }
+
+  /** Delete a saved talk for good (its captions and metadata). Returns false if there was none. */
+  removeTalk(stage, talkId) {
+    const d = this.#talkDir(stage, talkId);
+    if (!fs.existsSync(d)) return false;
+    fs.rmSync(d, { recursive: true, force: true });
+    this.#parsed.delete(path.join(d, 'captions.jsonl'));
+    this.#summaries.delete(path.join(d, 'meta.json'));
+    return true;
+  }
+
   readTalk(stage, talkId) {
     const f = path.join(this.#talkDir(stage, talkId), 'captions.jsonl');
     let st;
