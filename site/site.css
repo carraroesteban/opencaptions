@@ -38,7 +38,10 @@ a.btn.primary { background: var(--primary-bg); border-color: var(--primary-bg); 
 .hero .note { font-size: 14px; color: var(--fg2); margin-top: 18px; }
 #start .cta { display: flex; gap: 12px; flex-wrap: wrap; margin: 0 0 12px; }
 #start .cta-end { margin: 28px 0 0; }
-#start .note { font-size: 14px; color: var(--fg2); margin: 0 0 28px; }
+#start .note { font-size: 14px; color: var(--fg2); margin: 0; }
+#start .start-intro { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 48px; align-items: center; margin: 0 0 32px; }
+#start .start-intro img.art { box-shadow: var(--shadow); }
+@media (max-width: 900px) { #start .start-intro { grid-template-columns: 1fr; gap: 24px; } }
 
 /* terminal-style announcement that types itself (lime only on ink) */
 .ticker { display: inline-flex; align-items: center; gap: 8px; max-width: 100%; background: var(--ink); color: var(--paper); font-family: var(--mono); font-size: 14px; padding: 11px 18px; border-radius: 14px; box-shadow: 0 18px 40px -18px rgba(17, 16, 20, .55); border: 1px solid #2A2930; text-align: left; }
@@ -147,7 +150,11 @@ footer.site .brand { color: var(--fg); font-size: 16px; margin-right: auto; }
 @media (prefers-reduced-motion: reduce) { .reveal { opacity: 1; transform: none; } }
 
 /* ---- illustrations: drawn on paper, framed like prints so they sit well in both themes ---- */
-img.art { display: block; width: 100%; height: auto; border-radius: 22px; border: 1px solid var(--line); background: #FAF8F3; }
+img.art, video.art { display: block; width: 100%; height: auto; border-radius: 22px; border: 1px solid var(--line); background: #FAF8F3; }
+video.hero-loop { aspect-ratio: 3 / 2; object-fit: cover; }
+video.art.loop { aspect-ratio: 4 / 3; object-fit: cover; }
+.spot video.art { box-shadow: var(--shadow); }
+@media (max-width: 900px) { .spot.flip video.art { order: 0; } }
 .showcase { padding: 0 0 88px; border-top: 0; }
 .showcase img.art { box-shadow: var(--shadow-lg); }
 .col img.art { aspect-ratio: 4 / 3; object-fit: cover; margin: -6px 0 22px; border-radius: 16px; }
@@ -172,7 +179,7 @@ img.art { display: block; width: 100%; height: auto; border-radius: 22px; border
 
 /* ---- event-day spotlights (setup wizard, offline backup) ---- */
 .spot { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 56px; align-items: center; margin-top: 56px; }
-.spot.flip img.art { order: 2; }
+.spot.flip img.art, .spot.flip video.art { order: 2; }
 .spot img.art { box-shadow: var(--shadow); }
 .spot h3 { font-size: 26px; margin-bottom: 10px; }
 .spot p { color: var(--fg2); margin: 0 0 18px; font-size: 17px; }
@@ -216,6 +223,8 @@ section.band .eyebrow { color: #A9A6B0; }
 .stage-shot::before { content: ''; position: absolute; inset: 12% 8% -6%; background: radial-gradient(closest-side, rgba(212, 255, 58, .16), transparent); filter: blur(40px); z-index: 0; }
 .stage-shot img { position: relative; z-index: 1; display: block; width: 100%; height: auto; border-radius: 18px; border: 1px solid #2E2D34; box-shadow: 0 40px 100px -40px rgba(0, 0, 0, .95); transition: opacity .25s var(--ease); background: #1A191F; }
 .stage-shot img.fade { opacity: 0; }
+.stage-shot.demo { margin-bottom: 64px; }
+.stage-shot video { position: relative; z-index: 1; display: block; width: 100%; height: auto; aspect-ratio: 16 / 9; border-radius: 18px; border: 1px solid #2E2D34; background: #FAF8F3; box-shadow: 0 40px 100px -40px rgba(0, 0, 0, .95); }
 .stage-shot figcaption { position: relative; z-index: 1; text-align: center; color: #A9A6B0; font-size: 15px; margin-top: 18px; }
 .apps { display: flex; gap: 10px; justify-content: center; margin: 26px auto 0; padding: 10px; width: max-content; max-width: 100%; border-radius: 22px; background: rgba(255, 255, 255, .05); border: 1px solid #2E2D34; backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
 .apps .tile { display: grid; justify-items: center; gap: 6px; width: 86px; padding: 12px 6px 9px; border-radius: 16px; border: 0; background: transparent; color: #C9C6CE; box-shadow: none; font-size: 12px; font-weight: 700; transition: transform .2s var(--ease), background .2s; }

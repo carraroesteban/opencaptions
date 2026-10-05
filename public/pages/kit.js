@@ -56,7 +56,7 @@ function render() {
       <img src="/api/qr.svg?text=${encodeURIComponent(url)}" alt="QR ${esc(url)}" />
       <div class="url">${esc(url.replace(/^https?:\/\//, ''))}</div>
       <div class="langs">${langs}</div>
-      <p class="extra">${P.extra}${bi ? `<br><span class="tr">${Q.extra.replace(/<\/?b>/g, '')}</span>` : ''}</p>
+      <div class="how"><img class="pict" src="/art/scan.webp" alt="" /><p class="extra">${P.extra}${bi ? `<br><span class="tr">${Q.extra.replace(/<\/?b>/g, '')}</span>` : ''}</p></div>
       <div class="foot"><img src="/brand/mark-ink.svg" alt="" />${P.foot}</div>
     </section>`;
   }).join('');

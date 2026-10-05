@@ -17,7 +17,7 @@ jobs:
   release:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Notes from CHANGELOG.md
         run: |
           v="${GITHUB_REF_NAME#v}"
@@ -39,14 +39,14 @@ jobs:
   launcher:
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Compile Start OpenCaptions.exe
         shell: pwsh
         run: |
           $csc = Join-Path $env:WINDIR 'Microsoft.NET\Framework64\v4.0.30319\csc.exe'
           & $csc /nologo /target:winexe /optimize+ /win32icon:deploy\desktop\OpenCaptions.ico /out:"Start OpenCaptions.exe" /r:System.Windows.Forms.dll deploy\desktop\windows\Launcher.cs
           if ($LASTEXITCODE -ne 0) { exit 1 }
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: launcher
           path: Start OpenCaptions.exe
@@ -55,11 +55,11 @@ jobs:
     needs: [release, launcher]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: launcher
           path: launcher

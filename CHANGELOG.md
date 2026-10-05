@@ -4,6 +4,23 @@ All notable changes to this project are documented in this file. The format foll
 
 ## [Unreleased]
 
+### Added
+
+- New illustrations in the same hand-drawn style: the wizard's AI and phones steps have their own, the website's *Made for event day* section has three new panels (alerts on your phone, who's speaking, the event report) and its download section a picture, and an empty transcript library shows one instead of an icon.
+- **A real demo on the website:** 30 seconds of a talk captioned live in Spanish, on the stage screen and on a phone, with the speaker's audio (muted until you turn it on). It's the real app with the AI played back from a recording, made by `npm run demo:record` (headless Chrome and ffmpeg), so it can be redone whenever the screens change.
+- Three of the *Made for event day* panels are animated too (the laptop that keeps captioning offline, the phone that buzzes, the Q&A).
+- The website's main illustration now moves: a five-second seamless loop (captions appearing on the phones and the stage screen, the audience reading), made with Higgsfield (Kling) from the illustration itself. About 100 KB each. Videos start only when they scroll into view, pause when they leave, and stay still for people who turn on "reduce motion".
+- The QR posters show a small "scan me" pictogram next to the instructions, in black only so it prints anywhere. Posters still fit on one A4 page.
+
+### Changed
+
+- The website names the warnings people actually see the first time they open the app ("could not verify" on a Mac, "protected your PC" on Windows).
+- CI and release workflows use the current versions of GitHub's actions (no more Node.js 20 deprecation notices).
+
+### Fixed
+
+- The documentation link test used a JavaScript feature missing from Node.js 20, so CI failed there.
+
 ## [0.2.0] - 2026-10-04
 
 The release that makes OpenCaptions ready for organizers who don't use a terminal, and safe to hand to a crew.

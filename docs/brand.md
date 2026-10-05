@@ -59,7 +59,13 @@ Both are turned off for people who ask for reduced motion.
 
 ## Illustrations
 
-Friendly line illustrations live in [`public/art/`](../public/art/) as WebP: `hero`, `audience`, `stage`, `organizer`, `local`, `setup` and `waiting`, plus the welcome wizard's `ob-welcome`, `ob-name`, `ob-rooms`, `ob-langs`, `ob-audio` and `ob-share`, and `offline` for the website. They were generated with Higgsfield (GPT Image 2.5) from one shared style prompt: ink lines on paper, warm-grey fills, and lime only on dark screens, so they follow the colour rule. They are drawn on paper, so pages frame them like prints (a rounded paper card) and they work in both themes. To add one, reuse the same style prompt so the set stays consistent.
+Friendly line illustrations live in [`public/art/`](../public/art/) as WebP: `hero`, `audience`, `stage`, `organizer`, `local`, `setup` and `waiting`, plus the welcome wizard's `ob-welcome`, `ob-name`, `ob-rooms`, `ob-langs`, `ob-ai`, `ob-phones`, `ob-audio` and `ob-share`; `offline`, `alerts`, `speaker`, `report` and `start` for the website; and `empty-library` for the transcript library when it's empty. They were generated with Higgsfield (GPT Image 2.5), with two of the set (`offline`, `ob-share`) as style references and one shared style prompt: ink lines on paper, warm-grey fills, and lime only on dark screens, so they follow the colour rule. They are drawn on paper, so pages frame them like prints (a rounded paper card) and they work in both themes. To add one, reuse the same style prompt so the set stays consistent.
+
+The QR posters use `scan`, a black-only pictogram on white so it prints on any printer, beside the scanning instructions.
+
+On the website, `hero`, `offline`, `alerts` and `speaker` are also five-second seamless loops (`site/media/*-loop.mp4`), animated with Higgsfield (Kling 3.0, with the illustration as both first and last frame, then a short crossfade at the seam). The still is each one's poster frame. They play only while on screen, and not at all when the reader asks for reduced motion.
+
+The product demo (`site/media/demo.mp4`) is not generated: `npm run demo:record` films the real stage screen and a phone while the server captions a sample talk, with the AI replayed from the end-to-end test's recording.
 
 The website's hero also uses photographic objects on a transparent background (`public/art/objects/`: microphone, badge, headphones, clicker, ticket, phone), generated the same way. Lime appears on them only on black surfaces (the badge, the phone screen).
 

@@ -140,3 +140,23 @@ document.querySelectorAll('.apps .tile').forEach((b) => b.addEventListener('clic
 }));
 // Preload the other screens.
 document.querySelectorAll('.apps .tile').forEach((b) => { new Image().src = b.dataset.img; });
+
+// The animated illustrations and the demo: still for people who ask for less motion (the demo then waits for its
+// play button), and paused while off screen so they cost nothing. They only load when they come into view.
+const videos = document.querySelectorAll('video.hero-loop, video.art.loop, .demo video');
+for (const v of videos) {
+  if (reduceMotion) continue; // no autoplay attribute: they start only from here, when seen
+  if (!('IntersectionObserver' in window)) continue;
+  // Only the demo has controls: a pause while it's on screen is the visitor's, and sticks. Pauses off screen are ours
+  // (or the browser's, saving power).
+  let visible = false, userPaused = false, retried = false;
+  v.addEventListener('pause', () => { if (visible && v.controls) userPaused = true; });
+  v.addEventListener('play', () => { userPaused = false; });
+  // A decoder hiccup (many videos at once on a slow device): reload once and carry on.
+  v.addEventListener('error', () => { if (!retried) { retried = true; v.load(); } }, true);
+  new IntersectionObserver(([e]) => {
+    visible = e.isIntersecting;
+    if (visible) { if (!userPaused) v.play().catch(() => {}); }
+    else if (!v.paused) v.pause();
+  }, { threshold: 0.25 }).observe(v);
+}

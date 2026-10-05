@@ -15,7 +15,7 @@ npm run typecheck     # TypeScript checks the JSDoc types in src/ and scripts/ (
 npm run a11y          # accessibility check of every page (axe-core, WCAG 2.2 AA; needs Google Chrome)
 ```
 
-Also useful: `npm run app` (what the desktop launchers run), `npm run site` (the website at http://localhost:8081), `npm run package` (the Mac download in `dist/`) and `npm run docs:images` (the diagrams).
+Also useful: `npm run app` (what the desktop launchers run), `npm run site` (the website at http://localhost:8081), `npm run package` (the Mac download in `dist/`) `npm run docs:images` (the diagrams) and `npm run demo:record` (the website's demo video).
 
 ### End-to-end test
 

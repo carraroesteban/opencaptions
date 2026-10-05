@@ -46,6 +46,7 @@
     "local": "node scripts/local.js",
     "site": "node scripts/site.js --serve",
     "docs:images": "node scripts/render-docs.js",
+    "demo:record": "node scripts/record-demo.js",
     "a11y": "node scripts/a11y.js",
     "package": "node scripts/package-desktop.js",
     "icons": "node scripts/make-app-icons.js"

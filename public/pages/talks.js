@@ -1,7 +1,6 @@
 // talks.html: page script (kept out of the HTML so the Content-Security-Policy can forbid inline scripts).
 import { t, UI, esc, getEvent, langLabel } from '/common.js';
 import { prefsControls } from '/i18n.js';
-import { library } from '/illustrations.js';
 const $ = (id) => document.getElementById(id);
 $('prefs-slot').append(prefsControls({ langs: ['es', 'en', 'pt'] }));
 const ev = await getEvent();
@@ -26,7 +25,7 @@ function render() {
   const q = $('q').value.trim().toLowerCase();
   const room = $('room').value;
   const list = talks.filter((x) => (!room || x.stage === room) && (!q || `${x.title} ${x.speaker} ${x.stageName}`.toLowerCase().includes(q)));
-  if (!list.length) { $('list').innerHTML = `<div class="empty-state none">${library}<p>${esc(t('noTalks'))}</p></div>`; return; }
+  if (!list.length) { $('list').innerHTML = `<div class="empty-state none"><img class="none-art" src="/art/empty-library.webp" alt="" width="1200" height="900" /><p>${esc(t('noTalks'))}</p></div>`; return; }
   let day = '';
   $('list').innerHTML = list.map((x) => {
     const d = new Date(x.startedAt);
