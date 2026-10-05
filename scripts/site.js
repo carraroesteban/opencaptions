@@ -185,6 +185,28 @@ ${entries.join('\n')}
 </urlset>
 `);
 
+// ---------------------------------------------------------------- every page: speed, verification, statistics
+// Preload what the first paint needs (the stylesheet chain style.css → tokens.css → fonts/brand.css, and the Latin
+// interface fonts), so text shows sooner. Optional, from the environment (GitHub repository variables in the Site
+// workflow): search-engine verification and privacy-friendly visitor statistics (GoatCounter: no cookies, no personal
+// data). Nothing is added when they aren't set.
+const brandCss = fs.readFileSync(path.join(ROOT, 'public/fonts/brand.css'), 'utf8');
+const latinFonts = [...brandCss.matchAll(/\/\* latin \*\/\s*@font-face \{[^}]*font-style: normal;[^}]*url\(([^)]+)\)/g)].map((m) => m[1]);
+const env = (k) => (process.env[k] || '').trim();
+const head = [
+  '<link rel="preload" href="/tokens.css" as="style" />',
+  '<link rel="preload" href="/fonts/brand.css" as="style" />',
+  ...latinFonts.map((u) => `<link rel="preload" href="${u}" as="font" type="font/woff2" crossorigin />`),
+  env('SITE_GOOGLE_VERIFICATION') && `<meta name="google-site-verification" content="${esc(env('SITE_GOOGLE_VERIFICATION'))}" />`,
+  env('SITE_BING_VERIFICATION') && `<meta name="msvalidate.01" content="${esc(env('SITE_BING_VERIFICATION'))}" />`,
+  /^[a-z0-9-]+$/.test(env('SITE_GOATCOUNTER')) && `<script data-goatcounter="https://${env('SITE_GOATCOUNTER')}.goatcounter.com/count" async src="https://gc.zgo.at/count.js"></script>`,
+].filter(Boolean).join('\n  ');
+for (const file of fs.readdirSync(OUT, { recursive: true }).map(String).filter((f) => f.endsWith('.html'))) {
+  const p = path.join(OUT, file);
+  const html = fs.readFileSync(p, 'utf8');
+  if (html.includes('<link rel="stylesheet" href="/style.css" />')) fs.writeFileSync(p, html.replace('<link rel="stylesheet" href="/style.css" />', `${head}\n  <link rel="stylesheet" href="/style.css" />`));
+}
+
 console.log(`site assembled in ${path.relative(process.cwd(), OUT) || '.'} (${pages.length} guides)`);
 
 if (process.argv.includes('--serve')) {

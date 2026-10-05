@@ -43,6 +43,10 @@ Adapt it to your event and put it on the registration page, the event website or
 
 > **Subtítulos en vivo.** Las charlas de este evento se subtitulan y traducen en vivo con inteligencia artificial mediante OpenCaptions. El audio de la sala lo procesa [el servicio Gemini de Google / una computadora en el lugar] solo para generar los subtítulos; no se graba. Las transcripciones escritas las conserva [organizador] y [se publican en el sitio del evento / no se publican]. Los subtítulos pueden contener errores. Consultas: [contacto].
 
+## The website
+
+[opencaptions.kvza.ar](https://opencaptions.kvza.ar) sets no cookies and loads nothing from third parties: fonts, images and videos are served from the site itself. If the maintainers turn on visitor statistics (the `SITE_GOATCOUNTER` variable in the Site workflow), pages count visits with [GoatCounter](https://www.goatcounter.com/help/privacy), which uses no cookies and keeps no personal data. GitHub, which hosts the site, keeps server logs under its own privacy statement.
+
 ## Names used in examples
 
 The example event (Horizon Summit), its speakers and its talks are fictional. Any resemblance to real events or people is unintended.

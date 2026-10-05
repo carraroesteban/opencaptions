@@ -6,7 +6,7 @@ name: Site
 on:
   push:
     branches: [main]
-    paths: [site/**, public/tokens.css, public/style.css, public/brand/**, public/art/**, public/favicon.ico, public/apple-touch-icon.png, docs/images/**, scripts/site.js, .github/workflows/pages.yml]
+    paths: [site/**, public/tokens.css, public/style.css, public/brand/**, public/art/**, public/fonts/**, public/favicon.ico, public/apple-touch-icon.png, docs/images/**, scripts/site.js, .github/workflows/pages.yml]
   workflow_dispatch:
 
 permissions:
@@ -27,6 +27,12 @@ jobs:
         with:
           node-version: 22
       - run: node scripts/site.js
+        env:
+          # Optional (Settings → Secrets and variables → Actions → Variables): search-engine verification codes and a
+          # GoatCounter site code for visitor statistics. Unset, nothing is added to the pages.
+          SITE_GOOGLE_VERIFICATION: ${{ vars.SITE_GOOGLE_VERIFICATION }}
+          SITE_BING_VERIFICATION: ${{ vars.SITE_BING_VERIFICATION }}
+          SITE_GOATCOUNTER: ${{ vars.SITE_GOATCOUNTER }}
       - uses: actions/configure-pages@v6
       - uses: actions/upload-pages-artifact@v5
         with:
@@ -41,3 +47,21 @@ jobs:
     steps:
       - id: deployment
         uses: actions/deploy-pages@v5
+
+  # Tell Bing (and through it DuckDuckGo, Yandex and others) that the pages changed, so they're re-read within hours.
+  # IndexNow: the key is public by design; it proves the site is ours because site/0107667da613854eeb25e26816507eba.txt holds it.
+  indexnow:
+    needs: deploy
+    runs-on: ubuntu-latest
+    steps:
+      - name: Notify search engines
+        env:
+          KEY: 0107667da613854eeb25e26816507eba
+          HOST: opencaptions.kvza.ar
+        run: |
+          urls=$(curl -fsS "https://$HOST/sitemap.xml" | grep -o '<loc>[^<]*</loc>' | sed -e 's/<loc>//' -e 's#</loc>##' | jq -R . | jq -sc .)
+          echo "$urls"
+          curl -sS -o /dev/null -w 'IndexNow: HTTP %{http_code}\n' -X POST https://api.indexnow.org/indexnow \
+            -H 'content-type: application/json; charset=utf-8' \
+            -d "{\"host\":\"$HOST\",\"key\":\"$KEY\",\"keyLocation\":\"https://$HOST/$KEY.txt\",\"urlList\":$urls}"
+

@@ -15,7 +15,7 @@ npm run typecheck     # TypeScript checks the JSDoc types in src/ and scripts/ (
 npm run a11y          # accessibility check of every page (axe-core, WCAG 2.2 AA; needs Google Chrome)
 ```
 
-Also useful: `npm run app` (what the desktop launchers run), `npm run site` (the website at http://localhost:8081), `npm run package` (the Mac download in `dist/`) `npm run docs:images` (the diagrams) and `npm run demo:record` (the website's demo video). To add a guide to the website, add `site/pages/en/<slug>.html` and its Spanish pair in `site/pages/es/`, each starting with the JSON header the others have (title, description, `pair`…); the sitemap and the footer links update themselves.
+Also useful: `npm run app` (what the desktop launchers run), `npm run site` (the website at http://localhost:8081), `npm run package` (the Mac download in `dist/`) `npm run docs:images` (the diagrams) and `npm run demo:record` (the website's demo video). To add a guide to the website, add `site/pages/en/<slug>.html` and its Spanish pair in `site/pages/es/`, each starting with the JSON header the others have (title, description, `pair`…); the sitemap and the footer links update themselves. The Site workflow also reads three optional repository variables (Settings → Secrets and variables → Actions → Variables): `SITE_GOOGLE_VERIFICATION` and `SITE_BING_VERIFICATION` (the codes Google Search Console and Bing Webmaster Tools give for an HTML-tag verification) and `SITE_GOATCOUNTER` (a GoatCounter site code, for privacy-friendly visitor statistics). After each deploy it notifies Bing and other IndexNow search engines of every page in the sitemap.
 
 ### End-to-end test
 

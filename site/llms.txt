@@ -1,0 +1,29 @@
+# OpenCaptions
+
+> Free, open-source software for live captions and real-time translation at events: conferences, classrooms, public meetings, festivals and places of worship. Attendees scan a QR code and read the captions on their own phone, in their own language, with no app. Captions also appear on a screen beside the stage and in the livestream (OBS, vMix). Self-hosted; the AI is Google's Gemini (about US$2.2 per room-hour of speech) or a local model on a laptop at the venue (free, works offline). MIT license.
+
+Key facts:
+- Captions appear about 2–3 seconds after the words are spoken; translations 3–5 seconds after (measured in a three-room rehearsal with 150 phones).
+- One small server (1 CPU, 512 MB) handles about 10 rooms.
+- Downloads for macOS and Windows, a Docker image, or Node.js from source. A setup wizard asks for the event, rooms and languages.
+- Not a replacement for professional human captioning where every word must be exact, or for sign language interpretation.
+
+## Guides
+
+- [Live captions for conferences](https://opencaptions.kvza.ar/live-captions-for-conferences/): what attendees and organizers get, cost and accuracy
+- [How to add live captions to an event](https://opencaptions.kvza.ar/how-to-caption-an-event/): step by step, from the sound desk to the transcripts
+- [FAQ](https://opencaptions.kvza.ar/faq/): cost, accuracy, delay, languages, offline use and privacy
+- [Live captioning options compared](https://opencaptions.kvza.ar/alternatives/): human captioners, interpreters, AI services and OpenCaptions
+
+## En español
+
+- [Subtítulos en vivo para congresos](https://opencaptions.kvza.ar/es/subtitulos-en-vivo-para-congresos/)
+- [Cómo poner subtítulos en vivo en un evento](https://opencaptions.kvza.ar/es/como-subtitular-un-evento/)
+- [Preguntas frecuentes](https://opencaptions.kvza.ar/es/preguntas-frecuentes/)
+- [Opciones de subtitulado en vivo comparadas](https://opencaptions.kvza.ar/es/alternativas/)
+
+## Source and documentation
+
+- [GitHub repository](https://github.com/carraroesteban/opencaptions): code, README, releases and downloads
+- [Documentation](https://github.com/carraroesteban/opencaptions/tree/main/docs)
+- [Licenses and responsibilities](https://github.com/carraroesteban/opencaptions/blob/main/docs/legal.md)

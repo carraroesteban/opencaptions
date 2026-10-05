@@ -138,8 +138,15 @@ document.querySelectorAll('.apps .tile').forEach((b) => b.addEventListener('clic
     shot.onload = () => shot.classList.remove('fade');
   }, 180);
 }));
-// Preload the other screens.
-document.querySelectorAll('.apps .tile').forEach((b) => { new Image().src = b.dataset.img; });
+// Preload the other screens once the visitor gets near them, not with the page.
+const apps = document.querySelector('.apps');
+if (apps) {
+  const preload = () => document.querySelectorAll('.apps .tile').forEach((b) => { new Image().src = b.dataset.img; });
+  if ('IntersectionObserver' in window) {
+    const near = new IntersectionObserver((es) => { if (es.some((e) => e.isIntersecting)) { near.disconnect(); preload(); } }, { rootMargin: '600px 0px' });
+    near.observe(apps);
+  } else preload();
+}
 
 // The animated illustrations and the demo: still for people who ask for less motion (the demo then waits for its
 // play button), and paused while off screen so they cost nothing. They only load when they come into view.
@@ -159,4 +166,22 @@ for (const v of videos) {
     if (visible) { if (!userPaused) v.play().catch(() => {}); }
     else if (!v.paused) v.pause();
   }, { threshold: 0.25 }).observe(v);
+}
+
+// By the numbers: count up once when they come into view (the HTML already holds the final values, for search engines
+// and for readers without JavaScript or who prefer less motion).
+const counters = document.querySelectorAll('.stat .num[data-to]');
+if (counters.length && !reduceMotion && 'IntersectionObserver' in window) {
+  const run = (el) => {
+    const final = el.innerHTML, raw = el.dataset.to, comma = raw.includes(','), to = parseFloat(raw.replace(',', '.'));
+    const dec = (raw.split(/[.,]/)[1] || '').length, t0 = performance.now(), dur = 1100;
+    const step = (now) => {
+      const k = Math.min(1, (now - t0) / dur), v = (to * (1 - Math.pow(1 - k, 3))).toFixed(dec);
+      el.innerHTML = final.replace(raw, comma ? v.replace('.', ',') : v);
+      if (k < 1) requestAnimationFrame(step); else el.innerHTML = final;
+    };
+    requestAnimationFrame(step);
+  };
+  const seen = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) { seen.unobserve(e.target); run(e.target); } }), { threshold: 0.6 });
+  counters.forEach((el) => seen.observe(el));
 }

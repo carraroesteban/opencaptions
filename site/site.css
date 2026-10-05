@@ -274,3 +274,14 @@ section.band .eyebrow { color: #A9A6B0; }
 .doc-more h2 { font-size: 22px; margin: 0 0 10px; }
 .doc-more ul { list-style: none; padding: 0; }
 footer.site .guides { display: flex; gap: 10px 22px; flex-wrap: wrap; flex-basis: 100%; order: 9; }
+
+/* ---- by the numbers (under the hero illustration) ---- */
+.stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0; margin-top: 40px; border: 1px solid var(--line); border-radius: 22px; background: var(--bg2); overflow: hidden; }
+.stat { padding: 26px 24px; border-left: 1px solid var(--line); }
+.stat:first-child { border-left: 0; }
+.stat .num { font-family: var(--font-display); font-weight: 800; font-size: clamp(38px, 5vw, 56px); line-height: 1; letter-spacing: -.04em; margin: 0 0 10px; font-variant-numeric: tabular-nums; }
+.stat .num small { font-size: .5em; margin-left: .12em; letter-spacing: 0; }
+.stat p:last-child { margin: 0; font-size: 15px; line-height: 1.45; color: var(--fg2); }
+.stat p b { color: var(--fg); font-weight: 700; }
+.stats-foot { text-align: center; font-size: 14px; color: var(--fg2); margin: 16px 0 0; }
+@media (max-width: 900px) { .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } .stat:nth-child(3) { border-left: 0; } .stat:nth-child(n+3) { border-top: 1px solid var(--line); } }
