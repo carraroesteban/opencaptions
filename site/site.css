@@ -115,7 +115,9 @@ a.btn.primary { background: var(--primary-bg); border-color: var(--primary-bg); 
 /* ---- how it works ---- */
 .steps { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 32px; margin-top: 48px; counter-reset: s; }
 @media (max-width: 900px) { .steps { grid-template-columns: 1fr; } }
-.step { counter-increment: s; }
+.step { counter-increment: s; position: relative; }
+.step img.art { aspect-ratio: 4 / 3; object-fit: cover; border: 0; border-radius: 18px; margin-bottom: 20px; box-shadow: var(--shadow-sm); }
+.step:has(img.art)::before { position: absolute; top: 14px; left: 14px; z-index: 1; box-shadow: var(--shadow); }
 .step::before { content: counter(s); display: grid; place-items: center; width: 38px; height: 38px; border-radius: 50%; background: var(--primary-bg); color: var(--primary-fg); font-family: var(--font-display); font-weight: 800; margin-bottom: 18px; }
 .step p { color: var(--fg2); margin: 0; font-size: 16px; }
 
@@ -157,7 +159,9 @@ video.art.loop { aspect-ratio: 4 / 3; object-fit: cover; }
 @media (max-width: 900px) { .spot.flip video.art { order: 0; } }
 .showcase { padding: 0 0 88px; border-top: 0; }
 .showcase img.art { box-shadow: var(--shadow-lg); }
-.col img.art { aspect-ratio: 4 / 3; object-fit: cover; margin: -6px 0 22px; border-radius: 16px; }
+/* The illustration fills the top of its card, edge to edge, instead of a framed box inside a box. */
+.col { overflow: hidden; }
+.col img.art { aspect-ratio: 4 / 3; object-fit: cover; width: calc(100% + 52px); max-width: none; margin: -26px -26px 24px; border: 0; border-bottom: 1px solid var(--line); border-radius: 0; }
 
 /* ---- use cases ---- */
 .uses { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 32px; }
@@ -224,7 +228,15 @@ section.band .eyebrow { color: #A9A6B0; }
 .stage-shot img { position: relative; z-index: 1; display: block; width: 100%; height: auto; border-radius: 18px; border: 1px solid #2E2D34; box-shadow: 0 40px 100px -40px rgba(0, 0, 0, .95); transition: opacity .25s var(--ease); background: #1A191F; }
 .stage-shot img.fade { opacity: 0; }
 .stage-shot.demo { margin-bottom: 64px; }
-.stage-shot video { position: relative; z-index: 1; display: block; width: 100%; height: auto; aspect-ratio: 16 / 9; border-radius: 18px; border: 1px solid #2E2D34; background: #FAF8F3; box-shadow: 0 40px 100px -40px rgba(0, 0, 0, .95); }
+.demo-frame { position: relative; z-index: 1; }
+/* The demo is filmed on the band's own ink, so it has no frame: its edges fade into the page and it plays like a GIF. */
+.stage-shot video { display: block; width: 100%; height: auto; aspect-ratio: 16 / 9; background: var(--ink);
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 4%, #000 96%, transparent), linear-gradient(180deg, transparent, #000 7%, #000 93%, transparent);
+  -webkit-mask-composite: source-in; mask-image: linear-gradient(90deg, transparent, #000 4%, #000 96%, transparent), linear-gradient(180deg, transparent, #000 7%, #000 93%, transparent); mask-composite: intersect; }
+.live-pill { position: absolute; left: 6%; top: 3%; display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px; border-radius: 99px; background: rgba(255, 255, 255, .06); border: 1px solid #3A3940; color: #E6E3EA; font-size: 13px; font-weight: 700; letter-spacing: .02em; backdrop-filter: blur(6px); }
+.live-pill i { width: 8px; height: 8px; border-radius: 50%; background: var(--lime); box-shadow: 0 0 0 0 rgba(212, 255, 58, .6); animation: pulse 1.8s infinite; }
+@keyframes pulse { 70% { box-shadow: 0 0 0 8px rgba(212, 255, 58, 0); } 100% { box-shadow: 0 0 0 0 rgba(212, 255, 58, 0); } }
+@media (prefers-reduced-motion: reduce) { .live-pill i { animation: none; } }
 .stage-shot figcaption { position: relative; z-index: 1; text-align: center; color: #A9A6B0; font-size: 15px; margin-top: 18px; }
 .apps { display: flex; gap: 10px; justify-content: center; margin: 26px auto 0; padding: 10px; width: max-content; max-width: 100%; border-radius: 22px; background: rgba(255, 255, 255, .05); border: 1px solid #2E2D34; backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
 .apps .tile { display: grid; justify-items: center; gap: 6px; width: 86px; padding: 12px 6px 9px; border-radius: 16px; border: 0; background: transparent; color: #C9C6CE; box-shadow: none; font-size: 12px; font-weight: 700; transition: transform .2s var(--ease), background .2s; }

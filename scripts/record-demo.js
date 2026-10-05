@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 // The product demo video for the website and README: the real server captions a 30-second sample talk while headless
-// Chrome films the stage screen and a phone, and ffmpeg puts both side by side. No API key: the AI is the recorded
+// Chrome films the stage screen and a phone, and ffmpeg puts both side by side on the website's dark band, silent and
+// ready to loop like a GIF. No API key: the AI is the recorded
 // session the end-to-end test uses (test/fixtures/talk-en.json, see src/replay.js), played back in real time, so the
 // captions, translations and timing are the real ones.
 //
@@ -27,6 +28,7 @@ try { execFileSync('ffmpeg', ['-version'], { stdio: 'ignore' }); } catch { tty.f
 const TALK_SEC = 30;   // what the fixture was recorded with
 const TAIL_SEC = 4;    // let the last translation land
 const FPS = 30;
+const BG = '#111014'; // the band it sits on (--ink), so the devices float on the page
 // The composition: 1920×1080, the stage screen on the left and a phone on the right.
 const W = 1920, H = 1080;
 const SCREEN = { x: 112, y: 208, w: 1200, h: 675 };            // 16:9
@@ -155,9 +157,10 @@ const frameHtml = `<!doctype html><html><head><style>
       <rect x="${SCREEN.x}" y="${SCREEN.y}" width="${SCREEN.w}" height="${SCREEN.h}" rx="18" fill="#000"/>
       <rect x="${PHONE.x}" y="${PHONE.y}" width="${PHONE.w}" height="${PHONE.h}" rx="40" fill="#000"/></mask>
       <filter id="sh" x="-10%" y="-10%" width="120%" height="130%"><feDropShadow dx="0" dy="18" stdDeviation="22" flood-color="#1A1820" flood-opacity=".16"/></filter></defs>
-    <rect width="${W}" height="${H}" fill="#FAF8F3" mask="url(#m)"/>
-    <rect x="${SCREEN.x - 1}" y="${SCREEN.y - 1}" width="${SCREEN.w + 2}" height="${SCREEN.h + 2}" rx="19" fill="none" stroke="#1A1820" stroke-opacity=".14" stroke-width="2"/>
-    <rect x="${PHONE.x - PHONE.bezel}" y="${PHONE.y - PHONE.bezel}" width="${PHONE.w + 2 * PHONE.bezel}" height="${PHONE.h + 2 * PHONE.bezel}" rx="${40 + PHONE.bezel}" fill="#1A1820" mask="url(#m)"/>
+    <rect width="${W}" height="${H}" fill="${BG}" mask="url(#m)"/>
+    <!-- a monitor and a phone in graphite, so the ink-black stage screen stands out from the ink page -->
+    <rect x="${SCREEN.x - 12}" y="${SCREEN.y - 12}" width="${SCREEN.w + 24}" height="${SCREEN.h + 24}" rx="28" fill="#26252C" stroke="#3A3940" stroke-width="2" mask="url(#m)"/>
+    <rect x="${PHONE.x - PHONE.bezel}" y="${PHONE.y - PHONE.bezel}" width="${PHONE.w + 2 * PHONE.bezel}" height="${PHONE.h + 2 * PHONE.bezel}" rx="${40 + PHONE.bezel}" fill="#26252C" stroke="#3A3940" stroke-width="2" mask="url(#m)"/>
   </svg>
 </div></body></html>`;
 const { targetId: ft } = await send('Target.createTarget', { url: 'about:blank' });
@@ -177,18 +180,17 @@ const comp = tty.spinner('Composing and encoding');
 fs.mkdirSync(OUT, { recursive: true });
 const mp4 = path.join(OUT, 'demo.mp4'), poster = path.join(OUT, 'demo-poster.jpg');
 const filter = [
-  `color=c=#FAF8F3:s=${W}x${H}:r=${FPS}[bg]`,
+  `color=c=${BG}:s=${W}x${H}:r=${FPS}[bg]`,
   `[0:v]fps=${FPS},scale=${SCREEN.w}:${SCREEN.h}:flags=lanczos,setsar=1[sc]`,
   `[1:v]fps=${FPS},scale=${PHONE.w}:${PHONE.h}:flags=lanczos,setsar=1[ph]`,
   `[bg][sc]overlay=${SCREEN.x}:${SCREEN.y}:shortest=1[a]`,
   `[a][ph]overlay=${PHONE.x}:${PHONE.y}:shortest=1[b]`,
-  // Start where the speaker starts, with the talk's own audio (muted on the website until someone turns it on).
+  // Start where the speaker starts. Silent: on the website it plays like a GIF.
   `[b][2:v]overlay=0:0,trim=start=${audioAt.toFixed(3)},setpts=PTS-STARTPTS,format=yuv420p[out]`,
-  `[3:a]atrim=0:${TALK_SEC},apad=whole_dur=${TALK_SEC + TAIL_SEC}[aud]`,
 ].join(';');
-const inputs = ['-f', 'concat', '-safe', '0', '-i', screenList, '-f', 'concat', '-safe', '0', '-i', phoneList, '-loop', '1', '-i', framePng, '-i', path.join(ROOT, 'samples/talk-en.wav')];
-execFileSync('ffmpeg', ['-hide_banner', '-loglevel', 'error', '-y', ...inputs, '-filter_complex', filter, '-map', '[out]', '-map', '[aud]', '-t', String(TALK_SEC + TAIL_SEC),
-  '-c:v', 'libx264', '-preset', 'slow', '-crf', '22', '-c:a', 'aac', '-b:a', '96k', '-movflags', '+faststart', mp4]);
+const inputs = ['-f', 'concat', '-safe', '0', '-i', screenList, '-f', 'concat', '-safe', '0', '-i', phoneList, '-loop', '1', '-i', framePng];
+execFileSync('ffmpeg', ['-hide_banner', '-loglevel', 'error', '-y', ...inputs, '-filter_complex', filter, '-map', '[out]', '-an', '-t', String(TALK_SEC + TAIL_SEC),
+  '-c:v', 'libx264', '-preset', 'slow', '-crf', '22', '-movflags', '+faststart', mp4]);
 // Poster: a moment with captions on both screens.
 execFileSync('ffmpeg', ['-hide_banner', '-loglevel', 'error', '-y', '-ss', '12', '-i', mp4, '-frames:v', '1', '-q:v', '3', poster]);
 comp.succeed('Composed');
