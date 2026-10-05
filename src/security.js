@@ -106,10 +106,17 @@ export function clientIp(req) {
 // only state-changing API calls, failed logins and WebSocket connection floods are.
 const apiLimit = rateLimiter({ windowMs: 60_000, max: Number(env.RATE_LIMIT_API ?? 300) });
 const authFailLimit = rateLimiter({ windowMs: 10 * 60_000, max: Number(env.RATE_LIMIT_AUTH_FAIL ?? 20) });
-const wsLimit = rateLimiter({ windowMs: 60_000, max: Number(env.RATE_LIMIT_WS ?? 3000) });
+// A venue shares one public IP: one person guessing passwords must not lock out the whole crew. So failures count
+// per IP and browser, with a higher ceiling per IP that changing the browser doesn't get around.
+const authFailIpLimit = rateLimiter({ windowMs: 10 * 60_000, max: Number(env.RATE_LIMIT_AUTH_FAIL_IP ?? 100) });
+const wsLimit = rateLimiter({ windowMs: 60_000, max: Number(env.RATE_LIMIT_WS ?? 6000) });
 
 /** Record a failed authentication; returns false once the client is over the limit (→ 429). */
-export const noteAuthFailure = (req) => authFailLimit(clientIp(req));
+export const noteAuthFailure = (req) => {
+  const ip = clientIp(req);
+  const ua = crypto.createHash('sha256').update(String(req.headers?.['user-agent'] || '')).digest('hex').slice(0, 16);
+  return authFailIpLimit(ip) && authFailLimit(`${ip}|${ua}`);
+};
 export const wsAllowed = (req) => wsLimit(clientIp(req));
 
 // ---------------------------------------------------------------- express middleware
@@ -125,11 +132,11 @@ export function styleHashes(dir = path.join(ROOT, 'public')) {
   return [...out].join(' ');
 }
 const STYLE_HASHES = styleHashes();
-const CSP = [
+const csp = (yt) => [
   "default-src 'self'",
   // Strict for scripts: only files served by this server (public/pages/*.js), never inline code or handlers, so
-  // an injected <script> or onclick= can't run. YouTube's player API is allowed for the live demo page.
-  "script-src 'self' https://www.youtube.com https://s.ytimg.com",
+  // an injected <script> or onclick= can't run. YouTube's player is allowed on the demo page only.
+  `script-src 'self'${yt ? ' https://www.youtube.com https://s.ytimg.com' : ''}`,
   "script-src-attr 'none'",
   // Strict for styles too: stylesheets from this server, plus each page's own <style> block by its hash (computed
   // below). No style="" attributes (utility classes in style.css instead): injected markup can't restyle a page,
@@ -137,20 +144,21 @@ const CSP = [
   `style-src 'self' ${STYLE_HASHES}`,
   "style-src-attr 'none'",
   "font-src 'self' data:",
-  "img-src 'self' data: https://i.ytimg.com",
+  `img-src 'self' data:${yt ? ' https://i.ytimg.com' : ''}`,
   "media-src 'self' blob:",
   "worker-src 'self' blob:",
   "connect-src 'self' ws: wss:",
-  "frame-src 'self' https://www.youtube.com https://www.youtube-nocookie.com",
+  `frame-src 'self'${yt ? ' https://www.youtube.com https://www.youtube-nocookie.com' : ''}`,
   `frame-ancestors ${FRAME_ANCESTORS}`,
   "base-uri 'none'",
   "form-action 'self'",
   "object-src 'none'",
 ].join('; ');
+const CSP = csp(false), CSP_DEMO = csp(true);
 
 export function securityHeaders(req, res, next) {
   res.set({
-    'Content-Security-Policy': CSP,
+    'Content-Security-Policy': /^\/demo(\.html)?$/.test(req.path) ? CSP_DEMO : CSP,
     'X-Content-Type-Options': 'nosniff',
     'Referrer-Policy': 'no-referrer',
     'Permissions-Policy': 'microphone=(self), camera=(), geolocation=(), payment=(), usb=()',

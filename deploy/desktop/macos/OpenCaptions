@@ -14,6 +14,12 @@ case "$(defaults read -g AppleLocale 2>/dev/null)" in es*) ES=1 ;; *) ES= ;; esa
 say() { if [ -n "$ES" ]; then echo "$2"; else echo "$1"; fi; }
 dialog() { osascript -e "button returned of (display dialog \"$1\" buttons {\"$2\", \"$3\"} default button 2 with title \"OpenCaptions\" with icon caution)" 2>/dev/null; }
 
+# Node installed with nvm, fnm or volta is on the PATH only in the person's own shell: ask it before giving up.
+# (Terminal, which runs OpenCaptions below, opens that same shell, so it finds node too.)
+if ! command -v node >/dev/null 2>&1; then
+  found="$("${SHELL:-/bin/zsh}" -ilc 'command -v node' 2>/dev/null | tail -1)"
+  [ -x "$found" ] && export PATH="$(dirname "$found"):$PATH"
+fi
 if ! command -v node >/dev/null 2>&1; then
   answer=$(dialog "$(say 'OpenCaptions needs Node.js, a free program.\n\nInstall the LTS version, then open OpenCaptions again.' 'OpenCaptions necesita Node.js, un programa gratuito.\n\nInstalá la versión LTS y volvé a abrir OpenCaptions.')" "$(say Cancel Cancelar)" "$(say 'Get Node.js' 'Descargar Node.js')")
   [ -n "$answer" ] && [ "$answer" != "$(say Cancel Cancelar)" ] && open "https://nodejs.org/en/download"

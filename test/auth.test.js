@@ -267,6 +267,22 @@ test('signing a device out also closes its open dashboard connection', async () 
 });
 
 
+test('the crew sees audio addresses without their keys', async () => {
+  const admin = browser(), crew = browser();
+  await admin.call('POST', '/api/auth/login', { password: ADMIN, device: 'Desk' });
+  await crew.call('POST', '/api/auth/login', { password: crewPassword, device: 'Volunteer' });
+  const pull = 'srt://0.0.0.0:9077?mode=listener&passphrase=very-secret-pass';
+  assert.equal((await admin.call('PATCH', '/api/stages/main', { pull }, { origin: base })).status, 200);
+  try {
+    const seen = (b) => b.call('GET', '/api/status').then((r) => JSON.stringify(r.body));
+    assert.ok((await seen(admin)).includes('very-secret-pass'), 'the admin edits the room, so sees it all');
+    assert.ok(!(await seen(crew)).includes('very-secret-pass'));
+    assert.ok(!JSON.stringify((await crew.call('GET', '/api/history')).body).includes('very-secret-pass'));
+  } finally {
+    await admin.call('PATCH', '/api/stages/main', { pull: '' }, { origin: base });
+  }
+});
+
 test('two-factor: the admin password then also needs a code from the app, and alone opens nothing', async () => {
   const admin = browser();
   await admin.call('POST', '/api/auth/login', { password: ADMIN, device: 'Office PC' });

@@ -47,6 +47,7 @@ See [Security](../security-guide.md) for the full threat model.
 | `OIDC_CLIENT_ID` / `OIDC_CLIENT_SECRET` | unset | The app registered with your provider (redirect address `https://<public address>/auth/oidc/callback`). |
 | `OIDC_ADMINS` | `''` | Who signs in as admin: emails and/or whole domains (`@example.org`), comma-separated; `*` = any account the provider accepts. |
 | `OIDC_CREW` | `''` | Who signs in as crew, same format. Accounts in neither list are turned away. |
+| `OIDC_TENANTS` | `''` | Only for a Microsoft multi-tenant issuer (`…/common/v2.0` or `…/organizations/v2.0`): the tenant ids allowed to sign in, comma-separated. Required there, because any organization's accounts pass that issuer and their admins choose the email that roles are matched on. A single-tenant issuer (`…/<tenant id>/v2.0`, recommended) doesn't need it. |
 | `OIDC_REDIRECT_URI` | `<public URL>/auth/oidc/callback` | Set it when the public address can't be worked out from the request (a proxy that hides it). |
 | `OIDC_LABEL` | `Google`, `Microsoft` or `your company account` (from the issuer) | The name on the sign-in button. |
 | `OIDC_ONLY` | off | `1`: no password sign-in in the browser, work accounts only. Passwords in a header (scripts, agents) still work. |
@@ -58,8 +59,9 @@ See [Security](../security-guide.md) for the full threat model.
 | `MAX_STAGES` | `60` | Maximum number of stages the server will hold at once. |
 | `MAX_VIEWERS` | `5000` | Maximum concurrent `/ws/view` connections across all stages; further connections get `503`. |
 | `RATE_LIMIT_API` | `300` | State-changing `/api/*` requests allowed per client IP per 60 s window (`GET`/`HEAD` and localhost are exempt). |
-| `RATE_LIMIT_AUTH_FAIL` | `20` | Failed admin/ingest auth attempts allowed per client IP per 10-minute window before `429`. |
-| `RATE_LIMIT_WS` | `3000` | WebSocket upgrade attempts allowed per client IP per 60 s window. High by default because venue Wi-Fi puts hundreds of phones behind one public IP; only this connection-flood limit and the two above apply to public viewer traffic — per-viewer caption traffic itself is never rate-limited. |
+| `RATE_LIMIT_AUTH_FAIL` | `20` | Failed sign-in attempts allowed per client IP and browser (user agent) per 10-minute window before `429`. Per browser so that one person guessing at a venue, where everyone shares one IP, doesn't lock out the crew. |
+| `RATE_LIMIT_AUTH_FAIL_IP` | `100` | Failed sign-in attempts per client IP per 10 minutes, whatever the browser. |
+| `RATE_LIMIT_WS` | `6000` | WebSocket upgrade attempts allowed per client IP per 60 s window. High by default because venue Wi-Fi puts hundreds of phones behind one public IP; only this connection-flood limit and the two above apply to public viewer traffic — per-viewer caption traffic itself is never rate-limited. |
 
 ### AI provider
 
@@ -82,7 +84,8 @@ Viewer-facing "What did I miss?" summaries and question answering, grounded only
 |---|---|---|
 | `AUDIENCE_AI` | `on` | `off`/`0`/`false`/`no` disables AI summaries and Q&A entirely; both then always use the extractive fallback (longest/most keyword-matching transcript lines) instead of calling the model. |
 | `ASK_RPM` | `30` | Questions per minute across the whole server (`POST /api/stages/:id/ask`); further questions get `429` until the window clears. |
-| `ASK_PER_CLIENT_PER_MIN` | `6` | Questions per minute allowed from a single client (by IP). |
+| `ASK_PER_CLIENT_PER_MIN` | `6` | Questions per minute from one browser (a random id the page keeps; phones at a venue share one IP). |
+| `ASK_PER_IP_PER_MIN` | `60` | Questions per minute from one IP address, whatever the browser id. |
 | `SUMMARY_RPM` | `30` | Summary generations per minute across the whole server (`GET /api/stages/:id/summary`) before falling back to the extractive summary; a cache hit doesn't count against it. |
 
 ### Offline backup
@@ -194,11 +197,11 @@ Loaded once at startup from the path in `EVENT_CONFIG` (default `config/event.js
 | `eventName` | string | `"OpenCaptions"` | Shown in the UI and startup banner. |
 | `accent` | string | `"#D4FF3A"` | Highlight color (CSS color value): the live-word highlighter, search hits and projector labels. Text on it switches between ink and paper automatically for contrast. |
 | `publicUrl` | string | `""` | Canonical external URL. Overridden by `PUBLIC_URL`. |
-| `publicTranscripts` | `"current"` \| `"all"` \| `"none"` | `"current"` | Who may download transcripts. Overridden by `PUBLIC_TRANSCRIPTS`. |
+| `publicTranscripts` | `"current"` \| `"all"` \| `"none"` | `"current"` | Who may download transcripts. The dashboard's **Settings → Transcripts for the audience** overrides it (saved in `data/setup.json`); `PUBLIC_TRANSCRIPTS` overrides both. |
 | `timezone` | string (IANA zone, e.g. `"America/Argentina/Buenos_Aires"`) | unset | Sets `process.env.TZ` at startup, but only if `TZ` isn't already set in the environment. Controls what "today" and `HH:MM` mean when parsing the schedule's start times (see [Schedule file](#schedule-file-configschedulejson)) — containers default to UTC otherwise. No matching environment variable; set `TZ` directly if you'd rather not use this key. |
 | `model` | string | `"gemini-3.5-live-translate-preview"` | Overridden by `GEMINI_MODEL`. |
 | `textModel` | string | `"gemini-3.5-flash-lite"` | Overridden by `TEXT_MODEL`. |
-| `languages` | object `{code: displayName}` | `{"es":"Español","en":"English","pt":"Português"}` | Display names for language codes used anywhere in the event (stage targets, sources). |
+| `languages` | object `{code: displayName}` | `{"es":"Español","en":"English","pt":"Português"}` | Display names for language codes used anywhere in the event (stage targets, sources). More can be added from the dashboard (**Settings → Languages**, or the wizard's *Another language*); they're saved in `data/setup.json` on top of these. |
 | `defaultTargets` | string[] | `["es","en"]` | Fallback `targets` for any stage that doesn't specify its own (or specifies an empty list). |
 | `glossary` | string (path) | `"config/glossary.json"` | Path to the glossary file. Overridden by `GLOSSARY`. |
 | `silenceGateSec` | number | `30` | Overridden by `SILENCE_GATE_SEC`. |
@@ -367,7 +370,7 @@ HOST=0.0.0.0
 AUTH=token
 ADMIN_TOKEN=<openssl rand -base64 24>
 INGEST_TOKEN=<openssl rand -base64 24>
-RATE_LIMIT_WS=3000
+RATE_LIMIT_WS=6000
 ```
 
 **Behind a Cloudflare Tunnel** (`docker compose --profile tunnel up`):

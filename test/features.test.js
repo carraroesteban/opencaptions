@@ -124,3 +124,10 @@ test('an empty AI summary or answer (small local models) falls back to the trans
   assert.equal(r.ai, false);
   assert.match(r.quotes[0].text, /tablet/);
 });
+
+test('agenda: "10h30" and "9h" times (French and Spanish style)', () => {
+  const now = new Date(2026, 9, 5, 8, 0);
+  const e = parseSchedule('main,10h30,Talk one,Ana\nmain,14 h 15,Talk two,Bo\nmain,9h,Opening,Cy', now);
+  assert.deepEqual(e.map((x) => [new Date(x.start).getHours(), new Date(x.start).getMinutes()]), [[9, 0], [10, 30], [14, 15]]);
+  assert.throws(() => parseSchedule('main,10h99,Bad,X', now));
+});

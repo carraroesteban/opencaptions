@@ -25,7 +25,7 @@ An unattended audit of OpenCaptions: security review, load and reconnect tests, 
 | Getting started said **Dashboard → Rooms → + Room**; the button is **New room**. | `docs/getting-started.md` |
 | Three exports nothing used: `asrLoad`, `mtLimiter`, `_test`. Removed. | `src/local/asr.js`, `src/translate.js`, `src/security.js` |
 
-Also updated: CHANGELOG, `docs/architecture.md`, `docs/security-guide.md`, `docs/reference/api.md`, ADR 0005. **118 tests pass, lint and typecheck pass, the accessibility check passes on every page.**
+Also updated: CHANGELOG, `docs/architecture.md`, `docs/security-guide.md`, `docs/reference/api.md`, ADR 0005. **123 tests pass, lint and typecheck pass, the accessibility check passes on every page.**
 
 ## Load and reliability results
 
@@ -43,51 +43,48 @@ All on this Mac, mock engine, one room fed with the English sample in a loop.
 
 Not tested: a real 3-hour Gemini session (needs a key and real time), and real phones on a real venue Wi-Fi. Both are worth one rehearsal before a first big event.
 
-## Needs your decision
+## Second round: everything from the list below was done
 
-### Do before the next release
+Done after "do all", each verified (tests, browser, or a real run):
 
-1. **Past transcripts are public on a fresh install, but the docs say they aren't.** `config/event.json` ships with `"publicTranscripts": "all"`, so every past talk is listed and downloadable at `/talks.html` by anyone. `docs/security-guide.md`, `docs/legal.md` ("past talks are only public if you set `publicTranscripts` to `all`") and the configuration reference all say the default is `current`. I'd change `config/event.json` to `"current"` (private by default, matches the legal page). The other way is to change the three docs and tell organizers to get speakers' consent first. Not changed, because it changes what audiences see.
-2. **Private vulnerability reporting is turned off on GitHub**, but `SECURITY.md`, `security.txt` and the website's Security link all tell researchers to use it, so nobody can report a hole privately. Turn it on in Settings → Code security, or run:
+| Item | What changed |
+|---|---|
+| Past transcripts public by default | `config/event.json` now says `"current"`, matching the docs and the legal page. New **Settings → Transcripts for the audience** to choose *every talk* or *none* without editing files. |
+| Only 3 languages | **Settings → Languages** and the wizard's *Another language* add any of 40 languages (`public/languages.js`), saved in `data/setup.json`. A language a room uses can't be removed. Tested in the browser end to end. |
+| Your `.env` readable by others | `chmod 600` done. |
+| Address changed after a restart | The last free address is saved; the dashboard warns (with a link to the QR kit) and the phone alert works across restarts. |
+| "Ask the talk" shared by the whole venue | 6/min per browser (random id), 60/min per IP, 30/min server-wide. Verified: a second phone on the same IP still gets answers. Test added. |
+| Reconnect limit | `RATE_LIMIT_WS` default 6000 per IP per minute. |
+| Wizard summary with `localhost` | Shows a warning. Verified in the browser. |
+| Transcript page rebuilt on every caption | Only changed paragraphs are replaced. Verified live: earlier paragraphs keep their nodes; ~2 replacements/s (the last paragraph and the line being written). |
+| Microsoft multi-tenant sign-in | Requires `OIDC_TENANTS`; other tenants are refused. |
+| Crew sees stream keys | Crew gets `scheme://host/…` in status, the live feed and history. Test added. |
+| Failed-login lockout per IP | Per IP + browser (20/10 min), ceiling 100 per IP. |
+| Unpinned downloads | `cloudflared` pinned + SHA-256 in `src/tunnel.js` and the Dockerfile, `yt-dlp` too; real download hash checked, Docker image built and healthy. Actions pinned to commit hashes; `.github/dependabot.yml` added. |
+| HLS to private addresses | Documented in the security guide's known gaps. |
+| Glossary public | Crew/admin only. |
+| Website CSP | `<meta>` policy per page with the inline script's hash. Verified: no violations, theme script, fonts, images and videos all work. |
+| App CSP allowed YouTube everywhere | YouTube only on `/demo.html`. |
+| Wizard "simulated" + "connected" | Explains demo mode instead. |
+| macOS memory metric | Uses `vm_stat` (82 % here instead of 99 %). |
+| Dependencies | Updated within their ranges; `npm audit`: 0. |
+| `10h30` agenda times, nvm on the Mac app, CSV tab/CR | Done; agenda test added. |
+
+### Still yours to do (GitHub settings, not code)
+
+1. **Turn on private vulnerability reporting** (Settings → Code security), or run:
 
    ```bash
    gh api -X PUT repos/carraroesteban/opencaptions/private-vulnerability-reporting
    ```
 
-3. **Dependabot is off** (alerts and security updates), and there's no `.github/dependabot.yml`. CI runs `npm audit` only when you push. Turn both on in Settings → Code security. (`main` has no branch protection; fine while you work alone.)
-4. **Your own `.env` is readable by other users on this Mac** (`-rw-r--r--`), and it holds your Gemini key. `chmod 600 .env` fixes it. (New installs are now handled by the setup script fix above.)
+2. **Turn on Dependabot alerts and security updates** (Settings → Code security). The new `dependabot.yml` already handles weekly version updates.
 
-### Blocks a non-technical organizer
+### Left as is, on purpose
 
-5. **Only Spanish, English and Portuguese can be picked.** The wizard and the room editor list only the languages in `config/event.json`; French means editing JSON by hand. The code already knows other languages (French, German, Italian in `src/assist.js`). The website's FAQ says "You choose the languages for each room, for example Spanish, English and Portuguese", so visitors will expect to pick others. Suggestion: "+ Add a language" in the wizard and Settings, saved to `data/`.
-6. **Local AI needs the terminal.** The wizard's "run the AI on this computer" option says to run `npm run local`, but launcher users never open a terminal. Suggestion: a dashboard button that runs the local setup with a progress bar (~4 GB download).
-
-### Confusing, but there's a way through
-
-7. **The free public address changes on every restart.** The wizard warns clearly, but printed QR codes break if the computer restarts mid-event. Suggestion: a dashboard alert "your address changed, reprint the QR"; long-term, a fixed short link that redirects to the current tunnel.
-8. **"Ask the talk" is limited to 6 questions a minute per IP**, and at a venue every phone shares one public IP: the whole audience shares those 6. Suggestion: key the limit by a random per-browser id (plus the existing global limit of 30 a minute, which already caps cost).
-9. **More than 3000 phones on one venue network after a restart**: some wait up to a minute (per-IP connection limit). Suggestion: raise the default `RATE_LIMIT_WS` to `MAX_VIEWERS` (5000).
-10. **The wizard's summary can show `127.0.0.1` as the address** (`HOST=127.0.0.1`, or Docker's default port mapping). The QR kit warns, but the summary doesn't. Suggestion: show the same warning there.
-
-10b. **The live transcript page rebuilds the whole transcript on every caption update**, including the provisional ones that arrive several times a second (`public/pages/talk.js`, `render()`). Measured on this Mac with a one-hour talk: 13 ms per rebuild (240 paragraphs); expect 50–80 ms on a mid-range phone, and three times that for a three-hour talk. Worse for accessibility: every rebuild resets text selection and a screen reader's reading position. Suggestion: while live and not searching, update only the last paragraph and the provisional line.
-
-### Security hardening (low risk today)
-
-11. **Microsoft multi-tenant sign-in:** the code accepts the `{tenantid}` issuer template (`/common/v2.0`). Configured that way, any Microsoft tenant can sign in, and roles are matched by email, a claim another tenant's admin controls (the 2023 "nOAuth" issue). The docs tell people to use their own tenant's issuer, which is safe. Suggestion: refuse a multi-tenant Microsoft issuer, or require an allowlist of tenant ids.
-11b. **The crew can see stream keys.** The crew password is meant for volunteers, but `/api/status`, the live dashboard feed and `/api/history` give the crew every room's full `pull` URL (also shown as the room's audio label, which defaults to the URL in `src/pull.js`), which can include a stream key or an SRT passphrase (`rtmp://…/live2/<key>`, `srt://…?passphrase=…`). Suggestion: send the crew a redacted URL (scheme and host only); only the admin's room editor needs the full one.
-12. **Failed-login limit is per IP** (20 per 10 minutes). On a venue network sharing one IP, one person guessing passwords locks the whole crew out for 10 minutes. Suggestion: also count per device cookie, or raise it for private-network addresses.
-13. **Downloads without checksums:** the Docker image fetches `cloudflared` and `yt-dlp` as "latest", and the app downloads `cloudflared` on organizers' computers the same way (`src/tunnel.js`). All over HTTPS from GitHub, but unpinned and unverified. Suggestion: pin versions and check SHA-256.
-14. **HLS audio sources can reach private addresses:** the private-address check covers the URL an admin types, but a public HLS playlist can list segments on `10.x`/`192.168.x`, and ffmpeg fetches them. Admin-only. Suggestion: document it.
-15. **`GET /api/glossary` is public**, though only the dashboard uses it. A glossary can hold names of unannounced products or speakers. Suggestion: make it crew-only (an API change, so your call).
-16. **The website has no Content-Security-Policy.** GitHub Pages can't send headers, so it would be a `<meta>` tag. Low risk for a static site, but it would enforce the privacy page's "nothing from other companies".
-17. **The app's CSP allows YouTube scripts and frames on every page** and WebSockets to any host (`connect-src ws: wss:`); only the demo page needs YouTube. Tightening it per page would limit the damage of any future XSS.
-
-### Minor
-
-18. The wizard says "captions are simulated" and "Connected to Gemini" at once when the server is started with `--mock` while a key is set. Developer-only.
-19. `opencaptions_host_memory_used_percent` reads ~100 % on macOS: `os.freemem()` doesn't count the file cache as free there. Only Prometheus uses it.
-20. Dependency updates available (none with known vulnerabilities): `@google/genai` 2.24→2.27, `ws` 8.21→8.22, `dotenv` 18.0.3→18.0.5.
-21. GitHub Actions are pinned to major versions (`@v7`), not commit hashes. Common practice; pinning by hash protects against a compromised action.
+- `connect-src ws: wss:` in the app's CSP: tightening it to `'self'` risks breaking captions on older iPhones (Safari didn't always count WebSockets as `'self'`).
+- Two admins signing in with two-factor codes within the same 30 seconds: the second waits for the next code. That's what makes a stolen code useless.
+- `main` without branch protection: fine while you work alone.
 
 ## Checked and fine
 

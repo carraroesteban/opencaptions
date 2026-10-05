@@ -11,6 +11,7 @@ import { ensureSignedIn, signInScreen, signOut } from '/signin.js';
 import { accessPanel } from '/access.js';
 import { alertsPanel } from '/alerts-ui.js';
 import { keyPanel, tunnelPanel } from '/connect.js';
+import { LANGUAGE_CATALOG } from '/languages.js';
 
 const $ = (id) => document.getElementById(id);
 $('prefs-slot').append(prefsControls());
@@ -703,7 +704,8 @@ $('gloss-save').onclick = async () => {
   toast(t.glossSaved(r.vocabulary.length, r.replacements.length), { undo: r.change });
   loadGlossary();
 };
-for (const id of ['add', 'term-in', 'rep-add', 'gloss-save', 'name-in', 'agenda-text']) $(id).dataset.setup = '';
+for (const id of ['add', 'term-in', 'rep-add', 'gloss-save', 'name-in', 'agenda-text', 'lang-add', 'tx-access']) $(id).dataset.setup = '';
+$('lang-form').querySelector('button').dataset.setup = '';
 $('term-form').querySelector('button').dataset.setup = '';
 $('name-form').querySelector('button').dataset.setup = '';
 
@@ -800,10 +802,14 @@ async function loadSettings() {
   settingsSetup = s;
   keyP.update(s);
   tunnelP.update(s);
+  renderLanguages(s);
+  $('tx-access').value = s.publicTranscripts;
+  if (s.publicTranscriptsFixed) $('tx-access-note').textContent = tr('Lo fija PUBLIC_TRANSCRIPTS en el archivo .env.');
   if (document.activeElement !== $('name-in')) $('name-in').value = s.named === false ? '' : s.name; // unnamed: empty, not the fallback
   $('name-in').placeholder = LANG === 'es' ? 'Ej: Semana del Diseño 2026' : 'e.g. City Design Week 2026';
   if (last?.system) $('sys').textContent = t.sys(last.system, fmtDur(last.uptimeSec));
   setLocked(!!s.locked);
+  if (s.publicTranscriptsFixed) $('tx-access').disabled = true;
 }
 $('name-form').onsubmit = async (e) => {
   e.preventDefault();
@@ -812,6 +818,35 @@ $('name-form').onsubmit = async (e) => {
   const r = await api('PUT', '/api/setup', { name });
   if (r.change) toast(t.renamed(name), { undo: r.change });
   ev = await (await fetch('/api/event')).json();
+};
+// Languages: event.json's are fixed here; the ones added from this page can be removed again.
+function renderLanguages(s) {
+  const added = s.addedLanguages || {};
+  $('langs-list').innerHTML = Object.entries(s.languages).map(([c, n]) => `<span class="chip">${esc(n)} <code>${esc(c)}</code>${c in added ? `<button type="button" class="x" data-lang-del="${esc(c)}" data-setup aria-label="${esc(tr('Quitar'))} ${esc(n)}">×</button>` : ''}</span>`).join('');
+  const free = Object.entries(LANGUAGE_CATALOG).filter(([c]) => !(c in s.languages)).sort((a, b) => a[1].localeCompare(b[1]));
+  $('lang-add').innerHTML = free.map(([c, n]) => `<option value="${c}">${esc(n)} (${c})</option>`).join('');
+  setLocked(locked);
+}
+async function saveLanguages(added) {
+  try { await api('PUT', '/api/setup', { languages: added }); } catch { return; } // the toast says why
+  ev = await (await fetch('/api/event')).json();
+  await loadSettings();
+}
+$('lang-form').onsubmit = async (e) => {
+  e.preventDefault();
+  const c = $('lang-add').value;
+  if (c) await saveLanguages({ ...settingsSetup.addedLanguages, [c]: LANGUAGE_CATALOG[c] });
+};
+$('langs-list').onclick = async (e) => {
+  const c = e.target.closest('[data-lang-del]')?.dataset.langDel;
+  if (!c) return;
+  const rest = { ...settingsSetup.addedLanguages };
+  delete rest[c];
+  await saveLanguages(rest);
+};
+$('tx-access').onchange = async () => {
+  try { await api('PUT', '/api/setup', { publicTranscripts: $('tx-access').value }); toast(tr('Guardado')); } catch { /* toast shown */ }
+  await loadSettings();
 };
 $('wizard-link').onclick = (e) => { if (locked) { e.preventDefault(); toast(t.wizardLocked, { error: true }); } };
 

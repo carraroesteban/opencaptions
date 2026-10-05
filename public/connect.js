@@ -47,7 +47,7 @@ const T = {
     waiting: 'Preparando la dirección… suele tardar uno o dos minutos.',
     notYet: 'La dirección todavía no responde. Si sigue así, revisá que la red del lugar permita conexiones salientes.',
     ready: 'Dirección pública lista',
-    restarted: 'La conexión se reinició y la dirección cambió: volvé a imprimir los QR.',
+    restarted: 'La dirección cambió desde que se imprimieron los QR (se reinició OpenCaptions o la conexión): volvé a imprimirlos.', kit: 'Abrir el kit de QR',
     copy: 'Copiar',
     copied: 'Copiado',
     stop: 'Apagar',
@@ -95,7 +95,7 @@ const T = {
     waiting: 'Getting the address ready… this usually takes a minute or two.',
     notYet: 'The address isn’t answering yet. If it stays like this, check that the venue’s network allows outgoing connections.',
     ready: 'Public address ready',
-    restarted: 'The connection restarted and the address changed: print the QR codes again.',
+    restarted: 'The address changed since the QR codes were printed (OpenCaptions or the connection restarted): print them again.', kit: 'Open the QR kit',
     copy: 'Copy',
     copied: 'Copied',
     stop: 'Turn off',
@@ -221,7 +221,7 @@ export function tunnelPanel(el, { api, confirm = async (m) => window.confirm(m),
     } else if (tu.state === 'on') {
       html = `<p class="cx-status ok">${icon('check')}<span>${esc(t.ready)}</span></p>
         <div class="cx-url"><a href="${esc(tu.url)}" target="_blank" rel="noopener">${esc(tu.url)}</a></div>
-        ${changed ? `<p class="cx-msg warn">${esc(t.restarted)}</p>` : ''}
+        ${changed || setup?.tunnelMoved ? `<p class="cx-msg warn">${esc(t.restarted)} <a href="/kit.html" target="_blank">${esc(t.kit)}</a></p>` : ''}
         <div class="cx-row"><button type="button" data-cx="copy">${esc(t.copy)}</button><button type="button" class="cx-link" data-cx="stop">${esc(t.stop)}</button></div>
         ${tu.mode === 'quick' ? `<p class="cx-fine">${esc(t.tNote)}</p>` : ''}`;
     } else if (tu.state === 'error') {

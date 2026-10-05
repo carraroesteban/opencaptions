@@ -1,0 +1,15 @@
+# Weekly update pull requests: npm packages, and the GitHub Actions the workflows use (pinned to commit hashes,
+# which Dependabot keeps current along with their "# vN" comments). Security alerts and fixes are turned on in the
+# repository's Settings → Code security.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule: { interval: weekly }
+    groups:
+      minor-and-patch: { update-types: [minor, patch] }
+  - package-ecosystem: github-actions
+    directory: /
+    schedule: { interval: weekly }
+    groups:
+      actions: { patterns: ['*'] }

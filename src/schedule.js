@@ -14,9 +14,10 @@ import { ROOT } from './config.js';
 
 const FILE = path.resolve(ROOT, process.env.SCHEDULE || 'config/schedule.json');
 
-/** HH:MM (today), YYYY-MM-DD HH:MM, ISO, or DD/MM/YYYY HH:MM (MM/DD when the day can't be first), with optional AM/PM. */
+/** HH:MM or 10h30 (today), YYYY-MM-DD HH:MM, ISO, or DD/MM/YYYY HH:MM (MM/DD when the day can't be first), with optional AM/PM. */
 function parseTime(s, now = new Date()) {
-  s = String(s || '').trim();
+  // "10h30" and "10h" (common in French and Spanish agendas) mean 10:30 and 10:00.
+  s = String(s || '').trim().replace(/\b(\d{1,2})\s*h\s*(\d{2})?$/i, (_, h, m) => `${h}:${m || '00'}`);
   const ampm = (h, ap) => (ap ? (Number(h) % 12) + (/p/i.test(ap) ? 12 : 0) : Number(h));
   const hm = s.match(/^(\d{1,2})[:.](\d{2})(?::\d{2})?\s*([ap]\.?m\.?)?$/i);
   if (hm) {

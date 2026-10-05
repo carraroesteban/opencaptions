@@ -164,3 +164,29 @@ test('a glossary correction with nothing to look for is refused (it would match 
   assert.equal((await put([{ from: ' | ', to: 'X' }])).status, 400);
   assert.equal((await put([{ from: 'tele health | tele-health', to: 'telehealth' }])).status, 200);
 });
+
+test('languages can be added from the dashboard, and one a room uses can’t be removed', async () => {
+  const put = async (body) => { const r = await fetch(`${base}/api/setup`, { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) }); return { status: r.status, body: await r.json() }; };
+  assert.equal((await put({ languages: { fr: 'Français' } })).status, 200);
+  assert.equal((await (await fetch(`${base}/api/event`)).json()).languages.fr, 'Français');
+  assert.equal((await fetch(`${base}/api/stages/main`, { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ targets: ['es', 'fr'] }) })).status, 200);
+  assert.equal((await put({ languages: {} })).status, 409, 'main still shows French');
+  assert.equal((await put({ languages: { 'not a code': 'x' } })).status, 400);
+  await fetch(`${base}/api/stages/main`, { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ targets: ['es', 'en'] }) });
+  assert.equal((await put({ languages: {} })).status, 200);
+});
+
+test('who can read transcripts is set from the dashboard', async () => {
+  const put = (v) => fetch(`${base}/api/setup`, { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ publicTranscripts: v }) });
+  assert.equal((await put('everyone')).status, 400);
+  assert.equal((await put('none')).status, 200);
+  assert.equal((await (await fetch(`${base}/api/event`)).json()).publicTranscripts, 'none');
+  assert.equal((await put('current')).status, 200);
+});
+
+test('“ask the talk” is limited per browser, not per venue IP', async () => {
+  const ask = (client) => fetch(`${base}/api/stages/main/ask`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ question: 'what was said?', lang: 'en', client }) });
+  for (let i = 0; i < 6; i++) await ask('phone-one-1234');
+  assert.equal((await ask('phone-one-1234')).status, 429, 'the 7th question in a minute from one phone');
+  assert.notEqual((await ask('phone-two-5678')).status, 429, 'another phone behind the same IP still can');
+});

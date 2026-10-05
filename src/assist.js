@@ -18,6 +18,8 @@ export const _setClient = (c) => { ai = c; };
 export const audienceAiEnabled = !/^(0|off|false|no)$/i.test(process.env.AUDIENCE_AI || 'on');
 const ASK_PER_MIN = Number(process.env.ASK_RPM || 30); // server-wide
 const perClientAsk = rateLimiter({ windowMs: 60_000, max: Number(process.env.ASK_PER_CLIENT_PER_MIN || 6) });
+// A venue's phones share one public IP: the per-person limit uses the browser's id, this one stops id rotation.
+const perIpAsk = rateLimiter({ windowMs: 60_000, max: Number(process.env.ASK_PER_IP_PER_MIN || 60) });
 const globalAsk = rateLimiter({ windowMs: 60_000, max: ASK_PER_MIN });
 const globalSummary = rateLimiter({ windowMs: 60_000, max: Number(process.env.SUMMARY_RPM || 30) });
 
@@ -154,10 +156,10 @@ export async function summarize({ segs, key, lang, scope = 'full', live = true, 
 }
 
 /** Answer a question about the talk. Returns { answer, quotes[], ai, found } or throws { status: 429 }. */
-export async function ask({ segs, lang, question, clientKey, title = '' }) {
+export async function ask({ segs, lang, question, clientKey, ip = clientKey, title = '' }) {
   question = String(question || '').trim().slice(0, 300);
   if (question.length < 3) throw Object.assign(new Error('question too short'), { status: 400 });
-  if (!perClientAsk(clientKey) || !globalAsk('all')) throw Object.assign(new Error('too many questions right now, try again in a minute'), { status: 429 });
+  if (!perIpAsk(ip) || !perClientAsk(clientKey) || !globalAsk('all')) throw Object.assign(new Error('too many questions right now, try again in a minute'), { status: 429 });
   const { text, list } = pickText(segs, 'orig');
   if (!list.length) return { ai: false, found: false, answer: '', quotes: [] };
   if (!audienceAiEnabled || config.engine === 'mock' || config.localLlmOff) return { ai: false, ...extractiveAnswer(list, question) };

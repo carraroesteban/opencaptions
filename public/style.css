@@ -42,6 +42,9 @@ button:focus-visible, a:focus-visible, summary:focus-visible { outline: 2px soli
   border: 1px solid var(--line-strong); background: var(--bg2); cursor: pointer; font-size: 14px; white-space: nowrap; box-shadow: none;
 }
 .pill[aria-pressed='true'] { background: var(--primary-bg); border-color: var(--primary-bg); color: var(--primary-fg); font-weight: 700; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.chip .x { border: 0; background: none; padding: 0 0 0 2px; min-height: 0; font-size: 14px; line-height: 1; color: var(--fg2); cursor: pointer; }
+.chip .x:hover { color: var(--fg); }
 .chip { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; padding: 2px 9px; border-radius: var(--pill); background: var(--bg3); border: 1px solid transparent; line-height: 1.5; }
 .chip.ok { color: var(--ok); background: color-mix(in srgb, var(--ok) 11%, var(--bg2)); border-color: color-mix(in srgb, var(--ok) 28%, transparent); }
 .chip.warn { color: var(--warn); background: color-mix(in srgb, var(--warn) 11%, var(--bg2)); border-color: color-mix(in srgb, var(--warn) 30%, transparent); }

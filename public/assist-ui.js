@@ -1,7 +1,15 @@
 // "What did I miss?" + "Ask the talk" widget, shared by the audience page (watch.html) and the transcript
 // page (talk.html). Talks to GET /api/stages/:id/summary and POST /api/stages/:id/ask.
-import { t, esc } from '/common.js';
+import { t, esc, store } from '/common.js';
 import { icon } from '/illustrations.js';
+
+// A random id for this browser: phones at a venue share one IP, so the question limit is per browser.
+// (getRandomValues, not randomUUID: venue Wi-Fi is plain HTTP, where randomUUID doesn't exist.)
+const client = store.get('client', null) || (() => {
+  const id = [...crypto.getRandomValues(new Uint8Array(12))].map((x) => x.toString(16).padStart(2, '0')).join('');
+  store.set('client', id);
+  return id;
+})();
 
 /**
  * @param {HTMLElement} root
@@ -61,7 +69,7 @@ export function mountAssistant(root, o) {
     btn.disabled = true;
     ans.innerHTML = `<p class="muted">${esc(t('thinking'))}</p>`;
     try {
-      const r = await fetch(`/api/stages/${encodeURIComponent(o.stage)}/ask`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ question, lang: o.lang(), talk: o.talk }) });
+      const r = await fetch(`/api/stages/${encodeURIComponent(o.stage)}/ask`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ question, lang: o.lang(), talk: o.talk, client }) });
       const d = await r.json();
       if (r.status === 429) { ans.innerHTML = `<p class="muted">${esc(t('tooMany'))}</p>`; return; }
       if (!r.ok) throw new Error(d.error);

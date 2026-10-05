@@ -4,6 +4,7 @@ import { prefsControls, LANG } from '/i18n.js';
 import { icon } from '/illustrations.js';
 import { ensureSignedIn, signInScreen } from '/signin.js';
 import { keyPanel, tunnelPanel } from '/connect.js';
+import { LANGUAGE_CATALOG } from '/languages.js';
 const $ = (id) => document.getElementById(id);
 $('prefs-slot').append(prefsControls());
 document.documentElement.lang = LANG;
@@ -18,6 +19,7 @@ const T = {
     k2: 'Step 2 of 7 · Rooms', roomsH: 'Where will people speak?', roomsP: 'One stage or many. Each room gets its own captions link and QR code.', addRoom: '+ Add a room', skipRooms: 'Skip, keep these rooms', roomPh: (i) => `Room ${i}`, remove: 'Remove room',
     presets: [['One room', ['Main Stage']], ['Two rooms', ['Main Stage', 'Room A']], ['Main stage + 3 rooms', ['Main Stage', 'Room A', 'Room B', 'Room C']]],
     k3: 'Step 3 of 7 · Languages', langsH: 'Which languages?', spokenQ: 'What language will the talks be in?', auto: 'Detect automatically', captionsQ: 'Which captions can the audience choose?', langsHint: 'Not sure? Leave “Detect automatically”: OpenCaptions recognises the language as people speak, even when they switch.', notSure: 'I’m not sure, skip',
+    aiLedeForced: 'OpenCaptions was started in demo mode, so captions are simulated even though a key is saved. Start it normally to use Gemini.',
     k4: 'Step 5 of 7 · The AI', aiLedeMock: 'Right now captions are simulated. To caption real talks, connect Google’s Gemini with an API key: it takes about two minutes.', aiLedeOn: 'Captions come from Google’s Gemini, in the cloud.',
     kS: 'Step 6 of 7 · Phones', shareH: 'How will phones reach the captions?', sAddr: 'Address',
     altLocal: 'Or run the AI on this computer', altLocalD: 'No account and no cost per hour, but it needs a recent computer and a one-time install from the terminal:',
@@ -25,6 +27,8 @@ const T = {
     noChanges: 'Nothing to change: your event already looks like this.',
     lockedMsg: 'Event mode is on, so the setup is locked. Turn it off in the dashboard’s Settings to apply changes.',
     opTz: (z) => `Use your time zone for the agenda (${z})`, opTzNote: 'So 10:00 in the agenda means 10:00 where you are. The server runs in another one.',
+    localAddr: 'Phones can’t open this address. Before printing QR codes, create a public address (step 6), or open the dashboard from this computer’s address on the Wi-Fi.',
+    moreLang: 'Another language…', moreLangAdd: 'Add', opLangsAdd: (l) => `Add the languages: ${l}`,
     opRename: (n) => `Rename the event to “${n}”`, opCreate: (n) => `Add the room “${n}”`, opRenameRoom: (a, b) => `Rename “${a}” to “${b}”`,
     opDelete: (n) => `Remove “${n}”`, opDeleteNote: (k) => (k ? `It has ${k} transcript${k === 1 ? '' : 's'}: they’re kept, and the room can be restored from History.` : 'You can restore it from History.'),
     opLangs: (n, a, b) => `Change “${n}” from ${a} to ${b}`, opCustom: 'This room has its own language setup: tick to change it too.', aiH: 'How captions are made', later: 'Skip for now',
@@ -50,6 +54,7 @@ const T = {
     k2: 'Paso 2 de 7 · Salas', roomsH: '¿Dónde va a hablar la gente?', roomsP: 'Un escenario o varios. Cada sala tiene su propio link de subtítulos y su QR.', addRoom: '+ Agregar una sala', skipRooms: 'Saltar, dejar estas salas', roomPh: (i) => `Sala ${i}`, remove: 'Quitar sala',
     presets: [['Una sala', ['Escenario principal']], ['Dos salas', ['Escenario principal', 'Sala A']], ['Principal + 3 salas', ['Escenario principal', 'Sala A', 'Sala B', 'Sala C']]],
     k3: 'Paso 3 de 7 · Idiomas', langsH: '¿Qué idiomas?', spokenQ: '¿En qué idioma van a ser las charlas?', auto: 'Detectar automáticamente', captionsQ: '¿Qué subtítulos puede elegir el público?', langsHint: '¿No sabés? Dejá “Detectar automáticamente”: OpenCaptions reconoce el idioma mientras hablan, aunque cambien.', notSure: 'No sé, saltar',
+    aiLedeForced: 'OpenCaptions se inició en modo demo, así que los subtítulos son simulados aunque haya una key guardada. Inicialo normalmente para usar Gemini.',
     k4: 'Paso 5 de 7 · La IA', aiLedeMock: 'Por ahora los subtítulos son simulados. Para subtitular charlas reales, conectá Gemini de Google con una API key: son unos dos minutos.', aiLedeOn: 'Los subtítulos vienen de Gemini de Google, en la nube.',
     kS: 'Paso 6 de 7 · Celulares', shareH: '¿Cómo llegan los celulares a los subtítulos?', sAddr: 'Dirección',
     altLocal: 'O usar la IA de esta computadora', altLocalD: 'Sin cuenta ni costo por hora, pero necesita una computadora reciente y una instalación desde la terminal (una sola vez):',
@@ -57,6 +62,8 @@ const T = {
     noChanges: 'No hay nada que cambiar: tu evento ya está así.',
     lockedMsg: 'El modo evento está activado, así que la configuración está bloqueada. Desactivalo en Ajustes del panel para aplicar cambios.',
     opTz: (z) => `Usar tu zona horaria para la agenda (${z})`, opTzNote: 'Así las 10:00 de la agenda son las 10:00 donde estás. El servidor está en otra.',
+    localAddr: 'Los celulares no pueden abrir esta dirección. Antes de imprimir los QR, creá una dirección pública (paso 6) o abrí el panel desde la dirección de esta computadora en el Wi-Fi.',
+    moreLang: 'Otro idioma…', moreLangAdd: 'Agregar', opLangsAdd: (l) => `Agregar los idiomas: ${l}`,
     opRename: (n) => `Renombrar el evento a “${n}”`, opCreate: (n) => `Agregar la sala “${n}”`, opRenameRoom: (a, b) => `Renombrar “${a}” a “${b}”`,
     opDelete: (n) => `Quitar “${n}”`, opDeleteNote: (k) => (k ? `Tiene ${k} ${k === 1 ? 'transcripción' : 'transcripciones'}: se conservan, y la sala se puede recuperar desde el Historial.` : 'Podés recuperarla desde el Historial.'),
     opLangs: (n, a, b) => `Cambiar “${n}” de ${a} a ${b}`, opCustom: 'Esta sala tiene su propia configuración de idiomas: tildala para cambiarla también.', aiH: 'Cómo se generan los subtítulos', later: 'Saltar por ahora',
@@ -95,7 +102,8 @@ const api = async (method, url, body) => {
 };
 const fail = (e) => { $('err').textContent = e.message || String(e); };
 let S = await api('GET', '/api/setup');
-const langNames = S.languages || { es: 'Español', en: 'English', pt: 'Português' };
+const langNames = { ...(S.languages || { es: 'Español', en: 'English', pt: 'Português' }) };
+const extraLangs = {}; // picked here from the catalog: added to the event only when the plan is applied
 
 // ---------- answers ----------
 const A = {
@@ -148,6 +156,7 @@ async function buildPlan() {
   // The server may run elsewhere (Docker defaults to UTC): agenda times should mean the organizer's local time.
   const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
   if (tz && S.timezone && tz !== S.timezone && !S.timezoneFixed) ops.push({ type: 'timezone', tz, label: t.opTz(tz), note: t.opTzNote, on: true });
+  if (Object.keys(extraLangs).length) ops.push({ type: 'languages', label: t.opLangsAdd(Object.values(extraLangs).join(', ')), on: true });
   const want = A.rooms.filter((r) => r.name.trim());
   const keep = new Set(want.filter((r) => r.id).map((r) => r.id));
   for (const r of want) {
@@ -182,6 +191,7 @@ async function applyPlan() {
   const taken = new Set(S.stages.map((x) => x.id));
   // Additions and renames first, removals last: a failure part-way never leaves the event with fewer rooms.
   if (todo.some((o) => o.type === 'rename')) await api('PUT', '/api/setup', { name: A.name });
+  if (todo.some((o) => o.type === 'languages')) await api('PUT', '/api/setup', { languages: { ...S.addedLanguages, ...extraLangs } });
   const tzOp = todo.find((o) => o.type === 'timezone');
   if (tzOp) await api('PUT', '/api/setup', { timezone: tzOp.tz });
   for (const o of todo.filter((o) => o.type === 'create')) {
@@ -245,7 +255,19 @@ function renderLangs() {
   const opts = [['auto', t.auto], ...Object.entries(langNames)];
   $('spoken').innerHTML = opts.map(([k, v]) => `<button type="button" class="pill" role="radio" aria-pressed="${A.spoken === k}" aria-checked="${A.spoken === k}" data-k="${esc(k)}">${esc(v)}</button>`).join('');
   $('targets').innerHTML = Object.entries(langNames).map(([k, v]) => `<button type="button" class="pill" aria-pressed="${A.targets.includes(k)}" data-k="${esc(k)}">${esc(v)}</button>`).join('');
+  const free = Object.entries(LANGUAGE_CATALOG).filter(([c]) => !(c in langNames)).sort((a, b) => a[1].localeCompare(b[1]));
+  $('more-lang').innerHTML = `<option value="">${esc(t.moreLang)}</option>` + free.map(([c, n]) => `<option value="${c}">${esc(n)}</option>`).join('');
 }
+$('more-lang-add').textContent = t.moreLangAdd;
+$('more-lang').setAttribute('aria-label', t.moreLang);
+$('more-lang-form').onsubmit = (e) => {
+  e.preventDefault();
+  const c = $('more-lang').value;
+  if (!c) return;
+  langNames[c] = extraLangs[c] = LANGUAGE_CATALOG[c];
+  if (!A.targets.includes(c)) A.targets = [...A.targets, c];
+  renderLangs();
+};
 $('spoken').onclick = (e) => { const k = e.target.closest('[data-k]')?.dataset.k; if (k) { A.spoken = k; renderLangs(); } };
 $('targets').onclick = (e) => {
   const k = e.target.closest('[data-k]')?.dataset.k;
@@ -262,7 +284,8 @@ const keyP = keyPanel($('ai-key'), { api, onChange: (s) => { S = { ...S, ...s, p
 function renderAi() {
   const f = S.failover;
   let html = '';
-  $('ai-lede').textContent = S.primaryEngine === 'mock' ? t.aiLedeMock : S.primaryEngine === 'gemini' ? t.aiLedeOn : '';
+  // Started in demo mode on purpose (--mock) although a key is saved: say so instead of "connect a key".
+  $('ai-lede').textContent = S.primaryEngine === 'mock' ? (S.ai?.set ? t.aiLedeForced : t.aiLedeMock) : S.primaryEngine === 'gemini' ? t.aiLedeOn : '';
   $('ai-key').classList.toggle('hidden', S.primaryEngine === 'local');
   keyP.update(S);
   if (S.primaryEngine === 'gemini') {
@@ -301,13 +324,16 @@ function renderSummary() {
   const ai = S.primaryEngine === 'gemini' ? t.aiG + (f?.mode === 'auto' ? t.withBackup : '') : S.primaryEngine === 'local' ? t.aiL : t.aiM;
   const st = S.stages[0];
   const langs = (st?.targets || []).map((k) => langNames[k] || k).join(', ');
+  const addr = S.tunnel?.state === 'on' && S.tunnel.url ? S.tunnel.url : S.publicUrl;
   $('summary').innerHTML = [
     [t.sEvent, S.name],
     [t.sRooms, S.stages.map((s) => s.name).join(', ')],
     [t.sLangs, `${langs}${st?.source === 'auto' ? ` · ${t.autoL}` : ''}`],
     [t.sAI, ai],
-    [t.sAddr, S.tunnel?.state === 'on' && S.tunnel.url ? S.tunnel.url : S.publicUrl],
-  ].map(([k, v]) => `<div><b>${esc(k)}</b><span>${esc(v)}</span></div>`).join('');
+    [t.sAddr, addr],
+  ].map(([k, v]) => `<div><b>${esc(k)}</b><span>${esc(v)}</span></div>`).join('')
+    // Phones can't open "localhost": say so before anyone prints QR codes with it.
+    + (/\/\/(localhost|127\.0\.0\.1|\[::1\])\b/.test(addr) ? `<p class="err">${esc(t.localAddr)}</p>` : '');
 }
 
 show(start >= 0 ? start : 0);

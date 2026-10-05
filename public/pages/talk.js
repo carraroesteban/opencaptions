@@ -77,16 +77,34 @@ function paragraphs() {
   }
   return out;
 }
+// Only the blocks whose HTML changed are replaced: during a live talk that's the last paragraph and the line being
+// written, so the rest of a long transcript isn't rebuilt several times a second, and a reader's selection and
+// screen-reader position stay where they are.
+const tpl = document.createElement('template');
+function patchDoc(blocks) {
+  const box = $('doc');
+  blocks.forEach((html, i) => {
+    const cur = box.children[i];
+    if (cur?._html === html) return;
+    tpl.innerHTML = html;
+    const el = /** @type {HTMLElement & { _html?: string }} */ (tpl.content.firstElementChild);
+    el._html = html;
+    if (cur) cur.replaceWith(el); else box.append(el);
+  });
+  while (box.children.length > blocks.length) box.lastElementChild.remove();
+}
 function render() {
   const ps = paragraphs();
-  if (!ps.length && !partial) { $('doc').innerHTML = `<div class="empty">${esc(info.current ? t('waiting') : t('noTalks'))}</div>`; $('count').textContent = ''; return; }
+  if (!ps.length && !partial) { patchDoc([`<div class="empty">${esc(info.current ? t('waiting') : t('noTalks'))}</div>`]); $('count').textContent = ''; return; }
   let matches = 0;
-  $('doc').innerHTML = ps.map((p) => {
+  const blocks = ps.map((p) => {
     const text = p.texts.join(' ');
     if (query) matches += (text.toLowerCase().split(query.toLowerCase()).length - 1);
     const id = `t${Math.floor(p.start / 1000)}`;
     return `<div class="para" id="${id}"><a class="ts" href="#${id}">${fmtClock(p.start)}</a><p>${p.named ? `<b class="spk">${esc(p.who)}</b> ` : ''}${hl(text)}</p></div>`;
-  }).join('') + (partial?.text ? `<div class="para" aria-hidden="true"><span class="ts"></span><p class="partial">${liveHtml(partial.text)}</p></div>` : '');
+  });
+  if (partial?.text) blocks.push(`<div class="para" aria-hidden="true"><span class="ts"></span><p class="partial">${liveHtml(partial.text)}</p></div>`);
+  patchDoc(blocks);
   $('count').textContent = query ? `${matches} ${t('matches')}` : '';
   if (following) scrollEnd();
 }

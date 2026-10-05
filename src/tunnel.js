@@ -11,6 +11,7 @@
 // Cloudflare's GitHub releases). The Docker image ships it.
 import { EventEmitter } from 'node:events';
 import { spawn, spawnSync } from 'node:child_process';
+import crypto from 'node:crypto';
 import fs from 'node:fs';
 import dns from 'node:dns';
 import https from 'node:https';
@@ -19,7 +20,21 @@ import { ROOT } from './config.js';
 
 const BIN_DIR = path.join(ROOT, 'local', 'bin');
 const EXE = process.platform === 'win32' ? 'cloudflared.exe' : 'cloudflared';
-const RELEASES = 'https://github.com/cloudflare/cloudflared/releases/latest/download/';
+// A pinned release, checked against GitHub's SHA-256 for each file: what runs on organizers' computers is exactly
+// what was reviewed. To update: pick a release on github.com/cloudflare/cloudflared and copy the new digests
+// (gh api repos/cloudflare/cloudflared/releases/tags/<version> --jq '.assets[] | .name + " " + .digest').
+const VERSION = '2026.9.3';
+const RELEASES = `https://github.com/cloudflare/cloudflared/releases/download/${VERSION}/`;
+const SHA256 = {
+  'cloudflared-darwin-amd64.tgz': 'd1155d0837487f261183b15c1eab6c4ebcad9dc49b94675f1524c3564cea3977',
+  'cloudflared-darwin-arm64.tgz': '587c2cfb1c230fe36c7fa7727da78be459dae028cabe8c001291999350f07095',
+  'cloudflared-linux-amd64': '77e26d8d900e0b8469f416239d14b5f296525fdf79fee6f511ef55609e3fbac2',
+  'cloudflared-linux-arm64': 'aaeb2d7d0da3614634c7e03ab13487a1522c2e79165ed2929cfe23d5e95b326d',
+  'cloudflared-linux-arm': '967dc371a3fedbf09e881c13ee7ba317155ebc336cbd4afb756b46fc6785e5af',
+  'cloudflared-linux-386': 'd6b2f917e2e78b3e3afba760af726e51751d10c2fcad4a2fb2a69feb4bd47421',
+  'cloudflared-windows-amd64.exe': 'f096265ec2fcbe9bb6e2d64268db167ced3fcbb83d894bdb9e2fcdb26f2ea7e2',
+  'cloudflared-windows-386.exe': '9b95ddc2eba67b86ed3dc4cc2a15881960563031b52ce564376af41fb91ad402',
+};
 
 /** The release file for this computer, or null if Cloudflare doesn't publish one. */
 function releaseAsset() {
@@ -51,7 +66,9 @@ export async function installCloudflared() {
   const res = await fetch(RELEASES + asset, { signal: AbortSignal.timeout(180_000) });
   if (!res.ok) throw new Error(`couldn't download cloudflared (${res.status} ${res.statusText})`);
   const tmp = path.join(BIN_DIR, `${asset}.part`);
-  fs.writeFileSync(tmp, Buffer.from(await res.arrayBuffer()));
+  const buf = Buffer.from(await res.arrayBuffer());
+  if (crypto.createHash('sha256').update(buf).digest('hex') !== SHA256[asset]) throw new Error('the downloaded cloudflared doesn\'t match its published checksum: not installing it (try again, or install cloudflared yourself)');
+  fs.writeFileSync(tmp, buf);
   const dest = path.join(BIN_DIR, EXE);
   if (asset.endsWith('.tgz')) {
     const r = spawnSync('tar', ['-xzf', tmp, '-C', BIN_DIR]);

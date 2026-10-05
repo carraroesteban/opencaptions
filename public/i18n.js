@@ -6,6 +6,16 @@ import { store, qs } from '/common.js';
 
 const DICTS = {
   en: {
+    // settings: languages and transcripts
+    'Los que pueden elegir las salas. Agregá los que necesites; después elegilos en cada sala.': 'The ones rooms can use. Add the ones you need, then pick them in each room.',
+    'Idioma para agregar': 'Language to add',
+    'Transcripciones para el público': 'Transcripts for the audience',
+    'Qué puede leer y descargar el público sin iniciar sesión. Pedí permiso a los oradores antes de publicar charlas anteriores.': 'What the audience can read and download without signing in. Ask speakers before publishing past talks.',
+    'Solo la charla en curso': 'Only the talk in progress',
+    'Todas las charlas': 'Every talk',
+    'Ninguna (solo el equipo)': 'None (team only)',
+    'Lo fija PUBLIC_TRANSCRIPTS en el archivo .env.': 'Set by PUBLIC_TRANSCRIPTS in the .env file.',
+    'Guardado': 'Saved',
     // generic
     'Sala': 'Room', 'Salas': 'Rooms', 'Idioma': 'Language', 'Original': 'Original', 'Abrir': 'Open', 'Copiar': 'Copy', 'Cerrar': 'Close',
     'Cancelar': 'Cancel', 'Guardar': 'Save', 'Cargar': 'Load', 'Nombre': 'Name', 'ID': 'ID', 'Estilo': 'Style', 'Fondo': 'Background',
@@ -155,7 +165,6 @@ const DICTS = {
     'Imprimir los QR de cada sala': 'Print each room\'s QR code',
     'Prueba de sonido en cada sala': 'Sound check in every room',
     'listo · ': 'ready · ',
-    ' en ': ' in ',
     'runbook': 'runbook',
     ' (opcional)': ' (optional)',
     'Transcripción en vivo (leer, buscar, resumen IA)': 'Live transcript (read, search, AI summary)',

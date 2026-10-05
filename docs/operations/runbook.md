@@ -39,7 +39,7 @@ A shorter Spanish version for venue crews is in [event-day.es.md](event-day.es.m
 - [ ] Design the caption style once in `/style.html` and copy the generated overlay and projector URLs.
 - [ ] Paste the agenda in **Dashboard → Agenda**; it shows what will change before you save. From Swapcard or Sessionize: export the sessions to Excel or Google Sheets, select everything including the header row, copy and paste. Columns are found by their header, rooms by their name, and rows for rooms without captions are skipped. By hand: CSV `room,time,title,speaker` (see `config/schedule.example.csv`). Talks then get their title and speaker automatically, and speaker names and titles are passed to the recognizer and the translator so they're spelled right; a room waits for a pause before switching, so a speaker who runs late is never cut.
 - [ ] Print the QR posters: **Dashboard → Screens and QR → QR kit** (`/kit.html`), one bilingual A4 poster per room. Check the warning at the top: the QR must point to the public HTTPS address, not `localhost`.
-- [ ] Decide what the audience can read afterwards: `publicTranscripts` in `config/event.json` (`all` = every talk in the library, `current` = only the talk in progress).
+- [ ] Decide what the audience can read afterwards: **Settings → Transcripts for the audience** (*Only the talk in progress*, the default; *Every talk*, after the speakers agree; or *None*).
 
 ### Rehearsal
 
@@ -147,7 +147,7 @@ With **alerts on your phone** set up (Settings → Alerts), the ones that last r
 
 ## End of each day
 
-- [ ] The audience keeps every transcript at `/talks.html` (read, search, summary, download) if `publicTranscripts` is `all`.
+- [ ] The audience keeps every transcript at `/talks.html` (read, search, summary, download) if **Settings → Transcripts for the audience** is *Every talk*.
 - [ ] **Dashboard → Transcripts** per room: SRT or VTT to upload with the videos, TXT for the blog or accessibility archive.
 - [ ] Back up the data folder ([where it is](../deployment.md#backups-and-upgrades)).
 - [ ] Compare the day's estimated cost on the dashboard with **AI Studio → Usage**.

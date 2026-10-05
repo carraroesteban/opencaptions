@@ -44,6 +44,7 @@
 
     .q { font-weight: 700; margin: 0 0 10px; }
     .pills { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 24px; }
+    .rowbar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin: -12px 0 24px; }
     .pill { font-size: 15px; padding: 8px 15px; cursor: pointer; }
 
     .opts { display: grid; gap: 12px; max-width: 560px; }
@@ -119,6 +120,7 @@
         <div class="pills" id="spoken" role="radiogroup"></div>
         <p class="q" data-t="captionsQ"></p>
         <div class="pills" id="targets"></div>
+        <form class="rowbar" id="more-lang-form"><select id="more-lang"></select><button type="submit" id="more-lang-add"></button></form>
         <p class="hint" data-t="langsHint"></p>
         <div class="actions"><button class="back" data-back data-t="back"></button><button class="skip" data-skip data-t="notSure"></button><button class="primary" data-next data-t="next"></button></div>
       </div>

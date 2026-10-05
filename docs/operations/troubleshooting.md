@@ -74,7 +74,7 @@ See [Local mode → Troubleshooting](../local.md#troubleshooting) for the speech
 | Summary says there isn't enough yet | Fewer than a few sentences transcribed | Wait a minute |
 | Agenda titles never appear, or appear hours off | Times read in the wrong time zone (Docker runs in UTC), or room names in the CSV don't match | Reopen the welcome wizard (**Settings**): its review offers your browser's time zone. Or set `TZ`. The agenda preview lists rooms it doesn't recognize. |
 | The next talk's title doesn't switch | The room hasn't been quiet yet (the previous speaker is still talking) | The room card turns orange and offers **Start "…"**; or it switches at the next 30 s pause |
-| Transcript library is empty for the audience | `publicTranscripts` is `current` (only the talk in progress is public) | Set `"publicTranscripts": "all"` in `config/event.json` or `PUBLIC_TRANSCRIPTS=all` |
+| Transcript library is empty for the audience | Only the talk in progress is public (the default) | **Settings → Transcripts for the audience → Every talk**, once the speakers agree (or `PUBLIC_TRANSCRIPTS=all`) |
 
 ## Desktop apps
 

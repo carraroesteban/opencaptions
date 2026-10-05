@@ -327,6 +327,18 @@
           <div><h3>Nombre del evento</h3><p>Aparece en los celulares, en la pantalla del escenario y en los carteles.</p></div>
           <form class="rowbar" id="name-form"><input id="name-in" maxlength="80" class="u-minw220" /><button data-icon="check">Guardar</button></form>
         </section>
+        <section class="card setting">
+          <div><h3>Idiomas</h3><p>Los que pueden elegir las salas. Agregá los que necesites; después elegilos en cada sala.</p><div class="chips" id="langs-list" data-no-i18n></div></div>
+          <form class="rowbar" id="lang-form"><select id="lang-add" aria-label="Idioma para agregar" class="u-minw220"></select><button data-icon="plus">Agregar</button></form>
+        </section>
+        <section class="card setting">
+          <div><h3>Transcripciones para el público</h3><p id="tx-access-note">Qué puede leer y descargar el público sin iniciar sesión. Pedí permiso a los oradores antes de publicar charlas anteriores.</p></div>
+          <select id="tx-access" aria-label="Transcripciones para el público" class="u-minw220">
+            <option value="current">Solo la charla en curso</option>
+            <option value="all">Todas las charlas</option>
+            <option value="none">Ninguna (solo el equipo)</option>
+          </select>
+        </section>
         <section class="card">
           <h3 class="u-h17">Acceso</h3>
           <p class="muted-note u-mb14">Quién puede entrar a este panel, y desde qué dispositivos.</p>

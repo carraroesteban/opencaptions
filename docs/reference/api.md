@@ -39,13 +39,13 @@ There are three passwords (`src/auth.js`), auto-generated and printed on first s
    computer itself.
 
 Roles: **admin** can call everything below. **crew** can call `GET /api/status`, `GET /api/setup`, `GET /api/history`,
-`GET /metrics`, `POST /api/stages/:id/talk`, `PATCH /api/stages/:id` with only `title`, `POST /api/stages/:id/restart`,
+`GET /api/glossary`, `GET /metrics`, `POST /api/stages/:id/talk`, `PATCH /api/stages/:id` with only `title`, `POST /api/stages/:id/restart`,
 `DELETE /api/stages/:id/pull` and `POST …/pull/stop`, `POST /api/engine`, the transcripts, and `WS /ws/admin`; anything
 else answers `403` with `{ "role": "crew" }`. Unauthenticated calls answer `401`.
 
 | Endpoint group | Who can call it |
 |---|---|
-| `GET /healthz`, `GET /api/event`, `GET /api/glossary`, `GET /api/schedule`, `GET /api/qr.svg`, `GET /s/:id`, `GET /manifest.webmanifest`, `GET /api/auth/config`, `GET /api/auth/me`, `POST /api/auth/login`, static pages | Public — no auth |
+| `GET /healthz`, `GET /api/event`, `GET /api/schedule`, `GET /api/qr.svg`, `GET /s/:id`, `GET /manifest.webmanifest`, `GET /api/auth/config`, `GET /api/auth/me`, `POST /api/auth/login`, static pages | Public — no auth |
 | `GET /api/talks`, `GET /api/stages/:id/talks`, `GET /api/stages/:id/talks/:talk`, `GET /api/stages/:id/export.:fmt` | Depends on `PUBLIC_TRANSCRIPTS` — see [Transcripts & exports](#transcripts--exports); crew or admin otherwise |
 | `GET /api/stages/:id/summary`, `POST /api/stages/:id/ask` | Depends on `PUBLIC_TRANSCRIPTS` — see [Audience AI](#audience-ai-summaries--ask) |
 | The live controls listed above, `GET /metrics`, `WS /ws/admin` | Crew or admin |
@@ -89,8 +89,8 @@ Every JSON error response has the shape:
 | Limit | Env var | Default | Applies to |
 |---|---|---|---|
 | API requests | `RATE_LIMIT_API` | 300 / 60 s | State-changing (non-`GET`/`HEAD`) requests under `/api`. Skipped for trusted localhost. Exceeding it returns `429 {"error":"too many requests"}` with `Retry-After: 60`. |
-| Failed logins | `RATE_LIMIT_AUTH_FAIL` | 20 / 10 min | Failed admin/ingest token checks (HTTP and WebSocket). Exceeding it returns `429 {"error":"too many failed attempts"}` with `Retry-After: 600`, *before* the real 401/close is even evaluated. |
-| WebSocket connects | `RATE_LIMIT_WS` | 3000 / 60 s | Every `/ws/*` upgrade attempt, any kind. Exceeding it rejects the upgrade with HTTP `429`. |
+| Failed logins | `RATE_LIMIT_AUTH_FAIL`, `RATE_LIMIT_AUTH_FAIL_IP` | 20 / 10 min per IP and browser, 100 per IP | Failed admin/ingest token checks (HTTP and WebSocket). Exceeding it returns `429 {"error":"too many failed attempts"}` with `Retry-After: 600`, *before* the real 401/close is even evaluated. |
+| WebSocket connects | `RATE_LIMIT_WS` | 6000 / 60 s | Every `/ws/*` upgrade attempt, any kind. Exceeding it rejects the upgrade with HTTP `429`. |
 
 Viewer traffic (`GET` requests, `/ws/view` beyond the connection-flood limit above) is deliberately **not**
 rate-limited per IP — venue Wi-Fi puts hundreds of phones behind one public IP.
@@ -458,8 +458,8 @@ curl -X POST http://localhost:8080/api/stages/main/ask \
 
 | Method | Path | Auth | Description |
 |---|---|---|---|
-| `GET` | `/api/setup` | crew | First-run state for the welcome wizard: `done`, `locked`, event `name` and `named` (`false` until someone names the event), `languages`, `defaultTargets`, `stages` (`id`, `name`, `source`, `targets`), `engine`, `primaryEngine`, `failover`, `ai` (see below), `tunnel` (see below), `tunnelTokenSaved`, `publicUrl` (the address QR codes use for this request), `publicUrlSource` (`config` = `PUBLIC_URL` / `publicUrl`, `tunnel`, or `auto` = the address the page was opened with, or this computer's Wi-Fi address instead of `localhost`), `lanUrl` and `port`. |
-| `PUT` | `/api/setup` | admin | Body `{ "name"?: string, "done"?: boolean }`. Renames the event (1–80 characters) and marks the wizard as finished. Saved in `data/setup.json`; the name overrides `eventName` from `config/event.json`. |
+| `GET` | `/api/setup` | crew | First-run state for the welcome wizard: `done`, `locked`, event `name` and `named` (`false` until someone names the event), `languages` (event.json's plus the ones added from the dashboard), `addedLanguages`, `publicTranscripts` and `publicTranscriptsFixed` (`true` when `PUBLIC_TRANSCRIPTS` is set in the environment), `defaultTargets`, `stages` (`id`, `name`, `source`, `targets`), `engine`, `primaryEngine`, `failover`, `ai` (see below), `tunnel` (see below), `tunnelTokenSaved`, `tunnelMoved` (`true` when the free address differs from the one used before the last restart, so printed QR codes are out of date), `publicUrl` (the address QR codes use for this request), `publicUrlSource` (`config` = `PUBLIC_URL` / `publicUrl`, `tunnel`, or `auto` = the address the page was opened with, or this computer's Wi-Fi address instead of `localhost`), `lanUrl` and `port`. |
+| `PUT` | `/api/setup` | admin | Body `{ "name"?: string, "done"?: boolean, "timezone"?: string, "languages"?: { code: name }, "publicTranscripts"?: "current" \| "all" \| "none" }`. Renames the event (1–80 characters), marks the wizard as finished, sets the agenda's time zone, replaces the languages added from the dashboard (up to 40; `409` if a room still uses one being removed), and sets who can read transcripts (`409` when `PUBLIC_TRANSCRIPTS` fixes it). Everything is validated before anything changes. Saved in `data/setup.json`; the name overrides `eventName` from `config/event.json`. All but `done` answer `423` in Event mode. |
 | `POST` | `/api/lock` | admin | Event mode. Body `{ "locked": true \| false }`. While locked, the setup endpoints below answer `423 Locked` with `{ "locked": true }`: creating, changing (except the current talk's `title`) and deleting rooms, `PUT /api/schedule`, `PUT /api/glossary`, renaming the event and undoing changes. Live operations keep working: `POST /api/stages/:id/talk`, `/restart`, `/youtube`, the pull controls and `POST /api/engine`. Recorded in the history. |
 | `GET` | `/api/history` | crew | `{ "locked", "changes": [...], "trash": [...] }`. `changes` are the latest setup changes, newest first: `{ id, at, kind, target, summary, before, after, undoes?, undone }` (`kind`: `room.create`, `room.update`, `room.delete`, `agenda.set`, `glossary.set`, `event.rename`, `engine.mode`, `event.lock`, `ai.key`, `tunnel`, `auth.signin`, `auth.signout`, `auth.password`, `auth.2fa`; `by` is who made it: the signed-in device's name, the work account, `this computer` or `admin password (script)`; agenda and glossary snapshots are summarized as counts). `trash` lists deleted rooms that haven't been restored: `{ id, at, room }`. |
 | `POST` | `/api/history/:id/undo` | admin | Put back what that change replaced: a deleted room comes back exactly as it was, a changed room returns to its old settings, the agenda or glossary to the previous version, and so on. The undo is recorded as a new change. `409` if already undone; `423` in Event mode. |
@@ -525,7 +525,7 @@ Shared across every room (per-room `vocabulary` in the stage config is merged in
 
 | Method & path | Auth | Notes |
 |---|---|---|
-| `GET /api/glossary` | Public | `{ vocabulary: string[], replacements: {from,to,lang?}[] }`. |
+| `GET /api/glossary` | Crew or admin | `{ vocabulary: string[], replacements: {from,to,lang?}[] }`. |
 | `PUT /api/glossary` | Admin | Replace the whole glossary. Hot-reloads instantly — replacements apply to the very next caption, no restart. |
 
 Validation: `vocabulary` ≤ 500 entries of ≤ 100 chars; `replacements` ≤ 500 entries, each `from`/`to` ≤ 300

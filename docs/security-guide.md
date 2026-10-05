@@ -83,7 +83,7 @@ flowchart LR
 | Server-side request forgery | Admin pull of `http://169.254.169.254/…` or a LAN service | Pull URLs are validated: allowed schemes only; cloud metadata and link-local addresses always blocked; HTTP(S) to private or loopback addresses blocked unless `PULL_ALLOW_PRIVATE=1`; local files only from `samples/` or `MEDIA_DIR`. ffmpeg gets a network-only `-protocol_whitelist` for URLs. |
 | **Denial of service** | Flooding APIs or sockets, huge messages | State-changing API calls are rate-limited per client IP. WebSocket upgrades are rate-limited. JSON bodies max 256 KB. WebSocket messages max 256 KB, and audio frames over 64 KB are dropped. `MAX_STAGES` and `MAX_VIEWERS` caps apply. |
 | DoS on budget | Creating many rooms to burn Gemini credit | Admin only, plus the `MAX_STAGES` cap. Set a budget alert in Google Cloud or AI Studio. |
-| DoS on budget via the audience assistant | Scripting thousands of summary/question requests | Summaries are cached and shared by every viewer of a room (45 s–2 min while live, 24 h after). Questions: 6/min per client and 30/min server-wide by default (`ASK_PER_CLIENT_PER_MIN`, `ASK_RPM`, `SUMMARY_RPM`). `AUDIENCE_AI=off` turns model calls off entirely. |
+| DoS on budget via the audience assistant | Scripting thousands of summary/question requests | Summaries are cached and shared by every viewer of a room (45 s–2 min while live, 24 h after). Questions: 6/min per browser, 60/min per IP and 30/min server-wide by default (`ASK_PER_CLIENT_PER_MIN`, `ASK_PER_IP_PER_MIN`, `ASK_RPM`, `SUMMARY_RPM`). `AUDIENCE_AI=off` turns model calls off entirely. |
 | Prompt injection | A question like "ignore your rules and…", or a speaker saying it on stage | The model only receives the transcript and the question, has no tools, and its output is shown as plain text (escaped). The system prompt tells it to treat the question as a question and to answer only from the transcript; the worst case is a wrong or silly answer, labeled as AI-generated. |
 | **Elevation of privilege** | Escaping the process | The Docker image runs as a non-root user with a read-only root filesystem, `cap_drop: ALL` and `no-new-privileges`. The systemd unit is sandboxed (`ProtectSystem=strict` and more). |
 
@@ -135,7 +135,7 @@ The dashboard and the welcome wizard show a sign-in screen on any device other t
 - **Sessions expire** after `SESSION_HOURS` (24 by default). The server stores only a hash of each session.
 - **Each device has a name** ("Stage left tablet"), shown in **Settings → Access → Signed-in devices**, where any session can be signed out, or every other one at once. The History records who made each change.
 - **Changes from other websites are refused:** a browser's requests must come from the dashboard itself (the cookie is `SameSite=Strict`, and the server checks the `Origin`), on the server computer too.
-- **Wrong passwords** count towards the lockout (20 per 10 minutes per address).
+- **Wrong passwords** count towards the lockout: 20 per 10 minutes per address and browser, 100 per address. Someone guessing on the venue Wi-Fi locks out only their own browser, not the crew sharing the same public address.
 
 Scripts, the room agent and Prometheus send a password as `Authorization: Bearer <password>`. The crew password is enough for `/metrics`.
 
@@ -265,3 +265,4 @@ These are accepted risks today, listed so you can decide whether they matter for
 | The History (`data/history.jsonl`) records who changed the setup, but it isn't tamper-evident | Someone with disk access could edit it | Ship stdout to your log platform | Structured JSON logs |
 | Stored transcripts aren't encrypted by the app | Anyone with disk access can read them | Encrypted volume or disk | — |
 | DNS rebinding between pull validation and connection (time-of-check to time-of-use) | Narrow SSRF window for admins | Admin-only feature. Keep `PULL_ALLOW_PRIVATE` off. | Pin the resolved IP |
+| HLS playlists (`.m3u8`) on a public host can list segments on private addresses, which ffmpeg fetches: only the playlist's own address is checked | SSRF for admins through a crafted playlist | Admin-only feature. Pull HLS only from sources you trust. | Fetch playlists through a checking proxy |

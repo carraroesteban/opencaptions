@@ -6,6 +6,7 @@
 //
 //   npm run site              # assemble into _site/ and serve it at http://localhost:8081
 //   node scripts/site.js      # just assemble (what the GitHub Pages workflow runs)
+import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -216,10 +217,24 @@ const head = [
   env('SITE_BING_VERIFICATION') && `<meta name="msvalidate.01" content="${esc(env('SITE_BING_VERIFICATION'))}" />`,
   /^[a-z0-9-]+$/.test(env('SITE_GOATCOUNTER')) && `<script data-goatcounter="https://${env('SITE_GOATCOUNTER')}.goatcounter.com/count" async src="https://gc.zgo.at/count.js"></script>`,
 ].filter(Boolean).join('\n  ');
+// Content-Security-Policy (GitHub Pages can't send headers, so a <meta>): everything from this site, plus the
+// statistics host when they're on. It enforces what the privacy page promises. Each page's small inline script (the
+// theme, set before paint) is allowed by its hash.
+const gc = /^[a-z0-9-]+$/.test(env('SITE_GOATCOUNTER')) ? `https://${env('SITE_GOATCOUNTER')}.goatcounter.com` : '';
+const csp = (html) => {
+  const hashes = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].map((m) => `'sha256-${crypto.createHash('sha256').update(m[1]).digest('base64')}'`);
+  return [
+    "default-src 'self'", `script-src 'self' ${hashes.join(' ')}${gc ? ' https://gc.zgo.at' : ''}`, "style-src 'self'", "font-src 'self'",
+    `img-src 'self' data:${gc ? ` ${gc}` : ''}`, `connect-src 'self'${gc ? ` ${gc}` : ''}`, "media-src 'self'",
+    "object-src 'none'", "base-uri 'none'", "form-action 'none'",
+  ].join('; ');
+};
 for (const file of fs.readdirSync(OUT, { recursive: true }).map(String).filter((f) => f.endsWith('.html'))) {
   const p = path.join(OUT, file);
-  const html = fs.readFileSync(p, 'utf8');
-  if (html.includes('<link rel="stylesheet" href="/style.css" />')) fs.writeFileSync(p, html.replace('<link rel="stylesheet" href="/style.css" />', `${head}\n  <link rel="stylesheet" href="/style.css" />`));
+  let html = fs.readFileSync(p, 'utf8');
+  if (html.includes('<link rel="stylesheet" href="/style.css" />')) html = html.replace('<link rel="stylesheet" href="/style.css" />', `${head}\n  <link rel="stylesheet" href="/style.css" />`);
+  html = html.replace(/<head>\n?/, (m) => `${m}  <meta http-equiv="Content-Security-Policy" content="${csp(html)}" />\n`);
+  fs.writeFileSync(p, html);
 }
 
 console.log(`site assembled in ${path.relative(process.cwd(), OUT) || '.'} (${pages.length} pages)`);

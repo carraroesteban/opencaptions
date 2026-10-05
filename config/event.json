@@ -2,7 +2,7 @@
   "eventName": "",
   "accent": "#D4FF3A",
   "publicUrl": "",
-  "publicTranscripts": "all",
+  "publicTranscripts": "current",
   "model": "gemini-3.5-live-translate-preview",
   "languages": { "es": "Español", "en": "English", "pt": "Português" },
   "defaultTargets": ["es", "en"],

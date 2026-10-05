@@ -102,6 +102,9 @@ for (const def of initial) addStage(def);
 const SETUP_FILE = path.join(config.dataDir, 'setup.json');
 const setup = (() => { try { return JSON.parse(fs.readFileSync(SETUP_FILE, 'utf8')); } catch { return { done: false }; } })();
 if (setup.name) Object.assign(config.event, { name: setup.name, named: true });
+// Languages added from the dashboard (on top of event.json's), so French doesn't mean editing JSON.
+const baseLanguages = { ...config.event.languages };
+if (setup.languages) config.event.languages = { ...baseLanguages, ...setup.languages };
 // The agenda's time zone, as the wizard read it from the organizer's browser (TZ or event.json's timezone win).
 const tzFixed = !!process.env.TZ;
 if (setup.timezone && !tzFixed) process.env.TZ = setup.timezone;
@@ -193,7 +196,7 @@ app.get('/api/event', (req, res) => {
   });
 });
 
-app.get('/api/status', crew, (req, res) => res.json(snapshot()));
+app.get('/api/status', crew, (req, res) => res.json(req.who.role === 'admin' ? snapshot() : forCrew(snapshot())));
 
 app.post('/api/stages', admin, unlocked, async (req, res) => {
   try {
@@ -289,8 +292,11 @@ app.post('/api/stages/:id/restart', crew, getStage, (req, res) => {
 
 // Transcripts: PUBLIC_TRANSCRIPTS=current (default) lets the audience read/download the talk in progress;
 // listing and past talks need the admin token. 'all' makes every talk public (typical for public
-// conferences that publish their videos anyway), 'none' makes all admin-only.
-const PUBLIC_TRANSCRIPTS = (process.env.PUBLIC_TRANSCRIPTS || config.event.publicTranscripts || 'current').toLowerCase();
+// conferences that publish their videos anyway), 'none' makes all admin-only. Set from the dashboard's Settings
+// (data/setup.json) unless the environment fixes it.
+const TRANSCRIPT_MODES = ['current', 'all', 'none'];
+const transcriptsFixed = !!process.env.PUBLIC_TRANSCRIPTS;
+let PUBLIC_TRANSCRIPTS = (process.env.PUBLIC_TRANSCRIPTS || setup.publicTranscripts || config.event.publicTranscripts || 'current').toLowerCase();
 const isCurrent = (st, talkId) => !talkId || talkId === st.talk.id;
 const canReadTalk = (req, st, talkId) => PUBLIC_TRANSCRIPTS === 'all' || (PUBLIC_TRANSCRIPTS === 'current' && isCurrent(st, talkId)) || allows(identify(req, reqUrl(req)), 'crew');
 const talkAccess = (req, res, next) => (canReadTalk(req, req.stage, req.query.talk || req.params.talk) ? next() : crew(req, res, next));
@@ -403,7 +409,7 @@ const dayParam = (q) => (/^\d{4}-\d{2}-\d{2}$/.test(String(q || '')) ? String(q)
 app.get('/api/report', crew, (req, res) => res.json(eventReport(dayParam(req.query.day))));
 app.get('/api/report.csv', crew, (req, res) => {
   const r = eventReport(dayParam(req.query.day));
-  const cell = (v) => { const x = String(v ?? ''); return /[",\n]/.test(x) || /^[=+\-@]/.test(x) ? `"${x.replace(/^([=+\-@])/, "'$1").replace(/"/g, '""')}"` : x; }; // spreadsheet-safe
+  const cell = (v) => { const x = String(v ?? ''); return /[",\n\r]/.test(x) || /^[=+\-@\t\r]/.test(x) ? `"${x.replace(/^([=+\-@\t\r])/, "'$1").replace(/"/g, '""')}"` : x; }; // spreadsheet-safe: no formulas
   const rows = [['room', 'talk', 'speaker', 'date', 'start', 'minutes', 'words', 'caption_languages', 'peak_viewers', 'viewer_minutes', 'cost_usd']];
   for (const room of r.rooms) for (const t of room.talks) {
     const d = new Date(t.startedAt);
@@ -434,7 +440,8 @@ app.post('/api/stages/:id/ask', getStage, async (req, res) => {
   const info = talkInfo(st, talkId);
   if (!info) return res.status(404).json({ error: 'unknown talk' });
   try {
-    res.json(await ask({ segs: talkSegs(st, talkId), lang, question: req.body?.question, clientKey: clientIp(req), title: info.title }));
+    const ip = clientIp(req), browser = String(req.body?.client || '');
+    res.json(await ask({ segs: talkSegs(st, talkId), lang, question: req.body?.question, ip, clientKey: /^[\w-]{8,40}$/.test(browser) ? `${ip}|${browser}` : ip, title: info.title }));
   } catch (e) {
     res.status(e.status || 500).json({ error: e.status ? e.message : 'internal error' });
   }
@@ -589,6 +596,9 @@ app.get('/api/setup', crew, (req, res) => {
     timezone: Intl.DateTimeFormat().resolvedOptions().timeZone, // what the agenda's HH:MM times mean
     timezoneFixed: tzFixed,
     languages: config.event.languages,
+    addedLanguages: setup.languages || {},
+    publicTranscripts: PUBLIC_TRANSCRIPTS,
+    publicTranscriptsFixed: transcriptsFixed,
     defaultTargets: config.event.defaultTargets,
     stages: [...stages.values()].map((s) => ({ id: s.id, name: s.def.name, source: s.def.source, targets: s.def.targets })),
     engine: config.engine,
@@ -597,6 +607,7 @@ app.get('/api/setup', crew, (req, res) => {
     ai: keyInfo(),
     tunnel: tunnel.status(),
     tunnelTokenSaved: !!readSecret('tunnelToken'),
+    tunnelMoved, // the free address is not the one the QR codes were printed with
     publicUrlSource: configuredPublicUrl ? 'config' : tunnel.status().state === 'on' ? 'tunnel' : 'auto',
     lanUrl: lanUrl(),
     port: config.port,
@@ -610,7 +621,19 @@ app.put('/api/setup', admin, (req, res) => {
   const name = String(b.name || '').trim().slice(0, 80);
   if ('name' in b && !name) return res.status(400).json({ error: 'name required' });
   if ('timezone' in b && !zoneOk(String(b.timezone || ''))) return res.status(400).json({ error: 'unknown time zone' });
-  if (setup.locked && ('name' in b || 'timezone' in b)) return res.status(423).json(LOCKED);
+  if ('publicTranscripts' in b && !TRANSCRIPT_MODES.includes(b.publicTranscripts)) return res.status(400).json({ error: 'publicTranscripts: current, all or none' });
+  if ('publicTranscripts' in b && transcriptsFixed) return res.status(409).json({ error: 'PUBLIC_TRANSCRIPTS is set in .env: change it there and restart' });
+  let added = null;
+  if ('languages' in b) {
+    const l = b.languages && typeof b.languages === 'object' ? Object.entries(b.languages) : null;
+    if (!l || l.length > 40 || !l.every(([c, n]) => LANG_RE.test(c) && c !== 'orig' && typeof n === 'string' && n.trim() && n.length <= 40)) {
+      return res.status(400).json({ error: 'languages: up to 40 { code: name } pairs, e.g. { "fr": "Français" }' });
+    }
+    added = Object.fromEntries(l.map(([c, n]) => [c, n.trim()]));
+    const inUse = [...stages.values()].flatMap((st) => [st.def.source, ...st.def.targets]).filter((c) => !(c in baseLanguages) && !(c in added) && c !== 'auto');
+    if (inUse.length) return res.status(409).json({ error: `a room still uses ${[...new Set(inUse)].join(', ')}: change the room first` });
+  }
+  if (setup.locked && ('name' in b || 'timezone' in b || 'languages' in b || 'publicTranscripts' in b)) return res.status(423).json(LOCKED);
   if ('name' in b) {
     if (name !== config.event.name) patch.change = recordChange({ kind: 'event.rename', summary: `Event renamed to "${name}"`, before: config.event.name, after: name }).id;
     patch.name = config.event.name = name;
@@ -621,6 +644,14 @@ app.put('/api/setup', admin, (req, res) => {
     const tz = String(b.timezone || '');
     patch.timezone = tz;
     if (!tzFixed) process.env.TZ = tz; // Node reads TZ again on the next date
+  }
+  if (added) {
+    patch.languages = added;
+    config.event.languages = { ...baseLanguages, ...added };
+  }
+  if ('publicTranscripts' in b && b.publicTranscripts !== PUBLIC_TRANSCRIPTS) {
+    patch.change = recordChange({ kind: 'transcripts.access', summary: `Transcripts: ${b.publicTranscripts}`, before: PUBLIC_TRANSCRIPTS, after: b.publicTranscripts }).id;
+    PUBLIC_TRANSCRIPTS = patch.publicTranscripts = b.publicTranscripts;
   }
   const change = patch.change ?? null;
   delete patch.change;
@@ -639,7 +670,14 @@ app.post('/api/lock', admin, (req, res) => {
 });
 
 app.get('/api/history', crew, (req, res) => {
-  res.json({ locked: !!setup.locked, changes: history.recent({ limit: Math.min(500, Number(req.query.limit) || 200) }), trash: history.trash((id) => stages.has(id)) });
+  const crewOnly = req.who.role !== 'admin';
+  const changes = history.recent({ limit: Math.min(500, Number(req.query.limit) || 200) });
+  const trash = history.trash((id) => stages.has(id));
+  res.json({
+    locked: !!setup.locked,
+    changes: crewOnly ? changes.map((c) => ({ ...c, before: redactDef(c.before), after: redactDef(c.after) })) : changes,
+    trash: crewOnly ? trash.map((x) => ({ ...x, room: redactDef(x.room) })) : trash,
+  });
 });
 
 // Undo one change: put back what it replaced. The undo is recorded too (and can itself be undone).
@@ -778,7 +816,8 @@ app.put('/api/schedule', admin, unlocked, (req, res) => {
   } catch (e) { res.status(400).json({ error: e.message }); }
 });
 
-app.get('/api/glossary', (req, res) => res.json(glossary.data));
+// Crew only: a glossary can hold names that aren't public yet (an unannounced product, a surprise speaker).
+app.get('/api/glossary', crew, (req, res) => res.json(glossary.data));
 app.put('/api/glossary', admin, unlocked, (req, res) => {
   try {
     const before = clone(glossary.data);
@@ -898,6 +937,17 @@ if (failover) {
   failover.start().catch(() => {});
 }
 
+// The crew password goes to volunteers: audio addresses can hold a stream key or an SRT passphrase
+// (rtmp://…/live2/<key>, srt://…?passphrase=…), so the crew sees the scheme and host only.
+function redactUrl(u) {
+  const v = String(u || '');
+  try {
+    const x = new URL(v);
+    return x.username || x.password || x.search || (x.pathname && x.pathname !== '/') ? `${x.protocol}//${x.host}/…` : v;
+  } catch { return v.includes('/') ? `…/${path.basename(v)}` : v; } // a local file: its name is enough
+}
+const forCrew = (snap) => ({ ...snap, stages: snap.stages.map((st) => ({ ...st, pull: redactUrl(st.pull), ingest: st.ingest?.kind === 'pull' ? { ...st.ingest, label: redactUrl(st.ingest.label) } : st.ingest })) });
+const redactDef = (d) => (d && typeof d === 'object' && 'pull' in d ? { ...d, pull: redactUrl(d.pull) } : d);
 function snapshot() {
   const list = [...stages.values()].map((s) => s.status());
   return {
@@ -937,7 +987,15 @@ const server = tls ? https.createServer(tls, app) : http.createServer(app);
 const configuredPublicUrl = config.publicUrl;
 const tunnel = new Tunnel({ origin: tunnelOrigin(config.port, !!tls) });
 let lastTunnelLine = '';
+// The free address changes on every start. Remember the last one (data/setup.json) so a restart that moved it is
+// reported: on the dashboard, and by the phone alerts, which otherwise only compare within one run.
+let tunnelMoved = false;
+alerts.lastUrl = setup.tunnelUrl || '';
 tunnel.on('change', (st) => {
+  if (st.mode === 'quick' && st.state === 'on' && st.url && st.url !== setup.tunnelUrl) {
+    tunnelMoved = !!setup.tunnelUrl;
+    saveSetup({ tunnelUrl: st.url });
+  }
   config.publicUrl = st.state === 'on' && st.url ? st.url : configuredPublicUrl;
   broadcastAdmin({ type: 'tunnel', ...st });
   const line = st.state === 'on' && st.url ? `${tty.sym.ok} Public address: ${tty.c.bold(st.url)}` : st.state === 'error' ? `${tty.sym.warn} Public address: ${st.error}` : '';
@@ -1093,6 +1151,7 @@ function onView(ws, url) {
 
 function onAdmin(ws, who) {
   ws.session = who?.session || null; // signed in with a cookie: dropped once that device is signed out
+  ws.crew = who?.role !== 'admin'; // gets audio addresses without their keys
   admins.add(ws);
   sendJson(ws, { type: 'logs', logs: [...stages.values()].flatMap((s) => s.logs).sort((a, b) => a.t - b.t).slice(-150) });
   ws.on('close', () => admins.delete(ws));
@@ -1101,9 +1160,12 @@ function onAdmin(ws, who) {
 function broadcastAdmin(obj) {
   if (!admins.size) return;
   const msg = JSON.stringify(obj);
+  let crewMsg = null; // built once, only if a crew dashboard is connected
   for (const ws of admins) {
     if (ws.session && !isSessionActive(ws.session)) { ws.close(4001, 'signed out'); continue; }
-    if (ws.readyState === 1) ws.send(msg);
+    if (ws.readyState !== 1) continue;
+    if (ws.crew && obj.type === 'status') ws.send(crewMsg ??= JSON.stringify(forCrew(obj)));
+    else ws.send(msg);
   }
 }
 

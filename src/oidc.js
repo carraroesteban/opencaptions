@@ -20,6 +20,7 @@ export const oidc = {
   only: /^(1|true|yes|on)$/i.test(env.OIDC_ONLY || ''),
   admins: list(env.OIDC_ADMINS),
   crew: list(env.OIDC_CREW),
+  tenants: list(env.OIDC_TENANTS), // Microsoft multi-tenant ("common") issuers: the tenant ids allowed in
 };
 export const oidcEnabled = !!(oidc.issuer && oidc.clientId);
 if (oidcEnabled && !oidc.label) oidc.label = /google/.test(oidc.issuer) ? 'Google' : /microsoftonline|login\.live/.test(oidc.issuer) ? 'Microsoft' : 'your company account';
@@ -115,8 +116,14 @@ export async function verify(idToken, nonce, m = null) {
   if (!crypto.verify(alg[0], Buffer.from(`${h}.${p}`), { key: pub, ...alg[1] }, Buffer.from(sig, 'base64url'))) throw new Error('the sign-in token\'s signature is invalid');
   const meta = m || (await discovery());
   // Microsoft's "common" endpoints publish a template issuer with {tenantid}.
-  const iss = String(meta.issuer || oidc.issuer).replace('{tenantid}', String(claims.tid || ''));
+  const template = String(meta.issuer || oidc.issuer);
+  const iss = template.replace('{tenantid}', String(claims.tid || ''));
   if (claims.iss !== iss) throw new Error('the sign-in token comes from another issuer');
+  // Any organization's accounts pass a multi-tenant issuer, and their admins choose the email claim (the "nOAuth"
+  // problem), so roles by email would be open to them. Only the listed tenants get in.
+  if (template.includes('{tenantid}') && !oidc.tenants.includes(String(claims.tid || '').toLowerCase())) {
+    throw new Error(oidc.tenants.length ? 'this account belongs to another organization' : 'multi-tenant sign-in needs OIDC_TENANTS (your tenant id) in .env');
+  }
   const aud = Array.isArray(claims.aud) ? claims.aud : [claims.aud];
   if (!aud.includes(oidc.clientId) || (aud.length > 1 && claims.azp && claims.azp !== oidc.clientId)) throw new Error('the sign-in token is for another app');
   const now = Date.now() / 1000;

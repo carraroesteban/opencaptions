@@ -6,6 +6,10 @@ All notable changes to this project are documented in this file. The format foll
 
 ### Added
 
+- **Any language, without editing files.** The dashboard's **Settings → Languages** and the wizard's *Another language* add French, German, Japanese and 30-odd more (each by its own name). Then pick them in each room. A language a room still uses can't be removed by mistake.
+- **Who can read transcripts is a dashboard setting:** **Settings → Transcripts for the audience** (only the talk in progress, every talk, or none).
+- **The dashboard warns when the free public address changed** since the last start, so printed QR codes point nowhere, with a link to reprint them. The phone alert for it now also works across restarts.
+- The wizard's summary warns when its address is `localhost`, which phones can't open, before anyone prints QR codes.
 - New illustrations in the same hand-drawn style: the wizard's AI and phones steps have their own, the website's *Made for event day* section has three new panels (alerts on your phone, who's speaking, the event report) and its download section a picture, and an empty transcript library shows one instead of an icon.
 - **A real demo on the website:** 30 seconds of a talk captioned live in Spanish, on the stage screen and on a phone, playing silently like a GIF on the website's dark band (no player controls, no frame). It's the real app with the AI played back from a recording, made by `npm run demo:record` (headless Chrome and ffmpeg), so it can be redone whenever the screens change.
 - *How it works* has an illustration for each step (connecting the sound desk, the AI translating, everyone following along), and the feature cards' illustrations now fill the top of the card instead of sitting in a framed box.
@@ -25,6 +29,20 @@ All notable changes to this project are documented in this file. The format foll
 
 ### Changed
 
+- **Past transcripts are private by default.** The shipped `config/event.json` made every past talk public, though the docs (and the legal page) said only the talk in progress was. Organizers who want a public library choose it in Settings.
+- **The crew no longer sees stream keys.** Audio addresses reach crew dashboards with only their scheme and host (`rtmp://host/…`): an RTMP key or SRT passphrase stays with the admins.
+- **"Ask the talk" is limited per phone, not per venue.** Phones on one Wi-Fi share a public IP, so 6 questions a minute used to be shared by the whole audience. Now it's 6 per browser (a random id the page keeps), 60 per IP and 30 for the whole server.
+- **One person guessing passwords no longer locks out the crew.** Failed sign-ins count per IP and browser (20 per 10 minutes), with a ceiling of 100 per IP.
+- WebSocket connections allowed per IP per minute: 6000 (was 3000), so a full venue behind one IP reconnects at once after a restart.
+- The glossary can only be read by the crew and admins (`GET /api/glossary`): it can hold names that aren't public yet.
+- **Company sign-in with Microsoft's multi-tenant endpoint** (`/common/v2.0`) now requires `OIDC_TENANTS`: without it, any organization's accounts could claim an allowed email.
+- **Downloads are pinned and checked:** `cloudflared` (in the app and the Docker image) and `yt-dlp` (Docker) are fixed versions verified against GitHub's SHA-256. GitHub Actions are pinned to commit hashes, and Dependabot (`.github/dependabot.yml`) keeps them and the npm packages current.
+- **The website has a Content-Security-Policy:** only its own files, plus the statistics host when statistics are on. The app's pages allow YouTube only on the demo page.
+- The live transcript page updates only the paragraph being written instead of rebuilding the whole transcript several times a second: smoother on phones during long talks, and a reader's selection and screen-reader position stay put.
+- The agenda accepts `10h30` and `9h` times.
+- The Mac app finds Node.js installed with nvm, fnm or volta.
+- The server's "memory used" figure is right on macOS (it counted the file cache as used, so it read about 100 %).
+- Updated `@google/genai`, `ws` and `dotenv` (minor versions).
 - **Fonts are served by OpenCaptions itself** (`public/fonts/`, with their licenses) instead of Google Fonts. No page, including the audience's, sends visitors' addresses to Google any more (some courts in the EU found that unlawful without consent), the fonts work offline in local mode, and the Content-Security-Policy no longer allows Google's font servers. `scripts/fetch-fonts.js` updates them.
 - The website names the warnings people actually see the first time they open the app ("could not verify" on a Mac, "protected your PC" on Windows).
 - CI and release workflows use the current versions of GitHub's actions (no more Node.js 20 deprecation notices).
