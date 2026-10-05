@@ -37,7 +37,7 @@ export function mountAssistant(root, o) {
   const quote = (x) => `<blockquote>${x.at ? `<b data-at="${esc(x.at)}">${esc(x.at)}</b>` : ''}${esc(x.text)}</blockquote>`;
 
   async function load() {
-    sum.innerHTML = '<div class="skeleton" style="width:70%"></div><div class="skeleton"></div><div class="skeleton" style="width:85%"></div>';
+    sum.innerHTML = '<div class="skeleton u-w70"></div><div class="skeleton"></div><div class="skeleton u-w85"></div>';
     try {
       const r = await fetch(`/api/stages/${encodeURIComponent(o.stage)}/summary?${q({ lang: o.lang(), scope, talk: o.talk })}`);
       const d = await r.json();

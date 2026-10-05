@@ -9,6 +9,7 @@ import { localize, prefsControls, tr, LANG } from '/i18n.js';
 import { icon, mountIcons } from '/illustrations.js';
 import { ensureSignedIn, signInScreen, signOut } from '/signin.js';
 import { accessPanel } from '/access.js';
+import { alertsPanel } from '/alerts-ui.js';
 import { keyPanel, tunnelPanel } from '/connect.js';
 
 const $ = (id) => document.getElementById(id);
@@ -370,7 +371,7 @@ function renderGrid(s) {
   const grid = $('grid');
   const ids = new Set(s.stages.map((x) => x.id));
   for (const el of [...grid.children]) if (el.dataset.id && !ids.has(el.dataset.id)) el.remove();
-  if (!s.stages.length && !grid.querySelector('.empty-rooms')) grid.innerHTML = `<div class="empty-rooms"><img src="/art/waiting.webp" alt="" /><h3>${esc(tr('Todavía no hay salas'))}</h3><p class="muted" style="margin:0">${esc(tr('Creá una sala por cada escenario o aula: cada una tiene su QR, su pantalla y su overlay.'))}</p><a href="#rooms"><button class="primary" tabindex="-1">${icon('plus')}${esc(tr('Nueva sala'))}</button></a></div>`;
+  if (!s.stages.length && !grid.querySelector('.empty-rooms')) grid.innerHTML = `<div class="empty-rooms"><img src="/art/waiting.webp" alt="" /><h3>${esc(tr('Todavía no hay salas'))}</h3><p class="muted u-m0">${esc(tr('Creá una sala por cada escenario o aula: cada una tiene su QR, su pantalla y su overlay.'))}</p><a href="#rooms"><button class="primary" tabindex="-1">${icon('plus')}${esc(tr('Nueva sala'))}</button></a></div>`;
   if (s.stages.length) grid.querySelector('.empty-rooms')?.remove();
   for (const st of s.stages) {
     let el = grid.querySelector(`[data-id="${st.id}"]`);
@@ -384,6 +385,7 @@ function renderGrid(s) {
         <div class="next" data-f="next" data-no-i18n></div>
         <div class="meter"><i data-f="lvl"></i><b data-f="pk"></b></div>
         <div class="said" data-f="said" data-no-i18n></div>
+        <div class="speakers" data-f="speakers" data-no-i18n></div>
         <div class="stats" data-f="stats"></div>
         <div class="row" data-f="alerts"></div>
         <div class="actions">
@@ -415,6 +417,13 @@ function renderGrid(s) {
     el.classList.toggle('over', !!due);
     f('next').classList.toggle('over', !!due);
     f('next').textContent = due ? t.over(Math.max(1, Math.round((Date.now() - due.start) / 60000)), due.title) : st.nextTalk ? t.next(st.nextTalk.title, hm(st.nextTalk.start)) : '';
+    // Who's speaking: a tap labels the captions from now on (phones, transcripts, exports).
+    const choices = [...new Set([...st.speakers, SPK.host, SPK.qa, ...(st.speaker && !st.speakers.includes(st.speaker) && ![SPK.host, SPK.qa].includes(st.speaker) ? [st.speaker] : [])])];
+    const spkKey = JSON.stringify([choices, st.speaker]);
+    if (f('speakers').dataset.key !== spkKey) {
+      f('speakers').dataset.key = spkKey;
+      f('speakers').innerHTML = `<span>${esc(SPK.label)}</span>${choices.map((n) => `<button type="button" class="pill" data-spk="${esc(n)}" aria-pressed="${n === st.speaker}">${esc(n)}</button>`).join('')}<button type="button" class="pill" data-spk-other>${esc(SPK.other)}</button>${st.speaker ? `<button type="button" class="pill" data-spk="" aria-pressed="false">${esc(SPK.none)}</button>` : ''}`;
+    }
     const dueBtn = el.querySelector('[data-a="due"]');
     dueBtn.classList.toggle('hidden', !due);
     if (due) dueBtn.textContent = t.startDue(due.title.length > 28 ? due.title.slice(0, 27) + '…' : due.title);
@@ -441,6 +450,26 @@ function renderGrid(s) {
   }
 }
 
+const SPK = LANG === 'es'
+  ? { label: 'Habla:', host: 'Presentación', qa: 'Público (preguntas)', other: 'Otro…', none: 'Sin nombre', ask: 'Nombre de quien habla' }
+  : { label: 'Speaking:', host: 'Host', qa: 'Audience (Q&A)', other: 'Other…', none: 'No label', ask: 'Who is speaking?' };
+$('grid').addEventListener('click', async (e) => {
+  const p = e.target.closest('[data-spk], [data-spk-other]');
+  if (!p) return;
+  const id = p.closest('[data-id]').dataset.id;
+  let name = p.dataset.spk;
+  if (p.hasAttribute('data-spk-other')) {
+    $('spk-title').textContent = SPK.ask;
+    $('spk-name').value = '';
+    const d = $('dlg-spk');
+    d.returnValue = '';
+    d.showModal();
+    const ok = await new Promise((res) => d.addEventListener('close', () => res(d.returnValue === 'ok'), { once: true }));
+    name = $('spk-name').value.trim();
+    if (!ok || !name) return;
+  }
+  await api('POST', `/api/stages/${id}/speaker`, { name });
+});
 $('grid').onclick = async (e) => {
   const b = e.target.closest('[data-a]');
   if (!b) return;
@@ -502,15 +531,8 @@ $('float').onclick = async () => {
   d.documentElement.style.cssText = root.style.cssText;
   if (root.dataset.theme) d.documentElement.dataset.theme = root.dataset.theme;
   d.head.append(Object.assign(d.createElement('link'), { rel: 'stylesheet', href: new URL('/style.css', location.href).href }));
-  const css = d.createElement('style');
-  css.textContent = `body{margin:0;padding:8px;font-size:13px;background:var(--bg);color:var(--fg)}
-    .k{display:flex;flex-wrap:wrap;gap:4px 14px;color:var(--fg2);margin:2px 6px 8px}.k b{color:var(--fg)}
-    .r{display:grid;grid-template-columns:12px minmax(0,1fr) auto;gap:2px 8px;align-items:center;padding:7px 9px;border-radius:12px;cursor:pointer}
-    .r:hover{background:var(--bg2)}.r.bad{background:color-mix(in srgb,var(--bad) 20%,transparent)}
-    .d{width:10px;height:10px;border-radius:50%;background:var(--line)}.d.live{background:var(--ok)}.d.pause{background:var(--warn)}.d.bad{background:var(--bad)}
-    .n{font-family:var(--font-display);font-weight:800;letter-spacing:-.01em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.v{color:var(--fg2);font-size:12px}
-    .t{grid-column:2/4;color:var(--fg2);font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.r.bad .t{color:var(--fg)}`;
-  d.head.append(css);
+  d.head.append(Object.assign(d.createElement('link'), { rel: 'stylesheet', href: new URL('/pip.css', location.href).href }));
+  d.body.className = 'pip-dash';
   d.title = t.title(ev.name);
   d.body.innerHTML = '<div class="k" id="k"></div><div id="rows"></div>';
   d.getElementById('rows').onclick = (e) => {
@@ -610,7 +632,7 @@ async function loadAgenda() {
   const byRoom = {};
   for (const e of list) (byRoom[e.stage] ||= []).push(e);
   $('agenda-current').innerHTML = list.length
-    ? Object.entries(byRoom).map(([room, es]) => `<section class="card flush"><table class="table"><thead><tr><th colspan="3">${esc(names[room] || room)}</th></tr></thead><tbody>${es.map((e) => `<tr><td style="width:120px">${esc(when(e.start))}</td><td><b>${esc(e.title)}</b></td><td class="hide-sm muted-note">${esc(e.speaker || '')}</td></tr>`).join('')}</tbody></table></section>`).join('')
+    ? Object.entries(byRoom).map(([room, es]) => `<section class="card flush"><table class="table"><thead><tr><th colspan="3">${esc(names[room] || room)}</th></tr></thead><tbody>${es.map((e) => `<tr><td class="u-w120">${esc(when(e.start))}</td><td><b>${esc(e.title)}</b></td><td class="hide-sm muted-note">${esc(e.speaker || '')}</td></tr>`).join('')}</tbody></table></section>`).join('')
     : `<p class="muted-note">${esc(t.agendaNone)}</p>`;
   $('agenda-diff').classList.add('hidden');
   setLocked(locked);
@@ -632,7 +654,7 @@ $('agenda-preview').onclick = async () => {
       ${r.skipped.count ? `<div class="muted-note">${esc(t.agendaSkipped(r.skipped.count, r.skipped.rooms.join(', ')))}</div>` : ''}
       ${lines.slice(0, 40).join('')}${lines.length > 40 ? `<div class="muted-note">${esc(t.more(lines.length - 40))}</div>` : ''}
     </div>
-    ${same ? '' : `<div class="rowbar" style="margin-top:12px"><span class="spacer"></span><button class="primary" id="agenda-save" data-setup>${icon('check')} ${esc(t.agendaSave)}</button></div>`}`;
+    ${same ? '' : `<div class="rowbar u-mt12"><span class="spacer"></span><button class="primary" id="agenda-save" data-setup>${icon('check')} ${esc(t.agendaSave)}</button></div>`}`;
   $('agenda-diff').classList.remove('hidden');
   const save = $('agenda-save');
   if (save) save.onclick = async () => {
@@ -704,7 +726,7 @@ function renderScreens() {
   const o = origin(), aud = `${o}/s/${st.id}`;
   const others = st.languages.filter((l) => l !== 'orig');
   $('screens-links').innerHTML = `
-    <div class="qrrow"><img src="/api/qr.svg?text=${encodeURIComponent(aud)}" alt="QR" /><div style="display:grid;gap:8px;min-width:0">${copyRow(tr('Público (celular, QR)'), aud)}<a href="/api/qr.svg?text=${encodeURIComponent(aud)}" download="qr-${st.id}.svg">${esc(tr('Descargar QR (SVG para imprimir)'))}</a></div></div>
+    <div class="qrrow"><img src="/api/qr.svg?text=${encodeURIComponent(aud)}" alt="QR" /><div class="u-stack8 u-minw0">${copyRow(tr('Público (celular, QR)'), aud)}<a href="/api/qr.svg?text=${encodeURIComponent(aud)}" download="qr-${st.id}.svg">${esc(tr('Descargar QR (SVG para imprimir)'))}</a></div></div>
     ${copyRow(tr('Pantalla del escenario / proyector'), `${o}/screen.html?stage=${st.id}&langs=${others[0] || 'orig'},orig`)}
     ${others.map((l) => copyRow(`${tr('Overlay vMix/OBS')} — ${langLabel(l, ev.languages)}`, `${o}/overlay.html?stage=${st.id}&lang=${l}`)).join('')}
     ${copyRow(tr('Overlay con fondo verde (chroma key)'), `${o}/overlay.html?stage=${st.id}&lang=${others[0] || 'orig'}&bg=%2300ff00&style=outline`)}
@@ -769,9 +791,11 @@ const askFirst = (msg) => { const i = msg.indexOf('?') + 1; return confirmDialog
 const keyP = keyPanel($('key-panel'), { api: quietApi, confirm: askFirst });
 const tunnelP = tunnelPanel($('tunnel-panel'), { api: quietApi, confirm: askFirst });
 const accessP = isCrew ? null : accessPanel($('access-panel'), { api: quietApi, confirm: askFirst, toast, me });
+const alertsP = isCrew ? null : alertsPanel($('alerts-panel'), { api: quietApi, toast });
 let settingsSetup = null;
 async function loadSettings() {
   accessP?.load();
+  alertsP?.load();
   const s = await api('GET', '/api/setup');
   settingsSetup = s;
   keyP.update(s);

@@ -2,8 +2,8 @@
 #   sudo useradd --system --home /opt/opencaptions --shell /usr/sbin/nologin opencaptions
 #   sudo git clone https://github.com/carraroesteban/opencaptions /opt/opencaptions
 #   cd /opt/opencaptions && sudo npm ci --omit=dev
-#   sudo cp .env.example .env && sudo nano .env        # GEMINI_API_KEY, ADMIN_TOKEN, INGEST_TOKEN, PUBLIC_URL
-#   sudo chown -R opencaptions: /opt/opencaptions/data /opt/opencaptions/config && sudo chmod 600 .env
+#   sudo cp .env.example .env && sudo nano .env        # optional: PUBLIC_URL, your own passwords (the API key can be pasted in the dashboard)
+#   sudo mkdir -p data local && sudo chown -R opencaptions: data local config && sudo chmod 600 .env
 #   sudo cp deploy/opencaptions.service /etc/systemd/system/ && sudo systemctl enable --now opencaptions
 #   journalctl -u opencaptions -f
 [Unit]
@@ -32,7 +32,8 @@ ProtectKernelModules=yes
 ProtectControlGroups=yes
 RestrictSUIDSGID=yes
 LockPersonality=yes
-ReadWritePaths=/opt/opencaptions/data /opt/opencaptions/config
+# data: transcripts, settings, passwords · config: glossary and agenda · local: downloaded tools (the public address)
+ReadWritePaths=/opt/opencaptions/data /opt/opencaptions/config /opt/opencaptions/local
 CapabilityBoundingSet=
 AmbientCapabilities=
 MemoryMax=1G

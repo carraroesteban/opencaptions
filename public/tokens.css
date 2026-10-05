@@ -54,7 +54,7 @@
   --logo-o: var(--ink);
   --logo-line: var(--ink);     /* all-ink logo on light backgrounds */
   --ok: #1B7F45;
-  --warn: #9A5B00;
+  --warn: #8F5400; /* 4.5:1 or more on every light surface, code chips included (WCAG AA) */
   --bad: #C8321F;
   --focus: var(--ink);
   --shadow-sm: 0 1px 2px rgba(17, 16, 20, .06), 0 1px 1px rgba(17, 16, 20, .04);

@@ -211,7 +211,8 @@ export function confirmTwoFactor(code) {
   saveSecret('totpSecret', pending.secret);
   pending = { secret: '', until: 0 };
 }
-export function disableTwoFactor(code) {
-  if (!checkCode(twoFactorSecret(), code)) throw new Error('that code isn\'t right');
+/** Turn it off with a current code; `force` skips it (the server computer itself: the way back after losing the phone). */
+export function disableTwoFactor(code, { force = false } = {}) {
+  if (!force && !checkCode(twoFactorSecret(), code)) throw new Error('that code isn\'t right');
   saveSecret('totpSecret', '');
 }

@@ -9,6 +9,7 @@ import http from 'node:http';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import WebSocket from 'ws';
 
 const PORT = 27000 + Math.floor(Math.random() * 2000);
 const base = `http://127.0.0.1:${PORT}`;
@@ -221,6 +222,24 @@ test('company sign-in: an allowed account gets in, with its role; others are tur
   const wrongApp = await signIn('ana@example.org');
   assert.match(decodeURIComponent(wrongApp.back.headers.get('location')), /another app/);
   audience = 'oc-test';
+});
+
+test('room computers: a password in the socket URL is refused; a one-minute ticket works, once', async () => {
+  const INGEST = 'ingest-password-for-tests';
+  const ws = (q, headers = {}) => new Promise((resolve) => {
+    const s = new WebSocket(`ws://127.0.0.1:${PORT}/ws/ingest?stage=main&kind=test${q}`, { headers });
+    s.on('message', () => { resolve('open'); s.close(); });
+    s.on('close', (code) => resolve(code));
+    s.on('error', () => resolve('error'));
+  });
+  assert.equal(await ws(`&token=${INGEST}`), 4001, 'never in the URL');
+  assert.equal(await ws('', { authorization: `Bearer ${INGEST}` }), 'open', 'the agent\'s header still works');
+  const r = await fetch(`${base}/api/ingest/ticket`, { method: 'POST', headers: { authorization: `Bearer ${INGEST}` } });
+  const { ticket, expiresIn } = await r.json();
+  assert.equal(expiresIn, 60);
+  assert.equal(await ws(`&ticket=${ticket}`), 'open');
+  assert.equal(await ws(`&ticket=${ticket}`), 4001, 'single use');
+  assert.equal((await fetch(`${base}/api/ingest/ticket`, { method: 'POST' })).status, 401);
 });
 
 // Last: turning two-factor on changes how the admin password works for the rest of this server's life.

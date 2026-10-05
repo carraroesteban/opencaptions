@@ -93,22 +93,35 @@ function cues(segs) {
   return out;
 }
 
+// Speaker labels (`spk`, set on the dashboard): SRT and TXT name the speaker when it changes; VTT uses its
+// standard voice tag on every cue, so players can style or announce it.
 export function toSRT(segs) {
-  return cues(segs).map((s, i) => `${i + 1}\n${ts(s.start, ',')} --> ${ts(s.end, ',')}\n${s.text}\n`).join('\n');
+  let prev = '';
+  return cues(segs).map((s, i) => {
+    const who = s.spk && s.spk !== prev ? `${s.spk}: ` : '';
+    prev = s.spk || '';
+    return `${i + 1}\n${ts(s.start, ',')} --> ${ts(s.end, ',')}\n${who}${s.text}\n`;
+  }).join('\n');
 }
 
 export function toVTT(segs) {
-  return 'WEBVTT\n\n' + cues(segs).map((s) => `${ts(s.start, '.')} --> ${ts(s.end, '.')}\n${s.text}\n`).join('\n');
+  // WebVTT cue text is markup: & < > must be escaped ("Q&A" would otherwise make the file invalid).
+  const text = (t) => String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  const voice = (n) => text(n.replace(/\n/g, ' '));
+  return 'WEBVTT\n\n' + cues(segs).map((s) => `${ts(s.start, '.')} --> ${ts(s.end, '.')}\n${s.spk ? `<v ${voice(s.spk)}>` : ''}${text(s.text)}\n`).join('\n');
 }
 
 export function toTXT(segs) {
-  // Paragraphs: break when there is a pause > 4 s.
-  let out = '', last = null;
+  // Paragraphs: break when there is a pause > 4 s, or another person speaks (then named).
+  let out = '', last = null, prev = '';
   for (const s of segs) {
-    if (last != null && s.start - last > 4000) out += '\n\n';
+    const who = s.spk || '';
+    if (who && who !== prev) out += `${out ? '\n\n' : ''}${who}: `;
+    else if (last != null && s.start - last > 4000) out += '\n\n';
     else if (out) out += ' ';
     out += s.text;
     last = s.end;
+    prev = who || prev;
   }
   return out + '\n';
 }

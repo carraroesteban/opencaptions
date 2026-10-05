@@ -1,5 +1,5 @@
 // ingest.html: page script (kept out of the HTML so the Content-Security-Policy can forbid inline scripts).
-import { qs, esc, store, wsUrl, Socket, getEvent, langLabel, takeUrlToken } from '/common.js';
+import { qs, esc, store, wsUrl, Socket, getEvent, langLabel, takeUrlToken, ingestTicket } from '/common.js';
 import { localize, prefsControls, tr } from '/i18n.js';
 import { icon } from '/illustrations.js';
 const goLabel = (on) => { $('go').innerHTML = on ? `${icon('stop')} <span>Detener</span>` : `${icon('play')} <span>Empezar a transcribir</span>`; };
@@ -86,7 +86,7 @@ async function start() {
     node.port.onmessage = (e) => onPcm(e.data);
     // USB interface unplugged / "Stop sharing" clicked: say so instead of silently sending nothing.
     stream?.getAudioTracks().forEach((tk) => { tk.onended = () => { alertBox(tr('La entrada de audio se desconectó. Revisá el cable/placa y volvé a empezar.')); setConn('entrada desconectada', 'bad'); }; });
-    const mySock = (sock = new Socket(() => wsUrl('/ws/ingest', { stage: $('stage').value, kind: 'browser', label: `${$('mode').value}${$('mode').value === 'mic' ? ': ' + ($('device').selectedOptions[0]?.text || '') : ''}`, token: $('token').value }), {
+    const mySock = (sock = new Socket(async () => wsUrl('/ws/ingest', { stage: $('stage').value, kind: 'browser', label: `${$('mode').value}${$('mode').value === 'mic' ? ': ' + ($('device').selectedOptions[0]?.text || '') : ''}`, ticket: await ingestTicket($('token').value) }), {
       open() { setConn('conectado', 'ok'); while (pending.length && sock.ready) sock.send(pending.shift()); },
       close(e) {
         if (sock !== mySock) return; // an old connection closing must not tear down the current one

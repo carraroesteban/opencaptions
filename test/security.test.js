@@ -22,17 +22,13 @@ test('localhost is trusted only for direct loopback requests with a local Host h
   assert.equal(sec.isLocalRequest(req({ addr: '192.168.1.20', host: 'localhost' })), false, 'LAN');
 });
 
-test('admin and ingest tokens', () => {
+test('passwords are read from headers, and from ?token= only where allowed', () => {
   const remote = { addr: '203.0.113.9', host: 'subs.example.com' };
-  assert.equal(sec.canAdmin(req(remote), url()), false);
-  assert.equal(sec.canAdmin(req({ ...remote, headers: { authorization: 'Bearer admin-secret-token' } }), url()), true);
-  assert.equal(sec.canAdmin(req({ ...remote, headers: { 'x-admin-token': 'admin-secret-token' } }), url()), true);
-  assert.equal(sec.canAdmin(req(remote), url('?token=admin-secret-token')), true, 'query token on GET');
-  assert.equal(sec.canAdmin(req({ ...remote, method: 'POST' }), url('?token=admin-secret-token')), false, 'no query token on POST');
-  assert.equal(sec.canAdmin(req({ ...remote, headers: { authorization: 'Bearer ingest-secret-token' } }), url()), false);
-  assert.equal(sec.canIngest(req({ ...remote, headers: { authorization: 'Bearer ingest-secret-token' } }), url()), true);
-  assert.equal(sec.canIngest(req({ ...remote, headers: { authorization: 'Bearer admin-secret-token' } }), url()), true);
-  assert.equal(sec.canIngest(req(remote), url('?token=wrong')), false);
+  assert.equal(sec.presentedToken(req({ ...remote, headers: { authorization: 'Bearer abc' } }), url()), 'abc');
+  assert.equal(sec.presentedToken(req({ ...remote, headers: { 'x-admin-token': 'abc' } }), url()), 'abc');
+  assert.equal(sec.presentedToken(req(remote), url('?token=abc')), 'abc');
+  assert.equal(sec.presentedToken(req(remote), url('?token=abc'), { allowQuery: false }), '');
+  assert.equal(sec.presentedToken(req(remote), url()), '');
 });
 
 test('websocket origin must match the host for admin/ingest sockets', () => {

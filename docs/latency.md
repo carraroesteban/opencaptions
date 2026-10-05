@@ -6,7 +6,7 @@ This page explains where caption delay comes from, how to measure it and which s
 
 ## Measured numbers
 
-Real Gemini sessions, conference talks as input, server on a MacBook in Argentina, September 2026:
+Real Gemini sessions, conference talks as input, server on a MacBook in Argentina, September 2026 (an October 2026 rehearsal with streaming translation, 3 rooms and 150 phones, measured 2.3–3.2 s for the original and 3–5 s for translations):
 
 | Track | Typical delay |
 |---|---|
@@ -131,4 +131,4 @@ Latency is measured from **speech onset**, the first audio chunk above the speec
 - **Speculative translation:** translate stable prefixes of the sentence in progress, not only on a timer.
 - **Adaptive partial interval:** translate provisional text more often when the provider is fast and quota is available.
 
-Contributions are welcome. See [CONTRIBUTING.md](../CONTRIBUTING.md).
+Contributions are welcome. See [CONTRIBUTING.md](../.github/CONTRIBUTING.md).

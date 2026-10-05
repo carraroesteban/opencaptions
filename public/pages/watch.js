@@ -14,6 +14,7 @@ $('l-ui').textContent = t('uiLang');
 for (const id of ['ai-close', 'set-close']) $(id).setAttribute('aria-label', t('close'));
 $('back-link').setAttribute('aria-label', t('stages'));
 $('doc').title = t('transcript');
+$('doc').setAttribute('aria-label', t('transcript')); // an icon-only link: screen readers need its name
 const ev = await getEvent();
 let lang = qs.get('lang') || store.get(`lang.${stageId}`) || store.get('lang') || null;
 let dual = store.get('dual', false);
@@ -119,8 +120,8 @@ function renderAll() {
   const s = states[channel()] || new CaptionState();
   const box = $('text');
   box.innerHTML = '';
-  s.finals.forEach((f, i) => box.append(para(f, i < s.finals.length - 6)));
-  if (s.partial) box.append(para(s.partial));
+  s.finals.forEach((f, i) => box.append(para(f, i < s.finals.length - 6, box.lastElementChild)));
+  if (s.partial) box.append(para(s.partial, false, box.lastElementChild));
   if (!s.finals.length && !s.partial) box.innerHTML = `<div class="empty empty-state">${LOGO}<span>${esc(t('waiting'))}</span></div>`;
   renderOrig();
   renderPip();
@@ -128,11 +129,16 @@ function renderAll() {
 }
 
 const LOGO = '<svg class="oc-logo typing" viewBox="0 0 878 664" aria-hidden="true"><use class="o" href="/brand/sprite.svg#oc-o"/><use class="ln" href="/brand/sprite.svg#oc-line"/></svg>';
-function para(seg, old = false) {
+function para(seg, old = false, before = null) {
   const p = document.createElement('p');
   p.dataset.id = seg.id;
+  // Who is speaking, shown when it changes (the crew sets it on the dashboard).
+  p.dataset.who = seg.spk || '';
+  if (seg.spk && seg.spk !== (before?.dataset.who || '')) p.dataset.spk = seg.spk;
   liveText(p, seg.text, seg.final);
   if (!seg.final) p.className = 'partial'; else if (old) p.className = 'old';
+  // Screen readers read each sentence once, when it's final, not every word as the line is being rewritten.
+  if (!seg.final) p.setAttribute('aria-hidden', 'true');
   return p;
 }
 
@@ -140,8 +146,8 @@ function renderMain(seg) {
   const box = $('text');
   box.querySelector('.empty')?.remove();
   const p = box.querySelector(`p[data-id="${CSS.escape(seg.id)}"]`);
-  if (p) { liveText(p, seg.text, seg.final); p.className = seg.final ? '' : 'partial'; }
-  else box.append(para(seg));
+  if (p) { liveText(p, seg.text, seg.final); p.className = seg.final ? '' : 'partial'; if (seg.final) p.removeAttribute('aria-hidden'); else p.setAttribute('aria-hidden', 'true'); }
+  else box.append(para(seg, false, box.querySelector('p:last-of-type')));
   // keep the partial last and dim older paragraphs
   const ps = box.querySelectorAll('p');
   ps.forEach((el, i) => { if (!el.classList.contains('partial')) el.classList.toggle('old', i < ps.length - 6); });
@@ -252,10 +258,8 @@ async function togglePip() {
       d.documentElement.style.cssText = root.style.cssText; // accent, text size, reading font
       if (root.dataset.theme) d.documentElement.dataset.theme = root.dataset.theme;
       for (const l of document.querySelectorAll('link[rel="stylesheet"]')) d.head.append(Object.assign(d.createElement('link'), { rel: 'stylesheet', href: l.href }));
-      const css = d.createElement('style');
-      css.textContent = 'body{margin:0;height:100vh;overflow:hidden;display:flex;align-items:flex-end;background:var(--bg);color:var(--fg)}'
-        + '#t{padding:12px 18px;font:700 clamp(16px,13vh,48px)/1.35 var(--read-font,var(--font))}';
-      d.head.append(css);
+      d.head.append(Object.assign(d.createElement('link'), { rel: 'stylesheet', href: new URL('/pip.css', location.href).href }));
+      d.body.className = 'pip-cap';
       d.title = document.title;
       d.body.innerHTML = '<div id="t" aria-live="polite"></div>';
       pipWin.addEventListener('pagehide', () => { pipWin = null; $('pip').setAttribute('aria-pressed', 'false'); });

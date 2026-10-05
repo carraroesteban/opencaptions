@@ -1,8 +1,8 @@
 #!/usr/bin/env node
-// What "Start OpenCaptions" (the double-click file for macOS and Windows) runs: installs what's missing the first
-// time, starts the server and opens the dashboard in the browser. If OpenCaptions is already running, it only opens
-// the dashboard. Uses Node's built-in modules only (and src/tty.js, which has no dependencies): it runs before
-// `npm install`.
+// What the desktop downloads (the Mac app, "Start OpenCaptions.exe" on Windows) and `npm run app` run: installs what's
+// missing the first time, starts the server and opens the dashboard in the browser. If OpenCaptions is already running,
+// it only opens the dashboard. Uses Node's built-in modules only (and src/tty.js, which has no dependencies): it runs
+// before `npm install`.
 //
 //   node scripts/start.js            (also: npm run app)
 import fs from 'node:fs';
@@ -19,6 +19,7 @@ function openUrl(url) {
   try { spawn(cmd, args, { stdio: 'ignore', detached: true, windowsHide: true }).unref(); } catch { /* the address is printed anyway */ }
 }
 
+if (process.stdout.isTTY) process.stdout.write('\x1b]0;OpenCaptions\x07'); // the window's title
 console.log(`\n${tty.title()}\n`);
 
 const major = Number(process.versions.node.split('.')[0]);

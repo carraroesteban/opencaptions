@@ -2,6 +2,7 @@
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
+import crypto from 'node:crypto';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -112,4 +113,30 @@ test('strict CSP: scripts only from files, no inline scripts or handlers anywher
   for (const f of fs.readdirSync(path.join(pub, 'pages'))) {
     assert.doesNotMatch(fs.readFileSync(path.join(pub, 'pages', f), 'utf8'), /\son[a-z]+=["'\\]/, `pages/${f}: inline event handler in a template`);
   }
+});
+
+test('strict CSP for styles: page <style> blocks by hash, no style="" attributes anywhere', async () => {
+  const csp = (await fetch(`${base}/`)).headers.get('content-security-policy');
+  const styleSrc = csp.split(';').map((d) => d.trim()).find((d) => d.startsWith('style-src '));
+  assert.doesNotMatch(styleSrc, /unsafe-inline/);
+  assert.match(csp, /style-src-attr 'none'/);
+  const pub = path.join(process.cwd(), 'public');
+  for (const f of fs.readdirSync(pub).filter((x) => x.endsWith('.html'))) {
+    const html = fs.readFileSync(path.join(pub, f), 'utf8');
+    for (const [, css] of html.matchAll(/<style>([\s\S]*?)<\/style>/g)) {
+      assert.ok(styleSrc.includes(`'sha256-${crypto.createHash('sha256').update(css).digest('base64')}'`), `${f}: its <style> block isn't allowed by the CSP`);
+    }
+    assert.doesNotMatch(html, /\sstyle=["']/, `${f}: style="" attribute (use a class)`);
+  }
+  // Templates in scripts too (pages, and the shared modules that build markup).
+  const scripts = [...fs.readdirSync(path.join(pub, 'pages')).map((f) => path.join('pages', f)), ...fs.readdirSync(pub).filter((f) => f.endsWith('.js'))];
+  for (const f of scripts) assert.doesNotMatch(fs.readFileSync(path.join(pub, f), 'utf8'), /\sstyle=["'\\]/, `${f}: style="" in a template (use a class)`);
+});
+
+test('the agenda\'s time zone can be set from the browser (the wizard), and must be a real one', async () => {
+  const h = { 'content-type': 'application/json', authorization: 'Bearer t' };
+  assert.equal((await fetch(`${base}/api/setup`, { method: 'PUT', headers: h, body: JSON.stringify({ timezone: 'Mars/Olympus' }) })).status, 400);
+  const s = await (await fetch(`${base}/api/setup`, { headers: h })).json();
+  assert.equal(typeof s.timezone, 'string');
+  assert.equal(typeof s.timezoneFixed, 'boolean');
 });

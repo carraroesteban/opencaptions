@@ -98,3 +98,20 @@ test('e2e: "What did I miss?" and questions use the AI', async () => {
   assert.equal(ask.ai, true);
   assert.match(ask.answer, /tablet/i);
 });
+
+test('e2e: the event report counts the talk, and the CSV opens in a spreadsheet', async () => {
+  const r = await (await fetch(`${base}/api/report`, { headers: h })).json();
+  const main = r.rooms.find((x) => x.id === 'main');
+  assert.equal(main.talks.length, 1);
+  const talk = main.talks[0];
+  assert.ok(talk.words > 30, `words: ${talk.words}`);
+  assert.ok(talk.durationMs > 3000, 'the recording plays at 3× speed: about 10 s of wall clock');
+  assert.ok(talk.peakViewers >= 1, 'the test viewer was counted');
+  assert.deepEqual(talk.languages.sort(), ['en', 'es']);
+  assert.equal(r.totals.talks, 1);
+  const bytes = Buffer.from(await (await fetch(`${base}/api/report.csv`, { headers: h })).arrayBuffer());
+  assert.deepEqual([...bytes.subarray(0, 3)], [0xef, 0xbb, 0xbf], 'a BOM, so Excel reads the accents');
+  const csv = bytes.subarray(3).toString('utf8');
+  assert.match(csv, /^room,talk,speaker,date,start,minutes,words,caption_languages,peak_viewers,viewer_minutes,cost_usd\r\n/);
+  assert.match(csv, /\r\nMain Stage,/);
+});

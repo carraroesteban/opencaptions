@@ -1,8 +1,12 @@
+# Dependencies, secrets and runtime data (transcripts, settings, passwords)
 node_modules/
-data/
 .env
+data/
+config/schedule.json
 *.log
 .DS_Store
+
+# Large sample files fetched for latency tests (scripts/fetch-samples.sh)
 samples/*.mp3
 samples/*.m4a
 samples/*.webm
@@ -10,8 +14,6 @@ samples/*.webm
 # Local AI mode: downloaded models and runtimes (npm run local)
 /local/
 
-# Landing page build output (npm run site)
+# Build output: the website (npm run site) and the desktop downloads (npm run package)
 /_site/
-
-# The event agenda saved from the dashboard (runtime data, like data/)
-config/schedule.json
+/dist/

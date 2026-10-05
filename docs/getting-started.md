@@ -48,7 +48,7 @@ Open a second terminal in the same folder and play the bundled English sample in
 npm run feed -- --stage main --input samples/talk-en.wav
 ```
 
-On the audience page, open **main**. Captions start after a few seconds. Switch between **Original** and **Español** to see the translation track. On the dashboard, the room turns live and shows an audio meter and latency.
+On the audience page, open **Main stage**. Captions start after a few seconds. Switch between **Original** and **Español** to see the translation track. On the dashboard, the room turns live and shows an audio meter and latency.
 
 Stop the feed with Ctrl+C. Stop the server with Ctrl+C in the first terminal.
 
@@ -56,7 +56,7 @@ Stop the feed with Ctrl+C. Stop the server with Ctrl+C in the first terminal.
 
 The quickest way is the dashboard: open **Settings → Gemini** (or the wizard's AI step), click **Open AI Studio**, create a key, paste it and click **Check and connect**. OpenCaptions checks the key with Google and switches every room to Gemini straight away, with no restart. Skip to step 5.
 
-From the terminal, the setup script also names your event and rooms and generates access tokens:
+From the terminal, the setup script also names your event and rooms and generates the passwords:
 
 ```bash
 npm run setup
@@ -109,9 +109,11 @@ npm run feed -- --stage room-b --input samples/talk-es.wav
 
 Room `main` receives English and shows Spanish captions. Room `room-b` receives Spanish and shows English captions. The dashboard shows both rooms, their latency and the estimated cost so far.
 
+On a room's card, tap **Host** under *Speaking*: new captions are labeled with that name on phones, in the transcript and in the subtitle files.
+
 ## 6. Catch up and ask
 
-On the audience page, tap **✨ What did I miss?**. You get a summary of the last five minutes in the language you're reading, and a box to **ask the talk** a question ("which tool did they use for traces?"). The answer comes only from the transcript, with quotes and timestamps. Tap **📄** to open the full transcript: search it, switch language, download it.
+On the audience page, tap **What did I miss?**. You get a summary of the last five minutes in the language you're reading, and a box to **ask the talk** a question ("which tool did they use for traces?"). The answer comes only from the transcript, with quotes and timestamps. Tap the transcript button (the page icon, bottom right) to open the full transcript: search it, switch language, download it.
 
 In mock mode (no API key) the summary shows transcript highlights and the answers show matching quotes; with a Gemini key they're written by the model.
 
@@ -135,4 +137,4 @@ You ran the server, fed it audio from a file and a microphone, and watched capti
 - [Local mode](local.md): run the models on your own computer, without the cloud.
 - [Deployment](deployment.md): choose where the server runs.
 - [Security](security-guide.md): read this before exposing the server to a network.
-- [Event-day runbook](operations/runbook.md): run it at a conference.
+- [Event-day runbook](operations/runbook.md): run it at a real event.

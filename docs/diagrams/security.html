@@ -13,13 +13,14 @@
       <div class="n small" id="viewers" data-screen><b>Viewers</b><span>read captions, ask questions</span></div>
       <div class="n small x" id="attacker" data-icon="alert"><b>Anyone else</b><span>rate-limited, no token, no access</span></div>
     </div>
-    <div class="g stack" id="ops"><span class="gl">Trusted with tokens</span>
-      <div class="n small" id="team" data-icon="key"><b>Production team</b><span>ADMIN_TOKEN</span></div>
-      <div class="n small" id="pcs" data-icon="laptop"><b>Venue PCs</b><span>INGEST_TOKEN</span></div>
+    <div class="g stack" id="ops"><span class="gl">Signed in</span>
+      <div class="n small" id="team" data-icon="key"><b>Organizers</b><span>admin password + 2FA code, or work account</span></div>
+      <div class="n small" id="crew" data-icon="key"><b>Crew</b><span>crew password: live controls only</span></div>
+      <div class="n small" id="pcs" data-icon="laptop"><b>Room computers</b><span>ingest password or a one-minute ticket</span></div>
     </div>
     <div class="g" id="host"><span class="gl">Server host</span>
       <div class="stack">
-        <div class="n hero" id="oc"><b>OpenCaptions</b><span>CSP, rate limits, escaped output</span></div>
+        <div class="n hero" id="oc"><b>OpenCaptions</b><span>sessions, roles, strict CSP, rate limits</span></div>
         <div class="n small" id="lp" data-icon="server"><b>Local processes</b><span>trusted on localhost (AUTH=auto)</span></div>
       </div>
     </div>
@@ -28,10 +29,11 @@
 </div>
 <script src="diagram.js"></script>
 <script>draw([
-  { from: 'viewers', to: 'oc', fs: 'r', ts: 'l', toff: -40, mid: 405, label: 'captions only' },
-  { from: 'attacker', to: 'oc', fs: 'r', ts: 'l', toff: -14, dash: true, soft: true, label: 'blocked', mid: 350 },
-  { from: 'team', to: 'oc', fs: 'r', ts: 'l', toff: 14, label: 'admin API', mid: 350 },
-  { from: 'pcs', to: 'oc', fs: 'r', ts: 'l', toff: 40, mid: 405, label: 'audio' },
+  { from: 'viewers', to: 'oc', fs: 'r', ts: 'l', toff: -54, mid: 420, label: 'captions only' },
+  { from: 'attacker', to: 'oc', fs: 'r', ts: 'l', toff: -27, dash: true, soft: true, label: 'blocked', mid: 380 },
+  { from: 'team', to: 'oc', fs: 'r', ts: 'l', toff: 0, label: 'everything', mid: 340 },
+  { from: 'crew', to: 'oc', fs: 'r', ts: 'l', toff: 27, label: 'live controls', mid: 380 },
+  { from: 'pcs', to: 'oc', fs: 'r', ts: 'l', toff: 54, mid: 420, label: 'audio' },
   { from: 'lp', to: 'oc', fs: 't', ts: 'b' },
   { from: 'oc', to: 'gem', fs: 'r', ts: 'l', toff: 0, label: 'key / IAM' },
 ]);</script>

@@ -1,0 +1,19 @@
+/* Picture-in-picture windows (Document Picture-in-Picture): the dashboard's mini status window (body.pip-dash) and
+   the floating captions on the audience page (body.pip-cap). A file, not a <style> built in code: the
+   Content-Security-Policy allows no inline styles, and a PiP window inherits it. */
+body.pip-dash { margin: 0; padding: 8px; font-size: 13px; background: var(--bg); color: var(--fg); }
+.pip-dash .k { display: flex; flex-wrap: wrap; gap: 4px 14px; color: var(--fg2); margin: 2px 6px 8px; }
+.pip-dash .k b { color: var(--fg); }
+.pip-dash .r { display: grid; grid-template-columns: 12px minmax(0, 1fr) auto; gap: 2px 8px; align-items: center; padding: 7px 9px; border-radius: 12px; cursor: pointer; }
+.pip-dash .r:hover { background: var(--bg2); }
+.pip-dash .r.bad { background: color-mix(in srgb, var(--bad) 20%, transparent); }
+.pip-dash .d { width: 10px; height: 10px; border-radius: 50%; background: var(--line); }
+.pip-dash .d.live { background: var(--ok); }
+.pip-dash .d.pause { background: var(--warn); }
+.pip-dash .d.bad { background: var(--bad); }
+.pip-dash .n { font-family: var(--font-display); font-weight: 800; letter-spacing: -.01em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pip-dash .v { color: var(--fg2); font-size: 12px; }
+.pip-dash .t { grid-column: 2 / 4; color: var(--fg2); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pip-dash .r.bad .t { color: var(--fg); }
+body.pip-cap { margin: 0; height: 100vh; overflow: hidden; display: flex; align-items: flex-end; background: var(--bg); color: var(--fg); }
+.pip-cap #t { padding: 12px 18px; font: 700 clamp(16px, 13vh, 48px) / 1.35 var(--read-font, var(--font)); }

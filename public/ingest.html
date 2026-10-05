@@ -28,13 +28,13 @@
 </head>
 <body>
   <main>
-    <div class="row" style="justify-content:space-between">
-      <div><a class="brand" href="/admin.html" title="Panel de producción" style="font-size:16px">OpenCaptions</a><h1>Ingesta de audio del escenario</h1></div>
+    <div class="row u-between">
+      <div><a class="brand u-fs16" href="/admin.html" title="Panel de producción">OpenCaptions</a><h1>Ingesta de audio del escenario</h1></div>
       <span class="chip" id="conn">desconectado</span>
     </div>
 
-    <div id="securewarn" class="card hidden" style="border-color:color-mix(in srgb, var(--bad) 50%, var(--line));color:var(--bad)">⚠ Esta página no está en un contexto seguro: el navegador <b>no va a dejar usar el micrófono</b>. Abrila por <b>HTTPS</b> o en <b>localhost</b> (ver docs/deployment.md → HTTPS).</div>
-    <section class="card" style="display:grid;gap:14px">
+    <div id="securewarn" class="card hidden u-danger-outline">⚠ Esta página no está en un contexto seguro: el navegador <b>no va a dejar usar el micrófono</b>. Abrila por <b>HTTPS</b> o en <b>localhost</b> (ver docs/deployment.md → HTTPS).</div>
+    <section class="card u-stack14">
       <div class="grid">
         <label class="field">Escenario<select id="stage"></select></label>
         <label class="field">Fuente
@@ -58,11 +58,11 @@
         <label class="row muted hint"><input type="checkbox" id="auto" /> Auto-iniciar al abrir (mini PC)</label>
       </div>
       <div>
-        <div class="row muted hint" style="justify-content:space-between"><span>Nivel de entrada</span><span id="db">–∞ dB</span></div>
-        <div class="meter big-meter"><i id="lvl"></i><b id="pk" style="left:0"></b></div>
+        <div class="row muted hint u-between"><span>Nivel de entrada</span><span id="db">–∞ dB</span></div>
+        <div class="meter big-meter"><i id="lvl"></i><b id="pk" class="u-left0"></b></div>
       </div>
       <div class="row" id="engines"></div>
-      <p class="muted hint" style="margin:0">Una vez iniciado no requiere operador: si hay silencio por un rato se pausa el envío (sin costo) y retoma solo cuando alguien habla. Si se corta la red, reconecta y reenvía lo que quedó en buffer.</p>
+      <p class="muted hint u-m0">Una vez iniciado no requiere operador: si hay silencio por un rato se pausa el envío (sin costo) y retoma solo cuando alguien habla. Si se corta la red, reconecta y reenvía lo que quedó en buffer.</p>
     </section>
 
     <section class="card preview" id="preview" data-no-i18n></section>

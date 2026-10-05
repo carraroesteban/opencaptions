@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#FAF8F3" media="(prefers-color-scheme: light)" />
+  <meta name="theme-color" content="#111014" media="(prefers-color-scheme: dark)" />
+  <link rel="icon" href="/favicon.ico" sizes="32x32" />
+  <link rel="icon" href="/brand/icon.svg" type="image/svg+xml" />
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+  <title>Informe del evento · OpenCaptions</title>
+  <link rel="stylesheet" href="/style.css" />
+  <style>
+    main { max-width: 1040px; margin: 0 auto; padding: 22px 24px 64px; }
+    header.bar { display: flex; align-items: center; gap: 12px; }
+    header.bar .spacer { flex: 1; }
+    h1 { font-size: clamp(32px, 5vw, 48px); line-height: 1.05; letter-spacing: -.03em; margin: 40px 0 6px; }
+    .sub { color: var(--fg2); margin: 0 0 24px; font-size: 16px; }
+    .tools { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin: 0 0 28px; }
+    .totals { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin: 0 0 36px; }
+    .total { padding: 16px 18px; border-radius: 16px; border: 1px solid var(--line); background: var(--bg2); }
+    .total small { display: block; color: var(--fg2); font-size: 13px; }
+    .total b { display: block; font-family: var(--font-display); font-size: 30px; letter-spacing: -.02em; margin-top: 4px; }
+    h2 { font-size: 22px; margin: 34px 0 10px; display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }
+    h2 small { font-family: var(--font); font-weight: 400; font-size: 14px; color: var(--fg2); }
+    .wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 16px; background: var(--bg2); }
+    table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    th, td { text-align: left; padding: 10px 14px; border-bottom: 1px solid var(--line); vertical-align: top; }
+    th { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--fg2); font-weight: 700; white-space: nowrap; }
+    tr:last-child td { border-bottom: 0; }
+    td.n, th.n { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+    td .who { color: var(--fg2); font-size: 13px; }
+    .empty { padding: 48px 0; color: var(--fg2); }
+    .foot { margin-top: 40px; color: var(--fg2); font-size: 13px; }
+    @media print {
+      header.bar, .tools { display: none !important; }
+      main { padding: 0; max-width: none; }
+      h1 { margin-top: 0; }
+      .wrap, .total { border-color: #ccc; background: none; }
+      h2 { break-after: avoid; }
+      tr { break-inside: avoid; }
+    }
+  </style>
+</head>
+<body>
+  <main data-no-i18n>
+    <header class="bar"><div class="brand">OpenCaptions</div><span class="spacer"></span><a href="/admin.html" id="back"></a><span id="prefs-slot"></span></header>
+    <h1 id="title"></h1>
+    <p class="sub" id="sub"></p>
+    <div class="tools">
+      <select id="day" aria-label="Día"></select>
+      <button type="button" class="primary" id="print"></button>
+      <a id="csv" href="/api/report.csv"><button type="button" tabindex="-1" id="csv-btn"></button></a>
+    </div>
+    <section class="totals" id="totals"></section>
+    <div id="rooms"></div>
+    <p class="foot" id="foot"></p>
+  </main>
+  <script type="module" src="/pages/report.js"></script>
+</body>
+</html>

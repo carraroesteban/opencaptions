@@ -1,6 +1,6 @@
 # 0005. Token authentication with localhost trust
 
-- Status: Accepted
+- Status: Accepted, extended by [0010](0010-sessions-roles-and-company-sign-in.md) (sessions, roles, company sign-in)
 - Date: 2026-09-24
 
 ## Context

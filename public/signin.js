@@ -120,22 +120,22 @@ export async function signInScreen({ message = '', password = '' } = {}) {
   let pw = password;
   const ssoButton = cfg.sso ? `<button type="button" class="sso">${t.sso(cfg.sso)}</button>` : '';
   const help = `<details><summary>${t.where}</summary>
-      <ul style="margin:8px 0 0;padding-left:18px;display:grid;gap:6px">
+      <ul class="u-help-list">
         <li>${t.w1}</li>
-        <li>${t.w2}<pre style="margin:6px 0 0"><code>docker compose logs opencaptions | grep "token"</code></pre></li>
+        <li>${t.w2}<pre class="u-m6t"><code>docker compose logs opencaptions | grep "token"</code></pre></li>
         <li>${t.w3}</li>
         <li>${t.w4}</li>
       </ul>
     </details>`;
   const passwordStep = () => {
-    dlg.innerHTML = `<form method="dialog" style="display:grid;gap:14px">
-      <h3 style="margin:0">${t.title}</h3>
-      <p class="muted-note" style="margin:0">${t.lead}</p>
-      <p class="err" role="alert" style="margin:0;color:var(--bad)"></p>
+    dlg.innerHTML = `<form method="dialog" class="u-stack14">
+      <h3 class="u-m0">${t.title}</h3>
+      <p class="muted-note u-m0">${t.lead}</p>
+      <p class="err u-m0 u-bad" role="alert"></p>
       ${cfg.password ? `<label class="field">${t.password}<input name="pw" type="password" autocomplete="current-password" required spellcheck="false" /></label>
-      <label class="field">${t.device}<input name="device" maxlength="60" autocomplete="off" /><small style="color:var(--fg2)">${t.deviceHint}</small></label>
+      <label class="field">${t.device}<input name="device" maxlength="60" autocomplete="off" /><small class="u-fg2">${t.deviceHint}</small></label>
       <div class="dlg-actions"><button class="primary" type="submit">${t.go}</button></div>` : ''}
-      ${cfg.sso && cfg.password ? `<p class="muted-note" style="margin:0;text-align:center">${t.or}</p>` : ''}
+      ${cfg.sso && cfg.password ? `<p class="muted-note u-m0 u-center">${t.or}</p>` : ''}
       ${ssoButton}
       ${cfg.password ? help : ''}
     </form>`;
@@ -147,11 +147,11 @@ export async function signInScreen({ message = '', password = '' } = {}) {
     return f;
   };
   const codeStep = () => {
-    dlg.innerHTML = `<form method="dialog" style="display:grid;gap:14px">
-      <h3 style="margin:0">${t.codeTitle}</h3>
-      <p class="muted-note" style="margin:0">${t.codeLead}</p>
-      <p class="err" role="alert" style="margin:0;color:var(--bad)"></p>
-      <label class="field">${t.codeLabel}<input name="code" inputmode="numeric" autocomplete="one-time-code" maxlength="7" required style="font-size:24px;letter-spacing:.2em" /></label>
+    dlg.innerHTML = `<form method="dialog" class="u-stack14">
+      <h3 class="u-m0">${t.codeTitle}</h3>
+      <p class="muted-note u-m0">${t.codeLead}</p>
+      <p class="err u-m0 u-bad" role="alert"></p>
+      <label class="field">${t.codeLabel}<input name="code" inputmode="numeric" autocomplete="one-time-code" maxlength="7" required class="u-code-input" /></label>
       <div class="dlg-actions"><button type="button" class="back">${t.back}</button><button class="primary" type="submit">${t.verify}</button></div>
     </form>`;
     const f = dlg.querySelector('form');

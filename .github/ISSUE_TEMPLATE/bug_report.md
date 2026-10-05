@@ -14,13 +14,14 @@ labels: bug
 
 **Environment**
 - OpenCaptions version / commit:
+- How you run it: Mac app / Windows app / Docker / `npm start`
 - OS and Node.js version (`node --version`):
-- Topology: venue PC / cloud server / Docker
-- Engine: gemini / mock · Translation mode: text / live / hybrid
+- Where it runs: venue computer / cloud server
+- Engine: Gemini / local / simulated · Translation mode: text / live / hybrid
 
-**Logs** (remove tokens and API keys)
+**Logs** (remove passwords, tokens and API keys)
 
 ```
 ```
 
-> Security vulnerability? Don't open an issue — see SECURITY.md.
+> Security vulnerability? Don't open an issue — see .github/SECURITY.md.

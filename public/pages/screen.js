@@ -14,7 +14,7 @@ document.addEventListener('keydown', (e) => { if (e.key === 'f' || e.key === 'F'
 if (qs.get('preview') !== '1' && !document.fullscreenElement) {
   const hint = Object.assign(document.createElement('div'), { className: 'fs-hint' });
   hint.innerHTML = `<kbd>F</kbd> ${t('fullscreen')}`;
-  document.body.append(hint);
+  (document.querySelector('main') || document.body).append(hint);
   setTimeout(() => { hint.style.opacity = 0; setTimeout(() => hint.remove(), 700); }, 5000);
 }
 if (qs.get('size')) document.documentElement.style.setProperty('--main', qs.get('size') + 'vh');

@@ -39,7 +39,7 @@
     .qr img { width: 14vh; height: 14vh; background: #fff; border-radius: 1vh; padding: .6vh; }
     .qr div { font-size: 2.1vh; color: var(--fog); max-width: 26vw; }
     .qr b { display: block; color: var(--paper); font-family: var(--font-display); font-weight: 800; font-size: 2.7vh; letter-spacing: -.01em; margin-bottom: .5vh; }
-    .foot-l { font-size: 1.8vh; color: #77757E; display: flex; align-items: center; gap: .5em; } .foot-l i { font-style: normal; }
+    .foot-l { font-size: 1.8vh; color: #8D8A94; display: flex; align-items: center; gap: .5em; } .foot-l i { font-style: normal; }
     .foot-l .brand { color: #A8A5AE; } .foot-l .brand::before { background-image: url(/brand/mark-dark.svg); } /* always dark: paper O + lime line */
     .fade { opacity: .25; transition: opacity 1s; }
     .fs-hint { position: fixed; top: 3vh; left: 50%; transform: translateX(-50%); background: #1B1A20; border: 1px solid #2A2930; color: var(--fog); font-size: 1.8vh; padding: .8vh 1.6vh; border-radius: 99px; transition: opacity .6s; }
@@ -47,14 +47,14 @@
   </style>
 </head>
 <body>
-  <div class="wrap">
+  <main class="wrap">
     <div class="head"><span><b id="stage"></b> <span id="talk"></span></span><span id="clock"></span></div>
     <div class="bands" id="bands"></div>
     <div class="foot">
       <div class="foot-l"><span class="brand">OpenCaptions</span> · <i id="powered"></i></div>
       <div class="qr" id="qrbox"><img id="qr" alt="QR" /><div><b id="follow"></b><span id="url"></span></div></div>
     </div>
-  </div>
+  </main>
   <script type="module" src="/pages/screen.js"></script>
 </body>
 </html>

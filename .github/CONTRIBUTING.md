@@ -9,10 +9,13 @@ git clone https://github.com/carraroesteban/opencaptions.git
 cd opencaptions
 npm install
 npm run mock          # full system with simulated captions, no API key needed
-npm test              # unit tests
+npm test              # unit, integration and end-to-end tests
 npm run lint          # ESLint
 npm run typecheck     # TypeScript checks the JSDoc types in src/ and scripts/ (nothing is compiled)
+npm run a11y          # accessibility check of every page (axe-core, WCAG 2.2 AA; needs Google Chrome)
 ```
+
+Also useful: `npm run app` (what the desktop launchers run), `npm run site` (the website at http://localhost:8081), `npm run package` (the Mac download in `dist/`) and `npm run docs:images` (the diagrams).
 
 ### End-to-end test
 
@@ -30,14 +33,16 @@ npm run record        # 30 s of samples/talk-en.wav against Gemini → test/fixt
 
 ## Project layout
 
-See the [architecture](docs/architecture.md#components) doc for what each module does. In short:
+See the [architecture](../docs/architecture.md#components) doc for what each module does. In short:
 
 - `src/`: the server.
-- `public/`: the pages. Each page's script is in `public/pages/<page>.js`: no inline scripts or `onclick=` handlers, because the Content-Security-Policy blocks them.
-- `scripts/`: command-line tools.
-- `test/`: unit tests.
-- `docs/`: documentation.
-- `deploy/`: service files.
+- `public/`: the pages. Each page's script is in `public/pages/<page>.js`: no inline scripts, `onclick=` handlers or `style=""` attributes, because the Content-Security-Policy blocks them.
+- `scripts/`: command-line tools, and the developer tools that build the downloads, icons and diagrams.
+- `config/`: the event's defaults (a new install starts blank) and examples.
+- `test/`: tests, with their fixtures.
+- `docs/`: documentation. `site/`: the website.
+- `deploy/`: service files for Linux and macOS, and `deploy/desktop/`: the Mac app and Windows launcher with their icons.
+- `samples/`: two short talks for trying it without a microphone.
 
 ## Making a change
 
@@ -45,8 +50,8 @@ See the [architecture](docs/architecture.md#components) doc for what each module
 2. Create a branch from `main`: `feat/<topic>`, `fix/<topic>` or `docs/<topic>`.
 3. Keep pull requests focused. One logical change per PR.
 4. Add or update tests for behaviour changes. Security-relevant code (`src/security.js`, input validation, anything that handles tokens or URLs) must have tests.
-5. Update the docs in the same PR: reference tables, how-to steps, diagrams (see [Diagrams in the docs](docs/brand.md#diagrams-in-the-docs)), and `CHANGELOG.md` under **Unreleased**.
-6. Make sure `npm test`, `npm run lint` and `npm run typecheck` pass. CI runs the tests on Linux, macOS and Windows, and lint and types once.
+5. Update the docs in the same PR: reference tables, how-to steps, diagrams (see [Diagrams in the docs](../docs/brand.md#diagrams-in-the-docs)), and `CHANGELOG.md` under **Unreleased**.
+6. Make sure `npm test`, `npm run lint` and `npm run typecheck` pass, and `npm run a11y` for changes to pages. CI runs the tests on Linux, macOS and Windows, and lint, types, accessibility and the desktop downloads once.
 
 ### Commit messages
 
@@ -67,7 +72,9 @@ Types: `feat`, `fix`, `docs`, `test`, `refactor`, `perf`, `chore`, `ci`, `securi
 - Never log secrets, tokens or audio content.
 - Escape all dynamic text rendered as HTML (`esc()` in `public/common.js`).
 - Document function parameters with JSDoc (`@param {string} name`): `npm run typecheck` checks them.
-- User-facing strings in pages are written in Spanish and translated in `public/i18n.js`. Add the English entry when you add a string.
+- User-facing strings in pages are written in Spanish and translated in `public/i18n.js`. Add the English entry when you add a string. Modules that are mostly sentences (`signin.js`, `connect.js`, `access.js`, `alerts-ui.js`, the wizard, the report) keep both languages side by side instead.
+- No inline styles: add a class. Small one-off adjustments use the `u-*` utilities at the end of `public/style.css`.
+- Icons come from `public/illustrations.js`, never emoji: `npm test` checks.
 
 ## Documentation standards
 
@@ -75,7 +82,7 @@ The docs are part of the product. They follow these standards:
 
 | Standard | What it means here |
 |---|---|
-| [Diátaxis](https://diataxis.fr/) | Each page is one type: tutorial, how-to, reference or explanation. The type is shown in [docs/README.md](docs/README.md). Don't mix them: link instead. |
+| [Diátaxis](https://diataxis.fr/) | Each page is one type: tutorial, how-to, reference or explanation. The type is shown in [docs/README.md](../docs/README.md). Don't mix them: link instead. |
 | [Google developer documentation style guide](https://developers.google.com/style) | Second person ("you"), present tense, active voice, sentence-case headings, short sentences, descriptive link text. |
 | [MADR](https://adr.github.io/madr/) | Architecture decisions go in `docs/adr/` using the template. Accepted ADRs aren't edited. A new one supersedes them. |
 | [Keep a Changelog](https://keepachangelog.com/) and [SemVer](https://semver.org/) | Every user-visible change gets a line in `CHANGELOG.md`. |
@@ -86,20 +93,27 @@ Checklist for doc changes:
 - [ ] Every command was run, and every setting and default was checked against the code.
 - [ ] Reference tables (`docs/reference/`) match the code: variable names, defaults, endpoints.
 - [ ] Links are relative and work on GitHub.
-- [ ] Claims about support or testing use the levels from [Requirements](docs/requirements.md#support-levels): Tested, CI, Expected.
+- [ ] Claims about support or testing use the levels from [Requirements](../docs/requirements.md#support-levels): Tested, CI, Expected.
 - [ ] No secrets, internal hostnames or personal data in examples. Use `example.com` and `<placeholders>`.
+
+## Releasing
+
+1. Move the `[Unreleased]` notes in `CHANGELOG.md` under a new `## [x.y.z] - YYYY-MM-DD` heading, and set the same version in `package.json` (`npm version x.y.z --no-git-tag-version`).
+2. Commit, push, and wait for CI to pass.
+3. Tag it: `git tag vx.y.z && git push origin vx.y.z`. The `release` workflow creates the GitHub Release with that changelog section as the notes, compiles the Windows launcher and attaches `OpenCaptions-mac.zip` and `OpenCaptions-windows.zip`; the `docker` workflow publishes `ghcr.io/carraroesteban/opencaptions:x.y.z`.
+
+When the brand icon changes, rebuild the launchers' icons on a Mac with `npm run icons` and commit them.
 
 ## Roadmap
 
 Contributions are especially welcome here:
 
-- **Local mode** ([docs/local.md](docs/local.md)): measurements on GPUs and Apple's Neural Engine, several rooms per speech server, per-room speech servers, and a local translated voice.
-- **Streaming translation in local mode** ([Latency](docs/latency.md#ideas-not-implemented-yet)), and speculative translation of stable prefixes.
-- **Strict styles in the CSP:** move `style=""` attributes to classes, so `style-src` can drop `'unsafe-inline'` too.
-- **Short-lived tickets** for room computers instead of the ingest password in the WebSocket URL.
+- **Local mode** ([docs/local.md](../docs/local.md)): measurements on GPUs and Apple's Neural Engine, several rooms per speech server, per-room speech servers, and a local translated voice.
+- **Streaming translation in local mode** ([Latency](../docs/latency.md#ideas-not-implemented-yet)), and speculative translation of stable prefixes.
+- **Installers:** `npx opencaptions`, a Homebrew tap, a winget entry, and signed builds of the Mac app and Windows launcher.
 - More **end-to-end fixtures**: a Spanish talk, local mode, a room with three languages.
 - **Type checking the pages** (`public/`) as well as the server.
-- Speaker diarization in captions.
+- **Telling voices apart** automatically (speaker diarization), so the crew doesn't have to label speakers.
 
 ## Code of conduct
 

@@ -1,6 +1,6 @@
 # Project overview
 
-OpenCaptions is open-source software (MIT license) that captions and translates talks live, for conferences with many rooms at the same time. This page is the one-page summary for organizers, sponsors, judges and new contributors. For hands-on steps, start with [Getting started](getting-started.md).
+OpenCaptions is open-source software (MIT license) that captions and translates talks live, at any event: one room or many at the same time. This page is the one-page summary for organizers, sponsors, judges and new contributors. For hands-on steps, start with [Getting started](getting-started.md).
 
 <p align="center"><img src="../public/art/audience.webp" width="640" alt="Three people in the audience reading captions in different languages on their phones" /></p>
 
@@ -14,11 +14,11 @@ Commercial captioning services are priced per room and per hour, and they are cl
 
 | For | What they get |
 |---|---|
-| **Audience** | Scan a QR code, pick the room and language, and read live captions on the phone. Tap ✨ **What did I miss?** for a summary in your language, or 💬 **ask the talk** a question. Optionally listen to the translated voice. Afterwards, read, search and download every transcript. |
+| **Audience** | Scan a QR code, pick the room and language, and read live captions on the phone, with the speaker's name when the crew sets it. Tap **What did I miss?** for a summary in your language, or **ask the talk** a question. Optionally listen to the translated voice. Afterwards, read, search and download every transcript. |
 | **Room screens** | Large, high-contrast captions on the projector, in the translation and the original, with the QR code. |
 | **Stream viewers** | Captions burned into the vMix or OBS stream through a transparent overlay. |
-| **Production team** | One dashboard for every room: a getting-started checklist, status, audio level, latency, cost, alerts and transcripts. Rooms are added and edited live; paste the agenda once and talks name themselves. |
-| **Organizers** | `npm run setup` in one minute, printable QR posters per room, and SRT, VTT and TXT transcripts per talk for YouTube uploads, the blog and accessibility archives. |
+| **Production team** | One dashboard for every room: a getting-started checklist, status, audio level, latency, cost, alerts and transcripts. Paste the agenda once and talks name themselves; a talk running over is flagged with a one-click start for the next. Volunteers get a crew sign-in with the live controls only, and alerts reach the organizers' phones. |
+| **Organizers** | A Mac app, a Windows launcher or Docker, and a welcome wizard that connects the AI and creates a public address. Printable QR posters per room, Event mode with undo, SRT, VTT and TXT transcripts per talk, and an event report with each talk's audience and cost. |
 
 It runs unattended. Each room pauses itself when there's silence (nothing is billed then), resumes when someone speaks, splits transcripts per talk and reconnects by itself.
 
@@ -58,8 +58,8 @@ The design details are in [Architecture](architecture.md), and the reasons behin
 | Metric | Value |
 |---|---|
 | Delay to original-language captions | about 3 s (measured) |
-| Delay to translated captions | about 4.6–5.7 s (measured) |
-| Rooms per server | Dozens. Tested with 10 simultaneous rooms at about 90 MB RAM. The limit is the Gemini quota. |
+| Delay to translated captions | about 3–5 s (measured, with streaming translation) |
+| Rooms per server | Dozens. Tested with 30 simultaneous rooms on one laptop; 3 rooms with 150 phones used 4 % CPU and 124 MB of memory. The limit is the Gemini quota. |
 | Cost | about US$ 2.2 per room-hour of speech, plus US$ 0.4–0.6 per extra language. A 40-minute English → Spanish talk costs about US$ 1.8. |
 | Languages | Any pair Gemini supports. Configured for Spanish, English and Portuguese. |
 | Runtime dependencies | 5 npm packages, no build step, no database |
@@ -69,8 +69,8 @@ The design details are in [Architecture](architecture.md), and the reasons behin
 - **It fits the existing venue setup.** The same cable from the sound desk and the same mini PC; vMix keeps working as it does.
 - **One model session per room, whatever the number of languages.** Translation is a cheap text request per sentence, so cost and delay stay bounded.
 - **Help for people, not just captions.** Latecomers catch up with a summary in their own language, anyone can ask what was said, and every talk leaves a searchable transcript.
-- **Built for operations.** Silence gating, automatic reconnection with no lost audio, watchdogs, alerts, and a runbook for the crew.
-- **Secure by default.** Tokens for everything except the public caption pages, hardened HTTP, SSRF-safe stream pulls, and no audio stored. An enterprise path runs through Google Cloud Vertex AI.
+- **Built for operations.** Silence gating, automatic reconnection with no lost audio, watchdogs, an offline backup, alerts on the organizers' phones, and a runbook for the crew.
+- **Secure by default.** Sign-in for everything except the public caption pages (admin and crew roles, two-factor codes, company sign-in), a strict Content-Security-Policy, SSRF-safe stream pulls, and no audio stored. An enterprise path runs through Google Cloud Vertex AI.
 - **Open and forkable.** MIT license, plain JavaScript, documented APIs, and a pluggable engine interface.
 - **Cloud or local.** Gemini for the best quality at scale, or [local mode](local.md), where Whisper and an open model run on your own computer, with no account, no cost per hour and no audio leaving the building.
 
@@ -81,25 +81,27 @@ The design details are in [Architecture](architecture.md), and the reasons behin
 | Captions and translation with real talks | Working and measured, with the real model and real conference videos |
 | Multi-room operation | Tested with 30 simultaneous rooms playing real talks through Gemini on one laptop (29 streamed; YouTube refused one video). See [Latency](latency.md#measured-numbers). |
 | Security baseline | Implemented and covered by unit tests. See [known gaps](security-guide.md#known-gaps). |
-| Audience assistant, transcript pages, agenda, QR kit | Implemented and tested with the mock engine and a fake model in unit tests; summaries/answers with the real model to be verified on event day |
-| Platforms | macOS tested end to end; Linux tested in CI and mock mode; Windows expected ([Requirements](requirements.md#support-levels)) |
+| Audience assistant, transcript pages, agenda, QR kit | Implemented; summaries and answers tested end to end with a recorded real-model session |
+| Event-day rehearsal | 8 minutes with the real model: 3 rooms, 150 phones (30 over the internet through Cloudflare), a talk running over, a room losing its audio, speaker changes. Every phone got captions, every alert arrived on time, no errors. |
+| Platforms | macOS tested end to end, including the Mac app; Linux tested in CI and in Docker; Windows tested by hand and in CI ([Requirements](requirements.md#support-levels)) |
 | Vertex AI backend | Implemented, not yet tested end to end |
 | Local mode (Whisper + Ollama) | Implemented; measured on CPUs with the bundled speech server (one room). GPU and Neural Engine backends, and several rooms per machine, not measured yet ([Local mode](local.md#measured-results)) |
-| Automated tests | 49 unit and regression tests on Linux, macOS and Windows (captions, exports, security rules, reconnect/rollover edge cases, assistant, agenda, HTTP pages, local engine). No automated end-to-end test with the real model yet; `npm run local -- --check` runs one with local models. |
+| Automated tests | 108 tests on Linux, macOS and Windows: captions, exports, sign-in and roles, security rules, alerts, reconnection edge cases, the assistant, the agenda, local mode, and an end-to-end test that replays a recorded Gemini session. Every page is checked against WCAG 2.2 AA (`npm run a11y`). `npm run local -- --check` tests local models end to end. |
 | Version | 0.x (pre-release). Breaking changes are listed in the [changelog](../CHANGELOG.md). |
 
 ## Roadmap
 
-1. **Installers:** `npx opencaptions`, a Homebrew tap and a Windows package manager entry, then signed installers for macOS and Windows.
-2. Speaker identification in captions.
-3. Local mode: measure GPU and Neural Engine backends, several rooms per machine, and a local translated voice.
-4. Short-lived tickets for room computers, so the ingest password never travels in a URL.
+1. **Signed apps and more ways to install:** sign the Mac app and Windows launcher (no first-launch warning), `npx opencaptions`, a Homebrew tap and a winget entry.
+2. **Fixing a caption by hand** during the talk, for names the AI gets wrong.
+3. **Closed captions inside the video stream** (CEA-608/708) for broadcasters and YouTube Live.
+4. **Telling voices apart** automatically, so the crew doesn't have to label speakers.
+5. **Local mode:** measure GPU and Neural Engine backends, several rooms per machine, and a local translated voice.
 
-Done recently: dashboard sessions with an admin and a crew role, two-factor and company sign-in (OpenID Connect), streaming translation, the end-to-end test harness, the welcome wizard with the API key and a one-click public address, the offline backup, and Event mode with undo.
+Done recently (0.2.0): the Mac app and Windows launcher; the welcome wizard with the API key and a one-click public address; Event mode with undo; sign-in with admin and crew roles, two-factor and company sign-in; alerts on the organizers' phones; speaker labels; the event report; streaming translation; the offline backup; and an accessibility check of every page.
 
 ## License
 
-OpenCaptions is released under the [MIT license](../LICENSE): free for any event, commercial or not. Contributions are welcome: see [CONTRIBUTING.md](../CONTRIBUTING.md).
+OpenCaptions is released under the [MIT license](../LICENSE): free for any event, commercial or not. Contributions are welcome: see [CONTRIBUTING.md](../.github/CONTRIBUTING.md).
 
 ## Glossary
 
@@ -107,7 +109,7 @@ OpenCaptions is released under the [MIT license](../LICENSE): free for any event
 |---|---|
 | Room / stage | A physical room or track. `stage` is the identifier used in URLs and the API. |
 | Talk | One continuous session in a room. Transcripts are stored per talk. Titles come from the agenda or the dashboard. |
-| Assistant | The ✨ *What did I miss?* summary and 💬 *Ask the talk* feature |
+| Assistant | The *What did I miss?* summary and *Ask the talk* feature |
 | Ingest | Sending a room's audio to the server |
 | Agent | The headless program on a room PC that captures the sound card and sends it |
 | Pull | The server fetching a room's audio from a stream (SRT, RTMP, HLS) |

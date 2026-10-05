@@ -70,7 +70,7 @@ test('pages use the line icon set, not emoji', () => {
 });
 
 test('every page people read has a language switch', () => {
-  for (const f of ['index', 'watch', 'talk', 'talks', 'admin', 'welcome', 'kit', 'style', 'ingest', 'demo']) {
+  for (const f of ['index', 'watch', 'talk', 'talks', 'admin', 'welcome', 'kit', 'style', 'ingest', 'demo', 'report']) {
     assert.match(read(`public/pages/${f}.js`), /prefsControls\(/, `${f}: no language switch`);
   }
 });

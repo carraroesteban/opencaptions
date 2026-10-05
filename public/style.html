@@ -37,16 +37,17 @@
 </head>
 <body class="t-overlay">
   <header>
-    <a class="brand" href="/admin.html" title="Panel de producción" style="font-size:14px">OpenCaptions<span class="sub">· estilo de subtítulos</span></a>
+    <a class="brand u-fs14" href="/admin.html" title="Panel de producción">OpenCaptions<span class="sub">· estilo de subtítulos</span></a>
     <div class="row" role="group">
       <button class="pill" data-target="overlay" aria-pressed="true" data-icon="film">Overlay vMix / OBS</button>
       <button class="pill" data-target="screen" aria-pressed="false" data-icon="monitor">Pantalla / proyector</button>
     </div>
-    <span class="muted" style="font-size:13px;flex:1 1 320px;min-width:0">Diseñá el estilo, copiá la URL y pegala en vMix (Web Browser input), OBS (Browser Source) o el navegador del proyector.</span>
+    <span class="muted u-fs13 u-flex320">Diseñá el estilo, copiá la URL y pegala en vMix (Web Browser input), OBS (Browser Source) o el navegador del proyector.</span>
   </header>
   <main>
+    <h1 class="sr-only">Estilo de subtítulos</h1>
     <section class="card controls">
-      <div><b>Presets</b><div class="presets" id="presets" style="margin-top:6px"></div></div>
+      <div><b>Presets</b><div class="presets u-mt6" id="presets"></div></div>
       <div class="grid2">
         <label class="field">Sala<select id="stage"></select></label>
         <label class="field">Idioma<select id="lang"></select></label>
@@ -85,14 +86,14 @@
         <label class="row muted"><input type="checkbox" id="orig" checked /> Mostrar también el original</label>
         <label class="row muted"><input type="checkbox" id="qr" checked /> Mostrar QR</label>
       </div>
-      <p class="muted" style="font-size:12px;margin:0">Accesibilidad: máximo 2 líneas, alto contraste (texto claro sobre caja oscura ≥ 70 %) y tipografías legibles como Atkinson Hyperlegible.</p>
+      <p class="muted u-fs12 u-m0">Accesibilidad: máximo 2 líneas, alto contraste (texto claro sobre caja oscura ≥ 70 %) y tipografías legibles como Atkinson Hyperlegible.</p>
     </section>
-    <section style="display:grid;gap:12px;align-content:start">
+    <section class="u-stack12 u-start">
       <div class="stagebox" id="stagebox"><div class="bgimg" id="bgimg"></div><iframe id="frame" title="preview"></iframe></div>
-      <div class="card" style="display:grid;gap:8px">
+      <div class="card u-stack8">
         <b>URL para usar en el evento</b>
-        <div class="out"><input id="url" readonly /><button id="copy">Copiar</button><a id="open" target="_blank"><button>Abrir</button></a></div>
-        <span class="muted" style="font-size:12px" id="hint"></span>
+        <div class="out"><input id="url" readonly aria-label="URL" /><button id="copy">Copiar</button><a id="open" target="_blank"><button>Abrir</button></a></div>
+        <span class="muted u-fs12" id="hint"></span>
       </div>
     </section>
   </main>

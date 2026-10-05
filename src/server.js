@@ -4,15 +4,18 @@ import https from 'node:https';
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
+import crypto from 'node:crypto';
 import { spawn } from 'node:child_process';
 import express from 'express';
 import { WebSocketServer } from 'ws';
 import QRCode from 'qrcode';
+import './preflight.js'; // first: a data folder it can't write to ends here, with the fix
 import { config, normalizeStage, ROOT, langName, setEngine } from './config.js';
 import { Failover } from './failover.js';
 import { checkKey, saveKey, keyInfo, looksLikeKey, readSecret, saveSecret } from './aikey.js';
 import { Tunnel, tunnelOrigin } from './tunnel.js';
 import * as tty from './tty.js';
+import { Alerts, publicConfig, mergeChannels } from './alerts.js';
 import { identify, allows, sameOrigin, actor, roleFor, createSession, clearCookie, cookieValue, listSessions, endSessions, changePassword, passwordFromEnv, twoFactorOn, twoFactorSecret, checkCode, startTwoFactor, confirmTwoFactor, disableTwoFactor, cleanDevice } from './auth.js';
 import { oidc, oidcEnabled, roleForEmail, startFlow, finishFlow, redirectFor } from './oidc.js';
 import { resetClient } from './genai.js';
@@ -99,6 +102,10 @@ for (const def of initial) addStage(def);
 const SETUP_FILE = path.join(config.dataDir, 'setup.json');
 const setup = (() => { try { return JSON.parse(fs.readFileSync(SETUP_FILE, 'utf8')); } catch { return { done: false }; } })();
 if (setup.name) Object.assign(config.event, { name: setup.name, named: true });
+// The agenda's time zone, as the wizard read it from the organizer's browser (TZ or event.json's timezone win).
+const tzFixed = !!process.env.TZ;
+if (setup.timezone && !tzFixed) process.env.TZ = setup.timezone;
+const zoneOk = (z) => { try { return !!z && new Intl.DateTimeFormat('en', { timeZone: z }).resolvedOptions().timeZone === z; } catch { return false; } };
 function saveSetup(patch) {
   Object.assign(setup, patch, { updatedAt: new Date().toISOString() });
   fs.writeFileSync(SETUP_FILE, JSON.stringify(setup, null, 2));
@@ -268,6 +275,12 @@ app.post('/api/stages/:id/pull/stop', crew, getStage, (req, res) => { // sendBea
   res.json({ ok: true });
 });
 
+// Who is speaking now: labels captions and exports ("Ana Pérez", "Host", "Q&A"). The crew sets it during the talk.
+app.post('/api/stages/:id/speaker', crew, getStage, (req, res) => {
+  req.stage.setSpeaker(req.body?.name);
+  res.json({ ok: true, speaker: req.stage.speaker });
+});
+
 app.post('/api/stages/:id/restart', crew, getStage, (req, res) => {
   req.stage.restartEngines();
   res.json({ ok: true });
@@ -341,6 +354,60 @@ app.get('/api/stages/:id/export.:fmt', getStage, talkAccess, (req, res) => {
   res.status(400).json({ error: 'fmt must be srt|vtt|txt|json' });
 });
 
+// ---- event report: every talk with its length, words, audience and cost, for sponsors or the boss ----
+const dayOf = (ms) => { const d = new Date(ms); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
+function eventReport(day = '') {
+  const rooms = [];
+  const days = new Set();
+  for (const st of stages.values()) {
+    const metas = new Map(store.listTalks(st.id).map((m) => [m.id, m]));
+    // The talk in progress: its counters live in memory (saved every minute).
+    if (st.talkSegments > 0) metas.set(st.talk.id, { ...metas.get(st.talk.id), ...st.talk });
+    const talks = [];
+    for (const m of metas.values()) {
+      const segs = talkSegs(st, m.id).filter((x) => x.channel === 'orig');
+      if (!segs.length) continue;
+      days.add(dayOf(m.startedAt));
+      if (day && dayOf(m.startedAt) !== day) continue;
+      talks.push({
+        id: m.id, title: m.title || '', speaker: m.speaker || '', startedAt: m.startedAt,
+        durationMs: segs.reduce((a, x) => Math.max(a, x.end || 0), 0),
+        words: segs.reduce((a, x) => a + String(x.text).split(/\s+/).filter(Boolean).length, 0),
+        languages: (m.languages || st.languages).filter((l) => l !== 'orig'),
+        speakers: [...new Set(segs.map((x) => x.spk).filter(Boolean))],
+        peakViewers: m.peakViewers || 0,
+        viewerMinutes: Math.round((m.viewerMs || 0) / 60000),
+        costUsd: +(m.costUsd || 0).toFixed(2),
+        current: m.id === st.talk.id,
+      });
+    }
+    talks.sort((a, b) => a.startedAt - b.startedAt);
+    const sum = (k) => talks.reduce((a, x) => a + x[k], 0);
+    rooms.push({ id: st.id, name: st.def.name, talks, totals: { talks: talks.length, durationMs: sum('durationMs'), words: sum('words'), peakViewers: Math.max(0, ...talks.map((x) => x.peakViewers)), viewerMinutes: sum('viewerMinutes'), costUsd: +sum('costUsd').toFixed(2) } });
+  }
+  const all = rooms.flatMap((r) => r.talks);
+  const sum = (k) => all.reduce((a, x) => a + x[k], 0);
+  return {
+    event: config.event.named ? config.event.name : '', generatedAt: Date.now(), day, days: [...days].sort(),
+    languages: [...new Set(all.flatMap((x) => x.languages))],
+    totals: { rooms: rooms.filter((r) => r.talks.length).length, talks: all.length, durationMs: sum('durationMs'), words: sum('words'), peakViewers: Math.max(0, ...all.map((x) => x.peakViewers)), viewerMinutes: sum('viewerMinutes'), costUsd: +sum('costUsd').toFixed(2) },
+    rooms,
+  };
+}
+const dayParam = (q) => (/^\d{4}-\d{2}-\d{2}$/.test(String(q || '')) ? String(q) : '');
+app.get('/api/report', crew, (req, res) => res.json(eventReport(dayParam(req.query.day))));
+app.get('/api/report.csv', crew, (req, res) => {
+  const r = eventReport(dayParam(req.query.day));
+  const cell = (v) => { const x = String(v ?? ''); return /[",\n]/.test(x) || /^[=+\-@]/.test(x) ? `"${x.replace(/^([=+\-@])/, "'$1").replace(/"/g, '""')}"` : x; }; // spreadsheet-safe
+  const rows = [['room', 'talk', 'speaker', 'date', 'start', 'minutes', 'words', 'caption_languages', 'peak_viewers', 'viewer_minutes', 'cost_usd']];
+  for (const room of r.rooms) for (const t of room.talks) {
+    const d = new Date(t.startedAt);
+    rows.push([room.name, t.title, t.speakers.length ? t.speakers.join('; ') : t.speaker, dayOf(t.startedAt), d.toTimeString().slice(0, 5), (t.durationMs / 60000).toFixed(1), t.words, t.languages.join(' '), t.peakViewers, t.viewerMinutes, t.costUsd.toFixed(2)]);
+  }
+  res.set('Content-Disposition', `attachment; filename="opencaptions-report${r.day ? `-${r.day}` : ''}.csv"`);
+  res.type('text/csv').send('\ufeff' + rows.map((x) => x.map(cell).join(',')).join('\r\n') + '\r\n'); // BOM: Excel reads the accents
+});
+
 // ---- audience AI: "what did I miss?" summaries and questions about the talk (see src/assist.js) ----
 const LANG_OK = (l) => /^[a-z]{2,3}(-[A-Za-z0-9]{2,8})?$/.test(l || '');
 app.get('/api/stages/:id/summary', getStage, talkAccess, async (req, res) => {
@@ -369,6 +436,55 @@ app.post('/api/stages/:id/ask', getStage, async (req, res) => {
 });
 
 // Agenda: names talks automatically (see src/schedule.js). Public read = the event's program.
+// Room computers in a browser get a one-minute, single-use ticket for the audio socket (the password goes in this
+// request's header, never in the WebSocket URL, where proxies log it). The native agent sends its header directly.
+const tickets = new Map();
+setInterval(() => { for (const [k, v] of tickets) if (v < Date.now()) tickets.delete(k); }, 60_000).unref();
+app.post('/api/ingest/ticket', need('ingest'), (req, res) => {
+  const ticket = crypto.randomBytes(24).toString('base64url');
+  tickets.set(ticket, Date.now() + 60_000);
+  res.json({ ticket, expiresIn: 60 });
+});
+const useTicket = (t) => { const ok = !!t && (tickets.get(t) || 0) > Date.now(); tickets.delete(t); return ok; };
+
+// Alerts on the organizer's phone (src/alerts.js): the server checks every 5 s and messages ntfy, Telegram, Slack,
+// Discord or a webhook when a room loses its sound, the AI keeps failing, a talk runs over or the internet drops.
+const alerts = new Alerts({ log: (m) => console.warn(`  ${m}`) });
+/** Is this room supposed to be on air? No agenda for it: always. Otherwise during a talk, or 30 min before one. */
+function onAir(id, now = Date.now()) {
+  if (!schedule.entries.some((e) => e.stage === id)) return true;
+  const { current, next } = schedule.slot(id, now);
+  return !!current || (!!next && next.start - now < 30 * 60_000);
+}
+setInterval(() => {
+  alerts.observe({
+    stages: [...stages.values()].map((st) => ({ id: st.id, name: st.def.name, ingest: !!st.ingest, had: !!st.hadIngest, alerts: [...st.alerts], dueTalk: st.dueTalk, expected: onAir(st.id) })),
+    failover: failover?.status() || null,
+    tunnel: tunnel.status(),
+  });
+}, Number(process.env.ALERTS_TICK_MS || 5000)).unref();
+app.get('/api/alerts', admin, (req, res) => res.json(publicConfig(alerts.cfg)));
+app.put('/api/alerts', admin, (req, res) => {
+  try {
+    const channels = mergeChannels(req.body?.channels, alerts.cfg.channels);
+    const lang = req.body?.lang === 'es' ? 'es' : 'en';
+    alerts.configure({ channels, lang });
+    recordChange({ kind: 'alerts', summary: channels.length ? `Alerts go to ${channels.map((c) => c.type).join(', ')}` : 'Alerts turned off' });
+    res.json(publicConfig(alerts.cfg));
+  } catch (e) { res.status(400).json({ error: e.message }); }
+});
+app.post('/api/alerts/test', admin, async (req, res) => {
+  if (!alerts.cfg.channels.length) return res.status(400).json({ error: 'add where alerts should go first' });
+  res.json({ results: await alerts.test() });
+});
+// Pause them (a rehearsal, the end of the day): crew too, it's their phone that buzzes.
+app.post('/api/alerts/snooze', crew, (req, res) => {
+  const minutes = Math.max(0, Math.min(24 * 60, Number(req.body?.minutes) || 0));
+  alerts.configure({ snoozeUntil: minutes ? Date.now() + minutes * 60_000 : 0 });
+  recordChange({ kind: 'alerts', summary: minutes ? `Alerts paused for ${minutes >= 60 ? `${Math.round(minutes / 60)} h` : `${minutes} min`}` : 'Alerts resumed' });
+  res.json(publicConfig(alerts.cfg));
+});
+
 // ---------------- sign-in (src/auth.js, src/oidc.js) ----------------
 // What the sign-in screen offers. Public: it reveals nothing but which ways in exist.
 app.get('/api/auth/config', (req, res) => res.json({ password: !oidc.only, sso: oidcEnabled ? oidc.label : null }));
@@ -432,7 +548,8 @@ app.post('/api/auth/2fa/confirm', admin, (req, res) => {
   res.json({ ok: true, twoFactor: true });
 });
 app.post('/api/auth/2fa/disable', admin, (req, res) => {
-  try { disableTwoFactor(req.body?.code); } catch (e) { return res.status(400).json({ error: e.message }); }
+  // On the server computer itself no code is needed: someone who lost the phone can turn it off there.
+  try { disableTwoFactor(req.body?.code, { force: req.who.via === 'local' }); } catch (e) { return res.status(400).json({ error: e.message }); }
   recordChange({ kind: 'auth.2fa', summary: 'Two-factor sign-in turned off' });
   res.json({ ok: true, twoFactor: false });
 });
@@ -464,6 +581,8 @@ app.get('/api/setup', crew, (req, res) => {
     locked: !!setup.locked,
     name: config.event.name,
     named: config.event.named,
+    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone, // what the agenda's HH:MM times mean
+    timezoneFixed: tzFixed,
     languages: config.event.languages,
     defaultTargets: config.event.defaultTargets,
     stages: [...stages.values()].map((s) => ({ id: s.id, name: s.def.name, source: s.def.source, targets: s.def.targets })),
@@ -491,6 +610,13 @@ app.put('/api/setup', admin, (req, res) => {
     config.event.named = true;
   }
   if ('done' in b) patch.done = !!b.done;
+  if ('timezone' in b) {
+    const tz = String(b.timezone || '');
+    if (!zoneOk(tz)) return res.status(400).json({ error: 'unknown time zone' });
+    if (setup.locked) return res.status(423).json(LOCKED);
+    patch.timezone = tz;
+    if (!tzFixed) process.env.TZ = tz; // Node reads TZ again on the next date
+  }
   const change = patch.change ?? null;
   delete patch.change;
   saveSetup(patch);
@@ -831,7 +957,12 @@ server.on('upgrade', (req, socket, head) => {
   if (!wsAllowed(req)) return reject(socket, 429, 'Too Many Requests');
   if (kind !== 'view' && !originAllowed(req)) return reject(socket, 403, 'Forbidden');
   if (kind === 'view' && viewerCount >= MAX_VIEWERS) return reject(socket, 503, 'Service Unavailable');
-  const ok = kind === 'ingest' ? allows(identify(req, url), 'ingest') : kind === 'admin' ? allows(identify(req, url), 'crew') : true;
+  // Sockets don't take a password in the URL (proxies log URLs): ingest uses a header or a ticket, the dashboard its
+  // session cookie.
+  const noQuery = new URL(url);
+  noQuery.searchParams.delete('token');
+  const ok = kind === 'ingest' ? useTicket(url.searchParams.get('ticket')) || allows(identify(req, noQuery), 'ingest')
+    : kind === 'admin' ? allows(identify(req, noQuery), 'crew') : true;
   if (!ok && !noteAuthFailure(req)) return reject(socket, 429, 'Too Many Requests');
   wss.handleUpgrade(req, socket, head, (ws) => {
     // Protocol violations (oversized frame, invalid UTF-8…) emit 'error' on the socket: log, never crash.

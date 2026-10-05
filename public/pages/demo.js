@@ -1,6 +1,6 @@
 /* global YT */ // the YouTube IFrame API, loaded below
 // demo.html: page script (kept out of the HTML so the Content-Security-Policy can forbid inline scripts).
-import { qs, esc, store, wsUrl, Socket, CaptionState, getEvent, langLabel, liveText, liveHtml } from '/common.js';
+import { qs, esc, store, wsUrl, Socket, CaptionState, getEvent, langLabel, liveText, liveHtml, ingestTicket } from '/common.js';
 import { localize, prefsControls, tr } from '/i18n.js';
 import { mountIcons } from '/illustrations.js';
 mountIcons();
@@ -32,7 +32,7 @@ new Promise((res) => {
   setTimeout(() => res(false), 10000);
 }).then((ok) => {
   ytOk = ok;
-  if (!ok) document.getElementById('player').innerHTML = '<p style="color:#fff;padding:20px">No se pudo cargar el reproductor de YouTube (¿sin internet o bloqueado?).</p>';
+  if (!ok) document.getElementById('player').innerHTML = '<p class="u-noscript">No se pudo cargar el reproductor de YouTube (¿sin internet o bloqueado?).</p>';
   else loadVideo();
 });
 function loadVideo() {
@@ -138,7 +138,7 @@ async function micStart() {
     ctx.createMediaStreamSource(stream).connect(node);
     const mute = ctx.createGain(); mute.gain.value = 0; node.connect(mute).connect(ctx.destination);
     const pending = [];
-    const sock = new Socket(() => wsUrl('/ws/ingest', { stage: stageId(), kind: 'browser', label: 'demo · micrófono', token: store.get('ingest.token', '') }), {
+    const sock = new Socket(async () => wsUrl('/ws/ingest', { stage: stageId(), kind: 'browser', label: 'demo · micrófono', ticket: await ingestTicket(store.get('ingest.token', '')) }), {
       open() { while (pending.length && sock.ready) sock.send(pending.shift()); },
       close(e) {
         if (e.code === 4001) { alert('El server pide INGEST_TOKEN: cargalo en /ingest.html una vez.'); micStop(); }

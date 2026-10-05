@@ -66,7 +66,7 @@ The server runs on a small cloud VM with a real domain and TLS certificate. Each
 |---|---|---|
 | Setup effort | Lowest. One machine, no cloud account. | A VM, a domain and DNS. About 30 minutes. |
 | Monthly cost | None | About US$ 7–15 for a small VM (e2-small class). Covered by event credits. |
-| Venue internet drops | Captions stop anyway, because Gemini is in the cloud. Local screens keep the last captions. | Same. Rooms reconnect by themselves when the link returns. |
+| Venue internet drops | With the [offline backup](local.md#offline-backup), captions keep going on the venue PC and return to Gemini by themselves; without it they stop until the link returns. | Captions stop until the link returns; rooms reconnect by themselves. |
 | The server machine fails | All rooms stop until it's back. Keep a second PC ready. | The VM has cloud-grade uptime. Venue PC failures only affect their own room. |
 | Audience outside the venue (stream viewers, remote) | Works through the tunnel. | Works directly. |
 | Restricted venue network | Only needs outbound 443 to Cloudflare and Google. | Only needs outbound 443 to your domain. Google isn't contacted from the venue at all. |
@@ -82,7 +82,7 @@ Never open or forward a router port to a venue PC or to the server. Both topolog
 - In A, the tunnel is an **outbound** connection from the PC to Cloudflare. Nobody can reach the PC's ports directly.
 - In B, only the cloud VM listens, behind TLS, and the venue PCs only connect out.
 
-On top of that, OpenCaptions requires tokens for everything except the public caption pages. See [Security](security-guide.md).
+On top of that, OpenCaptions requires sign-in for everything except the public caption pages. See [Security](security-guide.md).
 
 ## Install the server
 
@@ -90,7 +90,7 @@ You can install in several ways. They are equivalent at runtime.
 
 | Method | Best for |
 |---|---|
-| [Double-click starter](#double-click-starter) | Organizers on a Mac or Windows laptop, no terminal |
+| [Mac app or Windows launcher](#mac-app-or-windows-launcher) | Organizers on a Mac or Windows laptop, no terminal |
 | [Published Docker image](#published-docker-image) | Any Docker host, without downloading the code |
 | [Docker Compose](#docker-compose) | Linux servers and cloud VMs. Reproducible and isolated. |
 | [Node.js directly](#nodejs-directly) | macOS and Windows laptops, development, venue PCs |
@@ -108,13 +108,15 @@ For **venue PCs that capture audio**, no. Docker Desktop on macOS and Windows ca
 
 For **a laptop demo**, it's optional. `npm start` is simpler.
 
-### Double-click starter
+### Mac app or Windows launcher
 
 1. Install [Node.js](https://nodejs.org/en/download) (LTS).
-2. Download the [ZIP](https://github.com/carraroesteban/opencaptions/archive/refs/heads/main.zip) and unzip it.
-3. Double-click `Start OpenCaptions.command` (macOS) or `Start OpenCaptions.bat` (Windows).
+2. Download [OpenCaptions for Mac](https://github.com/carraroesteban/opencaptions/releases/latest/download/OpenCaptions-mac.zip) or [OpenCaptions for Windows](https://github.com/carraroesteban/opencaptions/releases/latest/download/OpenCaptions-windows.zip) from the latest release.
+3. **Mac:** unzip, drag **OpenCaptions** to Applications and open it. **Windows:** extract the ZIP and double-click **Start OpenCaptions**.
 
-It installs the libraries the first time, starts the server and opens the dashboard; the welcome wizard asks for the API key and can create the public address. It's the same as `npm run app`. Keep the window open; closing it stops the server. The first time, macOS and Windows may warn about a downloaded file: see the README's [Quick start](../README.md#without-the-terminal).
+A window shows OpenCaptions running: it installs the libraries the first time (about a minute), starts the server and opens the dashboard, where the welcome wizard asks for the API key and can create the public address. Keep the window open; closing it stops the server. The first launch asks you to confirm an unsigned app: see the README's [Quick start](../README.md#without-the-terminal).
+
+Settings, passwords and transcripts are kept outside the app, so a new version keeps them: `~/Library/Application Support/OpenCaptions/data` on a Mac, `%LOCALAPPDATA%\OpenCaptions\data` on Windows. To update, download the new version and open it. Developers get the same from a clone with `npm run app`.
 
 ### Published Docker image
 
@@ -125,7 +127,7 @@ docker run -d --name opencaptions --restart unless-stopped -p 127.0.0.1:8080:808
 docker logs opencaptions | grep "Open the dashboard"
 ```
 
-The named volumes keep transcripts, settings and secrets (`opencaptions-data`) and the event, glossary and agenda files (`opencaptions-config`, filled from the image the first time) across upgrades. Pass settings with `-e`, e.g. `-e GEMINI_API_KEY=…`, or set the key in the dashboard. Upgrade:
+The named volumes keep transcripts, settings and secrets (`opencaptions-data`) and the event, glossary and agenda files (`opencaptions-config`, filled from the image the first time) across upgrades. Pass settings with `-e`, e.g. `-e GEMINI_API_KEY=…`, or set the key in the dashboard. Containers run in UTC: the welcome wizard offers to use your time zone for the agenda, or pass `-e TZ=Europe/Madrid`. Upgrade:
 
 ```bash
 docker pull ghcr.io/carraroesteban/opencaptions
@@ -145,13 +147,17 @@ cp .env.example .env
 mkdir -p data
 ```
 
-Everything in `.env` is optional: the API key can be pasted in the dashboard, and tokens are generated on first start. For a server you'll keep, set these:
+On Linux, the `data` folder must belong to the container's user (1000): if the container stops with "can't write to its data folder", run `sudo chown -R 1000:1000 data`. A named volume (as in the published-image command above) avoids this.
+
+Everything in `.env` is optional: the API key can be pasted in the dashboard, and the passwords are generated on first start. For a server you'll keep, set your own:
 
 ```bash
 GEMINI_API_KEY=<key>
 ADMIN_TOKEN=<openssl rand -base64 24>
+CREW_TOKEN=<openssl rand -base64 24>
 INGEST_TOKEN=<openssl rand -base64 24>
 PUBLIC_URL=https://subs.example.com
+TZ=<your time zone, e.g. America/Argentina/Buenos_Aires>
 ```
 
 Then start it:
@@ -223,13 +229,13 @@ Browsers only allow microphone capture on `localhost` or HTTPS pages. Phones on 
 - **Quick address:** a random `https://….trycloudflare.com` address, ready in a minute or two (the dashboard shows the link once the address answers from the internet). It **changes every time OpenCaptions restarts**, or if `cloudflared` has to reconnect, so print the QR posters after starting it and don't restart during the event; the dashboard warns when it changed. Cloudflare offers quick tunnels for testing and small events, with a limit of about 200 requests at once.
 - **Your own domain:** a fixed address for real events. In Cloudflare, open **Zero Trust → Networks → Tunnels**, create a tunnel, and add a public hostname pointing to `http://localhost:8080` (your `PORT`). Paste the tunnel token and the hostname in Settings. The token is kept in `data/secrets.json`.
 
-From the command line: `TUNNEL=quick npm start`, or `TUNNEL=token TUNNEL_HOST=captions.example.com` after saving the token once from the dashboard. Requests through the tunnel are never treated as local, so the dashboard and ingest always need a token there.
+From the command line: `TUNNEL=quick npm start`, or `TUNNEL=token TUNNEL_HOST=captions.example.com` after saving the token once from the dashboard. Requests through the tunnel are never treated as local, so the dashboard always needs sign-in there, and room computers their password.
 
 Without a public address, QR codes use the address the dashboard was opened with, or this computer's Wi-Fi address when it was opened as `localhost`, so phones on the same Wi-Fi can follow.
 
-Tunnels and reverse proxies all support WebSockets without extra configuration. Set `PUBLIC_URL` to the final HTTPS address so QR codes point to it.
+Tunnels and reverse proxies all support WebSockets without extra configuration. With your own proxy, set `PUBLIC_URL` to the final HTTPS address so QR codes point to it.
 
-When the proxy runs on the same host as the server, OpenCaptions trusts its `X-Forwarded-*` headers (`TRUST_PROXY=loopback`, or `uniquelocal` in Docker Compose). Requests that come through a proxy are **never** treated as local, so they always need a token for admin and ingest.
+When the proxy runs on the same host as the server, OpenCaptions trusts its `X-Forwarded-*` headers (`TRUST_PROXY=loopback`, or `uniquelocal` in Docker Compose). Requests that come through a proxy are **never** treated as local, so they always need sign-in.
 
 ## Cloud VM example (Google Compute Engine)
 
@@ -254,7 +260,7 @@ This is topology B on Google Cloud.
 
    Then run `sudo systemctl reload caddy`.
 
-6. Open `https://subs.example.com/admin.html?token=<ADMIN_TOKEN>` once from your laptop. The token is saved in that browser and removed from the address bar.
+6. Open `https://subs.example.com/admin.html` and sign in with the admin password (`docker compose logs opencaptions | grep "Admin token"`). Then turn on two-factor sign-in in **Settings → Access**.
 
 **Cloud Run and other serverless platforms** aren't recommended. OpenCaptions keeps room state in memory and holds long-lived WebSockets. Serverless platforms cap request duration and can start extra instances that don't share state. If you must use one, set minimum and maximum instances to 1 and allocate CPU always. Clients reconnect automatically when a socket is cut.
 
@@ -274,7 +280,7 @@ Test in the foreground:
 node scripts/agent.js --stage room-a --device 1 --server wss://subs.example.com --token <INGEST_TOKEN>
 ```
 
-The agent sends the token in an `Authorization` header, never in the URL. Then install it as a service:
+The agent sends the ingest password in an `Authorization` header, never in the URL. Then install it as a service:
 
 | OS | How |
 |---|---|
@@ -293,7 +299,7 @@ Rooms share no state, so no message bus is needed. See [Architecture](architectu
 
 ## Backups and upgrades
 
-- **Back up `data/`.** It holds transcripts, rooms created from the dashboard and generated tokens (`secrets.json`). Also back up `config/`.
-- **Upgrade:** `git pull`, then `npm ci --omit=dev` and restart, or `docker compose up -d --build`. Check [CHANGELOG.md](../CHANGELOG.md) for breaking changes first.
+- **Back up the data folder.** It holds transcripts, rooms created from the dashboard, the History, and the passwords and API key (`secrets.json`): `data/` in a clone or Docker, `~/Library/Application Support/OpenCaptions/data` with the Mac app, `%LOCALAPPDATA%\OpenCaptions\data` with the Windows launcher. In a clone, also back up `config/`.
+- **Upgrade:** download the new Mac or Windows version; or `git pull`, then `npm ci --omit=dev` and restart; or `docker compose up -d --build`. Check [CHANGELOG.md](../CHANGELOG.md) for breaking changes first.
 - **Roll back:** `git checkout <previous tag>` and restart.
 - Screens, phones and agents reconnect by themselves after a restart. A restart during a talk loses a few seconds of captions.

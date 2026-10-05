@@ -1,5 +1,6 @@
-// Security baseline: who may administer / send audio, HTTP hardening headers, rate limits, WebSocket
-// origin checks and SSRF protection for server-side audio pulls. See docs/security-guide.md for the threat model.
+// Security baseline: the passwords and "is this request from this computer?" (src/auth.js decides who it is), HTTP
+// hardening headers, rate limits, WebSocket origin checks and SSRF protection for server-side audio pulls. See
+// docs/security-guide.md for the threat model.
 import crypto from 'node:crypto';
 import dns from 'node:dns/promises';
 import fs from 'node:fs';
@@ -65,22 +66,12 @@ export function isLocalRequest(req) {
   return LOCAL_HOSTNAMES.has(host);
 }
 
-/** Token presented by a client: header (preferred) or ?token= (browsers can't set WebSocket headers). */
+/** Password presented by a script or the agent: an `Authorization: Bearer` header (or the older X-Admin-Token /
+ * X-Ingest-Token), or ?token= where the caller allows it. Who it identifies is decided in src/auth.js. */
 export function presentedToken(req, url, { allowQuery = true } = {}) {
   const h = req.headers || {};
   const bearer = String(h.authorization || '').match(/^Bearer\s+(.+)$/i)?.[1];
   return bearer || h['x-admin-token'] || h['x-ingest-token'] || (allowQuery ? url?.searchParams?.get('token') : '') || '';
-}
-
-export function canAdmin(req, url) {
-  if (authMode === 'off' || isLocalRequest(req)) return true;
-  return safeEqual(presentedToken(req, url, { allowQuery: req.method === 'GET' || !req.method }), tokens.admin);
-}
-
-export function canIngest(req, url) {
-  if (authMode === 'off' || isLocalRequest(req)) return true;
-  const t = presentedToken(req, url);
-  return safeEqual(t, tokens.ingest) || safeEqual(t, tokens.admin);
 }
 
 // ---------------------------------------------------------------- rate limits
@@ -123,14 +114,28 @@ export const wsAllowed = (req) => wsLimit(clientIp(req));
 
 // ---------------------------------------------------------------- express middleware
 const FRAME_ANCESTORS = env.FRAME_ANCESTORS || "'self'";
+/** 'sha256-…' for every <style> block in the pages (public/*.html), so exactly those may run. */
+export function styleHashes(dir = path.join(ROOT, 'public')) {
+  const out = new Set();
+  for (const f of fs.readdirSync(dir).filter((x) => x.endsWith('.html'))) {
+    for (const m of fs.readFileSync(path.join(dir, f), 'utf8').matchAll(/<style>([\s\S]*?)<\/style>/g)) {
+      out.add(`'sha256-${crypto.createHash('sha256').update(m[1]).digest('base64')}'`);
+    }
+  }
+  return [...out].join(' ');
+}
+const STYLE_HASHES = styleHashes();
 const CSP = [
   "default-src 'self'",
   // Strict for scripts: only files served by this server (public/pages/*.js), never inline code or handlers, so
   // an injected <script> or onclick= can't run. YouTube's player API is allowed for the live demo page.
   "script-src 'self' https://www.youtube.com https://s.ytimg.com",
   "script-src-attr 'none'",
-  // Styles stay relaxed: pages and their templates use style="" attributes, and CSS can't run code.
-  "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+  // Strict for styles too: stylesheets from this server, plus each page's own <style> block by its hash (computed
+  // below). No style="" attributes (utility classes in style.css instead): injected markup can't restyle a page,
+  // e.g. to hide a warning or overlay a fake button.
+  `style-src 'self' ${STYLE_HASHES} https://fonts.googleapis.com`,
+  "style-src-attr 'none'",
   "font-src 'self' https://fonts.gstatic.com data:",
   "img-src 'self' data: https://i.ytimg.com",
   "media-src 'self' blob:",

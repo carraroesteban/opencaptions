@@ -1,10 +1,10 @@
 # Security
 
-This page explains what OpenCaptions protects, which attacks it defends against and how. It ends with a hardening checklist for event day. To report a vulnerability, see the [security policy](../SECURITY.md).
+This page explains what OpenCaptions protects, which attacks it defends against and how. It ends with a hardening checklist for event day. To report a vulnerability, see the [security policy](../.github/SECURITY.md).
 
 **Summary:**
 
-- The server is secure by default. Admin and audio ingest need a token from every device except the server machine itself.
+- The server is secure by default. The dashboard needs sign-in, and sending audio a password, from every device except the server machine itself. The crew gets a password that only runs the live controls; two-factor codes and company sign-in are available.
 - Caption pages are public on purpose.
 - Audio is never stored.
 - Transcripts can be switched off or deleted automatically.
@@ -15,7 +15,7 @@ This page explains what OpenCaptions protects, which attacks it defends against 
 | Asset | Why it matters |
 |---|---|
 | Gemini credentials (API key or service account) | Direct financial exposure and quota abuse |
-| Admin control (rooms, pulls, glossary) | An attacker could stop captions, burn budget by creating rooms, or change glossary replacements to put offensive text on stage screens |
+| Admin control (rooms, pulls, glossary, the API key, the public address, alerts) | An attacker could stop captions, burn budget by creating rooms, or change glossary replacements to put offensive text on stage screens |
 | Audio ingest of a room | Injected audio becomes captions on a projector and in a live stream: a defacement risk with a big audience |
 | Transcripts | Talks can be confidential in company settings |
 | The server host and its network | Server-side pulls could be abused to reach internal services (SSRF) |
@@ -25,7 +25,7 @@ This page explains what OpenCaptions protects, which attacks it defends against 
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="images/diagrams/security-dark.png" />
-  <img src="images/diagrams/security-light.png" alt="Trust zones: viewers only read captions, anyone else is rate-limited and blocked, the production team and venue PCs use tokens, local processes are trusted on localhost, and the server reaches Gemini with an API key or IAM." />
+  <img src="images/diagrams/security-light.png" alt="Trust zones: viewers only read captions, anyone else is rate-limited and blocked; organizers sign in with the admin password and a two-factor code or a work account, the crew with a password that only runs the live controls, and room computers with the ingest password or a short ticket; local processes are trusted on localhost, and the server reaches Gemini with an API key or IAM." />
 </picture>
 
 <details><summary>Text version of this diagram</summary>
@@ -36,9 +36,10 @@ flowchart LR
     V[Viewers]
     X[Attacker]
   end
-  subgraph Ops["Trusted with tokens"]
-    A[Production team<br/>ADMIN_TOKEN]
-    I[Venue PCs<br/>INGEST_TOKEN]
+  subgraph Ops["Signed in"]
+    A[Organizers<br/>admin password + 2FA, or work account]
+    C[Crew<br/>crew password: live controls]
+    I[Room computers<br/>ingest password or ticket]
   end
   subgraph Host["Server host"]
     S[OpenCaptions]
@@ -47,7 +48,8 @@ flowchart LR
   G[Google Gemini]
   V -- captions only --> S
   X -.-> S
-  A -- admin API / WS --> S
+  A -- everything --> S
+  C -- live controls --> S
   I -- audio --> S
   L -- trusted in AUTH=auto --> S
   S -- API key / IAM --> G
@@ -87,7 +89,7 @@ flowchart LR
 
 ## Audience AI
 
-The ✨ *What did I miss?* summary and 💬 *Ask the talk* are public by design (they are for the audience), so they are built to be cheap and hard to abuse:
+The *What did I miss?* summary and *Ask the talk* are public by design (they are for the audience), so they are built to be cheap and hard to abuse:
 
 - **Grounded:** the model sees only the talk's transcript (at most the last ~60 000 characters) and must answer from it, with quotes and timestamps, or say it wasn't mentioned. No web access, no tools, no memory between requests.
 - **Same access rules as transcripts:** a viewer can summarize or ask about exactly what `PUBLIC_TRANSCRIPTS` lets them read.
@@ -97,7 +99,7 @@ The ✨ *What did I miss?* summary and 💬 *Ask the talk* are public by design 
 
 ## Protecting the setup from mistakes
 
-Tokens decide *who* can administer. Two more layers protect the event manager's work from accidents by people who are allowed in:
+Sign-in decides *who* can change the setup (admins only; the crew runs the live controls). Two more layers protect the event manager's work from accidents by people who are allowed in:
 
 - **Event mode** locks the setup on the server while the event is live. Rooms, the agenda, the glossary and the event name can't be deleted or changed (the API answers `423 Locked`), whatever the dashboard sends. Live operations keep working. Turning it off takes an explicit confirmation and is recorded.
 - **History and undo:** every setup change is stored in `data/history.jsonl` with what it replaced, and can be undone from the dashboard. Deleted rooms go to a trash and come back exactly as they were. Transcripts are never deleted by any dashboard action.
@@ -110,8 +112,8 @@ Set with `AUTH`:
 
 | Mode | Behaviour | Use for |
 |---|---|---|
-| `auto` (default) | The server machine itself is trusted, so `npm start` then `http://localhost:8080/admin.html` just works. Every other device needs a token. | Laptops, venue PCs, VMs behind a proxy |
-| `token` | A token is required everywhere, including localhost. | Shared hosts, multi-user machines, the strictest setups |
+| `auto` (default) | The server machine itself is trusted, so `http://localhost:8080/admin.html` just works there. Every other device signs in. | Laptops, venue PCs, VMs behind a proxy |
+| `token` | Sign-in is required everywhere, including the server machine. | Shared hosts, multi-user machines, the strictest setups |
 | `off` | No authentication. The server prints a warning. | Isolated lab networks only |
 
 ### Passwords and roles
@@ -168,7 +170,7 @@ Keep password sign-in on at events unless you're sure of the venue's internet: i
 Every response includes:
 
 ```
-Content-Security-Policy: default-src 'self'; script-src 'self' https://www.youtube.com https://s.ytimg.com; script-src-attr 'none'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: https://i.ytimg.com; media-src 'self' blob:; worker-src 'self' blob:; connect-src 'self' ws: wss:; frame-src 'self' https://www.youtube.com https://www.youtube-nocookie.com; frame-ancestors 'self'; base-uri 'none'; form-action 'self'; object-src 'none'
+Content-Security-Policy: default-src 'self'; script-src 'self' https://www.youtube.com https://s.ytimg.com; script-src-attr 'none'; style-src 'self' 'sha256-…' https://fonts.googleapis.com; style-src-attr 'none'; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: https://i.ytimg.com; media-src 'self' blob:; worker-src 'self' blob:; connect-src 'self' ws: wss:; frame-src 'self' https://www.youtube.com https://www.youtube-nocookie.com; frame-ancestors 'self'; base-uri 'none'; form-action 'self'; object-src 'none'
 X-Content-Type-Options: nosniff
 Referrer-Policy: no-referrer
 Permissions-Policy: microphone=(self), camera=(), geolocation=(), payment=(), usb=()
@@ -177,6 +179,8 @@ Cross-Origin-Resource-Policy: same-origin
 X-Frame-Options: SAMEORIGIN
 Strict-Transport-Security: max-age=31536000   (only over HTTPS)
 ```
+
+Both scripts and styles are strict: only files from this server run or apply, plus each page's own `<style>` block, allowed by its hash (`'sha256-…'`, computed when the server starts). There are no inline scripts, event handlers or `style=""` attributes; `npm test` fails if one is added. So injected markup can neither run code nor restyle a page, for example to hide a warning or draw a fake button over a real one.
 
 To embed pages in another site, set `FRAME_ANCESTORS`, for example `'self' https://www.example.com`.
 
@@ -194,9 +198,11 @@ Room audio ──(WSS/TLS)──► OpenCaptions server ──(TLS)──► Goo
 | Raw audio | Server memory (a reconnect buffer of at most 12 s; the venue agent keeps about 15 s client-side), then Gemini, or the local speech server in local mode | **Never written to disk** |
 | Transcripts and translations | Viewers and `data/transcripts/` | Yes by default. `STORE_TRANSCRIPTS=false` disables storage. `RETENTION_DAYS=N` deletes old ones. |
 | Translated voice | Relayed in memory to listeners | Never stored |
-| Room config, glossary | `config/`, `data/stages.json` | Yes. No personal data. |
+| Room config, glossary, agenda | `config/`, `data/stages.json` | Yes. Speaker names from the agenda. |
+| Signed-in devices and the History | `data/sessions.json` (a hash of each session, the device's name, its address), `data/history.jsonl` (who changed what) | Yes. Sessions expire after `SESSION_HOURS`. |
+| Alerts | Sent to the services you choose (ntfy, Telegram, Slack, Discord, a webhook): room names and what went wrong, never captions | Not stored by OpenCaptions |
 | Viewers | Nothing collected: no accounts, cookies, analytics or IP logs | Nothing |
-| Tokens, the Gemini API key and the Cloudflare tunnel token | `.env` or `data/secrets.json` (file mode 600) | Keep both out of version control. `.gitignore` already covers them. A key or tunnel token pasted in the dashboard goes to `data/secrets.json` and is never sent back to any browser: the dashboard sees only the key's last 4 characters, and the history records that the key changed, not the key. Google checks a new key before it's saved. |
+| Passwords, the Gemini API key, the Cloudflare tunnel token, the two-factor secret and alert destinations | `.env` or `data/secrets.json` (file mode 600) | Keep both out of version control. `.gitignore` already covers them. A key or tunnel token pasted in the dashboard goes to `data/secrets.json` and is never sent back to any browser: the dashboard sees only the key's last 4 characters, and the history records that the key changed, not the key. Google checks a new key before it's saved. |
 
 ## Choosing the AI backend
 
@@ -215,7 +221,7 @@ The Vertex path uses the same SDK but has not yet been tested end to end, and mo
 Certifications apply to organizations and how they operate systems, not to software. An organization that holds them can run OpenCaptions inside its certified environment:
 
 - Use Vertex AI.
-- Put SSO in front of the admin surfaces.
+- Turn on company sign-in (`OIDC_*`) with its own two-factor rules, and `OIDC_ONLY=1`.
 - Keep transcripts per its records policy.
 - Include the image in its vulnerability scanning.
 
@@ -225,7 +231,7 @@ The controls on this page are designed to make that straightforward.
 
 Before exposing a server for an event:
 
-- [ ] HTTPS in front: **Settings → Public address** (Cloudflare Tunnel), Caddy or built-in TLS. With your own proxy, `PUBLIC_URL` set to the HTTPS address. A quick `trycloudflare.com` address is public to anyone who has the link, like any other public address: the dashboard and ingest still need their tokens through it. Turning it off and on is locked in Event mode.
+- [ ] HTTPS in front: **Settings → Public address** (Cloudflare Tunnel), Caddy or built-in TLS. With your own proxy, `PUBLIC_URL` set to the HTTPS address. A quick `trycloudflare.com` address is public to anyone who has the link, like any other public address: the dashboard still needs sign-in through it, and room computers their password. Turning it off and on is locked in Event mode.
 - [ ] No router port forwarding to any venue PC. The app port (8080) is not reachable from the internet (`BIND_ADDR=127.0.0.1` or `HOST=127.0.0.1` behind a proxy).
 - [ ] The admin password only for organizers, the **crew password** for volunteers, the ingest password only on room computers. Set your own (`openssl rand -base64 24`) if `data/` may be wiped.
 - [ ] **Two-factor sign-in** on (Settings → Access), or company sign-in with your provider's two-factor.
@@ -237,7 +243,7 @@ Before exposing a server for an event:
 - [ ] `PULL_ALLOW_PRIVATE` stays off unless you pull HTTP streams from the LAN.
 - [ ] Running in Docker or under the systemd unit, not as root.
 - [ ] `npm audit --omit=dev` is clean, or its findings are reviewed.
-- [ ] You know how to rotate tokens (below).
+- [ ] You know how to change a password and sign out a device (below).
 
 ### Responding to a leaked password or a lost device
 
@@ -246,7 +252,7 @@ Before exposing a server for an event:
 3. If it was the ingest password, update the agents' service configuration and each room's audio page.
 4. Check the History (who changed what), the event log and the Gemini usage page for unexpected activity.
 
-To rotate the Gemini API key, create a new key in AI Studio, update `.env`, restart the server, then delete the old key.
+To rotate the Gemini API key, create a new key in AI Studio, paste it in **Settings → Gemini** (or update `.env` and restart), then delete the old key.
 
 ## Known gaps
 
@@ -255,8 +261,6 @@ These are accepted risks today, listed so you can decide whether they matter for
 | Gap | Impact | Mitigation now | Planned |
 |---|---|---|---|
 | Password sign-in shares one password per role | The History knows the device's name, not a verified person | Company sign-in gives each person their own account; name devices clearly | — |
-| Room computers send the ingest password as `?token=` on the WebSocket URL, because browsers can't set WebSocket headers | It may appear in reverse-proxy access logs | Disable query logging in your proxy. TLS protects it in transit. The dashboard uses a session cookie instead. | Short-lived session tickets |
-| CSP allows inline *styles* (`style-src 'unsafe-inline'`) | Injected CSS could change how a page looks. It can't run code: scripts are strict (files from this server only, no inline scripts or `on…=` handlers) | All dynamic text is escaped. A test fails if a page or template adds an inline script or handler. | Move `style=""` attributes to classes |
 | Rate limits and lockouts are in memory, per process | They reset on restart and aren't shared across shards | Put a CDN or WAF in front for large public events | — |
 | The History (`data/history.jsonl`) records who changed the setup, but it isn't tamper-evident | Someone with disk access could edit it | Ship stdout to your log platform | Structured JSON logs |
 | Stored transcripts aren't encrypted by the app | Anyone with disk access can read them | Encrypted volume or disk | — |

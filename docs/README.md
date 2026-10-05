@@ -1,6 +1,6 @@
 # OpenCaptions documentation
 
-OpenCaptions is open-source software for live captions and translation at conferences with many rooms running at the same time. These docs cover how to install it, run it at an event, operate it safely and change it.
+OpenCaptions is open-source software for live captions and translation at any event, from one room to many at the same time. These docs cover how to install it, run it at an event, operate it safely and change it.
 
 <p align="center"><img src="../public/art/hero.webp" width="640" alt="An audience following live captions on their phones while a speaker presents on stage" /></p>
 
@@ -21,6 +21,7 @@ The docs follow the [Diátaxis](https://diataxis.fr/) framework. Each page has o
 | [Deployment](deployment.md) | How-to | Choose between a venue PC and a cloud server, then install with Docker, Node.js or a system service. |
 | [Networking](networking.md) | How-to | Know which ports and domains are used, and what to do when the venue network blocks something. |
 | [Security](security-guide.md) | Explanation + how-to | Understand the threat model and apply the hardening checklist. |
+| [Accessibility](accessibility.md) | Explanation + how-to | What's checked (WCAG 2.2 AA, `npm run a11y`), how to test with a screen reader and keyboard, and the known gaps. |
 | [Latency](latency.md) | Explanation + how-to | Understand where the seconds go and tune for lower delay. |
 | [Local mode](local.md) | How-to + explanation | Run speech recognition and translation on your own computer: no API key, no internet, no cost per hour. |
 | [Event-day runbook](operations/runbook.md) | How-to | Prepare and operate the rooms on the day. |
@@ -44,8 +45,8 @@ The docs follow the [Diátaxis](https://diataxis.fr/) framework. Each page has o
 
 ## Contribute
 
-- [Contributing guide](../CONTRIBUTING.md) covers the dev setup, tests, commit style and documentation standards.
-- [Security policy](../SECURITY.md) explains how to report a vulnerability privately.
+- [Contributing guide](../.github/CONTRIBUTING.md) covers the dev setup, tests, commit style and documentation standards.
+- [Security policy](../.github/SECURITY.md) explains how to report a vulnerability privately.
 - [Changelog](../CHANGELOG.md) lists user-visible changes per release.
 
 ## Conventions used in these docs

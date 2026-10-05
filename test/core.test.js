@@ -83,3 +83,23 @@ test('native WAV reader streams 16 kHz samples without ffmpeg', async () => {
   await new Promise((res, rej) => { src.on('data', (b) => (bytes += b.length)); src.on('end', res); src.on('error', rej); });
   assert.ok(bytes > 16000 * 2 * 30, `got ${bytes} bytes`);
 });
+
+test('speaker labels: VTT voice tags on every cue, SRT and TXT name the speaker when it changes', () => {
+  const segs = [
+    { start: 0, end: 2000, text: 'Welcome, everyone.', spk: 'Host' },
+    { start: 2500, end: 4000, text: 'Our first speaker is Ana.', spk: 'Host' },
+    { start: 5000, end: 7000, text: 'Thank you!', spk: 'Ana Pérez' },
+    { start: 7200, end: 9000, text: 'No label here.' },
+  ];
+  assert.match(toVTT(segs), /<v Host>Welcome, everyone\.\n[\s\S]*<v Host>Our first[\s\S]*<v Ana Pérez>Thank you!\n[\s\S]*\nNo label here\./);
+  const srt = toSRT(segs);
+  assert.match(srt, /\nHost: Welcome, everyone\.\n/);
+  assert.match(srt, /\nOur first speaker is Ana\.\n/, 'same speaker: not repeated');
+  assert.match(srt, /\nAna Pérez: Thank you!\n/);
+  assert.equal(toTXT(segs), 'Host: Welcome, everyone. Our first speaker is Ana.\n\nAna Pérez: Thank you! No label here.\n');
+});
+
+test('WebVTT escapes & < > in captions and speaker names (the file stays valid)', () => {
+  const vtt = toVTT([{ start: 0, end: 2000, text: 'Q&A starts <now>', spk: 'Audience (Q&A)' }]);
+  assert.match(vtt, /<v Audience \(Q&amp;A\)>Q&amp;A starts &lt;now&gt;\n/);
+});

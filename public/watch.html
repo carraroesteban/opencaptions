@@ -61,8 +61,8 @@
     <div class="talk" id="talk"></div>
     <div class="langs" id="langs" role="group"></div>
   </header>
-  <div id="scroll" aria-live="polite"><div id="text"><div class="empty empty-state"><svg class="oc-logo typing" viewBox="0 0 878 664" aria-hidden="true"><use class="o" href="/brand/sprite.svg#oc-o"/><use class="ln" href="/brand/sprite.svg#oc-line"/></svg><span id="empty"></span></div></div></div>
-  <div id="orig" class="hidden"><b></b><span></span></div>
+  <div id="scroll" role="main" aria-live="polite"><div id="text"><div class="empty empty-state"><svg class="oc-logo typing" viewBox="0 0 878 664" aria-hidden="true"><use class="o" href="/brand/sprite.svg#oc-o"/><use class="ln" href="/brand/sprite.svg#oc-line"/></svg><span id="empty"></span></div></div></div>
+  <div id="orig" class="hidden" role="complementary" aria-label="Original"><b></b><span></span></div>
   <button id="tolive" class="primary hidden"></button>
   <footer>
     <button id="settings" aria-haspopup="dialog">Aa</button>
@@ -71,18 +71,18 @@
     <button id="ai" class="primary" aria-haspopup="dialog" data-icon="sparkle"><span class="lbl"></span></button>
     <button id="listen" class="hidden" aria-pressed="false"></button>
     <button id="pip" class="hidden" data-icon="pin"></button>
-    <a id="doc" class="btn"><button tabindex="-1" data-icon="doc"></button></a>
+    <a id="doc" class="btn"><button tabindex="-1" data-icon="doc" aria-hidden="true"></button></a>
   </footer>
 
   <dialog id="dlg-ai" class="sheet" aria-labelledby="ai-title">
     <div class="sheet-head"><h2 id="ai-title"></h2><button id="ai-close" data-icon="x"></button></div>
     <div id="assistant"></div>
-    <p style="margin:14px 0 0"><a id="ai-doc" href="#"></a></p>
+    <p class="u-m14t"><a id="ai-doc" href="#"></a></p>
   </dialog>
 
   <dialog id="dlg-set" class="sheet" aria-labelledby="set-title">
     <div class="sheet-head"><h2 id="set-title"></h2><button id="set-close" data-icon="x"></button></div>
-    <div class="set-row"><span id="l-size"></span><span class="row"><button id="smaller" aria-label="A−">A−</button><b id="size-val" style="min-width:3ch;text-align:center"></b><button id="bigger" aria-label="A+">A+</button></span></div>
+    <div class="set-row"><span id="l-size"></span><span class="row"><button id="smaller" aria-label="A−">A−</button><b id="size-val" class="u-num"></b><button id="bigger" aria-label="A+">A+</button></span></div>
     <div class="set-row"><span id="l-font"></span><span class="row" id="font-opts"></span></div>
     <div class="set-row"><span id="l-lh"></span><span class="row" id="lh-opts"></span></div>
     <div class="set-row"><span id="l-theme"></span><span class="row" id="theme-opts"></span></div>

@@ -201,7 +201,7 @@ export function tunnelPanel(el, { api, confirm = async (m) => window.confirm(m),
     const pub = setup?.publicUrl || location.origin;
     let html = '';
     if (tu.state === 'off') {
-      html += `<p class="cx-fine" style="margin-top:0">${esc(t.tIntro)}</p>
+      html += `<p class="cx-fine u-mt0">${esc(t.tIntro)}</p>
         <div class="cx-row"><button type="button" class="primary" data-cx="quick">${icon('cloud')}${esc(t.tStart)}</button></div>
         <p class="cx-fine">${esc(t.tNote)}</p>
         <details class="cx-own"><summary>${esc(t.tOwn)}</summary>

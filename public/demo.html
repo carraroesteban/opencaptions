@@ -48,10 +48,10 @@
 </head>
 <body>
   <header>
-    <a class="brand" href="/admin.html" title="Panel de producción" style="font-size:14px">OpenCaptions<span class="sub">· demo</span></a>
-    <select id="mode"><option value="youtube">Video de YouTube</option><option value="mic">Micrófono en vivo</option></select>
-    <input type="text" id="url" class="yt-only" placeholder="URL de YouTube (ej: https://www.youtube.com/watch?v=…)" />
-    <label class="row muted hint mic-only" style="flex:1 1 260px">Micrófono <select id="mic" style="flex:1"><option value="">(predeterminado)</option></select></label>
+    <a class="brand u-fs14" href="/admin.html" title="Panel de producción">OpenCaptions<span class="sub">· demo</span></a>
+    <select id="mode" aria-label="Fuente"><option value="youtube">Video de YouTube</option><option value="mic">Micrófono en vivo</option></select>
+    <input type="text" id="url" class="yt-only" aria-label="URL de YouTube" placeholder="URL de YouTube (ej: https://www.youtube.com/watch?v=…)" />
+    <label class="row muted hint mic-only u-flex260">Micrófono <select id="mic" class="u-grow"><option value="">(predeterminado)</option></select></label>
     <label class="row muted hint">Sala <select id="stage"></select></label>
     <label class="row muted hint">Subtítulos <select id="lang"></select></label>
     <label class="row muted hint yt-only">Desde (s) <input type="number" id="start" min="0" value="0" /></label>
@@ -61,27 +61,28 @@
   </header>
   <div id="securewarn" class="hidden">⚠ El micrófono solo funciona en <b>localhost</b> o <b>HTTPS</b>. Abrí esta página como https://… (ver docs/deployment.md → HTTPS).</div>
   <main>
+    <h1 class="sr-only">OpenCaptions · demo</h1>
     <section>
       <div class="stagewrap"><div id="player"></div><div class="micidle mic-only" id="micidle" data-icon="mic">Elegí el micrófono, tocá Empezar y hablá en español o inglés.</div>
         <div class="ov"><div class="box idle" id="ovbox"><div class="clip"><div id="ovtxt" data-no-i18n></div></div></div></div>
       </div>
-      <div class="meter mic-only" style="margin-top:10px;height:10px"><i id="miclvl"></i></div>
+      <div class="meter mic-only u-mt10 u-h10"><i id="miclvl"></i></div>
       <div class="orig"><b id="origlbl">Original</b><span id="origtxt" data-no-i18n>…</span></div>
       <p class="muted hint mic-only">Prueba de sonido / demo en vivo: el audio del micrófono va al server igual que desde la mini PC del escenario. Ideal para chequear cada sala antes de abrir puertas.</p>
       <p class="muted hint yt-only">Play/pausa/adelantar el video mueve también el audio que procesa el server (≈1 s de diferencia al arrancar). La demora que ves entre la voz y el subtítulo es la latencia real del sistema.</p>
     </section>
     <aside>
-      <div class="card"><div class="row" style="justify-content:space-between"><b>En vivo</b><span class="chip" id="state">detenido</span></div>
-        <div class="stats" style="margin-top:10px">
+      <div class="card"><div class="row u-between"><b>En vivo</b><span class="chip" id="state">detenido</span></div>
+        <div class="stats u-mt10">
           <div>Latencia original<b id="s-asr">—</b></div>
           <div>Latencia traducción<b id="s-tr">—</b></div>
           <div>Idioma detectado<b id="s-lang">—</b></div>
           <div>Costo estimado<b id="s-cost">—</b></div>
         </div>
-        <div class="row" id="alerts" style="margin-top:8px"></div>
+        <div class="row u-mt8" id="alerts"></div>
       </div>
-      <div class="card"><b><span>Transcripción</span> · <span id="tlang"></span></b><div id="transcript" style="margin-top:8px" data-no-i18n></div>
-        <div class="row hint" style="margin-top:8px"><a id="dl-srt" href="#" data-icon="download">SRT</a><a id="dl-txt" href="#" data-icon="download">TXT</a><a href="/admin.html" target="_blank" data-icon="dashboard">Producción</a></div>
+      <div class="card"><b><span>Transcripción</span> · <span id="tlang"></span></b><div id="transcript" class="u-mt8" data-no-i18n></div>
+        <div class="row hint u-mt8"><a id="dl-srt" href="#" data-icon="download">SRT</a><a id="dl-txt" href="#" data-icon="download">TXT</a><a href="/admin.html" target="_blank" data-icon="dashboard">Producción</a></div>
       </div>
     </aside>
   </main>

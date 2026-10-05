@@ -1,16 +1,18 @@
+# Only what the server needs goes into the image.
 node_modules
 data
+local
+dist
+_site
 .env
 .env.*
 !.env.example
 .git
 .github
+.gitattributes
+deploy
 docs
+site
 test
 *.log
 .DS_Store
-local
-site
-_site
-Start OpenCaptions.*
-.gitattributes

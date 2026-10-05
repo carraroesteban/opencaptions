@@ -32,6 +32,7 @@ const T = {
     tfaManual: 'O cargá esta clave a mano:',
     tfaCode: 'Código de 6 dígitos', tfaConfirm: 'Confirmar', cancel: 'Cancelar',
     tfaStopAsk: 'Para desactivarla, escribí un código actual de la app.',
+    tfaStopLocal: 'Estás en la computadora del servidor: podés desactivarla sin código (por ejemplo, si perdiste el celular).',
     tfaDone: 'Listo: desde ahora la contraseña de administración pide un código.',
     tfaScripts: 'Los scripts con la contraseña de administración solo funcionan en la computadora del servidor.',
     badCode: 'Ese código no es correcto o ya se usó. Esperá el siguiente y probá de nuevo.',
@@ -67,6 +68,7 @@ const T = {
     tfaManual: 'Or enter this key by hand:',
     tfaCode: '6-digit code', tfaConfirm: 'Confirm', cancel: 'Cancel',
     tfaStopAsk: 'To turn it off, type a current code from the app.',
+    tfaStopLocal: 'You’re on the server computer: you can turn it off without a code (for example, if you lost the phone).',
     tfaDone: 'Done: from now on the admin password asks for a code.',
     tfaScripts: 'Scripts using the admin password only work on the server computer.',
     badCode: 'That code isn’t right or was already used. Wait for the next one and try again.',
@@ -122,16 +124,16 @@ export function accessPanel(el, { api, confirm, toast, me }) {
           <span><b>${esc(names[p.which])}</b><small>${esc(descs[p.which])}</small></span>
           ${p.fromEnv ? `<span class="chip">${esc(t.fromEnv)}</span>` : `<button type="button" data-ax="change" data-which="${p.which}">${esc(t.change)}</button>`}
         </div>${reveal?.which === p.which ? `<div class="cx-msg ok" role="status">${esc(t.newPw)}${p.which === 'ingest' ? ` ${esc(t.ingestNote)}` : ''}
-          <div class="cx-row" style="margin-top:8px"><code class="ax-secret">${esc(reveal.value)}</code><button type="button" data-ax="copy">${esc(t.copy)}</button></div></div>` : ''}`).join('')}</div>
+          <div class="cx-row u-mt8"><code class="ax-secret">${esc(reveal.value)}</code><button type="button" data-ax="copy">${esc(t.copy)}</button></div></div>` : ''}`).join('')}</div>
 
       <h4>${esc(t.tfa)}</h4>
       <p class="cx-status ${who.twoFactor ? 'ok' : 'warn'}">${icon(who.twoFactor ? 'check' : 'alert')}<span>${esc(who.twoFactor ? t.tfaOn : t.tfaOff)}</span></p>
       ${tfa && tfa !== 'off' ? `<div class="ax-tfa"><div class="ax-qr">${tfa.qr}</div><div>
-          <p class="cx-fine" style="margin-top:0">${esc(t.tfaScan)}</p>
+          <p class="cx-fine u-mt0">${esc(t.tfaScan)}</p>
           <p class="cx-fine">${esc(t.tfaManual)} <code>${esc(tfa.secret.replace(/(.{4})/g, '$1 ').trim())}</code></p>
           <form class="cx-row" data-ax="confirm"><input name="code" inputmode="numeric" autocomplete="one-time-code" maxlength="7" placeholder="${esc(t.tfaCode)}" required /><button class="primary">${esc(t.tfaConfirm)}</button><button type="button" class="cx-link" data-ax="cancel">${esc(t.cancel)}</button></form>
           <p class="cx-fine">${esc(t.tfaScripts)}</p></div></div>`
-        : tfa === 'off' ? `<p class="cx-fine">${esc(t.tfaStopAsk)}</p><form class="cx-row" data-ax="disable"><input name="code" inputmode="numeric" autocomplete="one-time-code" maxlength="7" placeholder="${esc(t.tfaCode)}" required /><button class="danger">${esc(t.tfaStop)}</button><button type="button" class="cx-link" data-ax="cancel">${esc(t.cancel)}</button></form>`
+        : tfa === 'off' ? `<p class="cx-fine">${esc(who.via === 'local' ? t.tfaStopLocal : t.tfaStopAsk)}</p><form class="cx-row" data-ax="disable">${who.via === 'local' ? '' : `<input name="code" inputmode="numeric" autocomplete="one-time-code" maxlength="7" placeholder="${esc(t.tfaCode)}" required />`}<button class="danger">${esc(t.tfaStop)}</button><button type="button" class="cx-link" data-ax="cancel">${esc(t.cancel)}</button></form>`
         : `<div class="cx-row"><button type="button" data-ax="${who.twoFactor ? 'tfa-off' : 'tfa-on'}"${who.twoFactor ? '' : ' class="primary"'}>${esc(who.twoFactor ? t.tfaStop : t.tfaStart)}</button></div>`}
 
       <h4>${esc(t.sso)}</h4>
@@ -159,13 +161,13 @@ export function accessPanel(el, { api, confirm, toast, me }) {
   el.addEventListener('submit', async (e) => {
     e.preventDefault();
     const f = /** @type {HTMLFormElement} */ (e.target);
-    const code = f.code.value.replace(/\s/g, '');
+    const code = (f.code?.value || '').replace(/\s/g, '');
     try {
       if (f.dataset.ax === 'confirm') { await api('POST', '/api/auth/2fa/confirm', { code }); toast(t.tfaDone); }
       if (f.dataset.ax === 'disable') await api('POST', '/api/auth/2fa/disable', { code });
       tfa = null;
       await load();
-    } catch (err) { toast(/code|setup expired/.test(err.message) ? t.badCode : err.message, { error: true }); f.code.select(); }
+    } catch (err) { toast(/code|setup expired/.test(err.message) ? t.badCode : err.message, { error: true }); f.code?.select(); }
   });
   return { load };
 }

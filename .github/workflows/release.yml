@@ -1,0 +1,70 @@
+# Every version tag becomes a GitHub release with the downloads organizers use:
+#   git tag v0.2.0 && git push origin v0.2.0
+# 1. release:  the release, with that version's section of CHANGELOG.md as the notes
+# 2. launcher: "Start OpenCaptions.exe", compiled on Windows with the logo as its icon
+# 3. desktop:  OpenCaptions-mac.zip and OpenCaptions-windows.zip (scripts/package-desktop.js), attached to it
+# (The docker workflow publishes ghcr.io/…/opencaptions:<version> from the same tag.)
+name: release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Notes from CHANGELOG.md
+        run: |
+          v="${GITHUB_REF_NAME#v}"
+          awk -v v="$v" '$0 ~ "^## \\[" v "\\]" {on=1; next} on && /^## \[/ {exit} on {print}' CHANGELOG.md > notes.md
+          if [ ! -s notes.md ]; then echo "CHANGELOG.md has no section for $v"; exit 1; fi
+          cat >> notes.md <<EOF
+
+          ---
+
+          **Download:** [OpenCaptions for Mac](https://github.com/$GITHUB_REPOSITORY/releases/download/$GITHUB_REF_NAME/OpenCaptions-mac.zip) · [OpenCaptions for Windows](https://github.com/$GITHUB_REPOSITORY/releases/download/$GITHUB_REF_NAME/OpenCaptions-windows.zip). Install [Node.js](https://nodejs.org) first, then open OpenCaptions; the "Read me" inside explains the first launch.
+
+          **Docker:** \`docker run -d --name opencaptions -p 127.0.0.1:8080:8080 -v opencaptions-data:/app/data -v opencaptions-config:/app/config ghcr.io/$GITHUB_REPOSITORY:$v\`
+          EOF
+      - name: Create the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" --title "OpenCaptions $GITHUB_REF_NAME" --notes-file notes.md --verify-tag
+
+  launcher:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compile Start OpenCaptions.exe
+        shell: pwsh
+        run: |
+          $csc = Join-Path $env:WINDIR 'Microsoft.NET\Framework64\v4.0.30319\csc.exe'
+          & $csc /nologo /target:winexe /optimize+ /win32icon:deploy\desktop\OpenCaptions.ico /out:"Start OpenCaptions.exe" /r:System.Windows.Forms.dll deploy\desktop\windows\Launcher.cs
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+      - uses: actions/upload-artifact@v4
+        with:
+          name: launcher
+          path: Start OpenCaptions.exe
+
+  desktop:
+    needs: [release, launcher]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: actions/download-artifact@v4
+        with:
+          name: launcher
+          path: launcher
+      - run: node scripts/package-desktop.js --exe "launcher/Start OpenCaptions.exe"
+      - name: Attach the downloads
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "$GITHUB_REF_NAME" dist/OpenCaptions-mac.zip dist/OpenCaptions-windows.zip --clobber

@@ -52,7 +52,7 @@ Open <http://localhost:8080> and feed a room from another terminal, exactly as i
 npm run feed -- --stage main --input samples/talk-es.wav
 ```
 
-The dashboard shows a 🔒 chip with the models in use. `Ctrl+C` stops the server and everything `npm run local` started.
+The dashboard’s setup checklist shows **Local AI engine: ready** with the models in use. `Ctrl+C` stops the server and everything `npm run local` started.
 
 `npm start` still uses Gemini when a key is configured. To make local mode the default for `npm start` too, set `ENGINE=local` in `.env` (the setup wizard asks). Then keep the two servers running yourself, for example as services: Ollama, and a speech server such as `node scripts/local-asr-server.js --model local/models/sherpa-onnx-whisper-small`.
 
@@ -182,7 +182,7 @@ flowchart LR
 - **Languages.** Whisper detects the language of every utterance. If it hears a language the event doesn't use (Galician in a Spanish talk, for example), the utterance is transcribed again in the room's current language. Pin the room's language to skip detection altogether.
 - **Whisper's hallucinations.** On silence or applause Whisper sometimes "hears" YouTube phrases such as *Thanks for watching* or *Subtítulos realizados por la comunidad de Amara.org*. A sentence that is exactly one of those phrases is removed, and so are sound tags like *[Music]* and repetition loops. Real speech that merely contains a word like *subscribe* is kept. Utterances shorter than 0.3 s aren't sent at all, and servers that report a no-speech probability (whisper.cpp, WhisperKit, faster-whisper) also get pure noise dropped.
 - **Translation.** Each finished sentence is translated with the previous sentences as context, like the Gemini path. Provisional translations of the sentence in progress are only requested when the text model is idle, so a finished sentence waits for at most one of them.
-- **Summaries and questions** (✨ and 💬) use the same text model, in JSON mode. With the default 8k-token context they read the last 20 minutes or so of a talk. Raise `LOCAL_LLM_CONTEXT` if your machine has memory to spare.
+- **Summaries and questions** (*What did I miss?* and *Ask the talk*) use the same text model, in JSON mode. With the default 8k-token context they read the last 20 minutes or so of a talk. Raise `LOCAL_LLM_CONTEXT` if your machine has memory to spare.
 
 The code is in `src/engines/local.js` (streaming), `src/local/asr.js` (speech server client), `src/local/llm.js` (text model client) and `scripts/local-asr-server.js` (the bundled speech server). The design decision is recorded in [ADR 0009](adr/0009-local-engine-with-whisper-and-ollama.md).
 

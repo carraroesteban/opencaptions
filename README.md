@@ -10,6 +10,7 @@
 Live captions and translation for conferences, classrooms, town halls and any event with a microphone.<br>
 On every phone, on the big screen and in your livestream. Free and open source.
 
+[![Release](https://img.shields.io/github/v/release/carraroesteban/opencaptions?color=111014)](https://github.com/carraroesteban/opencaptions/releases/latest)
 [![CI](https://github.com/carraroesteban/opencaptions/actions/workflows/ci.yml/badge.svg)](https://github.com/carraroesteban/opencaptions/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-111014)](LICENSE)
 [![Node.js ≥ 20](https://img.shields.io/badge/node-%E2%89%A5%2020-339933?logo=nodedotjs&logoColor=white)](docs/requirements.md)
@@ -57,6 +58,7 @@ Conferences and summits · universities and schools · places of worship · town
 - **What did I miss?** A summary of the last five minutes, or the whole session, in the reader's language.
 - **Ask the talk.** Questions answered only from what was said, with quotes and timestamps.
 - **Transcripts** to read, search, print and download (TXT, SRT, VTT).
+- **Who's speaking:** the crew taps the speaker's name (from the agenda, the host or Q&A) and captions, transcripts and exports say who said what.
 - **Accessibility settings:** text size, high-legibility fonts, line spacing, light and dark themes, floating captions and translated audio in headphones.
 
 </td>
@@ -86,6 +88,8 @@ Conferences and summits · universities and schools · places of worship · town
 - **Printable QR posters** for every room, in one click.
 - **Glossary** so names, brands and specialist terms are spelled right.
 - **Offline backup:** if the venue loses internet, captions switch to AI running on your laptop and come back to the cloud on their own.
+- **Alerts on your phone** through ntfy, Telegram, Slack, Discord or a webhook, when a room loses its sound, the AI keeps failing, a talk runs over or the internet drops.
+- **Event report:** every talk with its length, words, audience and AI cost, printable or as a spreadsheet.
 - **Secure by default:** signed-in sessions, a crew role for volunteers, optional two-factor or company sign-in, and no inbound ports needed.
 
 </td>
@@ -107,17 +111,18 @@ Conferences and summits · universities and schools · places of worship · town
 ### Without the terminal
 
 1. Install **Node.js** (the LTS version) from [nodejs.org](https://nodejs.org/en/download). It's free.
-2. Download **[OpenCaptions as a ZIP](https://github.com/carraroesteban/opencaptions/archive/refs/heads/main.zip)** and unzip it.
-3. Double-click **Start OpenCaptions** (`Start OpenCaptions.command` on a Mac, `Start OpenCaptions.bat` on Windows).
+2. Download **[OpenCaptions for Mac](https://github.com/carraroesteban/opencaptions/releases/latest/download/OpenCaptions-mac.zip)** or **[OpenCaptions for Windows](https://github.com/carraroesteban/opencaptions/releases/latest/download/OpenCaptions-windows.zip)**.
+3. **Mac:** unzip it, drag **OpenCaptions** to Applications and open it. **Windows:** extract the ZIP and double-click **Start OpenCaptions**.
 
-The first time, it installs what it needs (about a minute), then opens the dashboard in your browser. The welcome wizard asks for the event name, rooms and languages, connects Gemini with your API key, and can create a public HTTPS address for the QR codes with one click. Keep the window open while you use it; close it to stop OpenCaptions.
+The first time, it installs what it needs (about a minute), then opens the dashboard in your browser. The welcome wizard asks for the event name, rooms and languages, connects Gemini with your API key, and can create a public HTTPS address for the QR codes with one click. A window shows OpenCaptions running: keep it open during the event, and close it to stop. Your settings and transcripts are kept outside the app, so they survive updates.
 
 <details>
-<summary>The computer says it can't open the file</summary>
+<summary>The computer warns about the app the first time</summary>
 
-- **Mac, "Apple could not verify…":** click **Done**, then open **System Settings → Privacy & Security**, scroll down and click **Open Anyway** next to "Start OpenCaptions". You only do this once. (On older macOS: right-click the file → **Open**.)
-- **Mac, the file opens as text:** open **Terminal**, type `bash ` (with a space), drag the file into the window and press Enter.
-- **Windows, "Windows protected your PC":** click **More info → Run anyway**.
+The launchers aren't signed with a paid Apple or Microsoft certificate yet, so the first launch asks you to confirm:
+
+- **Mac, "Apple could not verify…":** click **Done**, then open **System Settings → Privacy & Security**, scroll down and click **Open Anyway** next to OpenCaptions. Then allow it to control Terminal (that's the window that shows it running). You only do this once.
+- **Windows, "Windows protected your PC":** click **More info → Run anyway**. If an antivirus blocks the launcher, open the `app` folder and double-click `Start OpenCaptions.bat`.
 
 </details>
 
@@ -186,7 +191,7 @@ Every page and endpoint is listed in the [API reference](docs/reference/api.md#s
 **What you need**
 
 - **One server for the whole event:** a laptop at the venue or a small cloud server, on macOS, Linux or Windows. With Gemini the AI runs in Google's cloud, so one CPU core and 1 GB of RAM are enough for 20 rooms or more.
-- **Node.js 20 or later** (the double-click starter tells you if it's missing), or Docker.
+- **Node.js 20 or later** (the Mac app and Windows launcher tell you if it's missing), or Docker.
 - **A Gemini API key** ([AI Studio](https://aistudio.google.com/apikey)) or a Google Cloud project with Vertex AI. In [local mode](docs/local.md) you need no account at all.
 - **Outbound internet on port 443.** No inbound ports are needed; the dashboard can create a public HTTPS address through Cloudflare Tunnel.
 
@@ -297,13 +302,14 @@ For example, a 40-minute talk captioned from English into Spanish costs about **
 | Look up a setting or an endpoint | [Configuration](docs/reference/configuration.md) · [API](docs/reference/api.md) |
 | Run it without the cloud | [Local mode](docs/local.md) |
 | Customize the look | [Brand and design system](docs/brand.md) |
-| Change the code | [Architecture](docs/architecture.md) · [Contributing](CONTRIBUTING.md) · [ADRs](docs/adr/) |
+| Change the code | [Architecture](docs/architecture.md) · [Contributing](.github/CONTRIBUTING.md) · [ADRs](docs/adr/) |
 
 ## Current limitations
 
 - Gemini Live Translate is a preview model; its behavior and quotas may change.
 - Accuracy with strong accents or very rapid language switching depends on the model. The glossary and pinning a room's language help.
-- Speakers are not labeled yet (no diarization).
+- Speakers are labeled by the crew with one tap; voices aren't told apart automatically yet.
+- The Mac app and Windows launcher aren't signed yet, so the first launch shows a warning to confirm.
 - In local mode a laptop handles about one room, and captions run a few seconds further behind than with Gemini.
 
 ## En español
@@ -315,11 +321,11 @@ For example, a 40-minute talk captioned from English into Spanish costs about **
 - **Para la organización**, un panel con el estado, la demora, el público y el costo de cada sala. Las salas funcionan solas y toman los títulos de la agenda.
 - **Costo:** el software es gratis. Con Gemini, unos US$ 2,2 por hora de charla por sala (el silencio no se cobra). En modo local, nada: corre en tu propia compu y el audio no sale del edificio.
 
-Para empezar sin terminal: instalá [Node.js](https://nodejs.org/es/download), descargá [OpenCaptions en ZIP](https://github.com/carraroesteban/opencaptions/archive/refs/heads/main.zip), descomprimilo y hacé doble clic en **Start OpenCaptions**. El asistente pregunta el nombre del evento, las salas y los idiomas, conecta Gemini con tu API key y crea una dirección pública con HTTPS en un clic. Con Docker: `docker run -d -p 127.0.0.1:8080:8080 -v opencaptions-data:/app/data -v opencaptions-config:/app/config ghcr.io/carraroesteban/opencaptions`. Guía para el día del evento: [event-day.es.md](docs/operations/event-day.es.md).
+Para empezar sin terminal: instalá [Node.js](https://nodejs.org/es/download) y descargá [OpenCaptions para Mac](https://github.com/carraroesteban/opencaptions/releases/latest/download/OpenCaptions-mac.zip) o [para Windows](https://github.com/carraroesteban/opencaptions/releases/latest/download/OpenCaptions-windows.zip). En Mac, arrastrá OpenCaptions a Aplicaciones y abrilo; en Windows, descomprimí el ZIP y hacé doble clic en **Start OpenCaptions**. El asistente pregunta el nombre del evento, las salas y los idiomas, conecta Gemini con tu API key y crea una dirección pública con HTTPS en un clic. Con Docker: `docker run -d -p 127.0.0.1:8080:8080 -v opencaptions-data:/app/data -v opencaptions-config:/app/config ghcr.io/carraroesteban/opencaptions`. Guía para el día del evento: [event-day.es.md](docs/operations/event-day.es.md).
 
 ## Contributing
 
-Issues and pull requests are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) for the development setup, tests and documentation style. Please report vulnerabilities privately: [SECURITY.md](SECURITY.md).
+Issues and pull requests are welcome. See [CONTRIBUTING.md](.github/CONTRIBUTING.md) for the development setup, tests and documentation style. Please report vulnerabilities privately: [SECURITY.md](.github/SECURITY.md).
 
 ## License
 

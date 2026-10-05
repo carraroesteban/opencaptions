@@ -172,3 +172,25 @@ test('own domain: a good token connects on the given address, a bad one stops wi
     assert.match(st.error, /token is not valid/);
   } finally { t.stop(); }
 });
+
+test('two-factor can be turned off on the server computer without a code (the way back after losing the phone)', async () => {
+  const crypto = await import('node:crypto');
+  const totp = (secret, step) => {
+    const A = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+    let bits = 0, value = 0;
+    const key = [];
+    for (const ch of secret) { value = (value << 5) | A.indexOf(ch); bits += 5; if (bits >= 8) { key.push((value >>> (bits - 8)) & 255); bits -= 8; } }
+    const msg = Buffer.alloc(8);
+    msg.writeBigUInt64BE(BigInt(step));
+    const hm = crypto.createHmac('sha1', Buffer.from(key)).update(msg).digest();
+    const o = hm[hm.length - 1] & 15;
+    return String((hm.readUInt32BE(o) & 0x7fffffff) % 1_000_000).padStart(6, '0');
+  };
+  // Requests from 127.0.0.1 with Host 127.0.0.1 are "this computer" (AUTH=auto): no headers needed.
+  const local = (m, u, body) => fetch(`http://127.0.0.1:${PORT}${u}`, { method: m, headers: { 'content-type': 'application/json' }, body: body ? JSON.stringify(body) : undefined });
+  const { secret } = await (await local('POST', '/api/auth/2fa/start')).json();
+  assert.equal((await local('POST', '/api/auth/2fa/confirm', { code: totp(secret, Math.floor(Date.now() / 30_000)) })).status, 200);
+  assert.equal((await (await local('GET', '/api/auth/me')).json()).twoFactor, true);
+  assert.equal((await local('POST', '/api/auth/2fa/disable', {})).status, 200);
+  assert.equal((await (await local('GET', '/api/auth/me')).json()).twoFactor, false);
+});

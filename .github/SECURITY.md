@@ -21,14 +21,14 @@ In scope:
 - The server (`src/`).
 - The pages in `public/`.
 - The scripts and agent (`scripts/`).
-- The Docker image and the deployment files in `deploy/`.
+- The Docker image, the deployment files in `deploy/` and the desktop launchers (`deploy/desktop/`).
 
 Out of scope:
 
 - Vulnerabilities in Google Gemini, Cloudflare or other third-party services.
-- Findings that require `AUTH=off`, or a leaked admin token.
+- Findings that require `AUTH=off`, or a leaked admin password while two-factor sign-in is off.
 - Denial of service through volumetric traffic.
 
 ## Security design
 
-The threat model, controls and hardening checklist are in [docs/security-guide.md](docs/security-guide.md).
+The threat model, controls and hardening checklist are in [docs/security-guide.md](../docs/security-guide.md).

@@ -4,6 +4,18 @@ All notable changes to this project are documented in this file. The format foll
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-10-04
+
+The release that makes OpenCaptions ready for organizers who don't use a terminal, and safe to hand to a crew.
+
+**Highlights**
+
+- **Start without the terminal:** download the Mac app or the Windows launcher from the release page and open it, or run the published Docker image. The welcome wizard asks for the event, the rooms and the languages, connects Gemini with your API key and creates a public HTTPS address for the QR codes.
+- **A dashboard you can't break by accident:** Event mode, history with undo, a trash for rooms, a review step in the wizard.
+- **Safer sign-in:** sessions instead of passwords in the browser, a crew role for volunteers, two-factor codes, company sign-in (Google, Microsoft, any OpenID Connect provider).
+- **For event day:** alerts on your phone, who's-speaking labels, an event report, an offline backup when the internet drops.
+- **Accessibility:** every page passes WCAG 2.2 AA checks (axe-core), and screen readers read each caption once.
+
 ### Added — a production dashboard that protects the event manager's work
 
 - **New dashboard layout:** a sidebar with Live, Rooms, Agenda, Glossary, Screens and QR, Transcripts, History and Settings. The Live view shows only what matters during the event; setup tools moved to their own pages, and the AI switch and setup wizard to Settings.
@@ -18,9 +30,23 @@ All notable changes to this project are documented in this file. The format foll
 - **API key in the dashboard:** the welcome wizard's AI step and **Settings → Gemini** explain where to get a key, check it with Google and connect it. Rooms on simulated captions switch to Gemini right away. The key is kept in `data/secrets.json` (mode 600), wins over `GEMINI_API_KEY`, and is never sent to a browser. Errors are explained (wrong format, rejected, project can't use Gemini, no free quota left, no internet with "Save it anyway"). `POST /api/ai/key/check`, `PUT` and `DELETE /api/ai/key`.
 - **One-click public address:** the wizard's new "Phones" step and **Settings → Public address** start Cloudflare Tunnel: a free `trycloudflare.com` HTTPS address with no account, or a fixed address on your own domain with a tunnel token. `cloudflared` is downloaded the first time (the Docker image includes it). The link appears once it answers from the internet; it comes back after a restart, reconnects if `cloudflared` stops, and warns when a quick address changed. `POST /api/tunnel`, `TUNNEL`, `TUNNEL_HOST`, `CLOUDFLARED_PATH`. See [Deployment](docs/deployment.md#one-click-public-address).
 - **QR codes never point at `localhost`:** without a public address, a dashboard opened as `localhost` gives phones this computer's Wi-Fi address.
-- **Double-click starters:** `Start OpenCaptions.command` (macOS) and `Start OpenCaptions.bat` (Windows), or `npm run app`. They point to the Node.js download if it's missing, install the libraries the first time, start the server and open the dashboard; started twice, they just reopen it. `--open` on the server opens the dashboard.
+- **Desktop downloads:** every release attaches `OpenCaptions-mac.zip` (an app with the OpenCaptions icon) and `OpenCaptions-windows.zip` (`Start OpenCaptions.exe`, a small launcher with the icon, built in CI). They point to the Node.js download if it's missing, install the libraries the first time, start the server in a terminal window and open the dashboard; started twice, they just reopen it. Data is kept outside the app (`~/Library/Application Support/OpenCaptions/data`, `%LOCALAPPDATA%\OpenCaptions\data`), so updating is replacing the app. Developers use `npm run app`; `--open` on the server opens the dashboard. Built with `npm run package`; see [ADR 0011](docs/adr/0011-desktop-launchers.md).
 - **Published Docker image:** `ghcr.io/carraroesteban/opencaptions` (amd64, arm64), built by `.github/workflows/docker.yml` on every push to `main` and every `v*` tag. Runs with `docker run` and two named volumes, nothing to clone or build.
 - The setup checklist and the "Simulated mode" badge now lead to Settings instead of `.env`.
+
+### Added — for event day
+
+- **Alerts on your phone:** when nobody is looking at the dashboard, OpenCaptions sends a message through the free ntfy app, Telegram, Slack, Discord or any webhook: a room's audio disconnected or silent, a muted microphone, the AI failing, translations throttled, captions running late, a talk 5 minutes past the agenda, the offline backup switching, no internet, the public address down or changed. Each problem once when it has lasted a little, and once more when it's over; no alerts for rooms the agenda says are off; at most 20 messages per 10 minutes; pause for an hour or until tomorrow. **Settings → Alerts**, `/api/alerts`. Messages in Spanish or English.
+- **Who's speaking:** a tap on the room card (the agenda's speakers, the host, the audience in Q&A, or any name) labels the captions from then on. Phones show the name when the speaker changes, transcripts start a new paragraph, WebVTT exports get voice tags (`<v Ana Pérez>`), SRT and TXT name the speaker. `POST /api/stages/:id/speaker`. Gemini Live doesn't tell voices apart, so people set it.
+- **Event report** (`/report.html`, from Dashboard → Transcripts): every talk with its length, words, caption languages, peak audience, reading minutes and AI cost, per room and in total, for one day or the whole event. Print it or save it as a PDF, or download a CSV that opens in Excel with its accents. `GET /api/report`, `/api/report.csv`.
+- **Accessibility check:** `npm run a11y` runs axe-core (WCAG 2.2 AA) on every page, in light and dark, Spanish and English; CI runs it on every push. It found and we fixed: icon-only and unlabeled controls, faint text in the setup checklist and on the stage screen (the light theme's warning colour is a little darker now), missing headings and page regions, and an image with an empty description. Screen readers now read each caption once, when it's final, instead of every word as the line is rewritten. See [Accessibility](docs/accessibility.md).
+- **A clear message when Docker can't write its data folder** (the usual Linux permissions problem), with the `chown` command to fix it, instead of a crash.
+
+### Changed — security
+
+- **Strict styles in the Content-Security-Policy:** no more `style=""` attributes (utility classes instead) and no `'unsafe-inline'`; each page's own `<style>` block is allowed by its hash. Injected markup can't restyle a page. A test fails if one comes back.
+- **No passwords in WebSocket URLs:** browsers on room computers get a one-minute, single-use ticket (`POST /api/ingest/ticket`) for the audio socket; the dashboard uses its session cookie. `?token=` is refused on sockets. The agent already sent its password in a header.
+- The security diagram shows the admin, crew and ingest roles.
 
 ### Added — safer dashboard sign-in
 
@@ -44,7 +70,16 @@ All notable changes to this project are documented in this file. The format foll
 
 ### Fixed
 
+- WebVTT exports escape `&`, `<` and `>` in captions, as the format requires: a caption with "Q&A" made the file invalid for some players.
 - `docker compose up` failed on a new install with "required variable TUNNEL_TOKEN is missing a value", even without the tunnel.
+
+### Changed — a tidier project
+
+- **Fewer files at the top of the repository:** the double-click starters moved into the desktop packaging (`deploy/desktop/`), and the contributing guide, security policy and code of conduct into `.github/`, where GitHub still finds them.
+- **Time zone from the browser:** the welcome wizard offers the organizer's time zone and saves it (`data/setup.json`); the example `config/event.json` no longer sets one, so agendas no longer assumed Buenos Aires time. A `TZ` set in the environment still wins.
+- **Lost the phone with the two-factor codes?** On the server computer itself, Settings → Access can turn two-factor sign-in off without a code.
+- Documentation reviewed against the current dashboard (labels, sign-in, roles, downloads), two new ADRs ([0010](docs/adr/0010-sessions-roles-and-company-sign-in.md), [0011](docs/adr/0011-desktop-launchers.md)), and a test that fails when a link or anchor in the Markdown files breaks.
+- Unused interface translations removed; `package.json` has a description, homepage, repository and keywords.
 
 ### Changed — tests
 
@@ -93,30 +128,30 @@ All notable changes to this project are documented in this file. The format foll
 - **Streaming Whisper:** utterances are re-transcribed about once a second while the speaker talks; words two passes agree on are committed and the rest shown as provisional, so captions appear during the sentence. Long monologues are cut at a quiet moment without losing or repeating words; Whisper's typical hallucinations on silence ("Thanks for watching", "Amara.org") and repetition loops are removed; a language the event doesn't use (Galician for Spanish) is re-transcribed in the room's language.
 - **`npm run local`:** finds or starts a speech server (whisper.cpp, WhisperKit on Apple Silicon, or a bundled one on sherpa-onnx that runs on any CPU), starts Ollama, downloads the models once and starts the server. `npm run local -- --check` streams a sample talk through the whole pipeline and reports word error rate, delay and speed.
 - Works with any whisper.cpp or OpenAI-compatible speech server (speaches, LocalAI, WhisperKit) and any Ollama or OpenAI-compatible chat server (LM Studio, llama.cpp, vLLM), so a GPU machine can serve several OpenCaptions servers. Optional separate translation model (`LOCAL_MT_MODEL=translategemma`) with the prompt it was trained on.
-- The setup wizard asks which AI engine to use (Gemini, local or demo); the dashboard shows a 🔒 local chip and tells you what's missing (speech server down, Ollama not running, model not downloaded).
+- The setup wizard asks which AI engine to use (Gemini, local or demo); the dashboard shows a local chip and tells you what's missing (speech server down, Ollama not running, model not downloaded).
 
 ### Added — making it easy for people
 
-- **✨ What did I miss?** on the audience page: a summary of the last 5 minutes (or the whole talk) in the viewer's language, generated from the transcript and cached for everyone.
-- **💬 Ask the talk:** questions answered only from what was said, with quotes and timestamps; says so when the answer isn't there.
+- **What did I miss?** on the audience page: a summary of the last 5 minutes (or the whole talk) in the viewer's language, generated from the transcript and cached for everyone.
+- **Ask the talk:** questions answered only from what was said, with quotes and timestamps; says so when the answer isn't there.
 - **Transcript page** (`/talk.html`): paragraphs with timestamps, search with highlights, language switch, TXT/SRT/VTT download, copy link, print; updates live while the talk runs.
 - **Transcript library** (`/talks.html`) of every talk, searchable by title, speaker or room (`publicTranscripts` in `config/event.json`).
 - **Reading settings** on the audience page: text size, high-legibility fonts (Atkinson Hyperlegible, Lexend), line spacing, light/dark/automatic theme.
-- **📅 Agenda:** paste the schedule as CSV; rooms name their talks (title + speaker) automatically and wait for a pause before switching. "Up next" on the room list and dashboard. Event time zone setting.
-- **🖨 QR kit** (`/kit.html`): printable bilingual A4 posters per room.
+- **Agenda:** paste the schedule as CSV; rooms name their talks (title + speaker) automatically and wait for a pause before switching. "Up next" on the room list and dashboard. Event time zone setting.
+- **QR kit** (`/kit.html`): printable bilingual A4 posters per room.
 - **`npm run setup`:** a one-minute wizard that writes `.env` and `config/event.json` and prints the next steps.
 - Dashboard **getting-started checklist**, agenda editor, links to the kit and library, live transcript link per room.
 
 ### Added — product polish
 
 - **App identity:** icon, favicon, home-screen icon, installable web app manifest (named after the event), and link previews with an image for WhatsApp, Slack and LinkedIn. The logo on every secondary page links back to the dashboard (operator pages) or the room list (audience pages).
-- **⧉ Floating captions** on the audience page (desktop): an always-on-top window over the livestream, the slides or a video call. Chrome and Edge use Document Picture-in-Picture (resizable, follows the reading settings); other browsers fall back to video picture-in-picture.
+- **Floating captions** on the audience page (desktop): an always-on-top window over the livestream, the slides or a video call. Chrome and Edge use Document Picture-in-Picture (resizable, follows the reading settings); other browsers fall back to video picture-in-picture.
 - **README** rewritten in the style of well-known self-hosted projects (logo, badges, one hero image, quick start without an API key, install options, supported-platforms table, cost, documentation map) with a new, consistent screenshot set in `docs/images/`.
 - **Setup wizard:** numbered questions, a check that the API key looks like a Gemini key, this computer's LAN address (instead of `localhost`) in the links for other devices, and a one-line sample feed to try it without audio hardware.
 - **Agenda from Swapcard / Sessionize / Sheets:** paste the export straight from Excel or Google Sheets. Columns are recognized by their header (English or Spanish), rooms by name ("Sala A - Planta baja" → `sala-a`), dates in `DD/MM/YYYY`, US, ISO or `HH:MM` form, and rows for rooms without captions are skipped and reported instead of failing the import.
 - **The agenda is context for the AI:** the current and next talk's title and speaker names go into the recognizer's vocabulary and the translator's glossary, so names are spelled right and not translated.
 - **Bilingual stream overlay:** `overlay.html?…&also=en` (or `orig`) adds a smaller second line in another language, for streams watched in more than one language; also in the style editor (*Second line*). It never repeats the same words twice.
-- **📌 Floating mini-dashboard** for operators: every room's status, alerts and last line in an always-on-top window over OBS or vMix. Clicking a room jumps to its card.
+- **Floating mini-dashboard** for operators: every room's status, alerts and last line in an always-on-top window over OBS or vMix. Clicking a room jumps to its card.
 
 ### Added — bilingual speakers
 

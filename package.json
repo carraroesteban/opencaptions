@@ -1,8 +1,33 @@
 {
   "name": "opencaptions",
-  "version": "0.1.0",
-  "description": "Open-source live captions, translation and 'what did I miss?' summaries for multi-room conferences, powered by Gemini Live Translate and Flash-Lite, or by Whisper and open models running locally.",
+  "version": "0.2.0",
+  "description": "Open-source live captions and translation for every event: on phones, on the stage screen and in the livestream. Gemini in the cloud, or Whisper and open models on your own computer.",
+  "homepage": "https://opencaptions.kvza.ar",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/carraroesteban/opencaptions.git"
+  },
+  "bugs": {
+    "url": "https://github.com/carraroesteban/opencaptions/issues"
+  },
+  "keywords": [
+    "captions",
+    "subtitles",
+    "live-captions",
+    "translation",
+    "accessibility",
+    "events",
+    "conference",
+    "gemini",
+    "whisper",
+    "speech-to-text"
+  ],
+  "license": "MIT",
+  "type": "module",
   "main": "src/server.js",
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "start": "node src/server.js",
     "app": "node scripts/start.js",
@@ -20,9 +45,11 @@
     "subtitle": "node scripts/subtitle.js",
     "local": "node scripts/local.js",
     "site": "node scripts/site.js --serve",
-    "docs:images": "node scripts/render-docs.js"
+    "docs:images": "node scripts/render-docs.js",
+    "a11y": "node scripts/a11y.js",
+    "package": "node scripts/package-desktop.js",
+    "icons": "node scripts/make-app-icons.js"
   },
-  "license": "MIT",
   "dependencies": {
     "@google/genai": "^2.24.0",
     "dotenv": "^18.0.3",
@@ -30,16 +57,13 @@
     "qrcode": "^1.5.4",
     "ws": "^8.21.3"
   },
-  "type": "module",
-  "engines": {
-    "node": ">=20"
-  },
   "optionalDependencies": {
     "ffmpeg-static": "^5.3.0"
   },
   "devDependencies": {
     "@eslint/js": "9.39.5",
     "@types/node": "22.20.5",
+    "axe-core": "4.13.0",
     "eslint": "9.39.5",
     "globals": "17.13.0",
     "typescript": "7.0.2"

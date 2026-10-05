@@ -10,18 +10,19 @@ A shorter Spanish version for venue crews is in [event-day.es.md](event-day.es.m
 
 | Role | Responsibilities |
 |---|---|
-| Server owner | Server, HTTPS, tokens, Gemini billing and quotas |
+| Server owner | Server, HTTPS, passwords and sign-in, Gemini billing and quotas |
 | Room tech (one per 3–5 rooms) | Venue PCs, audio cables, projector and overlay setup, sound check |
-| Production operator | Watches `/admin.html` during talks, titles talks, reacts to alerts |
+| Production operator | Watches `/admin.html` during talks (signed in with the crew password), labels speakers, starts talks that run over, reacts to alerts |
 
 ## One day before
 
 ### Server
 
-- [ ] Start OpenCaptions (double-click **Start OpenCaptions**, `npm start` or Docker) and go through the welcome wizard: event name, rooms, languages, the Gemini API key and the public address. From the terminal, `npm run setup` does the same.
+- [ ] Start OpenCaptions (the Mac app, the Windows launcher, `npm start` or Docker) and go through the welcome wizard: event name, rooms, languages, the Gemini API key and the public address. From the terminal, `npm run setup` does the same.
 - [ ] Choose a topology and deploy the server ([Deployment](../deployment.md)).
 - [ ] Set up HTTPS: **Settings → Public address** (use your own domain for the event: a quick address changes on every restart), or your own proxy with `PUBLIC_URL` set to the final address.
-- [ ] Set `ADMIN_TOKEN` and `INGEST_TOKEN` to long random values (`openssl rand -base64 24`). Store them in the team's password manager.
+- [ ] Note the three passwords from the startup window (admin, crew, room computers), or set your own with `ADMIN_TOKEN`, `CREW_TOKEN` and `INGEST_TOKEN` (`openssl rand -base64 24`). Store them in the team's password manager.
+- [ ] Set up **alerts on your phone** (Settings → Alerts: the free ntfy app takes two minutes) and send a test.
 - [ ] Give volunteers and technicians the **crew password** (live controls only), not the admin one. Turn on **two-factor sign-in** in Settings → Access.
 - [ ] Walk through the [hardening checklist](../security-guide.md#hardening-checklist).
 - [ ] Enable billing on the Gemini project and set a budget alert.
@@ -30,13 +31,13 @@ A shorter Spanish version for venue crews is in [event-day.es.md](event-day.es.m
 
 ### Rooms and glossary
 
-- [ ] Create the rooms in `config/event.json` or with **Dashboard → + Room**.
+- [ ] Create the rooms with the welcome wizard or **Dashboard → Rooms**.
   - `source`: `"auto"` for rooms where hosts or speakers switch language (Spanish-speaking hosts introducing an English talk, Q&A in both languages). Pin it (`"en"`, `"es"`) only when the whole talk is in one language. In both cases, when the speaker switches language every caption track follows: Spanish viewers get Spanish, English viewers get English.
   - `targets`: the caption languages, for example `["es"]` for English talks.
 - [ ] Fill the glossary (**Dashboard → Glossary** or `config/glossary.json`) with speaker names, sponsors, products and acronyms from the schedule. Changes apply immediately.
 - [ ] Design the caption style once in `/style.html` and copy the generated overlay and projector URLs.
-- [ ] Paste the agenda in **Dashboard → 📅 Agenda**. From Swapcard or Sessionize: export the sessions to Excel or Google Sheets, select everything including the header row, copy and paste. Columns are found by their header, rooms by their name, and rows for rooms without captions are skipped. By hand: CSV `room,time,title,speaker` (see `config/schedule.example.csv`). Talks then get their title and speaker automatically, and speaker names and titles are passed to the recognizer and the translator so they're spelled right; a room waits for a pause before switching, so a speaker who runs late is never cut.
-- [ ] Print the QR posters: **Dashboard → 🖨 QR kit** (`/kit.html`), one bilingual A4 poster per room. Check the warning at the top: the QR must point to the public HTTPS address, not `localhost`.
+- [ ] Paste the agenda in **Dashboard → Agenda**; it shows what will change before you save. From Swapcard or Sessionize: export the sessions to Excel or Google Sheets, select everything including the header row, copy and paste. Columns are found by their header, rooms by their name, and rows for rooms without captions are skipped. By hand: CSV `room,time,title,speaker` (see `config/schedule.example.csv`). Talks then get their title and speaker automatically, and speaker names and titles are passed to the recognizer and the translator so they're spelled right; a room waits for a pause before switching, so a speaker who runs late is never cut.
+- [ ] Print the QR posters: **Dashboard → Screens and QR → QR kit** (`/kit.html`), one bilingual A4 poster per room. Check the warning at the top: the QR must point to the public HTTPS address, not `localhost`.
 - [ ] Decide what the audience can read afterwards: `publicTranscripts` in `config/event.json` (`all` = every talk in the library, `current` = only the talk in progress).
 
 ### Rehearsal
@@ -50,7 +51,7 @@ Choose one audio path per room:
 
 | Option | When | Per-room hardware |
 |---|---|---|
-| **A. Pull the stream** | The desk already feeds vMix or OBS | None. **Dashboard → ⚙ → Audio pull**: `rtmp://0.0.0.0:1935/live/<room>` and point OBS/vMix at it (*Stream → Custom → `rtmp://<server>:1935/live`*, key `<room>`), or `srt://…` / `https://…m3u8`. An HLS stream on the LAN needs `PULL_ALLOW_PRIVATE=1`. |
+| **A. Pull the stream** | The desk already feeds vMix or OBS | None. **Dashboard → Rooms → Edit → Audio pull**: `rtmp://0.0.0.0:1935/live/<room>` and point OBS/vMix at it (*Stream → Custom → `rtmp://<server>:1935/live`*, key `<room>`), or `srt://…` / `https://…m3u8`. An HLS stream on the LAN needs `PULL_ALLOW_PRIVATE=1`. |
 | **B. Headless agent** (recommended with a PC) | Audio arrives by cable at a PC | Mini PC running `scripts/agent.js` as a service, with no browser |
 | C. Browser ingest page | Quick or emergency setup | Any PC with Chrome |
 
@@ -68,7 +69,7 @@ Install it as a service so it survives reboots ([Deployment](../deployment.md#ru
 
 **C. Browser page:**
 
-1. Open `https://<server>/ingest.html?stage=<room>&token=<INGEST_TOKEN>` in Chrome. The token is saved and removed from the address bar.
+1. Open `https://<server>/ingest.html?stage=<room>&token=<INGEST_TOKEN>` in Chrome. The room computer keeps the password and removes it from the address bar; the audio connection uses a one-minute ticket, never the password.
 2. Choose the input and channel, and tick **Auto-start**.
 3. For an unattended kiosk, run:
 
@@ -107,50 +108,55 @@ The system:
 
 Turn on **Event mode** (bottom of the dashboard's sidebar, or **Settings**) when doors open. It locks the setup on the server: nobody can delete or change rooms, the agenda, the glossary or the event name by accident. Everything you need during talks keeps working: starting the next talk, renaming the current one, reconnecting a room and the AI switch.
 
+**Who's speaking:** on each room card, tap the speaker's name (the agenda's speakers are listed), **Host**, **Audience (Q&A)** or **Other…**. Captions on phones, the transcript and the subtitle files name the speaker from then on.
+
 When a speaker runs over, the room's card turns orange and says which talk is due. Press **Start "…"** when the next speaker begins, or let the room switch by itself at the next pause. **Next talk** starts one by hand, with the title and speaker from the agenda already filled in.
 
 If something was changed by mistake, open **History** and press **Undo** on that change: deleted rooms come back exactly as they were, and the agenda and glossary return to the previous version. Transcripts are never deleted.
 
 ### Tell the audience
 
-Say it once at the start of each talk (or put it on the break slides): *"Live captions and translation on your phone: scan the QR. Arrived late? Tap ✨ What did I miss?"*
+Say it once at the start of each talk (or put it on the break slides): *"Live captions and translation on your phone: scan the QR. Arrived late? Tap What did I miss?"*
 
 ### Dashboard alerts
+
+With **alerts on your phone** set up (Settings → Alerts), the ones that last reach you wherever you are: a room without audio for a minute, the AI failing, a talk 5 minutes over, no internet.
 
 | Alert | Meaning | Action |
 |---|---|---|
 | **No ingest** | The room isn't sending audio | Check the agent service or the ingest page. After a reboot, autostart brings it back. |
 | **No audio** | Connected, but no audio packets arriving | Check the venue PC's network. Restart the agent or reload the page. |
 | **Muted?** | 60 s of near-silence | Check the desk fader, the cable and the selected input. |
-| **Reconnecting** | The Gemini session is reconnecting | Wait about 5 s. If it persists, press ↻ on the room. Audio is buffered for 12 s. |
-| **High latency** | Transcription more than 6 s behind | Normal for a few seconds after a reconnect. If it persists, press ↻ and check the server's network. |
+| **Reconnecting** | The Gemini session is reconnecting | Wait about 5 s. If it persists, open the room's details and press **Reconnect AI**. Audio is buffered for 12 s. |
+| **High latency** | Transcription more than 6 s behind | Normal for a few seconds after a reconnect. If it persists, press **Reconnect AI** and check the server's network. |
 | **Translation throttled** | Text translation hit a quota limit (429) | Automatic fallback is active. If frequent, raise the tier or set `MT_PARTIAL_MS=3000`. |
 | Misspelled names | Speaker, product or acronym | **Dashboard → Glossary** → add a replacement. It applies instantly. |
-| Wrong language | The talk isn't in the configured language | **Dashboard → ⚙ → Talk language** → `auto` (switches are handled live) |
+| Wrong language | The talk isn't in the configured language | **Dashboard → Rooms → Edit → Talk language** → *Detect automatically* (switches are handled live) |
 
 ### Plan B
 
 | Failure | What happens | What to do |
 |---|---|---|
 | A room loses network | The agent buffers about 15 s and resends | If it lasts longer, connect the PC to a 4G/5G hotspot. |
-| The server loses network | No captions until it returns. Pages reconnect by themselves. | Topology B avoids venue outages affecting the server. |
+| The server loses network | With the [offline backup](../local.md#offline-backup), captions move to this computer in about 15 s and back when the connection is stable. Without it, no captions until it returns; pages reconnect by themselves. | Start with `npm run local -- --fallback` at venues with shaky internet. Topology B avoids venue outages affecting the server. |
 | Server restart | Screens, phones and agents reconnect by themselves. Saved transcripts stay in `data/`. | `docker compose restart` or restart the service |
 | The browser hangs on a venue PC | No audio from that room | Reopen the URL. Kiosk mode with autostart recovers by itself. The agent avoids this entirely. |
 | Gemini outage or credit exhausted | Captions stop. The dashboard shows the error per room, and the server keeps retrying. | Check status and billing in AI Studio. Show a slide explaining captions are temporarily unavailable. |
-| Suspected token leak | Unknown ingest replaces a room's audio | Follow [Responding to a leaked token](../security-guide.md#responding-to-a-leaked-token). |
+| Suspected password leak | An unknown source replaces a room's audio, or an unknown device is signed in | Follow [Responding to a leaked password or a lost device](../security-guide.md#responding-to-a-leaked-password-or-a-lost-device). |
 
 ## End of each day
 
 - [ ] The audience keeps every transcript at `/talks.html` (read, search, summary, download) if `publicTranscripts` is `all`.
 - [ ] **Dashboard → Transcripts** per room: SRT or VTT to upload with the videos, TXT for the blog or accessibility archive.
-- [ ] Back up `data/`.
+- [ ] Back up the data folder ([where it is](../deployment.md#backups-and-upgrades)).
 - [ ] Compare the day's estimated cost on the dashboard with **AI Studio → Usage**.
+- [ ] Pause alerts (**Settings → Alerts → Pause until tomorrow**) so nobody's phone buzzes while rooms are packed up.
 
 ## Quick URL reference
 
 | For | URL |
 |---|---|
-| Audience (QR) | `/s/<room>`. On a laptop, **⧉** floats the captions over any other window. |
+| Audience (QR) | `/s/<room>`. On a laptop, the floating-captions button keeps them over any other window. |
 | Room list | `/` |
 | Transcript of the talk in progress | `/talk.html?stage=<room>` |
 | Transcript library | `/talks.html` |
@@ -158,7 +164,13 @@ Say it once at the start of each talk (or put it on the break slides): *"Live ca
 | Projector | `/screen.html?stage=<room>` |
 | vMix/OBS overlay | `/overlay.html?stage=<room>&lang=es` |
 | Browser ingest | `/ingest.html?stage=<room>&autostart=1` (add `&token=` the first time) |
-| Dashboard | `/admin.html` (add `?token=` the first time from another device) |
+| Dashboard | `/admin.html` (other devices sign in with the admin or crew password) |
+| Event report | `/report.html` |
 | Sound check / live demo | `/demo.html?mode=mic&stage=<room>` |
 | Caption style editor | `/style.html` |
-| Prometheus metrics | `/metrics` with `Authorization: Bearer <ADMIN_TOKEN>` |
+| Prometheus metrics | `/metrics` with `Authorization: Bearer <CREW_TOKEN>` |
+
+## After the event
+
+- [ ] **Dashboard → Transcripts → Event report**: talks, words, audience and AI cost per room. Print it or save it as a PDF for sponsors, or download the CSV for a spreadsheet.
+- [ ] Settings → Access: sign out every other device and change the crew password.

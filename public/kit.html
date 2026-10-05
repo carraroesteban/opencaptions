@@ -49,18 +49,18 @@
   </style>
 </head>
 <body>
-  <div class="bar" data-no-i18n>
-    <a class="brand" href="/admin.html" id="home" style="font-size:16px">OpenCaptions</a>
+  <header class="bar" data-no-i18n>
+    <a class="brand u-fs16" href="/admin.html" id="home">OpenCaptions</a>
     <h1 id="h"></h1>
-    <p class="muted" style="margin:0" id="intro"></p>
+    <p class="muted u-m0" id="intro"></p>
     <div class="card warn hidden" id="localwarn"></div>
     <div class="row">
       <label class="row"><span id="l-rooms"></span> <select id="which"><option value="" id="o-all"></option></select></label>
       <label class="row"><input type="checkbox" id="bilingual" checked /> <span id="l-bi"></span></label>
       <button class="primary" id="print"></button>
     </div>
-  </div>
-  <div class="sheets" id="sheets" data-no-i18n></div>
+  </header>
+  <main class="sheets" id="sheets" data-no-i18n></main>
   <script type="module" src="/pages/kit.js"></script>
 </body>
 </html>

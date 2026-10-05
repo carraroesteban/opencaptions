@@ -7,7 +7,7 @@ audience/production/stage web pages, and three WebSocket endpoints that carry au
   your `PUBLIC_URL`. Set `HTTPS_CERT`/`HTTPS_KEY` (or put TLS in front) for `https://` / `wss://`.
 - **Format**: all request and response bodies are JSON (`Content-Type: application/json`), except file
   exports (`.srt`, `.vtt`, `.txt`) and the QR endpoint (SVG).
-- **Versioning**: OpenCaptions is unversioned pre-1.0 software (`package.json` is at `0.1.0`). There is no
+- **Versioning**: OpenCaptions is pre-1.0 software (0.x, see `package.json`). There is no
   `/v1` prefix and no stability guarantee yet — a route, field or WebSocket message shape can change between
   releases. Check the project's changelog for breaking changes before upgrading a deployed server.
 
@@ -32,7 +32,8 @@ There are three passwords (`src/auth.js`), auto-generated and printed on first s
    sets it; it's `HttpOnly`, `SameSite=Strict`, expires after `SESSION_HOURS`, and changes (`POST`/`PUT`/`PATCH`/`DELETE`)
    made with it must carry an allowed `Origin`.
 2. **A password**: `Authorization: Bearer <password>` (preferred), an `x-admin-token` / `x-ingest-token` header, or
-   `?token=` — accepted on HTTP **GET** only, and on the WebSocket upgrades (browsers can't set headers there). While
+   `?token=` — accepted on HTTP **GET** only, never on WebSocket upgrades (browsers use a ticket from
+   `POST /api/ingest/ticket` for audio, and the session cookie for the dashboard). While
    [two-factor sign-in](#sign-in) is on, the admin password is **refused** this way; use a session, or the server
    computer itself.
 
@@ -48,7 +49,8 @@ else answers `403` with `{ "role": "crew" }`. Unauthenticated calls answer `401`
 | `GET /api/stages/:id/summary`, `POST /api/stages/:id/ask` | Depends on `PUBLIC_TRANSCRIPTS` — see [Audience AI](#audience-ai-summaries--ask) |
 | The live controls listed above, `GET /metrics`, `WS /ws/admin` | Crew or admin |
 | Everything else: rooms, agenda, glossary, setup, Event mode, undo, AI key, public address, `/api/auth/sessions`, `/api/auth/passwords`, `/api/auth/2fa/*` | Admin |
-| `WS /ws/ingest` | Ingest, crew or admin password, or a session |
+| `POST /api/ingest/ticket` | Ingest, crew or admin password (in a header), or a session. Returns `{ ticket, expiresIn: 60 }`: a single-use ticket for `WS /ws/ingest?ticket=…`, so browsers on room computers never put the password in a URL. |
+| `WS /ws/ingest` | A ticket (`?ticket=`), a password in the `Authorization` header (the agent), or a session. A password in the URL (`?token=`) is refused on sockets. |
 | `WS /ws/view` | Public — no auth |
 
 ```bash
@@ -74,7 +76,9 @@ Every JSON error response has the shape:
 | Status | Meaning |
 |---|---|
 | `400` | Bad request — validation error (`error` is the specific message, e.g. `"id: 1-40 chars, a-z 0-9 _ -"`) |
-| `401` | Missing/invalid admin token (`{"error":"admin token required"}`) |
+| `401` | Not signed in, or a wrong password (`{"error":"sign-in required"}`; `twoFactor: true` when the admin password also needs a code) |
+| `403` | Signed in with a role that can't do this (`{"role":"crew"}`), or a change sent from another website |
+| `423` | Event mode is on and this changes the setup (`{"locked":true}`) |
 | `404` | Unknown route under `/api`, unknown stage id (`{"error":"unknown stage"}`), or an unknown talk id (`{"error":"unknown talk"}`) |
 | `429` | Rate limited (`Retry-After` header set) |
 | `500` | Internal error — message is always `"internal error"`; details are logged server-side only, never leaked |
@@ -149,7 +153,7 @@ or `null` when there's no schedule or no upcoming slot.
 
 ### Room administration
 
-All of these require the admin token. `:id` is a stage id (`[a-z0-9][a-z0-9_-]{0,39}`).
+All of these require sign-in as admin, except the live controls the crew may also use (see [Authentication](#authentication)). `:id` is a stage id (`[a-z0-9][a-z0-9_-]{0,39}`).
 
 | Method & path | Notes |
 |---|---|
@@ -162,6 +166,7 @@ All of these require the admin token. `:id` is a stage id (`[a-z0-9][a-z0-9_-]{0
 | `DELETE /api/stages/:id/pull` | Stop a configured audio pull. |
 | `POST /api/stages/:id/pull/stop` | Same as `DELETE …/pull`, as a POST. The demo page calls it with `fetch(…, { keepalive: true })` and the admin header when the tab closes, so the server stops pulling YouTube audio nobody is watching. |
 | `POST /api/stages/:id/restart` | Force-reconnect every model session for the room (manual "↻" button). |
+| `POST /api/stages/:id/speaker` | Who is speaking now. Body `{ "name": "Ana Pérez" }` (`""` clears it). New captions carry it as `spk`, so phones, transcripts and exports name the speaker. Crew or admin. When a talk starts, it's the agenda's first speaker. The room status has `speaker` and `speakers` (the agenda's names for this talk). |
 
 **Request body** for `POST /api/stages` and `PATCH /api/stages/:id` (all fields optional on `PATCH`; `id` is
 required and immutable on create):
@@ -235,6 +240,24 @@ curl -X DELETE http://localhost:8080/api/stages/main/pull -H "Authorization: Bea
 # → { "ok": true }
 ```
 
+### Event report
+
+| Method & path | Auth | Notes |
+|---|---|---|
+| `GET /api/report?day=YYYY-MM-DD` | Crew or admin | Every talk with captions, per room: `{ event, generatedAt, day, days, languages, totals, rooms: [{ id, name, totals, talks: [{ id, title, speaker, speakers, startedAt, durationMs, words, languages, peakViewers, viewerMinutes, costUsd, current }] }] }`. `day` (optional) keeps one day; `days` lists the days with talks. `peakViewers` = most people with the captions open at once; `viewerMinutes` = all of them added up; `costUsd` = this talk's AI spend (estimate). Shown at `/report.html`. |
+| `GET /api/report.csv?day=` | Crew or admin | The same as a spreadsheet (UTF-8 with BOM, so Excel shows accents): `room, talk, speaker, date, start, minutes, words, caption_languages, peak_viewers, viewer_minutes, cost_usd`. Cells that start with `=`, `+`, `-` or `@` are quoted so spreadsheets never run them as formulas. |
+
+### Alerts
+
+| Method & path | Auth | Notes |
+|---|---|---|
+| `GET /api/alerts` | Admin | `{ lang, snoozeUntil, channels: [{ type, topic?, server?, chat?, token?, url? }] }` with tokens and webhook paths shortened (`…abcd`), never in full. |
+| `PUT /api/alerts` | Admin | Body `{ lang: "es" \| "en", channels: [...] }`, each `{ type: "ntfy", topic, server? }`, `{ type: "telegram", token, chat }`, or `{ type: "slack" \| "discord" \| "webhook", url }`. A hidden or empty secret keeps the saved one. Saved in `data/secrets.json`. `400` with the reason if one isn't valid. |
+| `POST /api/alerts/test` | Admin | Sends a test message to every channel: `{ results: [{ type, ok, error? }] }`. |
+| `POST /api/alerts/snooze` | Crew or admin | Body `{ minutes }` (0 resumes, up to 1440). |
+
+What's sent, and when (`src/alerts.js`): a room's audio source disconnected for 1 minute (only if it had one and the agenda says the room is on, or it has no agenda), connected but no sound for 1 minute, a very low level for 2 more minutes, the AI reconnecting for 1 minute, translations throttled for 2 minutes, captions over 6 s late for 3 minutes, a talk 5 minutes past the agenda, the offline backup switching, no internet and no backup for 30 s, the public address down for 30 s or a quick address changing. Each one once, plus once more when it's over. At most 20 messages per 10 minutes; the rest are summed up in one. The generic webhook gets `{ source: "opencaptions", event, room, severity, resolved, title, text, at }`.
+
 ### Transcripts & exports
 
 | Method & path | Auth | Notes |
@@ -256,12 +279,12 @@ controlled by one rule (`canReadTalk` in `src/server.js`), driven by `PUBLIC_TRA
 
 In code this is three middlewares built from the same check: `listAccess` gates the two listing endpoints
 (public only under `all`); `talkAccess` gates a specific talk — `canReadTalk(req, stage, talkId)` is true under
-`all`, or under `current` when `talkId` is the room's current talk (or omitted), or with a valid admin
-token — and falls back to requiring one otherwise; `POST /api/stages/:id/ask` applies the identical
+`all`, or under `current` when `talkId` is the room's current talk (or omitted), or when signed in (crew or
+admin) — and falls back to requiring sign-in otherwise; `POST /api/stages/:id/ask` applies the identical
 `canReadTalk` check inline (see [Audience AI](#audience-ai-summaries--ask)). `GET /api/talks` applies the rule
-per room: `PUBLIC_TRANSCRIPTS=none` with no admin token is `401`; otherwise every room's *current* talk is
-always included, and every room's *saved* talks are added too once the requester can see them (`all`, or an
-admin token).
+per room: `PUBLIC_TRANSCRIPTS=none` without sign-in is `401`; otherwise every room's *current* talk is
+always included, and every room's *saved* talks are added too once the requester can see them (`all`, or
+signed in).
 
 `GET /api/talks` response — every visible talk across every room, most recent first, each with at least one
 caption:
@@ -326,9 +349,9 @@ curl "http://localhost:8080/api/stages/main/export.srt?lang=es" -o captions-es.s
 curl "http://localhost:8080/api/stages/main/export.txt?lang=es&talk=2026-09-24T14-02-10-441Z"
 ```
 
-`/talk.html` (linked from `/watch.html`'s 📄 button, and from `/talks.html`) is where captions actually get
-downloaded — its ⬇ menu exports whichever talk it's showing. The dashboard's transcript links add the admin
-token so past talks can be exported too.
+`/talk.html` (linked from `/watch.html`'s transcript button, and from `/talks.html`) is where captions actually get
+downloaded — its download menu exports whichever talk it's showing. The dashboard's transcript links ride on its
+session, so past talks can be exported too.
 
 **With `STORE_TRANSCRIPTS=false`** nothing is written to disk (`store.enabled` is `false`): `GET
 /api/stages/:id/talks` and the saved-talk half of `/api/talks` are always empty, and every per-talk endpoint
@@ -555,16 +578,16 @@ just that connection with code `1009` instead.
 
 ### `WS /ws/ingest` — send audio into a room
 
-`wss://host/ws/ingest?stage=<id>&kind=<label>&label=<text>&token=<token>`
+`wss://host/ws/ingest?stage=<id>&kind=<label>&label=<text>&ticket=<ticket>` (browsers), or with an `Authorization: Bearer <ingest password>` header (the agent and scripts)
 
 | Query param | Notes |
 |---|---|
 | `stage` | Required. Unknown stage → connection closes with `4004`. |
 | `kind` | Free text, ≤ 20 chars, shown on the dashboard (`browser`, `agent`, `pull`, …). Default `browser`. |
 | `label` | Free text, ≤ 120 chars, shown on the dashboard (e.g. mic device name). |
-| `token` | Ingest or admin token, if not sending it as a header. |
+| `ticket` | A single-use ticket from `POST /api/ingest/ticket` (valid 60 s), if not sending a password header. A `token` parameter is refused. |
 
-**Auth**: ingest or admin token (`canIngest`). **Origin check**: yes. Connecting **replaces** any existing
+**Auth**: a ticket, an ingest/crew/admin password in the `Authorization` header, or a session. **Origin check**: yes. Connecting **replaces** any existing
 ingest for that stage (the previous socket gets a `replaced` message then closes with `4000`), and stops any
 configured server-side `pull` for that stage while attached.
 
@@ -654,8 +677,11 @@ Server → client:
 ```json
 // one per caption update (interim or final)
 { "type": "caption", "id": "es-m1a2b3-7", "channel": "es", "lang": "es",
-  "text": "Bienvenidos a la charla.", "start": 1204, "end": 3980, "final": true }
+  "text": "Bienvenidos a la charla.", "start": 1204, "end": 3980, "final": true, "spk": "Ana Pérez" }
 ```
+
+`spk` is present when the crew has said who is speaking (`POST /api/stages/:id/speaker`). Exports use it: WebVTT
+voice tags (`<v Ana Pérez>`) on every cue, and the name before the text in SRT and TXT when the speaker changes.
 
 ```json
 // whenever the room's operator starts a NEW talk (a new talk.id — clients should clear their captions)
@@ -704,9 +730,9 @@ ws.onmessage = (e) => {
 
 ### `WS /ws/admin` — production dashboard feed
 
-`wss://host/ws/admin?token=<admin-token>`
+`wss://host/ws/admin`
 
-**Auth**: admin token. **Origin check**: yes.
+**Auth**: the dashboard's session cookie (crew or admin), or a password in the `Authorization` header. **Origin check**: yes.
 
 Server → client:
 
@@ -772,8 +798,9 @@ inside every `admin` `status` broadcast:
 
 ## Prometheus metrics
 
-`GET /metrics` — **admin token required**. Prometheus's `authorization` scrape config sends
-`Authorization: Bearer <credentials>` by default, so point it straight at the admin token:
+`GET /metrics` — **the crew or admin password**. Prometheus's `authorization` scrape config sends
+`Authorization: Bearer <credentials>` by default, so point it at the crew password (it keeps working when
+two-factor sign-in is on, unlike the admin password):
 
 ```yaml
 scrape_configs:
@@ -805,16 +832,18 @@ No `HELP`/`TYPE` metadata lines are emitted — just metric samples, one per lin
 
 All served from `public/` at the root path (e.g. `public/watch.html` → `/watch` or `/watch.html`). Every
 page also accepts a global `?ui=es|en|pt` to force the UI language (persisted in `localStorage`), and
-`ingest.html`/`admin.html` accept a one-time `?token=` that is stored locally and then stripped from the URL.
+`admin.html`/`welcome.html` accept a one-time `?token=`, exchanged for a session and stripped from the URL; `ingest.html` accepts one that is kept on that room computer (and sent in a header for a ticket, never in the socket URL).
 
 | Page | Purpose | Query parameters |
 |---|---|---|
 | `/` (`index.html`) | Audience homepage — pick a room. | — |
-| `/watch.html` | Audience caption view (phone-optimized), the `/s/:id` short-link target. A ✨ sheet answers "what did I miss?" and questions about the talk ([Audience AI](#audience-ai-summaries--ask)); an Aa sheet holds text size/font/line-spacing/theme; a 📄 link opens the full transcript on `/talk.html`; ⧉ floats the captions in an always-on-top window (desktop). No download control here — that lives on `/talk.html`. | `stage` (required), `lang` |
-| `/talk.html` | Full transcript reader for one talk: search, per-paragraph timestamps (click to jump), a ⬇ download menu (TXT/SRT/VTT), live-follows the talk in progress, and the same ✨ summary/ask panel as `/watch.html`. | `stage` (required), `talk` (a saved talk id, or omit/`current` for the room's current talk), `lang` |
+| `/watch.html` | Audience caption view (phone-optimized), the `/s/:id` short-link target. A *What did I miss?* sheet answers that and questions about the talk ([Audience AI](#audience-ai-summaries--ask)); an Aa sheet holds text size/font/line-spacing/theme; the transcript button opens the full transcript on `/talk.html`; the floating-captions button keeps them in an always-on-top window (desktop). Lines show the speaker's name when it changes. No download control here — that lives on `/talk.html`. | `stage` (required), `lang` |
+| `/talk.html` | Full transcript reader for one talk: search, per-paragraph timestamps (click to jump), a download menu (TXT/SRT/VTT), live-follows the talk in progress, names speakers, and the same summary/ask panel as `/watch.html`. | `stage` (required), `talk` (a saved talk id, or omit/`current` for the room's current talk), `lang` |
 | `/talks.html` | Public library of talks across every room ([`GET /api/talks`](#transcripts--exports)), searchable/filterable by room, links into `/talk.html`. | — |
 | `/ingest.html` | Browser-based audio ingest for a stage PC (mic / tab-share / file / bundled sample). | `stage`, `mode` (`mic`\|`tab`\|`file`\|`sample`), `autostart=1` |
-| `/admin.html` | Production dashboard (rooms, live status, logs, glossary, links/QR, exports). | — (uses stored/prompted admin token) |
+| `/admin.html` | Production dashboard: live rooms, rooms, agenda, glossary, screens and QR, transcripts, History, Settings (Event mode, access, alerts, Gemini, public address). The crew sees the live controls only. | `dashboard` (skip the first-run redirect to the wizard). Other devices sign in. |
+| `/welcome.html` | The welcome wizard: event name, rooms, languages, the API key, the public address; a review lists every change before applying it. Admins only. | — |
+| `/report.html` | The event report ([`GET /api/report`](#event-report)), printable, with a CSV download. Crew or admin. | `day` (`YYYY-MM-DD`) |
 | `/demo.html` | Sound-check / YouTube play-along demo. | `mode` (`youtube`\|`mic`), `v` (YouTube URL), `t` (start seconds), `stage`, `lang` |
 | `/screen.html` | Full-screen projector captions with follow-on-phone QR. | `stage` (default `main`), `langs` (default `es,orig`), `lines`, `size` (vh), `qr` (`0`), `clock` (`0`), `bg`, plus [caption style params](#caption-style-params) |
 | `/overlay.html` | Transparent/chroma-key broadcast overlay for vMix/OBS. | `stage` (default `main`), `lang` (default `es`), `also` (optional second, smaller line in another language or `orig`; hidden while it would repeat the main line), `lines` (default `2`), `size` (px, default `46`), `pos` (`bottom`\|`top`\|`middle`), `width` (%, default `78`), `margin` (px), `hide` (idle-hide seconds), `chars`, `bg`, plus [caption style params](#caption-style-params) |

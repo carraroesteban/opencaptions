@@ -67,7 +67,11 @@ function paragraphs() {
   const out = [];
   let cur = null;
   for (const s of segs) {
-    if (!cur || s.start - cur.end > 4000 || cur.texts.length >= 5) { cur = { start: s.start, end: s.end, texts: [] }; out.push(cur); }
+    const who = s.spk || '';
+    if (!cur || s.start - cur.end > 4000 || cur.texts.length >= 5 || who !== cur.who) {
+      cur = { start: s.start, end: s.end, texts: [], who, named: !!who && who !== (out[out.length - 1]?.who || '') };
+      out.push(cur);
+    }
     cur.texts.push(s.text);
     cur.end = Math.max(cur.end, s.end);
   }
@@ -81,8 +85,8 @@ function render() {
     const text = p.texts.join(' ');
     if (query) matches += (text.toLowerCase().split(query.toLowerCase()).length - 1);
     const id = `t${Math.floor(p.start / 1000)}`;
-    return `<div class="para" id="${id}"><a class="ts" href="#${id}">${fmtClock(p.start)}</a><p>${hl(text)}</p></div>`;
-  }).join('') + (partial?.text ? `<div class="para"><span class="ts"></span><p class="partial">${liveHtml(partial.text)}</p></div>` : '');
+    return `<div class="para" id="${id}"><a class="ts" href="#${id}">${fmtClock(p.start)}</a><p>${p.named ? `<b class="spk">${esc(p.who)}</b> ` : ''}${hl(text)}</p></div>`;
+  }).join('') + (partial?.text ? `<div class="para" aria-hidden="true"><span class="ts"></span><p class="partial">${liveHtml(partial.text)}</p></div>` : '');
   $('count').textContent = query ? `${matches} ${t('matches')}` : '';
   if (following) scrollEnd();
 }

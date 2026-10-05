@@ -16,6 +16,7 @@ An open ring with a caption line coming out of it. The approved files are in [`p
 | `icon.svg`, `maskable.svg`, `avatar.svg` | App icon, favicon, maskable icon and avatars: ink O on a lime tile. |
 | `icon-192.png`, `icon-512.png`, `maskable-512.png`, `avatar-512.png`, `../favicon.ico`, `../apple-touch-icon.png` | Rasterized from the SVGs above. |
 | `og.png` | Link preview (1200×630). |
+| `../../deploy/desktop/icon-macos.svg`, `OpenCaptions.icns`, `OpenCaptions.ico` | The desktop apps' icons: the app icon on Apple's grid (824 px with a soft shadow, as macOS expects) and full-bleed for Windows. Rebuilt with `npm run icons` on a Mac. |
 | `../../docs/images/social-preview.png` | GitHub social preview (1280×640). Upload it in the repository's **Settings → General → Social preview**. |
 
 The wordmark is **OpenCaptions** in Bricolage Grotesque 800.
@@ -31,6 +32,8 @@ The wordmark is **OpenCaptions** in Bricolage Grotesque 800.
 | `--fog` | `#E8E5DD` | Light surfaces; translation lines on dark |
 
 **The rule:** lime only on ink, or ink on lime. Never lime on paper, and never lime as text on a light background. In the code this means lime is always a *fill* (highlighter, selected pill, primary button in dark mode) with ink on top. When you need an emphasis colour for text or a stroke, use `--accent-fg` (ink in light mode, lime in dark mode).
+
+Status colours (`--ok`, `--warn`, `--bad`) are tuned so text in them stays readable (WCAG 2.2 AA, 4.5:1) on every surface of both themes; `npm run a11y` checks it.
 
 Translation lines (the second language in the overlay, the original under a translation, the projector's second band) use the muted `--translation` token: Fog on dark, Graphite on light. Never a second accent colour.
 
@@ -78,7 +81,8 @@ The sources are small HTML pages in [`docs/diagrams/`](diagrams/) that share `di
 | Path | What |
 |---|---|
 | `public/tokens.css` | Palette, fonts and semantic tokens (light + dark). |
-| `public/style.css` | Shared components: buttons, pills, chips, cards, sheets, logo, highlighter. |
+| `public/style.css` | Shared components: buttons, pills, chips, cards, sheets, logo, highlighter, the sign-in and Settings panels, and small `u-*` utilities. Pages use no `style=""` attributes: the Content-Security-Policy refuses them, so a one-off adjustment is a utility class. |
+| `public/pip.css` | The floating (picture-in-picture) caption and status windows. |
 | `public/illustrations.js` | Small inline SVG illustrations and the button icon set (`icon()`, `mountIcons()`). |
 | `public/art/` | The illustration set (WebP). |
 | `docs/diagrams/` | Sources of the documentation diagrams; `npm run docs:images` renders them to `docs/images/diagrams/`. |

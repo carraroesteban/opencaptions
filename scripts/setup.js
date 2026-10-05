@@ -118,12 +118,12 @@ console.log(`\n${badge('✓ Saved')} ${dim('(previous files kept as .bak)')}\n`)
 console.log(b('Next steps'));
 console.log(`  1. Start the server:            ${b(engine === 'local' ? 'npm run local' : 'npm start')}${engine === 'local' ? dim('  (downloads the models the first time)') : ''}`);
 console.log(`  2. Dashboard on this computer:  http://localhost:8080/admin.html`);
-console.log(`     From another device:         ${base}/admin.html?token=${adminToken}`);
+console.log(`     From another device:         ${base}/admin.html  ${dim('(sign in with the admin token)')}`);
 console.log(`  3. Print the QR posters:        ${base}/kit.html`);
 console.log(`  4. Send audio from each room (headless agent, on the room PC):`);
 for (const s of stages) console.log(`       node scripts/agent.js --stage ${s.id} --server ${base.replace(/^http/, 'ws')} --token ${ingestToken}`);
 console.log(`     …or open ${base}/ingest.html?token=${ingestToken} in Chrome on that PC.`);
-console.log(`  5. Optional: 📅 Agenda in the dashboard — paste your Swapcard/Sessionize/Sheets export so talks get their titles.`);
+console.log(`  5. Optional: Dashboard → Agenda: paste your Swapcard/Sessionize/Sheets export so talks get their titles.`);
 console.log(`  No audio hardware yet? Feed a sample talk:  ${b(`npm run feed -- --stage ${stages[0]?.id || 'main'} --input samples/talk-en.wav`)}`);
 if (engine === 'local') console.log(dim('\n  Local mode needs Ollama for translations (macOS: brew install ollama). npm run local -- --check tests everything end to end.'));
 else if (!env.GEMINI_API_KEY) console.log(dim('\n  Running without an API key: captions are simulated. Add GEMINI_API_KEY to .env when ready and run npm run check.'));

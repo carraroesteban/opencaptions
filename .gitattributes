@@ -1,4 +1,5 @@
-# Windows needs CRLF in batch files; the Mac starter must keep LF.
+# Line endings that must not change on checkout: Windows batch files need CRLF; the macOS launcher and shell
+# scripts need LF.
 *.bat text eol=crlf
-*.command text eol=lf
 *.sh text eol=lf
+deploy/desktop/macos/OpenCaptions text eol=lf

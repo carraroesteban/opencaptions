@@ -176,3 +176,71 @@ button:has(> svg.i), .btn-i { display: inline-flex; align-items: center; gap: 7p
 .access .ax-qr svg { display: block; width: 100%; height: auto; }
 @media (max-width: 600px) { .access .ax-tfa { grid-template-columns: minmax(0, 1fr); } .access .ax-qr { max-width: 200px; } }
 dialog.signin button.sso { width: 100%; justify-content: center; }
+
+/* Small utilities, in place of style="" attributes (the Content-Security-Policy allows no inline styles). They win
+   over component rules, as the attributes they replace did. */
+.u-m0 { margin: 0 !important; }
+.u-mt0 { margin-top: 0 !important; }
+.u-mt6 { margin-top: 6px !important; }
+.u-mt8 { margin-top: 8px !important; }
+.u-mt10 { margin-top: 10px !important; }
+.u-mt12 { margin-top: 12px !important; }
+.u-mt14 { margin-top: 14px !important; }
+.u-m6t { margin: 6px 0 0 !important; }
+.u-m14t { margin: 14px 0 0 !important; }
+.u-mb14 { margin: 0 0 14px !important; }
+.u-h17 { margin: 0 0 4px !important; font-size: 17px !important; }
+.u-fs12 { font-size: 12px !important; }
+.u-fs13 { font-size: 13px !important; }
+.u-fs14 { font-size: 14px !important; }
+.u-fs16 { font-size: 16px !important; }
+.u-fs17 { font-size: 17px !important; }
+.u-fs20 { font-size: 20px !important; }
+.u-stack8 { display: grid !important; gap: 8px !important; }
+.u-stack12 { display: grid !important; gap: 12px !important; }
+.u-stack14 { display: grid !important; gap: 14px !important; }
+.u-gap14 { gap: 14px !important; }
+.u-start { align-content: start !important; }
+.u-stretch { align-items: stretch !important; }
+.u-between { justify-content: space-between !important; }
+.u-grow { flex: 1 !important; }
+.u-grow2 { flex: 2 !important; }
+.u-flex260 { flex: 1 1 260px !important; }
+.u-flex320 { flex: 1 1 320px !important; min-width: 0 !important; }
+.u-minw0 { min-width: 0 !important; }
+.u-minw200 { min-width: 200px !important; }
+.u-minw220 { min-width: 220px !important; }
+.u-w70 { width: 70% !important; }
+.u-w85 { width: 85% !important; }
+.u-w120 { width: 120px !important; }
+.u-h10 { height: 10px !important; }
+.u-left0 { left: 0; }
+.u-num { min-width: 3ch !important; text-align: center !important; }
+.u-center { text-align: center !important; }
+.u-left { text-align: left !important; }
+.u-right { text-align: right !important; }
+.u-fg2 { color: var(--fg2) !important; }
+.u-bad { color: var(--bad) !important; }
+.u-noscript { color: #fff; padding: 20px; }
+.u-btn-sm { padding: 3px 12px !important; font-size: 13px !important; box-shadow: none !important; }
+.u-danger-outline { border-color: color-mix(in srgb, var(--bad) 50%, var(--line)) !important; color: var(--bad) !important; }
+.u-fixed-bottom { position: fixed !important; bottom: 20px; left: 50%; transform: translateX(-50%); }
+.u-help-list { margin: 8px 0 0; padding-left: 18px; display: grid; gap: 6px; }
+.u-code-input { font-size: 24px !important; letter-spacing: .2em; }
+.u-bg-setup { background-image: url(/art/setup.webp) !important; }
+
+/* Settings → Alerts (public/alerts-ui.js) */
+.alerts .al-ch { border: 1px solid var(--line); border-radius: 12px; background: var(--bg2); }
+.alerts .al-ch summary { display: grid; gap: 2px; padding: 10px 12px; cursor: pointer; list-style: none; }
+.alerts .al-ch summary::-webkit-details-marker { display: none; }
+.alerts .al-ch summary label { display: flex; gap: 8px; align-items: center; }
+.alerts .al-ch summary small { color: var(--fg2); font-size: 13px; padding-left: 26px; }
+.alerts .al-body { display: grid; gap: 10px; padding: 0 12px 12px; }
+.alerts .cx-row button svg { width: 16px; height: 16px; margin: 0; }
+
+/* Speaker labels (set on the dashboard): a small name where the speaker changes */
+p[data-spk]::before { content: attr(data-spk); display: block; margin-bottom: .15em; font-family: var(--font); font-size: max(12px, .5em); font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--fg2); }
+.para .spk { display: block; font-size: 13px; letter-spacing: .06em; text-transform: uppercase; color: var(--fg2); margin-bottom: 2px; }
+
+/* Text for screen readers only (a page's heading where the design shows none) */
+.sr-only { position: absolute !important; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }

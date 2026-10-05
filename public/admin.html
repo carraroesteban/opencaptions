@@ -152,6 +152,8 @@
 
     /* settings */
     .role-crew [data-admin], .role-crew [data-setup] { display: none !important; }
+    .stage .speakers { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; font-size: 13px; color: var(--fg2); }
+    .stage .speakers .pill { font-size: 13px; padding: 4px 10px; }
     .me { grid-column: 1 / -1; display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 14px; background: var(--bg3); font-size: 13px; }
     .me svg { width: 18px; height: 18px; flex: none; }
     .me span { flex: 1; min-width: 0; display: grid; }
@@ -171,7 +173,7 @@
     #onboard h2 { font-size: 22px; margin: 0; }
     #onboard ol { list-style: none; padding: 0; margin: 14px 0 0; display: grid; gap: 2px; font-size: 14px; }
     #onboard li { display: flex; gap: 10px; align-items: baseline; padding: 6px 0; }
-    #onboard li.done { opacity: .5; }
+    #onboard li.done, #onboard li.done .muted, #onboard li.done a { color: var(--fg2); } /* faded, but readable (WCAG contrast) */
     #onboard li.done b { text-decoration: line-through; text-decoration-thickness: 1px; }
     #onboard a { color: inherit; font-weight: 700; }
     .ck { flex: none; width: 18px; height: 18px; border-radius: 50%; border: 1.5px solid var(--line-strong); position: relative; top: 3px; }
@@ -219,7 +221,7 @@
       </div>
     </aside>
 
-    <div class="content">
+    <main class="content">
       <div class="topbar"><h1 id="view-title">En vivo</h1><span class="chip" id="engine"></span></div>
       <section class="netbar hidden" id="netbar" role="status"></section>
       <div class="lockedbar hidden" id="lockedbar"></div>
@@ -234,14 +236,14 @@
         </div>
         <section class="card hidden" id="onboard">
           <div class="ob-body">
-            <div class="row" style="justify-content:space-between"><h2>Primeros pasos</h2><button id="ob-hide" class="muted" style="padding:3px 12px;font-size:13px;box-shadow:none">Ocultar</button></div>
+            <div class="row u-between"><h2>Primeros pasos</h2><button id="ob-hide" class="muted u-btn-sm">Ocultar</button></div>
             <ol id="ob-steps" data-no-i18n></ol>
           </div>
-          <div class="ob-art" style="background-image:url(/art/setup.webp)" role="img" aria-label=""></div>
+          <div class="ob-art u-bg-setup" aria-hidden="true"></div>
         </section>
         <div class="grid" id="grid"></div>
         <details class="card log"><summary>Registro de eventos</summary>
-          <div class="row" style="margin-top:10px"><select id="logfilter"><option value="">Todas las salas</option></select></div>
+          <div class="row u-mt10"><select id="logfilter"><option value="">Todas las salas</option></select></div>
           <div id="logs" data-no-i18n></div>
         </details>
       </section>
@@ -251,9 +253,9 @@
         <p class="lede">Cada sala tiene su QR, su pantalla y su overlay. Cada cambio queda en el Historial y se puede deshacer.</p>
         <div class="rowbar"><button class="primary" id="add" data-icon="plus">Nueva sala</button></div>
         <div class="card flush"><table class="table"><thead><tr><th>Sala</th><th class="hide-sm">Idiomas</th><th class="hide-sm">Audio</th><th></th></tr></thead><tbody id="rooms-body" data-no-i18n></tbody></table></div>
-        <div id="trash-box" class="hidden" style="display:grid;gap:14px">
+        <div id="trash-box" class="hidden u-stack14">
           <h2 class="sec">Salas eliminadas</h2>
-          <p class="muted-note" style="margin:0">Sus transcripciones se conservan. Restaurá una sala para tenerla de nuevo tal como estaba.</p>
+          <p class="muted-note u-m0">Sus transcripciones se conservan. Restaurá una sala para tenerla de nuevo tal como estaba.</p>
           <div class="card flush" id="trash-list" data-no-i18n></div>
         </div>
       </section>
@@ -262,9 +264,9 @@
       <section class="view" data-view="agenda">
         <p class="lede">Con la agenda, cada sala nombra sola sus charlas sin cortar a quien se pasa de tiempo, y los nombres de speakers ayudan a la IA a escribirlos bien.</p>
         <div id="agenda-current" data-no-i18n></div>
-        <section class="card" style="display:grid;gap:12px">
-          <h2 style="margin:0;font-size:20px">Reemplazar la agenda</h2>
-          <p class="muted-note" style="margin:0">Desde Swapcard, Sessionize o una planilla: exportá las sesiones, seleccioná todo (con la fila de títulos), copiá y pegá acá. O una charla por línea: sala, hora, título, speaker.</p>
+        <section class="card u-stack12">
+          <h2 class="u-m0 u-fs20">Reemplazar la agenda</h2>
+          <p class="muted-note u-m0">Desde Swapcard, Sessionize o una planilla: exportá las sesiones, seleccioná todo (con la fila de títulos), copiá y pegá acá. O una charla por línea: sala, hora, título, speaker.</p>
           <textarea id="agenda-text" class="paste" placeholder="main,10:00,Keynote de apertura,Equipo del evento&#10;room-a,10:30,Diseñar ciudades para todos,María José Fernández"></textarea>
           <div class="rowbar"><button id="agenda-preview" data-icon="eye">Ver qué cambia</button><span class="spacer"></span></div>
           <div id="agenda-diff" class="hidden" data-no-i18n></div>
@@ -274,15 +276,15 @@
       <!-- GLOSSARY -->
       <section class="view" data-view="glossary">
         <p class="lede">Nombres y términos que la IA tiene que escribir bien, y correcciones que se aplican a todos los subtítulos al instante.</p>
-        <section class="card" style="display:grid;gap:12px">
-          <h2 style="margin:0;font-size:20px">Nombres y términos</h2>
-          <p class="muted-note" style="margin:0">Speakers, marcas, siglas y palabras técnicas. Ayudan al reconocimiento de voz y a la traducción.</p>
+        <section class="card u-stack12">
+          <h2 class="u-m0 u-fs20">Nombres y términos</h2>
+          <p class="muted-note u-m0">Speakers, marcas, siglas y palabras técnicas. Ayudan al reconocimiento de voz y a la traducción.</p>
           <div class="terms" id="terms" data-no-i18n></div>
-          <form class="rowbar" id="term-form"><input id="term-in" placeholder="Ej: María José Fernández" style="flex:1;min-width:200px" maxlength="80" /><button data-icon="plus">Agregar</button></form>
+          <form class="rowbar" id="term-form"><input id="term-in" placeholder="Ej: María José Fernández" class="u-grow u-minw200" maxlength="80" /><button data-icon="plus">Agregar</button></form>
         </section>
-        <section class="card" style="display:grid;gap:12px">
-          <h2 style="margin:0;font-size:20px">Correcciones</h2>
-          <p class="muted-note" style="margin:0">Cuando la IA escribe algo mal siempre igual, corregilo acá. Podés poner varias variantes separadas por una barra vertical.</p>
+        <section class="card u-stack12">
+          <h2 class="u-m0 u-fs20">Correcciones</h2>
+          <p class="muted-note u-m0">Cuando la IA escribe algo mal siempre igual, corregilo acá. Podés poner varias variantes separadas por una barra vertical.</p>
           <table class="table reps"><thead><tr><th>Si dice</th><th>Escribir</th><th class="hide-sm">Idioma</th><th></th></tr></thead><tbody id="reps"></tbody></table>
           <div><button id="rep-add" data-icon="plus">Agregar corrección</button></div>
         </section>
@@ -296,7 +298,7 @@
           <a class="card tool" href="/kit.html" target="_blank"><b data-icon="qr">Kit de QR</b><span>Un cartel A4 por sala, para imprimir.</span></a>
           <a class="card tool" href="/style.html" target="_blank"><b data-icon="palette">Estilo de subtítulos</b><span>Tipografía, colores y posición del overlay y la pantalla.</span></a>
           <a class="card tool" href="/demo.html?mode=mic" target="_blank"><b data-icon="mic">Prueba de sonido</b><span>Hablá al micrófono y mirá los subtítulos.</span></a>
-          <button class="card tool hidden" id="float" type="button" style="text-align:left"><b data-icon="pin">Ventana flotante</b><span>Todas las salas en una ventana siempre visible, encima de OBS o vMix.</span></button>
+          <button class="card tool hidden u-left" id="float" type="button"><b data-icon="pin">Ventana flotante</b><span>Todas las salas en una ventana siempre visible, encima de OBS o vMix.</span></button>
         </div>
         <div class="rowbar"><label class="row">Sala <select id="screens-room"></select></label></div>
         <section class="card links" id="screens-links"></section>
@@ -305,7 +307,7 @@
       <!-- TRANSCRIPTS -->
       <section class="view" data-view="transcripts">
         <p class="lede">Todo lo que se dijo en cada charla, para leer, buscar y descargar en cada idioma.</p>
-        <div class="rowbar"><label class="row">Sala <select id="tx-room"></select></label><span class="spacer"></span><a href="/talks.html" target="_blank"><button data-icon="doc" tabindex="-1">Abrir la biblioteca pública</button></a></div>
+        <div class="rowbar"><label class="row">Sala <select id="tx-room"></select></label><span class="spacer"></span><a href="/report.html" target="_blank"><button data-icon="dashboard" tabindex="-1">Informe del evento</button></a><a href="/talks.html" target="_blank"><button data-icon="doc" tabindex="-1">Abrir la biblioteca pública</button></a></div>
         <div class="card flush" id="tx-list"></div>
       </section>
 
@@ -323,21 +325,26 @@
         </section>
         <section class="card setting">
           <div><h3>Nombre del evento</h3><p>Aparece en los celulares, en la pantalla del escenario y en los carteles.</p></div>
-          <form class="rowbar" id="name-form"><input id="name-in" maxlength="80" style="min-width:220px" /><button data-icon="check">Guardar</button></form>
+          <form class="rowbar" id="name-form"><input id="name-in" maxlength="80" class="u-minw220" /><button data-icon="check">Guardar</button></form>
         </section>
         <section class="card">
-          <h3 style="margin:0 0 4px;font-size:17px">Acceso</h3>
-          <p class="muted-note" style="margin:0 0 14px">Quién puede entrar a este panel, y desde qué dispositivos.</p>
+          <h3 class="u-h17">Acceso</h3>
+          <p class="muted-note u-mb14">Quién puede entrar a este panel, y desde qué dispositivos.</p>
           <div id="access-panel" data-no-i18n></div>
         </section>
         <section class="card">
-          <h3 style="margin:0 0 4px;font-size:17px">Gemini (la IA en la nube)</h3>
-          <p class="muted-note" style="margin:0 0 14px">La API key con la que OpenCaptions usa Gemini. Se guarda en este servidor y nunca se muestra completa.</p>
+          <h3 class="u-h17">Alertas en tu celular</h3>
+          <p class="muted-note u-mb14">Para cuando nadie está mirando el panel.</p>
+          <div id="alerts-panel" data-no-i18n></div>
+        </section>
+        <section class="card">
+          <h3 class="u-h17">Gemini (la IA en la nube)</h3>
+          <p class="muted-note u-mb14">La API key con la que OpenCaptions usa Gemini. Se guarda en este servidor y nunca se muestra completa.</p>
           <div id="key-panel" data-no-i18n></div>
         </section>
         <section class="card">
-          <h3 style="margin:0 0 4px;font-size:17px">Dirección pública</h3>
-          <p class="muted-note" style="margin:0 0 14px">La dirección a la que apuntan los QR y los links.</p>
+          <h3 class="u-h17">Dirección pública</h3>
+          <p class="muted-note u-mb14">La dirección a la que apuntan los QR y los links.</p>
           <div id="tunnel-panel" data-no-i18n></div>
         </section>
         <section class="card setting hidden" id="ai-setting">
@@ -357,15 +364,15 @@
           <span></span>
         </section>
       </section>
-    </div>
+    </main>
   </div>
 
   <!-- dialogs -->
-  <dialog id="dlg-edit"><form method="dialog" id="f-edit" style="display:grid;gap:12px">
-    <h3 style="margin:0" id="edit-title">Sala</h3>
-    <div class="row" style="align-items:stretch">
-      <label class="field" style="flex:1">ID<input name="id" required pattern="[a-z0-9_-]+" /></label>
-      <label class="field" style="flex:2">Nombre<input name="name" required /></label>
+  <dialog id="dlg-edit"><form method="dialog" id="f-edit" class="u-stack12">
+    <h3 class="u-m0" id="edit-title">Sala</h3>
+    <div class="row u-stretch">
+      <label class="field u-grow">ID<input name="id" required pattern="[a-z0-9_-]+" /></label>
+      <label class="field u-grow2">Nombre<input name="name" required /></label>
     </div>
     <label class="field">Idioma de la charla<select name="source"><option value="auto">Detectar automáticamente</option></select></label>
     <div class="field">Traducir a<div class="langs-check" id="edit-targets"></div></div>
@@ -381,20 +388,26 @@
   </form></dialog>
 
   <dialog id="dlg-confirm"><form method="dialog">
-    <h3 style="margin:0" id="cf-title"></h3>
+    <h3 class="u-m0" id="cf-title"></h3>
     <div id="cf-body"></div>
     <div class="dlg-actions"><button value="cancel">Cancelar</button><button value="ok" id="cf-ok"></button></div>
   </form></dialog>
 
-  <dialog id="dlg-talk"><form method="dialog" style="display:grid;gap:12px">
-    <h3 style="margin:0" id="talk-title"></h3>
-    <p class="muted-note" style="margin:0" id="talk-note"></p>
+  <dialog id="dlg-spk"><form method="dialog" class="u-stack12">
+    <h3 class="u-m0" id="spk-title" data-no-i18n></h3>
+    <label class="field">Nombre<input id="spk-name" maxlength="60" autocomplete="off" /></label>
+    <div class="dlg-actions"><button value="cancel" formnovalidate>Cancelar</button><button class="primary" value="ok">Guardar</button></div>
+  </form></dialog>
+
+  <dialog id="dlg-talk"><form method="dialog" class="u-stack12">
+    <h3 class="u-m0" id="talk-title"></h3>
+    <p class="muted-note u-m0" id="talk-note"></p>
     <label class="field">Título<input id="talk-name" maxlength="200" /></label>
     <label class="field">Speaker<input id="talk-speaker" maxlength="120" /></label>
     <div class="dlg-actions"><button value="cancel" formnovalidate>Cancelar</button><button class="primary" value="ok" id="talk-ok"></button></div>
   </form></dialog>
 
-  <dialog id="dlg-export"><div id="export-body"></div><form method="dialog" style="text-align:right;margin-top:12px"><button>Cerrar</button></form></dialog>
+  <dialog id="dlg-export"><div id="export-body"></div><form method="dialog" class="u-right u-mt12"><button>Cerrar</button></form></dialog>
   <div class="notes" id="toasts" aria-live="polite"></div>
 
   <script type="module" src="/pages/admin.js"></script>

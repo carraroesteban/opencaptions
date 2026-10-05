@@ -1,7 +1,8 @@
 # OpenCaptions with Docker Compose.
 #
-#   cp .env.example .env            # add GEMINI_API_KEY (and ADMIN_TOKEN / INGEST_TOKEN)
+#   cp .env.example .env            # optional settings: the API key can also be pasted in the dashboard
 #   docker compose up -d --build    # server on http://localhost:8080
+#   docker compose logs opencaptions | grep "Open the dashboard"   # a link that signs you in
 #   docker compose --profile tunnel up -d   # + Cloudflare Tunnel (set TUNNEL_TOKEN in .env)
 #
 # See docs/deployment.md for the full guide.
@@ -19,7 +20,7 @@ services:
       # Trust X-Forwarded-* from proxies on the private Docker network (the tunnel below).
       TRUST_PROXY: "${TRUST_PROXY:-uniquelocal}"
     ports:
-      # Publish on localhost only by default. Use "8080:8080" to expose it on the LAN (tokens are enforced).
+      # Publish on localhost only by default. Set BIND_ADDR=0.0.0.0 in .env to reach it from the LAN (sign-in is required there).
       - "${BIND_ADDR:-127.0.0.1}:8080:8080"
       # SRT listener ports, if a stage uses `pull: "srt://0.0.0.0:900X?mode=listener"` (vMix / OBS push).
       # - "9001-9010:9001-9010/udp"

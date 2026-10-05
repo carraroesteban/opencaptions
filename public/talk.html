@@ -65,10 +65,10 @@
   </style>
 </head>
 <body>
-  <div class="wrap">
+  <main class="wrap">
     <div class="top">
-      <a class="brand" href="/" style="font-size:17px">OpenCaptions</a>
-      <span class="row" style="gap:14px"><a href="/talks.html" id="back" class="muted">‹ …</a><span id="prefs-slot"></span></span>
+      <a class="brand u-fs17" href="/">OpenCaptions</a>
+      <span class="row u-gap14"><a href="/talks.html" id="back" class="muted">‹ …</a><span id="prefs-slot"></span></span>
     </div>
     <h1 id="title">…</h1>
     <div class="meta" id="meta"></div>
@@ -91,17 +91,17 @@
     </div>
 
     <div class="grid">
-      <main id="doc" aria-live="polite"><div class="empty">…</div></main>
+      <article id="doc" aria-live="polite"><div class="empty">…</div></article>
       <aside>
         <div class="card"><h2 id="sum-title"></h2><div id="assistant"></div></div>
       </aside>
     </div>
-    <button id="follow" class="primary hidden" style="position:fixed;bottom:20px;left:50%;transform:translateX(-50%)"></button>
-  </div>
+    <button id="follow" class="primary hidden u-fixed-bottom"></button>
+  </main>
 
   <dialog id="dlg-set" class="sheet" aria-labelledby="set-title">
     <div class="sheet-head"><h2 id="set-title"></h2><button id="set-close" data-icon="x"></button></div>
-    <div class="set-row"><span id="l-size"></span><span class="row"><button id="smaller">A−</button><b id="size-val" style="min-width:3ch;text-align:center"></b><button id="bigger">A+</button></span></div>
+    <div class="set-row"><span id="l-size"></span><span class="row"><button id="smaller">A−</button><b id="size-val" class="u-num"></b><button id="bigger">A+</button></span></div>
     <div class="set-row"><span id="l-font"></span><span class="row" id="font-opts"></span></div>
     <div class="set-row"><span id="l-lh"></span><span class="row" id="lh-opts"></span></div>
     <div class="set-row"><span id="l-theme"></span><span class="row" id="theme-opts"></span></div>

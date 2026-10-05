@@ -10,8 +10,10 @@ The format is a short version of [MADR](https://adr.github.io/madr/). Copy [temp
 | [0002](0002-gemini-live-translate-for-recognition.md) | Gemini Live Translate for recognition, with echo enabled | Accepted |
 | [0003](0003-text-translation-per-sentence.md) | Translate captions per sentence with a text model by default | Accepted |
 | [0004](0004-outbound-push-ingest.md) | Outbound push ingest from venues, optional server pull | Accepted |
-| [0005](0005-token-auth-with-localhost-trust.md) | Token authentication with localhost trust | Accepted |
+| [0005](0005-token-auth-with-localhost-trust.md) | Token authentication with localhost trust | Accepted, extended by 0010 |
 | [0006](0006-vanilla-js-frontend.md) | Vanilla JavaScript front end, no build step | Accepted |
 | [0007](0007-docker-optional.md) | Docker optional for the server, native for venue agents | Accepted |
 | [0008](0008-grounded-audience-assistant.md) | A grounded, cached audience assistant | Accepted |
 | [0009](0009-local-engine-with-whisper-and-ollama.md) | A local engine: streaming Whisper and a local text model, behind HTTP | Accepted |
+| [0010](0010-sessions-roles-and-company-sign-in.md) | Sessions, an admin and a crew role, and company sign-in (extends 0005) | Accepted |
+| [0011](0011-desktop-launchers.md) | A Mac app and a Windows launcher that run the same server | Accepted |

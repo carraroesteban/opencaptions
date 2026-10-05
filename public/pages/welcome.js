@@ -24,6 +24,7 @@ const T = {
     kR: 'Step 4 of 7 · Review', reviewH: 'Check before anything changes', reviewP: 'Nothing has changed yet. Untick anything you don’t want.', apply: 'Apply changes', skipReview: 'Skip, change nothing',
     noChanges: 'Nothing to change: your event already looks like this.',
     lockedMsg: 'Event mode is on, so the setup is locked. Turn it off in the dashboard’s Settings to apply changes.',
+    opTz: (z) => `Use your time zone for the agenda (${z})`, opTzNote: 'So 10:00 in the agenda means 10:00 where you are. The server runs in another one.',
     opRename: (n) => `Rename the event to “${n}”`, opCreate: (n) => `Add the room “${n}”`, opRenameRoom: (a, b) => `Rename “${a}” to “${b}”`,
     opDelete: (n) => `Remove “${n}”`, opDeleteNote: (k) => (k ? `It has ${k} transcript${k === 1 ? '' : 's'}: they’re kept, and the room can be restored from History.` : 'You can restore it from History.'),
     opLangs: (n, a, b) => `Change “${n}” from ${a} to ${b}`, opCustom: 'This room has its own language setup: tick to change it too.', aiH: 'How captions are made', later: 'Skip for now',
@@ -55,6 +56,7 @@ const T = {
     kR: 'Paso 4 de 7 · Revisión', reviewH: 'Revisá antes de cambiar nada', reviewP: 'Todavía no cambió nada. Destildá lo que no quieras.', apply: 'Aplicar cambios', skipReview: 'Saltar, no cambiar nada',
     noChanges: 'No hay nada que cambiar: tu evento ya está así.',
     lockedMsg: 'El modo evento está activado, así que la configuración está bloqueada. Desactivalo en Ajustes del panel para aplicar cambios.',
+    opTz: (z) => `Usar tu zona horaria para la agenda (${z})`, opTzNote: 'Así las 10:00 de la agenda son las 10:00 donde estás. El servidor está en otra.',
     opRename: (n) => `Renombrar el evento a “${n}”`, opCreate: (n) => `Agregar la sala “${n}”`, opRenameRoom: (a, b) => `Renombrar “${a}” a “${b}”`,
     opDelete: (n) => `Quitar “${n}”`, opDeleteNote: (k) => (k ? `Tiene ${k} ${k === 1 ? 'transcripción' : 'transcripciones'}: se conservan, y la sala se puede recuperar desde el Historial.` : 'Podés recuperarla desde el Historial.'),
     opLangs: (n, a, b) => `Cambiar “${n}” de ${a} a ${b}`, opCustom: 'Esta sala tiene su propia configuración de idiomas: tildala para cambiarla también.', aiH: 'Cómo se generan los subtítulos', later: 'Saltar por ahora',
@@ -143,6 +145,9 @@ async function buildPlan() {
   S = await api('GET', '/api/setup');
   ops = [];
   if (A.name && A.name !== S.name) ops.push({ type: 'rename', label: t.opRename(A.name), on: true });
+  // The server may run elsewhere (Docker defaults to UTC): agenda times should mean the organizer's local time.
+  const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  if (tz && S.timezone && tz !== S.timezone && !S.timezoneFixed) ops.push({ type: 'timezone', tz, label: t.opTz(tz), note: t.opTzNote, on: true });
   const want = A.rooms.filter((r) => r.name.trim());
   const keep = new Set(want.filter((r) => r.id).map((r) => r.id));
   for (const r of want) {
@@ -177,6 +182,8 @@ async function applyPlan() {
   const taken = new Set(S.stages.map((x) => x.id));
   // Additions and renames first, removals last: a failure part-way never leaves the event with fewer rooms.
   if (todo.some((o) => o.type === 'rename')) await api('PUT', '/api/setup', { name: A.name });
+  const tzOp = todo.find((o) => o.type === 'timezone');
+  if (tzOp) await api('PUT', '/api/setup', { timezone: tzOp.tz });
   for (const o of todo.filter((o) => o.type === 'create')) {
     let id = slug(o.name) || 'room', n = 2;
     while (taken.has(id)) id = `${slug(o.name) || 'room'}-${n++}`;

@@ -49,8 +49,17 @@ flowchart LR
 
 | Module | Responsibility |
 |---|---|
-| `src/server.js` | Express HTTP API, static pages, WebSocket endpoints (`ingest`, `view`, `admin`), room registry, persistence of rooms edited at runtime |
-| `src/security.js` | Authentication (`AUTH`, tokens, localhost trust), security headers, rate limits, WebSocket origin checks, SSRF validation for pulls |
+| `src/server.js` | Express HTTP API, static pages, WebSocket endpoints (`ingest`, `view`, `admin`), room registry, persistence of rooms edited at runtime, the event report, the startup screen |
+| `src/config.js` | Reads `config/event.json`, `.env` and the environment into one `config` object; switches the engine at runtime |
+| `src/preflight.js` | Startup checks that end with a clear sentence instead of a stack trace (a data folder it can't write to) |
+| `src/security.js` | The passwords (generated if unset), localhost trust (`AUTH`), security headers and the strict Content-Security-Policy, rate limits, WebSocket origin checks, SSRF validation for pulls |
+| `src/auth.js` | Who is signed in and what they may do: session cookies, the admin and crew roles, signed-in devices, changing passwords, two-factor codes (TOTP) |
+| `src/oidc.js` | Company sign-in with OpenID Connect (PKCE, ID-token checks) |
+| `src/history.js` | The History: every setup change with what it replaced and who made it, undo, and the room trash |
+| `src/aikey.js` | Secrets set from the dashboard (`data/secrets.json`): the Gemini API key (checked with Google first) and the tunnel token |
+| `src/tunnel.js` | The public address: runs Cloudflare's `cloudflared` (downloaded the first time), reads its address, checks it's reachable |
+| `src/alerts.js` | Alerts on the organizers' phones (ntfy, Telegram, Slack, Discord, webhooks): when to send, once, and when it's over |
+| `src/failover.js` | The offline backup: watches the connection to Google and moves rooms between Gemini and the local engine |
 | `src/stage.js` | One room: receives audio, detects speech, gates silence, owns model sessions and caption tracks, measures latency and cost, raises alerts |
 | `src/engines/gemini.js` | One Gemini Live Translate session: config fallbacks, session resumption, reconnect with backoff, 12 s audio buffer while reconnecting |
 | `src/engines/local.js` | Local engine: cuts audio into utterances and makes Whisper stream (re-transcription about once a second, words committed when two passes agree, a final pass per utterance). See [Local mode](local.md#how-it-works). |
@@ -62,10 +71,15 @@ flowchart LR
 | `src/store.js` | Per-talk JSONL storage, retention purge, SRT/VTT/TXT export |
 | `src/pull.js` | Audio sources: native WAV reader, ffmpeg for streams and files, yt-dlp for YouTube, real-time pacing |
 | `src/system.js` | Process and host metrics: CPU, memory, event-loop lag |
+| `src/genai.js` | The one Gemini client every module shares (API key or Vertex AI), rebuilt when the key changes |
+| `src/replay.js` | Records the AI's answers and plays them back, for the end-to-end test without an API key |
+| `src/tty.js` | Terminal output for the server and tools: the brand badge, spinners, progress bars, plain text in logs |
+| `src/audio.js` | PCM16 helpers: the 16 kHz format, sound level (RMS), cutting audio into 100 ms chunks |
 | `src/assist.js` | Audience assistant: *What did I miss?* summaries and *Ask the talk* answers from the transcript (Gemini Flash-Lite), cached and rate-limited, with an extractive fallback |
 | `src/schedule.js` | Agenda: parses CSV/JSON, finds the current and next talk per room; the Stage uses it to name talks automatically |
-| `public/` | Vanilla JavaScript pages (audience, projector, overlay, ingest, dashboard, demo, style editor), with no build step |
-| `scripts/` | Headless agent, feed, load test, multi-room latency test, Gemini check, local mode launcher (`local.js`), bundled speech server (`local-asr-server.js`) and local check |
+| `public/` | Vanilla JavaScript pages (audience, transcripts, projector, overlay, ingest, dashboard, wizard, event report, demo, style editor), with no build step |
+| `scripts/` | The starter the desktop apps run (`start.js`), headless agent, feed, load test, multi-room latency test, Gemini check, local mode launcher (`local.js`), bundled speech server (`local-asr-server.js`) and local check; developer tools for the downloads, icons, diagrams and the accessibility check |
+| `deploy/desktop/` | The Mac app and the Windows launcher, their icons and "Read me" files, packaged by `scripts/package-desktop.js` |
 
 ## Data flow for one sentence
 
@@ -150,8 +164,8 @@ stateDiagram-v2
 ## State and persistence
 
 - **In memory:** rooms, sessions, caption history (last lines per track), metrics. Losing it only loses the last few seconds of live context.
-- **On disk (`data/`):** transcripts (`transcripts/<room>/<talk>/`), rooms created at runtime (`stages.json`), generated tokens (`secrets.json`), latency reports.
-- **Config (`config/`):** event and rooms (`event.json`), glossary (`glossary.json`, also written by the dashboard).
+- **On disk (`data/`, or the desktop apps' data folder):** transcripts and each talk's audience and cost (`transcripts/<room>/<talk>/`), rooms created at runtime (`stages.json`), the wizard's answers, Event mode and the public address (`setup.json`), the History (`history.jsonl`), signed-in devices (`sessions.json`), passwords, the API key and alert destinations (`secrets.json`), latency reports.
+- **Config (`config/`):** event and rooms (`event.json`), glossary (`glossary.json`) and agenda (`schedule.json`), both also written by the dashboard.
 
 There is no database. That's deliberate ([ADR 0001](adr/0001-single-process-node-no-database.md)).
 
@@ -173,9 +187,12 @@ There is no database. That's deliberate ([ADR 0001](adr/0001-single-process-node
 
 | Attribute | How it's checked today |
 |---|---|
-| Correctness of segmentation, exports and security rules | Unit tests (`npm test`) in CI on Linux, macOS and Windows |
+| Correctness of segmentation, exports, sign-in and security rules, alerts | Tests (`npm test`) in CI on Linux, macOS and Windows |
+| The whole path, audio to captions, transcripts, exports and summaries | An end-to-end test that replays a recorded Gemini session (`test/e2e.test.js`, re-recorded with `npm run record`) |
+| Accessibility | `npm run a11y`: axe-core, WCAG 2.2 AA, every page in light and dark, in CI |
+| Documentation | Every relative link and anchor is checked by `npm test` |
 | Latency | Dashboard metrics and `npm run multi` reports |
 | Load | `npm run loadtest` (mock engine, many rooms) |
-| Real model behaviour | `npm run check`, manual event rehearsals |
+| Real model behaviour | `npm run check`, and rehearsals with real audio and simulated phones |
 
-There is no automated end-to-end test against the real model, because of cost and quota. See the roadmap in [CONTRIBUTING.md](../CONTRIBUTING.md#roadmap).
+The tests don't call the real model on every change, because of cost and quota; the recorded session stands in for it.

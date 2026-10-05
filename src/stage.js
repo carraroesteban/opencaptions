@@ -15,6 +15,9 @@ const EMA = (prev, v, a = 0.3) => (prev == null ? v : prev * (1 - a) + v * a);
 // Gemini 3.5 Live Translate paid tier: $0.0053/min input + $0.0315/min output audio (Sept 2026 pricing page).
 const USD_PER_SESSION_MIN = 0.0368;
 
+/** "Ana Pérez, Ben Cho y Eva" → ['Ana Pérez', 'Ben Cho', 'Eva'] (agenda speaker fields list several people). */
+export const speakersOf = (s) => String(s || '').split(/\s*(?:[,;&/]|\s+(?:y|and|e)\s+)\s*/).map((n) => n.trim()).filter((n) => n.length > 1 && n.length <= 60);
+
 export class Stage extends EventEmitter {
   constructor(def, { glossary, store, schedule = null }) {
     super();
@@ -94,6 +97,7 @@ export class Stage extends EventEmitter {
     const prev = this.ingest;
     if (prev?.detach) prev.detach('replaced by a new ingest');
     this.ingest = { ...info, since: Date.now() };
+    this.hadIngest = true; // for alerts: a room that never had a source isn't "disconnected"
     this.log('info', `ingest connected: ${info.kind} ${info.label || ''}`.trim());
     this.emit('ingest');
   }
@@ -128,7 +132,7 @@ export class Stage extends EventEmitter {
       if (!this.talkSpoken && this.talkSegments === 0) {
         this.talkSpoken = true;
         this.talk.startedAt = now;
-        this.store.openTalk(this.id, this.talk, this.languages);
+        this.store.openTalk(this.id, this.#talkMeta(), this.languages);
       }
       this.lastSpeechAt = now;
       this.lowLevelSince = 0;
@@ -381,6 +385,7 @@ export class Stage extends EventEmitter {
       const clock = () => Math.max(0, Date.now() - talk.startedAt - lag(ch));
       const tr = new CaptionTrack({ channel: ch, glossary: this.glossary, clock });
       tr.on('caption', (seg) => {
+        if (this.speaker) seg.spk = this.speaker; // who's speaking, for labels and exports (set from the dashboard or the agenda)
         if (seg.final) this.store.append(this.id, talk.id, seg);
         if (talk !== this.talk) return; // late translation of the previous talk: stored there, not shown
         if (seg.final) this.talkSegments++;
@@ -409,18 +414,44 @@ export class Stage extends EventEmitter {
     this.#markScheduleHandled();
   }
 
+  /** Spend so far: the Live sessions plus every translator's text requests. */
+  totalCost() { return this.costUsd + Object.values(this.mtQ || {}).reduce((a, q) => a + (q.stats.usd || 0), 0); }
+
+  /**
+   * Per-talk numbers for the event report (GET /api/report): peak audience, viewer-minutes and cost. Kept on the
+   * talk itself, so store.openTalk saves them in its meta.json (every minute, and when the talk ends).
+   */
+  #countTalk(now) {
+    const t = this.talk;
+    if (!t) return;
+    const dt = Math.min(5000, now - (t._at || now));
+    t._at = now;
+    t.peakViewers = Math.max(t.peakViewers || 0, this.viewers);
+    t.viewerMs = (t.viewerMs || 0) + this.viewers * dt;
+    t.costUsd = +Math.max(0, this.totalCost() - (t._costAt0 ?? this.totalCost())).toFixed(4);
+    if (now - (t._savedAt || 0) > 60_000 && this.talkSegments > 0) { t._savedAt = now; this.store.openTalk(this.id, this.#talkMeta(), this.languages); }
+  }
+  /** The talk as saved: without the counters' internal bookkeeping. */
+  #talkMeta() {
+    const { _at, _costAt0, _savedAt, ...meta } = this.talk;
+    return meta;
+  }
+
   #newTalk(title, announce, speaker = '') {
+    if (this.talk && this.talkSegments > 0) { this.#countTalk(Date.now()); this.store.openTalk(this.id, this.#talkMeta(), this.languages); } // final numbers of the talk that ends
     this.#flushTracks();
     this.talk = { id: new Date().toISOString().replace(/[:.]/g, '-'), title, speaker, startedAt: Date.now() };
+    this.speaker = speakersOf(speaker)[0] || ''; // the agenda's first speaker, until the crew picks another
     this.talkSegments = 0;
     this.talkSpoken = false;
     this.#buildTracks();
     this.mtQ = {}; // new translators bind to the new tracks; old ones finish into the old talk
+    this.talk._costAt0 = this.totalCost(); // after the translators reset: this talk's cost starts here
     this.route = {};
     this.curLang = null; // the next talk may be in another language
     this.pendingLang = null;
     clearTimeout(this.pendingTimer);
-    this.store.openTalk(this.id, this.talk, this.languages);
+    this.store.openTalk(this.id, this.#talkMeta(), this.languages);
     if (announce) {
       this.log('info', `new talk started ${title ? `"${title}"` : ''}`.trim());
       this.emit('talk');
@@ -428,10 +459,24 @@ export class Stage extends EventEmitter {
     }
   }
 
+  /**
+   * Who is speaking now (the crew picks it on the dashboard: a speaker from the agenda, the host, the audience in
+   * Q&A…). New captions carry it, so phones, transcripts and exports can say who said what. '' = no label.
+   * Gemini Live doesn't tell voices apart, so this is set by people, not detected.
+   */
+  setSpeaker(name) {
+    this.speaker = String(name || '').replace(/[\p{Cc}<>]/gu, '').trim().slice(0, 60);
+    this.log('info', this.speaker ? `speaker: ${this.speaker}` : 'speaker label cleared');
+    this.emit('speaker');
+  }
+
   setTitle(title, speaker, { manual = true } = {}) {
     this.talk.title = title;
-    if (speaker !== undefined) this.talk.speaker = speaker;
-    this.store.openTalk(this.id, this.talk, this.languages);
+    if (speaker !== undefined && speaker !== this.talk.speaker) {
+      this.talk.speaker = speaker;
+      this.speaker = speakersOf(speaker)[0] || '';
+    }
+    this.store.openTalk(this.id, this.#talkMeta(), this.languages);
     this.emit('title'); // same talk, new name: viewers keep their captions
     this.#refreshVocabulary();
     if (manual) this.#markScheduleHandled();
@@ -498,6 +543,7 @@ export class Stage extends EventEmitter {
   #housekeeping() {
     const now = Date.now();
     if (this.ticks++ % 15 === 0) this.#applySchedule(now);
+    this.#countTalk(now);
     // Cost: every open session is billed for streamed audio (input + generated output).
     if (this.engines.size && !this.gated && config.engine !== 'local') this.costUsd += (USD_PER_SESSION_MIN / 60) * this.engines.size;
 
@@ -564,6 +610,8 @@ export class Stage extends EventEmitter {
       talk: this.talk,
       nextTalk: this.nextTalk || null,
       dueTalk: this.dueTalk || null,
+      speaker: this.speaker || '',
+      speakers: speakersOf(this.talk?.speaker),
       ingest: this.ingest ? { kind: this.ingest.kind, label: this.ingest.label, since: this.ingest.since } : null,
       level: this.level,
       peak: this.peak,

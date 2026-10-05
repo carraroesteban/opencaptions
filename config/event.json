@@ -3,7 +3,6 @@
   "accent": "#D4FF3A",
   "publicUrl": "",
   "publicTranscripts": "all",
-  "timezone": "America/Argentina/Buenos_Aires",
   "model": "gemini-3.5-live-translate-preview",
   "languages": { "es": "Español", "en": "English", "pt": "Português" },
   "defaultTargets": ["es", "en"],

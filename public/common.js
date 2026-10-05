@@ -100,7 +100,19 @@ export function wsUrl(path, params = {}) {
   return u.toString();
 }
 
-/** WebSocket with automatic reconnect + backoff. */
+/**
+ * A one-minute, single-use ticket to send a room's audio (POST /api/ingest/ticket), so the ingest password never
+ * travels in a WebSocket URL (where proxies log it). The password goes in a header; on the server computer, or
+ * with a dashboard session, none is needed. '' when the server refuses it: the socket then closes with 4001.
+ * @param {string} [password]
+ */
+export async function ingestTicket(password = '') {
+  const r = await fetch('/api/ingest/ticket', { method: 'POST', headers: password ? { authorization: `Bearer ${password}` } : {} });
+  if (!r.ok) return '';
+  return (await r.json()).ticket || '';
+}
+
+/** WebSocket with automatic reconnect + backoff. `urlFn` may be async (e.g. it fetches an ingest ticket). */
 export class Socket {
   constructor(urlFn, handlers = {}) {
     this.urlFn = typeof urlFn === 'function' ? urlFn : () => urlFn;
@@ -109,8 +121,11 @@ export class Socket {
     this.closed = false;
     this.open();
   }
-  open() {
-    const ws = (this.ws = new WebSocket(this.urlFn()));
+  async open() {
+    let url;
+    try { url = await this.urlFn(); } catch { return this.retry(); } // offline: try again like a dropped socket
+    if (this.closed) return;
+    const ws = (this.ws = new WebSocket(url));
     ws.binaryType = 'arraybuffer';
     ws.onopen = () => { this.backoff = 500; this.h.open?.(); };
     ws.onmessage = (e) => (typeof e.data === 'string' ? this.h.message?.(JSON.parse(e.data)) : this.h.binary?.(e.data));
@@ -118,10 +133,14 @@ export class Socket {
       this.h.close?.(e);
       // 4000 = replaced by another ingest, 4001 = bad token, 4004 = unknown room: don't fight it.
       if (this.closed || e.code === 4000 || e.code === 4004 || e.code === 4001) return;
-      // Jitter spreads reconnects when hundreds of phones lose the server at the same moment.
-      setTimeout(() => this.open(), this.backoff * (0.5 + Math.random()));
-      this.backoff = Math.min(this.backoff * 2, 8000);
+      this.retry();
     };
+  }
+  retry() {
+    if (this.closed) return;
+    // Jitter spreads reconnects when hundreds of phones lose the server at the same moment.
+    setTimeout(() => this.open(), this.backoff * (0.5 + Math.random()));
+    this.backoff = Math.min(this.backoff * 2, 8000);
   }
   get ready() { return this.ws?.readyState === 1; }
   send(obj) { if (this.ready) this.ws.send(typeof obj === 'string' || obj instanceof ArrayBuffer || ArrayBuffer.isView(obj) ? obj : JSON.stringify(obj)); }

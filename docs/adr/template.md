@@ -1,6 +1,6 @@
 # NNNN. Title in imperative form
 
-- Status: Proposed | Accepted | Superseded by [NNNN](NNNN-title.md)
+- Status: Proposed | Accepted | Superseded by `[NNNN](NNNN-title.md)`
 - Date: YYYY-MM-DD
 
 ## Context

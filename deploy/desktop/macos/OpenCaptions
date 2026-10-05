@@ -1,0 +1,48 @@
+#!/bin/bash
+# OpenCaptions.app (macOS). The app files travel inside the bundle (Contents/Resources/app). The first time each
+# version runs, they're copied to ~/Library/Application Support/OpenCaptions/app-<version>: macOS may run a
+# downloaded app from a read-only place ("App Translocation"), and the app needs to install its libraries. Settings,
+# passwords and transcripts live in .../OpenCaptions/data, so they survive updates. Then a Terminal window runs
+# OpenCaptions (scripts/start.js), which opens the dashboard; closing the window stops it.
+# Built by scripts/package-desktop.js.
+CONTENTS="$(cd "$(dirname "$0")/.." && pwd)" # OpenCaptions.app/Contents
+SRC="$CONTENTS/Resources/app"
+SUPPORT="$HOME/Library/Application Support/OpenCaptions"
+export PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
+
+case "$(defaults read -g AppleLocale 2>/dev/null)" in es*) ES=1 ;; *) ES= ;; esac
+say() { if [ -n "$ES" ]; then echo "$2"; else echo "$1"; fi; }
+dialog() { osascript -e "button returned of (display dialog \"$1\" buttons {\"$2\", \"$3\"} default button 2 with title \"OpenCaptions\" with icon caution)" 2>/dev/null; }
+
+if ! command -v node >/dev/null 2>&1; then
+  answer=$(dialog "$(say 'OpenCaptions needs Node.js, a free program.\n\nInstall the LTS version, then open OpenCaptions again.' 'OpenCaptions necesita Node.js, un programa gratuito.\n\nInstalá la versión LTS y volvé a abrir OpenCaptions.')" "$(say Cancel Cancelar)" "$(say 'Get Node.js' 'Descargar Node.js')")
+  [ -n "$answer" ] && [ "$answer" != "$(say Cancel Cancelar)" ] && open "https://nodejs.org/en/download"
+  exit 0
+fi
+
+if [ ! -f "$SRC/package.json" ]; then
+  osascript -e "display alert \"OpenCaptions\" message \"$(say 'This copy of OpenCaptions is incomplete. Download it again from github.com/carraroesteban/opencaptions.' 'Esta copia de OpenCaptions está incompleta. Descargala de nuevo de github.com/carraroesteban/opencaptions.')\" as critical" >/dev/null 2>&1
+  exit 1
+fi
+VERSION="$(sed -n 's/.*"version": *"\([^"]*\)".*/\1/p' "$SRC/package.json" | head -1)"
+DEST="$SUPPORT/app-$VERSION"
+if [ ! -f "$DEST/.complete" ]; then
+  rm -rf "$DEST"
+  mkdir -p "$SUPPORT/data"
+  ditto "$SRC" "$DEST" && touch "$DEST/.complete"
+  # Older versions' files (not the data) are no longer needed.
+  for old in "$SUPPORT"/app-*; do [ "$old" != "$DEST" ] && rm -rf "$old"; done
+fi
+
+# A Terminal window running the starter. The first time, macOS asks to let OpenCaptions control Terminal.
+osascript - "$DEST" "$SUPPORT/data" <<'APPLESCRIPT'
+on run argv
+  set appDir to item 1 of argv
+  set dataDir to item 2 of argv
+  set cmd to "cd " & quoted form of appDir & " && clear && DATA_DIR=" & quoted form of dataDir & " GLOSSARY=" & quoted form of (dataDir & "/glossary.json") & " SCHEDULE=" & quoted form of (dataDir & "/schedule.json") & " node scripts/start.js; exit"
+  tell application "Terminal"
+    activate
+    do script cmd
+  end tell
+end run
+APPLESCRIPT
