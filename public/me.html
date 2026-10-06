@@ -33,6 +33,7 @@
     #meters div { display: grid; grid-template-columns: auto 120px; align-items: center; gap: 8px; font-size: 13px; color: var(--fg2); }
     #meters .m { height: 8px; border-radius: 4px; background: var(--bg3); overflow: hidden; }
     #meters i { display: block; height: 100%; width: 0; background: var(--accent); transition: width .1s linear; }
+    .call { color: var(--fg); font-weight: 600; }
     .hint { flex-basis: 100%; margin: 0; font-size: 14px; color: var(--fg2); }
     #ai-box { padding: 14px 16px; border-bottom: 1px solid var(--line); }
     #scroll { flex: 1; overflow-y: auto; padding: 24px 20px 40px; }
@@ -70,6 +71,7 @@
     <label class="field"><span id="to-label"></span><select id="to"></select></label>
     <button class="primary" id="go" type="button"></button>
     <div id="meters" aria-hidden="true"></div>
+    <p class="hint call hidden" id="call" role="status"><span></span> <button type="button" id="call-use" class="linkish hidden"></button></p>
     <p class="hint" id="hint"></p>
   </section>
 

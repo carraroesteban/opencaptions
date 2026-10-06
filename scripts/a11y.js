@@ -55,9 +55,15 @@ const SITE = [...fs.readFileSync(path.join(ROOT, '_site/sitemap.xml'), 'utf8').m
 // Minimal DevTools-protocol driver (as in render-docs.js).
 const port = 9800 + Math.floor(Math.random() * 400);
 const profile = fs.mkdtempSync(path.join(os.tmpdir(), 'oc-a11y-chrome-'));
-const chrome = spawn(CHROME, ['--headless=new', `--remote-debugging-port=${port}`, `--user-data-dir=${profile}`, '--no-first-run', '--autoplay-policy=no-user-gesture-required', 'about:blank'], { stdio: 'ignore' });
+// On CI (GitHub's Ubuntu runners restrict the user namespaces Chrome's sandbox needs) Chrome runs without its
+// sandbox: a throwaway machine opening only our own pages.
+const chrome = spawn(CHROME, ['--headless=new', `--remote-debugging-port=${port}`, `--user-data-dir=${profile}`, '--no-first-run', '--autoplay-policy=no-user-gesture-required',
+  ...(process.env.CI ? ['--no-sandbox'] : []), 'about:blank'], { stdio: ['ignore', 'ignore', 'pipe'] });
+let chromeErr = '';
+chrome.stderr.on('data', (d) => { chromeErr = (chromeErr + d).slice(-2000); });
 let info;
-for (let i = 0; i < 100 && !info; i++) { try { info = await (await fetch(`http://127.0.0.1:${port}/json/version`)).json(); } catch { await sleep(100); } }
+for (let i = 0; i < 300 && !info; i++) { try { info = await (await fetch(`http://127.0.0.1:${port}/json/version`)).json(); } catch { await sleep(100); } }
+if (!info) { tty.fail(`Chrome didn't start (${CHROME})${chromeErr ? `:\n${chromeErr}` : ''}`); app.kill(); siteServer.close(); chrome.kill(); process.exit(1); }
 const ws = new WebSocket(info.webSocketDebuggerUrl, { maxPayload: 256 * 1024 * 1024 });
 await new Promise((r) => ws.once('open', r));
 let seq = 0;

@@ -160,7 +160,7 @@ const api = async (method, url, body, { quiet = false } = {}) => {
 try {
   const setup = await api('GET', '/api/setup', null, { quiet: true });
   if (!setup.done && !qs.has('dashboard') && !isCrew) { location.replace('/welcome.html'); await new Promise(() => {}); }
-  if (setup.mode === 'personal' && !qs.has('dashboard') && !isCrew) { location.replace('/me.html'); await new Promise(() => {}); } // "just for me"
+  if (setup.mode === 'personal' && !isCrew) { location.replace('/me.html'); await new Promise(() => {}); } // "just for me"
   setLocked(!!setup.locked);
 } catch { /* signed out meanwhile: askToken() shows the sign-in */ }
 // Signed out (expired, or signed out from another device): one sign-in screen, then start over.

@@ -4,6 +4,22 @@ All notable changes to this project are documented in this file. The format foll
 
 ## [Unreleased]
 
+## [0.3.1] - 2026-10-06
+
+### Added
+
+- **Just for me notices a call app.** When Zoom, Microsoft Teams, Webex, FaceTime, Discord, Skype or GoTo Meeting is open, the personal page says how to caption the call. On Windows, it offers **Both** with the whole computer's sound in one click. On a Mac, where browsers can't capture another app's sound, it suggests joining the call in the browser. Only the names of running programs are checked, on this computer; a call in a browser tab can't be seen.
+- **Captions in your language from the start:** Just for me translates into the computer's language by default (the browser's first language), and the pages already follow it. Choosing another language or *Don't translate* is remembered.
+
+### Changed
+
+- **Just for me has no event:** the room list, the audience and stage pages, the overlay, the kit, the report and the dashboard all lead to the personal page; no event name appears (it's kept for going back to events); and the transcript list is **My transcripts**, without a room filter, with its back link to your captions.
+
+### Fixed
+
+- **Buttons side by side line up:** a button with an icon (like **Edit** in Rooms) and one without (**Delete**) no longer sit at different heights.
+- **The accessibility check runs on GitHub again:** Chrome on GitHub's Ubuntu runners now starts without its sandbox (only on CI), and if it can't start the check says why instead of crashing.
+
 ## [0.3.0] - 2026-10-05
 
 ### Added

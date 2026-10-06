@@ -4,10 +4,13 @@ import { prefsControls } from '/i18n.js';
 const $ = (id) => document.getElementById(id);
 $('prefs-slot').append(prefsControls({ langs: ['es', 'en', 'pt'] }));
 const ev = await getEvent();
-document.title = `${t('library')} · ${ev.name}`;
-$('h').textContent = t('library');
-$('hint').textContent = t('libraryHint');
-$('back').textContent = `‹ ${t('stages')}`;
+// Just for me: your own transcripts, one room, and back to your captions (not to an event's rooms).
+const mine = !!ev.personal;
+document.title = `${t(mine ? 'myTranscripts' : 'library')} · ${ev.name}`;
+$('h').textContent = t(mine ? 'myTranscripts' : 'library');
+$('hint').textContent = t(mine ? 'myTranscriptsHint' : 'libraryHint');
+$('back').textContent = `‹ ${t(mine ? 'backCaptions' : 'stages')}`;
+if (mine) { $('back').href = '/me.html'; $('room').classList.add('hidden'); }
 $('q').placeholder = t('searchTalks');
 $('foot').textContent = t('poweredBy');
 let talks = [];

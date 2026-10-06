@@ -6,6 +6,7 @@ import path from 'node:path';
 import os from 'node:os';
 import crypto from 'node:crypto';
 import { spawn } from 'node:child_process';
+import { openCallApps } from './call-apps.js';
 import express from 'express';
 import { WebSocketServer } from 'ws';
 import QRCode from 'qrcode';
@@ -180,7 +181,8 @@ app.get('/healthz', (req, res) => {
 
 app.get('/api/event', (req, res) => {
   res.json({
-    name: config.event.name,
+    name: eventName(),
+    personal: personal(),
     accent: config.event.accent,
     publicUrl: publicUrl(req),
     languages: config.event.languages,
@@ -311,6 +313,8 @@ const PERSONAL_ROOM = 'me'; // the room me.html captions into
 // in event mode never the personal one. Its captions are someone's own calls: private in both modes.
 const visibleStages = () => [...stages.values()].filter((st) => personal() === (st.id === PERSONAL_ROOM));
 const isPrivate = (stageId) => personal() || stageId === PERSONAL_ROOM;
+// Just for me has no event: no event name on its pages (the one from an earlier event stays saved for going back).
+const eventName = () => (personal() ? 'OpenCaptions' : config.event.name || 'OpenCaptions');
 const isCurrent = (st, talkId) => !talkId || talkId === st.talk.id;
 const canReadTalk = (req, st, talkId) => (!isPrivate(st.id) && (PUBLIC_TRANSCRIPTS === 'all' || (PUBLIC_TRANSCRIPTS === 'current' && isCurrent(st, talkId)))) || allows(identify(req, reqUrl(req)), 'crew');
 const talkAccess = (req, res, next) => (canReadTalk(req, req.stage, req.query.talk || req.params.talk) ? next() : crew(req, res, next));
@@ -631,6 +635,12 @@ app.get('/auth/oidc/callback', async (req, res) => {
   } catch (e) { back(e.message); }
 });
 
+// Just for me: call apps open on this computer, so the personal page can suggest capturing the call.
+app.get('/api/me/calls', admin, async (req, res) => {
+  if (!personal()) return res.status(404).json({ error: 'only in Just for me' });
+  res.json({ apps: await openCallApps(), platform: process.platform });
+});
+
 app.get('/api/setup', crew, (req, res) => {
   res.json({
     done: !!setup.done,
@@ -924,7 +934,7 @@ app.get('/s/:id', (req, res) => res.redirect(`/watch.html?stage=${encodeURICompo
 
 // Installable web app: "Add to home screen" on phones, its own window on desktops.
 app.get('/manifest.webmanifest', (req, res) => {
-  const name = config.event.name || 'OpenCaptions';
+  const name = eventName();
   res.type('application/manifest+json').send(JSON.stringify({
     name: `${name} · Live captions`,
     short_name: name.length <= 12 ? name : 'Captions',
@@ -943,6 +953,11 @@ app.get('/manifest.webmanifest', (req, res) => {
   }));
 });
 
+// Just for me: the event's pages (room list, audience, stage screen, overlay, kit, report) don't exist; its home is
+// the personal page. Transcripts (talks.html, talk.html) stay: they list only the personal room's.
+app.get(['/', '/index', '/index.html', '/watch', '/watch.html', '/screen', '/screen.html', '/overlay', '/overlay.html', '/kit', '/kit.html',
+  '/report', '/report.html', '/demo', '/demo.html', '/ingest', '/ingest.html', '/s/:id'], (req, res, next) => (personal() ? res.redirect('/me.html') : next()));
+
 // Audience pages: link previews (WhatsApp, Slack, LinkedIn) need the event name and an absolute image URL.
 const htmlEsc = (s) => String(s).replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 const pageCache = new Map();
@@ -957,7 +972,7 @@ app.get(['/', '/index', '/index.html', '/watch', '/watch.html', '/talk', '/talk.
     if (!hit || hit.mtimeMs !== mtimeMs) pageCache.set(file, (hit = { mtimeMs, html: fs.readFileSync(file, 'utf8') }));
     res.type('html').send(hit.html
       .replaceAll('content="/brand/', `content="${origin}/brand/`)
-      .replaceAll('%EVENT%', htmlEsc(config.event.name || 'OpenCaptions')));
+      .replaceAll('%EVENT%', htmlEsc(eventName())));
   } catch { next(); }
 });
 app.use(express.static(path.join(ROOT, 'public'), { extensions: ['html'] }));

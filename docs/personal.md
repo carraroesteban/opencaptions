@@ -2,12 +2,12 @@
 
 OpenCaptions isn't only for events. In **personal mode** it captions, and translates if you like, whatever you're listening to on your own computer: a video call in another language, a class, a video, a conversation in the room. For people who are deaf or hard of hearing, for anyone following a call in their second language, and for anyone who wants a transcript of what they heard.
 
-It's the same download as the event version (the [Mac app or Windows launcher](../README.md#without-the-terminal)). The first time you open it, the welcome screen asks what you want captions for: choose **Just for me**. OpenCaptions remembers it (in its settings, which survive updates): from then on it opens straight to your captions, and never shows the event side unless you ask for it.
+It's the same download as the event version (the [Mac app or Windows launcher](../README.md#without-the-terminal)). The first time you open it, the welcome screen asks what you want captions for: choose **Just for me**. OpenCaptions remembers it (in its settings, which survive updates): from then on it opens straight to your captions, and never shows the event side unless you ask for it. There's no event name to fill in, and no rooms, QR codes or dashboard: any of those pages leads back to your captions.
 
 ## Use it
 
 1. **Listen to:** **Microphone** (you, or a conversation around you), **Computer sound** (what the computer plays), or **Both** (both sides of a call: what you say and what you hear). With **Both**, use headphones: otherwise the microphone also hears the speakers, and everything is captioned twice.
-2. **Translate to:** a language, or *Don't translate*.
+2. **Translate to:** a language, or *Don't translate*. The first time, it's the computer's language.
 3. **Start captions.** Captions appear in big text; when translating, the original runs underneath.
 4. **Floating captions** opens a small always-on-top window, to keep the captions over a video call or a movie (Chrome and Edge; other browsers get a picture-in-picture window).
 5. **A− / A+** change the text size. **Transcript** opens what's being said now, to read, search, summarize or ask about; **Download** saves it as text. **My transcripts** (top right) lists all your past ones.
@@ -20,6 +20,8 @@ Your browser asks what to share:
 - **Mac (Chrome or Edge):** choose the **tab** that's playing (a Meet call, a YouTube video, a web class) and leave **Share tab audio** on. Apple doesn't let browsers share the whole computer's sound; apps outside the browser (the Zoom app, for example) can't be captioned this way yet. The microphone works everywhere.
 
 The picture you share is never used, only its sound.
+
+**A call app open?** When Zoom, Microsoft Teams, Webex, FaceTime, Discord, Skype or GoTo Meeting is running, the page tells you how to caption the call: on Windows, **Both** (one click), sharing the entire screen with its sound; on a Mac, join the call in Chrome or Edge instead (Zoom, Teams and Webex work on the web) and share that tab. OpenCaptions only checks the names of the programs running on this computer, and nothing is sent anywhere. A call in a browser tab (Google Meet, for example) can't be detected: choose **Computer sound** and that tab.
 
 ## The AI
 

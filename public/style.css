@@ -131,6 +131,8 @@ mark { background: var(--hl); color: var(--hl-ink); border-radius: 3px; padding:
 }
 svg.i { width: 16px; height: 16px; flex: none; vertical-align: -3px; }
 button:has(> svg.i), .btn-i { display: inline-flex; align-items: center; gap: 7px; }
+/* Side by side, a button with an icon (flex) and one without would sit on different baselines: line up their middles. */
+button, .btn-i { vertical-align: middle; }
 
 /* search fields with a magnifier (the icon is a CSS mask, so it follows the text colour) */
 .has-icon { position: relative; display: block; }

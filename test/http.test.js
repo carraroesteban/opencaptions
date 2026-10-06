@@ -203,6 +203,15 @@ test('“just for me” mode: captions and transcripts only on this computer (or
     // Only the personal room: the event's rooms (and their transcripts) don't show up in "just for me".
     assert.deepEqual((await (await fetch(`${base}/api/event`)).json()).stages.map((x) => x.id).filter((id) => id !== 'me'), []);
     assert.ok((await (await fetch(`${base}/api/talks`)).json()).talks.every((x) => x.stage === 'me'));
+    // No event in "just for me": its pages lead to the personal page, and no event name shows.
+    for (const page of ['/', '/watch.html?stage=main', '/screen.html?stage=main', '/overlay.html', '/kit.html']) {
+      const r = await fetch(`${base}${page}`, { redirect: 'manual' });
+      assert.equal(r.status, 302, page);
+      assert.equal(r.headers.get('location'), '/me.html', page);
+    }
+    assert.equal((await fetch(`${base}/talks.html`, { redirect: 'manual' })).status, 200, 'transcripts stay');
+    assert.equal((await (await fetch(`${base}/api/event`)).json()).name, 'OpenCaptions');
+    assert.ok(Array.isArray((await (await fetch(`${base}/api/me/calls`)).json()).apps));
     const { default: WebSocket } = await import('ws');
     const view = (headers) => new Promise((resolve) => {
       const ws = new WebSocket(`ws://127.0.0.1:${PORT}/ws/view?stage=main`, { headers });

@@ -14,6 +14,9 @@ const $ = (id) => document.getElementById(id);
 const T = {
   en: {
     chip: 'Just for me', mine: 'My transcripts', toEvents: 'Use it for events', toEventsQ: 'Switch OpenCaptions to events (rooms, QR codes, the dashboard)? Your transcripts stay here, and you can come back to Just for me from the setup wizard.', src: 'Listen to', mic: 'Microphone', screen: 'Computer sound', both: 'Both', device: 'Microphone',
+    callWin: (app) => `${app} is open. To caption the call, choose Both (you and the others; use headphones), then share the entire screen with “Share system audio” on.`,
+    callMac: (app) => `${app} is open. On a Mac, browsers can’t capture another app’s sound: join the call in Chrome or Edge instead (Zoom, Teams and Webex work on the web) and choose Computer sound, then that tab. Or use the Microphone with the speakers on.`,
+    callUse: 'Use Both',
     to: 'Translate to', none: 'Don’t translate', start: 'Start captions', stop: 'Stop',
     hintMic: 'Everything the microphone hears is captioned: you, or a conversation in the room.',
     hintScreen: 'Captions what the computer plays: a call, a video, a class. Your browser asks what to share. On Windows, choose the entire screen and turn on “Share system audio”. On a Mac, choose the tab that’s playing (Chrome or Edge) and turn on its audio.',
@@ -27,6 +30,9 @@ const T = {
   },
   es: {
     chip: 'Solo para mí', mine: 'Mis transcripciones', toEvents: 'Usarlo para eventos', toEventsQ: '¿Pasar OpenCaptions a eventos (salas, códigos QR, el panel)? Tus transcripciones quedan acá, y podés volver a Solo para mí desde el asistente.', src: 'Escuchar', mic: 'Micrófono', screen: 'Sonido de la compu', both: 'Los dos', device: 'Micrófono',
+    callWin: (app) => `${app} está abierto. Para subtitular la llamada, elegí Los dos (vos y los demás; usá auriculares) y compartí la pantalla completa con «Compartir audio del sistema» activado.`,
+    callMac: (app) => `${app} está abierto. En Mac, los navegadores no pueden tomar el sonido de otra app: entrá a la llamada desde Chrome o Edge (Zoom, Teams y Webex funcionan en la web) y elegí Sonido de la compu, y esa pestaña. O usá el Micrófono con los parlantes encendidos.`,
+    callUse: 'Usar Los dos',
     to: 'Traducir a', none: 'No traducir', start: 'Empezar a subtitular', stop: 'Detener',
     hintMic: 'Se subtitula todo lo que escucha el micrófono: vos, o una conversación en la sala.',
     hintScreen: 'Subtitula lo que suena en la compu: una llamada, un video, una clase. El navegador te pregunta qué compartir. En Windows, elegí la pantalla completa y activá «Compartir audio del sistema». En Mac, elegí la pestaña que está sonando (Chrome o Edge) y activá su audio.',
@@ -63,9 +69,16 @@ const findRoom = async () => {
 };
 let room = await findRoom();
 const names = (c) => LANGUAGE_CATALOG[c] || ev.languages[c] || c;
-let to = store.get('me.to', '');
+// Translate into the computer's language by default (captions of a call or video in another language, in yours):
+// the browser's first language, which follows the system's unless changed. "Don't translate" is remembered as ''.
+const osLang = ((navigator.languages || [])[0] || navigator.language || '').slice(0, 2).toLowerCase().replace(/^nb|^nn/, 'no');
+let to = store.get('me.to', null) ?? (LANGUAGE_CATALOG[osLang] ? osLang : LANGUAGE_CATALOG[LANG] ? LANG : '');
 if (!room) {
   await api('POST', '/api/stages', { id: ROOM, name: t.room, source: 'auto', targets: [to || LANG] });
+  room = await findRoom();
+}
+if (to && !(room.languages || []).includes(to)) { // a language chosen here before, or the computer's on the first visit
+  await api('PATCH', `/api/stages/${ROOM}`, { targets: [to] }).catch(() => {});
   room = await findRoom();
 }
 
@@ -106,6 +119,22 @@ $('src').onclick = (e) => {
   if (running) { stop(); start(); }
 };
 renderSource();
+
+// A call app open on this computer (Zoom, Teams…): suggest how to caption the call. The server only reports
+// which known call apps are running; a call in a browser tab can't be seen.
+async function checkCalls() {
+  if (running) return;
+  const r = await fetch('/api/me/calls').then((x) => (x.ok ? x.json() : null)).catch(() => null);
+  const app = r?.apps?.[0];
+  const mac = r?.platform === 'darwin';
+  $('call').classList.toggle('hidden', !app || running);
+  if (!app) return;
+  $('call').querySelector('span').textContent = (mac ? t.callMac : t.callWin)(r.apps.join(', '));
+  $('call-use').textContent = t.callUse;
+  $('call-use').classList.toggle('hidden', mac || source === 'both');
+}
+$('call-use').onclick = () => { source = 'both'; store.set('me.source', source); renderSource(); $('call-use').classList.add('hidden'); };
+
 async function listMics() {
   try {
     const devs = (await navigator.mediaDevices.enumerateDevices()).filter((d) => d.kind === 'audioinput');
@@ -176,6 +205,7 @@ const goLabel = () => { $('go').textContent = running ? t.stop : t.start; $('go'
 async function start() {
   if (running) return;
   running = true; goLabel(); setStatus(t.connecting);
+  $('call').classList.add('hidden');
   try {
     cap = await capture({
       source, deviceId: $('device').value,
@@ -234,3 +264,6 @@ $('smaller').onclick = () => { size = Math.max(16, size - 4); store.set('me.size
 $('bigger').onclick = () => { size = Math.min(72, size + 4); store.set('me.size', size); applySize(); };
 applySize();
 render();
+
+checkCalls(); // here, after everything it reads is set up
+setInterval(checkCalls, 15_000);
