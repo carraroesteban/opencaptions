@@ -18,7 +18,7 @@ Each meeting has its own link: connect again for the next meeting. Captions are 
 2. Under **Closed captions**, turn them on and choose **POST captions to URL** (HTTP POST). Copy the **Captions ingestion URL**.
 3. In OpenCaptions: **Integrations → YouTube Live**, pick the room and language, paste the link, **Connect**.
 
-Viewers turn captions on with the **CC** button. YouTube accepts one caption source per stream. Captions carry the time they were sent, so **the clock of the computer running OpenCaptions must be right** (within a few seconds): YouTube drops captions more than about a minute off.
+Viewers turn captions on with the **CC** button. YouTube accepts one caption source per stream. Each caption carries the time its words were said (the talk's start plus the caption's start, already corrected for the AI's delay), so YouTube shows it in step with the video. **The clock of the computer running OpenCaptions must be right** (within a few seconds): YouTube drops captions more than about a minute off. A correction made from the dashboard isn't sent again to Zoom, YouTube or Teams (they've shown the line already).
 
 ## Captions in Microsoft Teams
 
@@ -65,10 +65,19 @@ Each connector shows how many captions it sent and when, or why it's failing: a 
 
 On the **Agenda** page, **Import**:
 
-- **Sessionize:** in Sessionize, **API / Embed**, create an endpoint that includes **All** data and copy its link (`https://sessionize.com/api/v2/…/view/All`). Breaks and other service sessions are left out.
+- **Sessionize:** in Sessionize, **API / Embed**, create an endpoint that includes **All** data and copy its link (`https://sessionize.com/api/v2/…/view/All`). Service sessions (breaks, lunch, registration) become **breaks**: captions pause and the screens say when the next talk starts; a plenum one counts for every room.
 - **Calendar (.ics):** a link to a published calendar: Google Calendar's *Secret address in iCal format*, Outlook's published *ICS* link, or any `.ics` file online. Each event's **location** is the room, its **title** the talk, and a `Speaker: …` line in the description the speaker. All-day and cancelled events are left out.
 
 Rooms are matched by name (or id) to the event's rooms; talks in other rooms are listed as ignored. As with pasted agendas, you see what changes before saving, and **History** can undo it. **Import again** re-reads the same source after the program changes.
+
+## Breaks from vMix or OBS
+
+When the stream switches to a break (a "Break" slide, ads, "Starting soon"), the room's captions should pause and the screens should say so. Connect the vision mixer in **Integrations → Breaks from the vision mixer**, one per room:
+
+- **vMix:** **Settings → Web Controller → Enable** (port 8088). OpenCaptions reads which input is on air every second (`http://<vmix-pc>:8088/api`) and uses its title.
+- **OBS Studio 28 or newer:** **Tools → WebSocket Server Settings → Enable**, and copy the password. OpenCaptions connects to `ws://<obs-pc>:4455` and follows the program scene.
+
+A scene or input whose name contains one of the **break words** (default: break, pausa, intervalo, receso, almuerzo, lunch, coffee, cafe, publicidad, tanda, comercial, commercial, ads, sponsor, brb, be right back, volvemos, starting soon, empezamos, intermission; whole words, accents ignored) starts a break; switching to any other scene ends it. Only changes act: if the crew resumes captions by hand while the mixer stays on the break scene, it stays resumed. Both run on your production network, so private addresses are fine; the OBS password is kept with the other secrets and never shown again.
 
 ## Already built in
 

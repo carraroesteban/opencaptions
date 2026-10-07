@@ -3,46 +3,46 @@
 // Chrome/Edge desktop: Document Picture-in-Picture (resizable, styled like the page). Elsewhere: a canvas drawn into a
 // picture-in-picture video.
 import { liveText } from '/common.js';
+import { RollUp, tokens } from '/smooth.js';
 
 const canDocPip = 'documentPictureInPicture' in window;
 const canVidPip = !canDocPip && document.pictureInPictureEnabled && 'captureStream' in HTMLCanvasElement.prototype;
 export const floatingSupported = canDocPip || canVidPip;
 
 /**
- * @param {{ button: HTMLElement, text: () => string, live: () => boolean, onError?: () => void }} o
+ * @param {{ button: HTMLElement, text: () => string, live: () => boolean, caps?: () => any[], onError?: () => void }} o
  *   text: what to show (the last ~220 characters); live: true while the last word is still being spoken.
+ *   caps: the paced captions (smooth.js Pacer.shown()): with them, lines roll up like TV captions and never re-wrap.
  * @returns {{ render: () => void, toggle: () => Promise<void> }}
  */
-export function floatingCaptions({ button, text, live, onError }) {
-  let pipWin = null, pipVid = null, pipCv = null;
+export function floatingCaptions({ button, text, live, caps, onError }) {
+  let pipWin = null, pipVid = null, pipCv = null, roll = null;
+  let cvStart = null; // canvas: the first word drawn, always the start of a line, so older lines go without re-wrapping
   button.classList.toggle('hidden', !floatingSupported);
 
   function draw() {
     const g = pipCv.getContext('2d'), W = pipCv.width, H = pipCv.height, pad = 24, lh = 46;
     g.fillStyle = '#111014'; g.fillRect(0, 0, W, H); // ink
     g.font = "700 36px 'Atkinson Hyperlegible Next', system-ui, -apple-system, sans-serif"; g.textBaseline = 'top';
+    // Words with where they come from, so the first line can be pinned to a word (see cvStart).
+    const list = caps ? caps() : [{ id: 't', text: text(), final: !live() }];
+    const words = list.flatMap((c) => tokens(c.text).map((w, i) => ({ id: c.id, i, w: w.trim() })));
+    let k = cvStart ? words.findIndex((x) => x.id === cvStart.id && x.i === cvStart.i) : 0;
+    if (k < 0) k = Math.max(0, words.length - 40);
     const lines = [];
-    let cur = '';
-    for (const w of text().split(/\s+/)) {
-      const next = cur ? `${cur} ${w}` : w;
-      if (cur && g.measureText(next).width > W - pad * 2) { lines.push(cur); cur = w; } else cur = next;
+    let cur = null;
+    for (const x of words.slice(k)) {
+      const next = cur ? `${cur.text} ${x.w}` : x.w;
+      if (cur && g.measureText(next).width > W - pad * 2) { lines.push(cur); cur = { text: x.w, first: x }; } else cur = cur ? { ...cur, text: next } : { text: x.w, first: x };
     }
     if (cur) lines.push(cur);
-    const shown = lines.slice(-3);
-    shown.forEach((l, i) => {
-      const y = pad + i * lh;
-      const cut = i === shown.length - 1 && live() ? l.lastIndexOf(' ') + 1 : l.length;
-      g.fillStyle = '#FAF8F3'; g.fillText(l.slice(0, cut), pad, y); // paper
-      if (cut < l.length) { // live word: ink on a lime highlighter
-        const x = pad + g.measureText(l.slice(0, cut)).width, w = g.measureText(l.slice(cut)).width;
-        g.fillStyle = '#D4FF3A'; g.fillRect(x - 4, y - 3, w + 8, lh - 4);
-        g.fillStyle = '#111014'; g.fillText(l.slice(cut), x, y);
-      }
-    });
+    if (lines.length > 6) cvStart = lines[lines.length - 4].first; // old lines leave whole: the rest wraps the same
+    lines.slice(-3).forEach(({ text: l }, i) => { g.fillStyle = '#FAF8F3'; g.fillText(l, pad, pad + i * lh); }); // paper on ink
   }
 
   function render() {
-    if (pipWin) liveText(pipWin.document.getElementById('t'), text(), !live());
+    if (pipWin && roll) roll.render(caps());
+    else if (pipWin) liveText(pipWin.document.getElementById('t'), text(), !live());
     else if (pipCv) draw();
   }
 
@@ -60,11 +60,13 @@ export function floatingCaptions({ button, text, live, onError }) {
         d.body.className = 'pip-cap';
         d.title = document.title;
         d.body.innerHTML = '<div id="t" aria-live="polite"></div>';
-        pipWin.addEventListener('pagehide', () => { pipWin = null; button.setAttribute('aria-pressed', 'false'); });
+        if (caps) { d.body.classList.add('rolling'); roll = new RollUp(d.getElementById('t')); }
+        pipWin.addEventListener('pagehide', () => { pipWin = null; roll = null; button.setAttribute('aria-pressed', 'false'); });
         button.setAttribute('aria-pressed', 'true');
         render();
       } else {
         pipCv = Object.assign(document.createElement('canvas'), { width: 960, height: 186 });
+        cvStart = null;
         draw();
         pipVid ??= Object.assign(document.createElement('video'), { muted: true, playsInline: true });
         pipVid.srcObject = pipCv.captureStream();

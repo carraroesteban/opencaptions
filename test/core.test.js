@@ -57,6 +57,22 @@ test('exports produce valid SRT/VTT/TXT', () => {
   assert.equal(toTXT(segs), 'Hola a todos. Bienvenidos.\n\nOtra idea.\n');
 });
 
+test('txt export: a paragraph never ends mid-sentence, even when captions were cut at every pause', () => {
+  // The local engine cuts captions at pauses, often mid-sentence: an 8 s pause there must not start a paragraph.
+  const segs = [
+    { start: 0, end: 1000, text: 'Many people here are good at trying to explain' },
+    { start: 9000, end: 10000, text: 'Tor to their friends.' },
+    { start: 15000, end: 16000, text: 'Next topic.' }, // a pause after a sentence: new paragraph
+    { start: 16500, end: 17000, text: 'It goes on' },
+    { start: 50000, end: 51000, text: 'after a long silence.' }, // quiet for a long while: new paragraph anyway
+  ];
+  assert.equal(toTXT(segs), 'Many people here are good at trying to explain Tor to their friends.\n\nNext topic. It goes on\n\nafter a long silence.\n');
+  // A long run of speech is split at a sentence end once the paragraph is long.
+  const long = Array.from({ length: 12 }, (_, i) => ({ start: i * 3000, end: i * 3000 + 2900, text: `Sentence number ${i} is here and it is about fifty characters.` }));
+  const ps = toTXT(long).trim().split('\n\n');
+  assert.ok(ps.length >= 2 && ps.every((p) => /\.$/.test(p) && p.length < 700), JSON.stringify(ps.map((p) => p.length)));
+});
+
 test('ffmpeg args: files are paced in real time, streams are not', () => {
   assert.ok(ffmpegArgs('samples/a.wav').includes('-re'));
   assert.ok(!ffmpegArgs('srt://0.0.0.0:9000?mode=listener').includes('-re'));
@@ -126,5 +142,18 @@ test('saved talks: summaries and transcripts are cached, but never stale', () =>
     assert.equal(store.listTalks('main').length, 0);
     assert.equal(store.readTalk('main', 't1').length, 0, 'nothing cached is left behind');
     assert.equal(store.removeTalk('main', 't1'), false);
+  } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+});
+
+test('saved talks: a caption saved again with its id is a correction (newest text, first place)', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'oc-store-'));
+  try {
+    const store = new Store(dir, { enabled: true });
+    store.openTalk('main', { id: 't1', title: 'One', startedAt: 1 }, ['orig']);
+    store.append('main', 't1', { id: 'a', channel: 'orig', text: 'Helo.', start: 0, end: 1000 });
+    store.append('main', 't1', { id: 'b', channel: 'orig', text: 'Bye.', start: 1000, end: 2000 });
+    assert.deepEqual(store.correct('main', 't1', 'a', 'Hello.'), { id: 'a', channel: 'orig', text: 'Hello.', start: 0, end: 1000, edited: true });
+    assert.deepEqual(store.readTalk('main', 't1').map((x) => x.text), ['Hello.', 'Bye.']);
+    assert.equal(store.correct('main', 't1', 'zz', 'x'), null);
   } finally { fs.rmSync(dir, { recursive: true, force: true }); }
 });

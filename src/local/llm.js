@@ -44,6 +44,7 @@ let thinkOff = true; // Ollama: `think: false` makes reasoning models (qwen3, de
  * @param {object} o
  * @param {string} [o.system]  omitted for models trained on a single user prompt (TranslateGemma)
  * @param {string} o.user
+ * @param {{ role: 'user' | 'assistant', content: string }[]} [o.history]  earlier turns, between the system prompt and `user`
  * @param {boolean} [o.json]   ask for a JSON object
  * @param {string} [o.model]   defaults to LOCAL_LLM_MODEL
  * @param {number} [o.maxTokens]
@@ -52,12 +53,12 @@ let thinkOff = true; // Ollama: `think: false` makes reasoning models (qwen3, de
  * @param {number} [o.priority]  higher goes first when the model is busy (final captions 2, partials 0)
  * @returns {Promise<{ text: string, promptTokens: number, outputTokens: number, ms: number }>}
  */
-export async function chat({ system = '', user, json = false, model = config.localLlmModel, maxTokens = 400, temperature = 0.2, timeoutMs = config.localLlmTimeoutMs, priority = 1 }) {
+export async function chat({ system = '', user, history = [], json = false, model = config.localLlmModel, maxTokens = 400, temperature = 0.2, timeoutMs = config.localLlmTimeoutMs, priority = 1 }) {
   await acquire(priority);
   const t0 = Date.now();
   try {
     const { api } = llmInfo();
-    const messages = [...(system ? [{ role: 'system', content: system }] : []), { role: 'user', content: user }];
+    const messages = [...(system ? [{ role: 'system', content: system }] : []), ...history, { role: 'user', content: user }];
     const out = api === 'openai'
       ? await openaiChat({ model, messages, json, maxTokens, temperature, timeoutMs })
       : await ollamaChat({ model, messages, json, maxTokens, temperature, timeoutMs });

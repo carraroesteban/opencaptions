@@ -38,10 +38,17 @@
     .clip2 { display: none; flex-direction: column; justify-content: flex-end; overflow: hidden; font-size: .64em; font-weight: 400; color: var(--cap-color2, var(--fog)); margin-top: .3em; max-height: calc(var(--size, 46px) * .64 * 1.25 * 2); }
     .box.bi .clip2 { display: flex; }
     .clip2 div:empty { display: none; }
+    .roll { position: relative; flex: none; } /* roll-up lines (smooth.js) */
+    #note { display: none; } /* music playing: ♪ instead of captions, as on TV */
+    .box.music #note { display: block; }
+    .box.music .clip, .box.music .clip2 { display: none; }
+    .hidden { display: none !important; }
+    /* The page's heading is for screen readers only: it must never appear on the stream (style.css isn't loaded here). */
+    .sr-only { position: absolute !important; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
   </style>
 </head>
 <body>
-  <div class="wrap" id="wrap" role="main"><h1 class="sr-only">OpenCaptions</h1><div class="box idle" id="box"><div class="clip"><div id="txt"></div></div><div class="clip2"><div id="txt2"></div></div></div></div>
+  <div class="wrap" id="wrap" role="main"><h1 class="sr-only">OpenCaptions</h1><div class="box idle" id="box"><div id="note" aria-hidden="true">♪ ♪</div><div class="clip"><div id="txt"></div></div><div class="clip2"><div id="txt2"></div></div></div></div>
   <script type="module" src="/pages/overlay.js"></script>
 </body>
 </html>

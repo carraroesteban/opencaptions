@@ -1,5 +1,6 @@
 // overlay.html: page script (kept out of the HTML so the Content-Security-Policy can forbid inline scripts).
 import { qs, wsUrl, Socket, CaptionState, applyCaptionStyle, previewStream, toColor } from '/common.js';
+import { Pacer, RollUp } from '/smooth.js';
 const root = document.documentElement.style;
 const p = (k, d) => qs.get(k) ?? d;
 root.setProperty('--size', p('size', 46) + 'px');
@@ -30,24 +31,39 @@ if (qs.get('preview') === '1') {
   previewStream((t) => { txt.textContent = t.slice(-chars); box.classList.remove('idle'); }, lang === 'en' ? 'en' : 'es');
   if (also) previewStream((t) => { txt2.textContent = t.slice(-chars); }, lang === 'en' ? 'es' : 'en');
 } else {
-  let ch = null, ch2 = null, talkId = null;
-  const st = new CaptionState(), st2 = new CaptionState();
+  // Words at the speaker's pace, TV-style lines that never re-wrap (smooth.js). The second language keeps its own lines.
+  let ch = null, ch2 = null, talkId = null, at = 0;
+  let pause = null; // a break hides the captions (the stream shows its own break screen); music shows ♪
+  const st = new CaptionState(), st2 = new CaptionState(); // for "is the second line saying the same thing?"
+  const roll = new RollUp(txt.parentElement, { live: false }), roll2 = new RollUp(txt2.parentElement, { live: false });
+  const pace = new Pacer(() => draw()), pace2 = new Pacer(() => draw());
   new Socket(() => wsUrl('/ws/view', { stage: p('stage', 'main'), langs: [lang, also].filter(Boolean).join(',') }), {
     message(m) {
+      if (m.type === 'pause') pause = m;
       if (m.type === 'hello') {
-        ch = m.map[lang]; talkId = m.talk; st.load(m.history[ch] || [], m.partial[ch]); st.updatedAt = 0;
-        if (also) { ch2 = m.map[also] ?? also; st2.load(m.history[ch2] || [], m.partial[ch2]); st2.updatedAt = 0; }
+        pause = m.pause;
+        ch = m.map[lang]; talkId = m.talk;
+        const h = [...(m.history[ch] || []), m.partial[ch]].filter(Boolean);
+        st.load(h); pace.load(h);
+        if (also) { ch2 = m.map[also] ?? also; const h2 = [...(m.history[ch2] || []), m.partial[ch2]].filter(Boolean); st2.load(h2); pace2.load(h2); }
+        draw(); at = 0; // history isn't news: stay hidden until someone speaks
       }
-      else if (m.type === 'caption' && m.channel === ch) { st.apply(m); draw(); }
-      else if (m.type === 'caption' && ch2 && m.channel === ch2) { st2.apply(m); draw(); }
-      else if (m.type === 'talk' && m.talk !== talkId) { talkId = m.talk; st.clear(); st2.clear(); draw(); }
+      else if (m.type === 'caption' && m.channel === ch) { st.apply(m); pace.push(m); at = Date.now(); }
+      else if (m.type === 'caption' && ch2 && m.channel === ch2) { st2.apply(m); pace2.push(m); at = Date.now(); }
+      else if (m.type === 'talk' && m.talk !== talkId) { talkId = m.talk; st.clear(); st2.clear(); pace.clear(); pace2.clear(); roll.clear(); roll2.clear(); }
     },
   });
   function draw() {
-    const main = st.tail(chars);
-    txt.textContent = main;
-    if (also) txt2.textContent = second(main, st2.tail(chars));
-    box.classList.remove('idle');
+    roll.render(pace.shown());
+    if (also) {
+      roll2.render(pace2.shown());
+      roll2.clip.classList.toggle('hidden', !second(st.tail(chars), st2.tail(chars)));
+    }
+    show();
   }
-  setInterval(() => box.classList.toggle('idle', Date.now() - Math.max(st.updatedAt, also ? st2.updatedAt : 0) > hideMs || !(st.tail(10) || (also && st2.tail(10)))), 500);
+  function show() {
+    box.classList.toggle('music', !!pause?.music && !pause?.brk);
+    box.classList.toggle('idle', !!pause?.brk || (!pause?.music && (!at || Date.now() - at > hideMs || !(st.tail(10) || (also && st2.tail(10))))));
+  }
+  setInterval(show, 500);
 }

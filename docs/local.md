@@ -14,7 +14,7 @@ Everything else stays the same: the audience page, the projector, the overlay, t
 | Cost | About US$ 2.2 per room-hour | Nothing per hour |
 | Caption delay | About 2–3 s behind the speaker | About 4–5 s on a laptop CPU (see [Measured results](#measured-results)) |
 | Rooms per server | 30 tested on one laptop | About one per computer today (see [Limits](#limits)) |
-| Translated voice 🎧 | Yes | No |
+| Translated voice 🎧 | Gemini's natural voice | The phone reads the translated captions with its own voice |
 
 Local mode is new. Use it for small events, rooms without internet, sensitive talks, or to try OpenCaptions without an account. For a multi-room conference, Gemini is still the tested option.
 
@@ -87,7 +87,7 @@ The backup only covers the AI. Whether the audience still sees captions depends 
 | Audience phones on the venue Wi-Fi, projector, overlay, dashboard | ✅ If they reach this computer through the local network (its IP address, or a local name). Fonts fall back to system fonts. |
 | Audience phones on mobile data, or a public URL through a tunnel or the cloud | ❌ They can't reach a laptop inside the venue. For an event that must survive outages, print the QR codes with the local address (`PUBLIC_URL=http://192.168.1.20:8080`) and ask people to join the Wi-Fi. |
 | Room audio | ✅ If it reaches the server over the local network (agent, browser, or RTMP/SRT from OBS on the same network). |
-| Translated voice 🎧 | ❌ It needs Gemini. The headphone option disappears until the connection returns. |
+| Translated voice 🎧 | ⚠️ Gemini's voice needs the internet: phones read the translated captions with their own voice instead, in the languages they have a voice for. |
 | *What did I miss?* and questions | ✅ Answered by the local model, a little slower. |
 
 If OpenCaptions itself runs in the cloud (Cloud Run, a VPS), there's nothing to switch: when the venue loses internet, the audio can't reach the server. Run it on a computer inside the venue to use the backup.
@@ -181,7 +181,7 @@ flowchart LR
 - **Names and context.** Whisper gets the glossary vocabulary, the agenda's talk and speaker names, and the previous sentence as its prompt, so it spells them right. whisper.cpp, WhisperKit and OpenAI-compatible servers use it; the bundled server can't (sherpa-onnx's Whisper has no prompt input). With the bundled server, add recurring mistakes to the glossary's `replacements` instead.
 - **Languages.** Whisper detects the language of every utterance. If it hears a language the event doesn't use (Galician in a Spanish talk, for example), the utterance is transcribed again in the room's current language. Pin the room's language to skip detection altogether.
 - **Whisper's hallucinations.** On silence or applause Whisper sometimes "hears" YouTube phrases such as *Thanks for watching* or *Subtítulos realizados por la comunidad de Amara.org*. A sentence that is exactly one of those phrases is removed, and so are sound tags like *[Music]* and repetition loops. Real speech that merely contains a word like *subscribe* is kept. Utterances shorter than 0.3 s aren't sent at all, and servers that report a no-speech probability (whisper.cpp, WhisperKit, faster-whisper) also get pure noise dropped.
-- **Translation.** Each finished sentence is translated with the previous sentences as context, like the Gemini path. Provisional translations of the sentence in progress are only requested when the text model is idle, so a finished sentence waits for at most one of them.
+- **Translation.** Each finished sentence is translated with the two before it as context. They go to the text model as earlier turns of a conversation, with their translations: written into the message as "previous sentences, for context only", small models translated them again or copied that instruction into the caption. A caption that ends at a pause in the middle of a sentence waits up to 6 seconds for the rest, so the sentence is translated whole; the provisional translation is on screen meanwhile. A translation that still starts with the previous captions is cut back to the new part. Provisional translations of the sentence in progress are only requested when the text model is idle, so a finished sentence waits for at most one of them.
 - **Summaries and questions** (*What did I miss?* and *Ask the talk*) use the same text model, in JSON mode. With the default 8k-token context they read the last 20 minutes or so of a talk. Raise `LOCAL_LLM_CONTEXT` if your machine has memory to spare.
 
 The code is in `src/engines/local.js` (streaming), `src/local/asr.js` (speech server client), `src/local/llm.js` (text model client) and `scripts/local-asr-server.js` (the bundled speech server). The design decision is recorded in [ADR 0009](adr/0009-local-engine-with-whisper-and-ollama.md).
@@ -229,6 +229,8 @@ The bundled samples ([`samples/`](../samples/)) are fictional talks read by a sy
 
 On real recorded talks (room microphones, accents, applause), `small` made about 9 % word errors in English and 18 % in Spanish on a 4-core Linux VM, about 4–5 s behind the speaker. `base` was faster but made more than twice as many mistakes, too many for Spanish.
 
+Translation with `gemma3:4b`, on 90 captions that Whisper `small` cut from a real English talk (many end mid-sentence, as captions do in local mode), translated into Spanish on the same Mac: when the previous sentences were written into the message, the model copied that instruction into 4 captions, repeated earlier captions in 3 and ran on far longer than the sentence in 14. With the previous sentences given as earlier turns, as now, none copied or repeated anything and 1 ran long, at the same speed (about 0.8 s per caption).
+
 What this tells you:
 
 - On a laptop CPU, `small` gives usable captions in English and Spanish, about 4 s behind the speaker.
@@ -238,7 +240,7 @@ What this tells you:
 ## Limits
 
 - **Rooms per machine.** One speech server works on one request at a time. Several rooms can share it: final passes queue and provisional updates are skipped while it's busy, so captions stay correct but fall behind. We've measured one room per machine. For more rooms, run one OpenCaptions server per machine, each with its own rooms (`STAGES`, see [Capacity and sharding](deployment.md#capacity-and-sharding)), or use a GPU speech server that handles parallel requests (`LOCAL_ASR_CONCURRENCY`).
-- **No translated voice** (🎧) and no `live` or `hybrid` translation modes. Captions are translated as text.
+- **No natural translated voice** (🎧): phones read the translated captions with their own voice instead. No `live` or `hybrid` translation modes: captions are translated as text.
 - **Accuracy depends on the models.** Accents, fast speech, and switching languages mid-sentence are harder for Whisper than for Gemini. Pinning each room's language helps.
 - **Hardware.** The defaults need about 6 GB of free memory while running: about 1 GB for Whisper `small` and about 4–5 GB for `gemma3:4b` with its context.
 

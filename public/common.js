@@ -1,6 +1,18 @@
 // Shared helpers for all OpenCaptions pages (no build step, plain ES modules).
 export const qs = new URLSearchParams(location.search);
 
+// A new data folder (a fresh start, FRESH=1) starts this browser afresh too: what it remembered here (choices, tips
+// already seen, tokens) belonged to the old one. The server names its data folder in a cookie (src/server.js).
+(() => {
+  try {
+    const m = document.cookie.match(new RegExp(`(?:^|; )oc_data_${location.host.replace(/\W/g, '_')}=([\\w-]+)`));
+    const was = localStorage.getItem('oc.data');
+    if (!m || was === JSON.stringify(m[1])) return;
+    if (was) for (const k of Object.keys(localStorage)) if (k.startsWith('oc.')) localStorage.removeItem(k);
+    localStorage.setItem('oc.data', JSON.stringify(m[1]));
+  } catch { /* storage blocked: nothing remembered anyway */ }
+})();
+
 const browserLang = (navigator.language || 'es').slice(0, 2).toLowerCase();
 const savedUi = (() => { try { return JSON.parse(localStorage.getItem('oc.ui')); } catch { return null; } })();
 export const UI = qs.get('ui') || savedUi || (['es', 'pt'].includes(browserLang) ? (browserLang === 'pt' ? 'pt' : 'es') : 'en');
@@ -13,6 +25,8 @@ const T = {
     followOnPhone: 'Seguí los subtítulos en tu celu', scan: 'Escaneá el QR', stages: 'Salas', uiLang: 'Idioma de la página', fmtText: 'texto', fmtSubs: 'subtítulos', fmtWeb: 'web', screenTitle: 'Pantalla', liveCaptions: 'Subtítulos en vivo', production: 'Producción', myTranscripts: 'Mis transcripciones', myTranscriptsHint: 'Todo lo que subtitulaste en esta compu: leelo, buscalo o descargalo.', backCaptions: 'Subtítulos',
     fontSize: 'Tamaño', newTalk: 'Nueva charla', poweredBy: 'Subtítulos generados con IA · pueden contener errores',
     listenHint: 'Usá auriculares', talkChanged: 'Empezó una nueva charla', allStages: 'Todas las salas', theme: 'Tema',
+    brk: 'Pausa', brkSub: 'Los subtítulos siguen cuando vuelva la charla.', backAt: 'Volvemos a las', nextUp: 'Próxima charla', musicOn: 'Suena música · los subtítulos vuelven cuando alguien hable',
+    fixTalk: 'Corregir', fixHint: 'Tocá una frase para corregirla: se guarda al salir de ella (Enter). Las descargas usan el texto corregido.',
     deleteTalk: 'Eliminar', deleteTalkQ: '¿Eliminar para siempre esta transcripción? No se puede deshacer.',
     catchUp: '¿Qué me perdí?', lastMinutes: 'Últimos 5 min', wholeTalk: 'Toda la charla', askTalk: 'Preguntale a la charla', askPlaceholder: 'Ej: ¿cuáles fueron las ideas principales?', askBtn: 'Preguntar', thinking: 'Pensando…', aiNote: 'Generado con IA a partir de la transcripción · puede contener errores', noAiNote: 'Momentos destacados de la transcripción', notFound: 'No lo encontré en lo que se dijo hasta ahora.', nothingYet: 'Todavía no hay suficiente para resumir. Volvé en un rato.', transcript: 'Transcripción', settings: 'Ajustes', textSize: 'Tamaño del texto', font: 'Tipografía', fontDefault: 'Estándar', fontLegible: 'Alta legibilidad', fontEasy: 'Lectura fácil', lineSpacing: 'Interlineado', themeAuto: 'Automático', themeLight: 'Claro', themeDark: 'Oscuro', close: 'Cerrar', search: 'Buscar en la transcripción', matches: 'coincidencias', match: 'coincidencia', summary: 'Resumen', keyTerms: 'Temas clave', library: 'Transcripciones de las charlas', libraryHint: 'Leé, buscá y descargá lo que se dijo en cada charla — en tu idioma.', liveNow: 'En vivo ahora', untitled: 'Charla sin título', copyLink: 'Copiar link', copied: '✓ Copiado', print: 'Imprimir', followLive: 'Seguir en vivo', noTalks: 'Todavía no hay transcripciones.', readTranscript: 'Leer la transcripción completa', quotesFrom: 'Lo que se dijo', tooMany: 'Muchas preguntas ahora mismo, probá en un minuto.', error: 'No se pudo completar. Probá de nuevo.', seeLive: 'Ver subtítulos en vivo', allTalks: 'Todas las charlas', generate: 'Generar resumen', transcriptOf: 'Transcripción de', aiOff: 'Las funciones de IA están desactivadas en este evento.', accessibility: 'Accesibilidad', searchTalks: 'Buscar por título o sala', next: 'A continuación', speaker: 'Speaker', yes: 'Sí', no: 'No', floating: 'Subtítulos flotantes', fullscreen: 'pantalla completa',
   },
@@ -23,6 +37,8 @@ const T = {
     followOnPhone: 'Follow the captions on your phone', scan: 'Scan the QR code', stages: 'Rooms', uiLang: 'Page language', fmtText: 'text', fmtSubs: 'captions', fmtWeb: 'web', screenTitle: 'Screen', liveCaptions: 'Live captions', production: 'Production', myTranscripts: 'My transcripts', myTranscriptsHint: 'Everything you captioned on this computer: read, search or download it.', backCaptions: 'Captions',
     fontSize: 'Size', newTalk: 'New talk', poweredBy: 'AI-generated captions · may contain errors',
     listenHint: 'Use headphones', talkChanged: 'A new talk started', allStages: 'All rooms', theme: 'Theme',
+    brk: 'Break', brkSub: 'Captions continue when the talk resumes.', backAt: 'Back at', nextUp: 'Next talk', musicOn: 'Music playing · captions return when someone speaks',
+    fixTalk: 'Correct', fixHint: 'Tap a sentence to correct it: it’s saved when you leave it (Enter). Downloads use the corrected text.',
     deleteTalk: 'Delete', deleteTalkQ: 'Delete this transcript for good? This can’t be undone.',
     catchUp: 'What did I miss?', lastMinutes: 'Last 5 min', wholeTalk: 'Whole talk', askTalk: 'Ask the talk', askPlaceholder: 'e.g. What were the main takeaways?', askBtn: 'Ask', thinking: 'Thinking…', aiNote: 'AI-generated from the transcript · may contain errors', noAiNote: 'Highlights from the transcript', notFound: "I couldn't find that in what has been said so far.", nothingYet: 'Not enough yet to summarize. Check back in a bit.', transcript: 'Transcript', settings: 'Settings', textSize: 'Text size', font: 'Font', fontDefault: 'Standard', fontLegible: 'High legibility', fontEasy: 'Easy reading', lineSpacing: 'Line spacing', themeAuto: 'Automatic', themeLight: 'Light', themeDark: 'Dark', close: 'Close', search: 'Search the transcript', matches: 'matches', match: 'match', summary: 'Summary', keyTerms: 'Key topics', library: 'Talk transcripts', libraryHint: 'Read, search and download what was said in each talk — in your language.', liveNow: 'Live now', untitled: 'Untitled talk', copyLink: 'Copy link', copied: '✓ Copied', print: 'Print', followLive: 'Follow live', noTalks: 'No transcripts yet.', readTranscript: 'Read the full transcript', quotesFrom: 'What was said', tooMany: 'Lots of questions right now — try again in a minute.', error: "Couldn't complete that. Please try again.", seeLive: 'See live captions', allTalks: 'All talks', generate: 'Generate summary', transcriptOf: 'Transcript of', aiOff: 'AI features are turned off for this event.', accessibility: 'Accessibility', searchTalks: 'Search by title or room', next: 'Up next', speaker: 'Speaker', yes: 'Yes', no: 'No', floating: 'Floating captions', fullscreen: 'full screen',
   },
@@ -33,11 +49,33 @@ const T = {
     followOnPhone: 'Acompanhe as legendas no celular', scan: 'Escaneie o QR', stages: 'Salas', uiLang: 'Idioma da página', fmtText: 'texto', fmtSubs: 'legendas', fmtWeb: 'web', screenTitle: 'Tela', liveCaptions: 'Legendas ao vivo', production: 'Produção', myTranscripts: 'Minhas transcrições', myTranscriptsHint: 'Tudo o que você legendou neste computador: leia, pesquise ou baixe.', backCaptions: 'Legendas',
     fontSize: 'Tamanho', newTalk: 'Nova palestra', poweredBy: 'Legendas geradas por IA · podem conter erros',
     listenHint: 'Use fones de ouvido', talkChanged: 'Começou uma nova palestra', allStages: 'Todas as salas', theme: 'Tema',
+    brk: 'Intervalo', brkSub: 'As legendas continuam quando a palestra voltar.', backAt: 'Voltamos às', nextUp: 'Próxima palestra', musicOn: 'Tocando música · as legendas voltam quando alguém falar',
+    fixTalk: 'Corrigir', fixHint: 'Toque numa frase para corrigi-la: ela é salva quando você sai dela (Enter). Os downloads usam o texto corrigido.',
     deleteTalk: 'Excluir', deleteTalkQ: 'Excluir esta transcrição para sempre? Não dá para desfazer.',
     catchUp: 'O que eu perdi?', lastMinutes: 'Últimos 5 min', wholeTalk: 'Palestra inteira', askTalk: 'Pergunte à palestra', askPlaceholder: 'Ex.: quais foram as ideias principais?', askBtn: 'Perguntar', thinking: 'Pensando…', aiNote: 'Gerado por IA a partir da transcrição · pode conter erros', noAiNote: 'Destaques da transcrição', notFound: 'Não encontrei isso no que foi dito até agora.', nothingYet: 'Ainda não há o suficiente para resumir. Volte daqui a pouco.', transcript: 'Transcrição', settings: 'Ajustes', textSize: 'Tamanho do texto', font: 'Fonte', fontDefault: 'Padrão', fontLegible: 'Alta legibilidade', fontEasy: 'Leitura fácil', lineSpacing: 'Espaçamento', themeAuto: 'Automático', themeLight: 'Claro', themeDark: 'Escuro', close: 'Fechar', search: 'Buscar na transcrição', matches: 'resultados', match: 'resultado', summary: 'Resumo', keyTerms: 'Temas principais', library: 'Transcrições das palestras', libraryHint: 'Leia, busque e baixe o que foi dito em cada palestra — no seu idioma.', liveNow: 'Ao vivo agora', untitled: 'Palestra sem título', copyLink: 'Copiar link', copied: '✓ Copiado', print: 'Imprimir', followLive: 'Acompanhar ao vivo', noTalks: 'Ainda não há transcrições.', readTranscript: 'Ler a transcrição completa', quotesFrom: 'O que foi dito', tooMany: 'Muitas perguntas agora — tente em um minuto.', error: 'Não foi possível concluir. Tente de novo.', seeLive: 'Ver legendas ao vivo', allTalks: 'Todas as palestras', generate: 'Gerar resumo', transcriptOf: 'Transcrição de', aiOff: 'As funções de IA estão desativadas neste evento.', accessibility: 'Acessibilidade', searchTalks: 'Buscar por título ou sala', next: 'A seguir', speaker: 'Palestrante', yes: 'Sim', no: 'Não', floating: 'Legendas flutuantes', fullscreen: 'tela cheia',
   },
 };
 export const t = (k) => T[UI]?.[k] ?? T.en[k] ?? k;
+
+/**
+ * Captions paused on purpose (server's pauseInfo: a break, or music in the room): what to tell viewers, or null.
+ * { kind: 'break'|'music', title, back: 'Back at 11:30', next: 'Next talk: Title · Speaker' }
+ */
+export function pauseView(p) {
+  const hm = (ms) => new Date(ms).toLocaleTimeString(UI, { hour: '2-digit', minute: '2-digit' });
+  if (p?.brk) {
+    const next = p.brk.next;
+    const back = next?.start || p.brk.until;
+    return {
+      kind: 'break',
+      title: p.brk.title || t('brk'),
+      back: back && back > Date.now() ? `${t('backAt')} ${hm(back)}` : next ? '' : t('brkSub'),
+      next: next ? `${t('nextUp')}: ${next.title}${next.speaker ? ` · ${next.speaker}` : ''}` : '',
+    };
+  }
+  if (p?.music) return { kind: 'music', title: '♪', back: t('musicOn'), next: '' };
+  return null;
+}
 
 export const store = {
   get(k, d) { try { const v = localStorage.getItem(`oc.${k}`); return v == null ? d : JSON.parse(v); } catch { return d; } },
@@ -66,8 +104,8 @@ export function setAccent(c) {
 }
 
 /**
- * Write a caption into an element. While it's still being spoken (not final), the last word gets the highlighter
- * sweep (.live-word); the span is reused while the word doesn't change so the sweep doesn't replay.
+ * Write a caption into an element. While it's still being spoken (not final), the last word is a .live-word span,
+ * which fades in; the span is reused while the word doesn't change, so the fade plays once per word.
  */
 export function liveText(el, text, final) {
   text = String(text ?? '');
@@ -178,6 +216,60 @@ export class CaptionState {
     let s = parts.join(' ').trim();
     if (s.length > chars) { s = s.slice(-chars); s = s.slice(s.indexOf(' ') + 1); }
     return s;
+  }
+}
+
+/** Does this caption end a sentence? (Also in languages that write 。？！) */
+export const endsSentence = (text) => /[.?!…。？！]["'”’»)\]]*\s*$/.test(String(text || ''));
+
+/**
+ * Captions as paragraphs to read (the phone page, Just for me). Each caption is a span in a paragraph. Captions
+ * that continue a sentence flow on in the same paragraph (the local engine cuts at every pause, often mid-sentence);
+ * a new paragraph starts after a sentence once the paragraph is long enough, or when another person speaks.
+ * Only the caption that changed is touched, so the newest word's fade-in plays once.
+ */
+export class CaptionFlow {
+  /** @param {HTMLElement} box  @param {{ chars?: number, bright?: number, max?: number }} [o] */
+  constructor(box, { chars = 160, bright = 2, max = 120 } = {}) { Object.assign(this, { box, chars, bright, max }); }
+
+  /** Everything again (history, another language). */
+  render(segs) {
+    this.box.replaceChildren();
+    for (const s of segs) if (s?.text) this.update(s, false);
+    this.#dim();
+  }
+
+  /** One caption arrived or changed. */
+  update(seg, dim = true) {
+    this.box.querySelector('.empty')?.remove();
+    let span = this.box.querySelector(`span[data-id="${CSS.escape(seg.id)}"]`);
+    if (!span) {
+      let p = this.box.lastElementChild;
+      const lastText = p?.lastElementChild?.textContent || '';
+      const spk = seg.spk || '';
+      if (!p || p.tagName !== 'P' || (spk && spk !== (p.dataset.who || '')) || (endsSentence(lastText) && p.textContent.length >= this.chars)) {
+        const prev = p?.tagName === 'P' ? p.dataset.who || '' : '';
+        p = document.createElement('p');
+        p.dataset.who = spk || prev;
+        if (spk && spk !== prev) p.dataset.spk = spk; // who is speaking, when it changes
+        this.box.append(p);
+        while (this.box.children.length > this.max) this.box.firstElementChild.remove();
+      } else p.append(' ');
+      span = Object.assign(document.createElement('span'), { className: 'seg' });
+      span.dataset.id = seg.id;
+      p.append(span);
+    }
+    liveText(span, seg.text, seg.final);
+    span.classList.toggle('partial', !seg.final);
+    // Screen readers read each caption once, when it's final, not every word as it's being written.
+    if (seg.final) span.removeAttribute('aria-hidden'); else span.setAttribute('aria-hidden', 'true');
+    if (dim) this.#dim();
+  }
+
+  /** The last paragraphs in full colour, older ones dimmed. */
+  #dim() {
+    const ps = this.box.children;
+    for (let i = 0; i < ps.length; i++) ps[i].classList.toggle('old', i < ps.length - this.bright);
   }
 }
 

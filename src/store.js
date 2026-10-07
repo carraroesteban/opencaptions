@@ -102,6 +102,15 @@ export class Store {
     return true;
   }
 
+  /** Correct a saved caption: the new text is appended (the file only grows) and wins when the talk is read. */
+  correct(stage, talkId, segId, text) {
+    const seg = this.readTalk(stage, talkId).find((x) => x.id === segId);
+    if (!seg) return null;
+    const fixed = { ...seg, text, edited: true };
+    this.append(stage, talkId, fixed);
+    return fixed;
+  }
+
   readTalk(stage, talkId) {
     const f = path.join(this.#talkDir(stage, talkId), 'captions.jsonl');
     let st;
@@ -109,7 +118,17 @@ export class Store {
     const key = `${st.mtimeMs}/${st.size}`;
     const hit = this.#parsed.get(f);
     if (hit?.key === key) { this.#parsed.delete(f); this.#parsed.set(f, hit); return hit.segs; } // most recent last
-    const segs = fs.readFileSync(f, 'utf8').split('\n').filter(Boolean).map((l) => { try { return JSON.parse(l); } catch { return null; } }).filter(Boolean);
+    const lines = fs.readFileSync(f, 'utf8').split('\n').filter(Boolean).map((l) => { try { return JSON.parse(l); } catch { return null; } }).filter(Boolean);
+    // A caption saved again with the same id is a correction (or a translation finished late): the newest text
+    // wins, in the place where the caption was first said.
+    const at = new Map();
+    const segs = [];
+    for (const seg of lines) {
+      if (seg.id == null) { segs.push(seg); continue; } // older or hand-made lines without an id: kept as they are
+      const k = `${seg.channel}|${seg.id}`;
+      const i = at.get(k);
+      if (i === undefined) { at.set(k, segs.length); segs.push(seg); } else segs[i] = seg;
+    }
     this.#parsed.set(f, { key, segs });
     if (this.#parsed.size > 20) this.#parsed.delete(this.#parsed.keys().next().value);
     return segs;
@@ -152,17 +171,24 @@ export function toVTT(segs) {
   return 'WEBVTT\n\n' + cues(segs).map((s) => `${ts(s.start, '.')} --> ${ts(s.end, '.')}\n${s.spk ? `<v ${voice(s.spk)}>` : ''}${text(s.text)}\n`).join('\n');
 }
 
+const endsSentence = (t) => /[.?!…。？！]["'”’»)\]]*\s*$/.test(String(t || ''));
+
 export function toTXT(segs) {
-  // Paragraphs: break when there is a pause > 4 s, or another person speaks (then named).
-  let out = '', last = null, prev = '';
+  // Paragraphs: a new one after a sentence, once the paragraph is long enough or the speaker paused (> 4 s); never in
+  // the middle of a sentence (the local engine cuts captions at every pause), unless the room was quiet for a long
+  // while. Another person speaking starts one too, with their name.
+  let out = '', last = null, prev = '', len = 0, prevText = '';
   for (const s of segs) {
     const who = s.spk || '';
-    if (who && who !== prev) out += `${out ? '\n\n' : ''}${who}: `;
-    else if (last != null && s.start - last > 4000) out += '\n\n';
+    const pause = last == null ? 0 : s.start - last;
+    if (who && who !== prev) { out += `${out ? '\n\n' : ''}${who}: `; len = 0; }
+    else if (out && ((endsSentence(prevText) && (pause > 4000 || len >= 400)) || pause > 20000)) { out += '\n\n'; len = 0; }
     else if (out) out += ' ';
     out += s.text;
+    len += s.text.length + 1;
     last = s.end;
     prev = who || prev;
+    prevText = s.text;
   }
   return out + '\n';
 }

@@ -27,7 +27,7 @@ Automated tools find roughly a third to a half of real accessibility problems. T
 - **Who is speaking**: when the crew sets it, captions and transcripts name the speaker, and WebVTT exports carry standard voice tags.
 - **Colour is never the only signal:** room states have text ("LIVE", "NO AUDIO"), alerts have words, checklists strike through what's done.
 - **Keyboard:** every control is a real button, link or form field; focus is always visible (ink in light mode, lime in dark mode); dialogs are native `<dialog>` elements, so focus stays inside them and Esc closes them (except the sign-in screen, which must be completed).
-- **Motion:** the highlighter on the live word and page animations stop with the system's "reduce motion" setting.
+- **Motion:** captions don't blink or move at the end of the line: each new word fades in once, and a paragraph is never redrawn while you read it. The fade and page animations stop with the system's "reduce motion" setting.
 - **Contrast:** text meets 4.5:1 (large text 3:1) on every surface, in both themes.
 
 ## Testing with people

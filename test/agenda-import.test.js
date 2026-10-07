@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { fromSessionizeData, sessionizeId, fromIcsText, icsTime } from '../src/agenda-import.js';
 import { parseSchedule } from '../src/schedule.js';
 
-test('Sessionize: rooms and speakers by id, breaks left out, then matched to the event’s rooms', () => {
+test('Sessionize: rooms and speakers by id, service sessions become breaks, then matched to the event’s rooms', () => {
   const data = {
     sessions: [
       { id: '1', title: 'Designing cities for everyone', startsAt: '2026-10-05T10:30:00', roomId: 10, speakers: ['a', 'b'] },
@@ -14,10 +14,11 @@ test('Sessionize: rooms and speakers by id, breaks left out, then matched to the
     speakers: [{ id: 'a', fullName: 'María José Pérez' }, { id: 'b', firstName: 'Ana', lastName: 'Gómez' }],
     rooms: [{ id: 10, name: 'Room A' }, { id: 11, name: 'Main stage' }],
   };
+  data.sessions.push({ id: '4', title: 'Lunch', startsAt: '2026-10-05T13:00:00', roomId: 99, isServiceSession: true, isPlenumSession: true });
   const rows = fromSessionizeData(data);
-  assert.deepEqual(rows.map((r) => [r.stage, r.title, r.speaker]), [['Room A', 'Designing cities for everyone', 'María José Pérez, Ana Gómez'], ['Main stage', 'Opening keynote', 'María José Pérez']]);
+  assert.deepEqual(rows.map((r) => [r.stage, r.title, r.speaker, !!r.break]), [['Room A', 'Designing cities for everyone', 'María José Pérez, Ana Gómez', false], ['Room A', 'Coffee break', '', true], ['Main stage', 'Opening keynote', 'María José Pérez', false], ['*', 'Lunch', '', true]]);
   const agenda = parseSchedule(rows, new Date(2026, 9, 5), { rooms: [{ id: 'main', name: 'Main stage' }, { id: 'room-a', name: 'Room A' }] });
-  assert.deepEqual(agenda.map((e) => [e.stage, new Date(e.start).getHours(), new Date(e.start).getMinutes()]), [['main', 9, 0], ['room-a', 10, 30]]);
+  assert.deepEqual(agenda.map((e) => [e.stage, new Date(e.start).getHours(), new Date(e.start).getMinutes(), !!e.break]), [['main', 9, 0, false], ['room-a', 10, 30, false], ['room-a', 11, 15, true], ['*', 13, 0, true]]);
 });
 
 test('Sessionize: the API link or just its id', () => {

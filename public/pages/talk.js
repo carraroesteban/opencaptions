@@ -1,5 +1,5 @@
 // talk.html: page script (kept out of the HTML so the Content-Security-Policy can forbid inline scripts).
-import { qs, t, UI, esc, store, wsUrl, Socket, langLabel, getEvent, applyReadingPrefs, setReadingPref, setTheme, fmtClock, liveHtml } from '/common.js';
+import { qs, t, UI, esc, store, wsUrl, Socket, langLabel, getEvent, applyReadingPrefs, setReadingPref, setTheme, fmtClock, liveHtml, endsSentence } from '/common.js';
 import { mountAssistant } from '/assist-ui.js';
 import { icon, mountIcons } from '/illustrations.js';
 import { prefsControls } from '/i18n.js';
@@ -63,16 +63,21 @@ const hl = (text) => {
   const re = new RegExp(`(${query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
   return String(text).split(re).map((part, i) => (i % 2 ? `<mark>${esc(part)}</mark>` : esc(part))).join('');
 };
+// A new paragraph after a sentence, once the paragraph is long enough or the speaker paused; never in the middle of
+// a sentence (the local engine cuts captions at every pause), unless the room was quiet for a long while.
 function paragraphs() {
   const out = [];
   let cur = null;
   for (const s of segs) {
     const who = s.spk || '';
-    if (!cur || s.start - cur.end > 4000 || cur.texts.length >= 5 || who !== cur.who) {
+    const pause = cur ? s.start - cur.end : 0;
+    const done = cur && endsSentence(cur.texts.at(-1)) && (pause > 4000 || cur.texts.join(' ').length >= 400);
+    if (!cur || done || pause > 20000 || who !== cur.who) {
       cur = { start: s.start, end: s.end, texts: [], who, named: !!who && who !== (out[out.length - 1]?.who || '') };
       out.push(cur);
     }
     cur.texts.push(s.text);
+    (cur.segs ||= []).push(s);
     cur.end = Math.max(cur.end, s.end);
   }
   return out;
@@ -93,7 +98,11 @@ function patchDoc(blocks) {
   });
   while (box.children.length > blocks.length) box.lastElementChild.remove();
 }
+let editing = false; // admins correct the transcript in place (Correct button)
+let renderLater = false;
 function render() {
+  // Don't rebuild the sentence someone is correcting: a live caption arriving would throw their typing away.
+  if (document.activeElement?.classList.contains('seg')) { renderLater = true; return; }
   const ps = paragraphs();
   if (!ps.length && !partial) { patchDoc([`<div class="empty">${esc(info.current ? t('waiting') : t('noTalks'))}</div>`]); $('count').textContent = ''; return; }
   let matches = 0;
@@ -101,7 +110,8 @@ function render() {
     const text = p.texts.join(' ');
     if (query) matches += (text.toLowerCase().split(query.toLowerCase()).length - 1);
     const id = `t${Math.floor(p.start / 1000)}`;
-    return `<div class="para" id="${id}"><a class="ts" href="#${id}">${fmtClock(p.start)}</a><p>${p.named ? `<b class="spk">${esc(p.who)}</b> ` : ''}${hl(text)}</p></div>`;
+    const body = editing ? p.segs.map((x) => `<span class="seg" contenteditable="true" spellcheck="true" data-id="${esc(x.id)}">${esc(x.text)}</span>`).join(' ') : hl(text);
+    return `<div class="para" id="${id}"><a class="ts" href="#${id}">${fmtClock(p.start)}</a><p>${p.named ? `<b class="spk">${esc(p.who)}</b> ` : ''}${body}</p></div>`;
   });
   if (partial?.text) blocks.push(`<div class="para" aria-hidden="true"><span class="ts"></span><p class="partial">${liveHtml(partial.text)}</p></div>`);
   patchDoc(blocks);
@@ -138,7 +148,12 @@ if (info.current) {
   live = new Socket(() => wsUrl('/ws/view', { stage: stageId, langs: lang }), {
     message(m) {
       if (m.type === 'caption' && m.channel === lang) {
-        if (m.final) { if (!segs.some((s) => s.id === m.id)) { segs.push(m); all.push(m); } partial = null; } else partial = m;
+        if (m.final) {
+          // A caption already here with new text is a correction (from the crew): replace it in place.
+          const i = segs.findIndex((s) => s.id === m.id);
+          if (i >= 0) { segs[i] = m; const j = all.findIndex((s) => s.id === m.id && s.channel === m.channel); if (j >= 0) all[j] = m; } else { segs.push(m); all.push(m); }
+          if (partial?.id === m.id) partial = null;
+        } else partial = m;
         render();
       } else if (m.type === 'talk' && m.talk !== talkId) {
         // The talk ended and a new one started: this page keeps the finished transcript.
@@ -204,9 +219,39 @@ $('dlg-set').addEventListener('click', (e) => { if (e.target === $('dlg-set')) $
 select(); renderLangs(); render();
 if (location.hash) document.querySelector(location.hash)?.scrollIntoView({ block: 'center' });
 
-// Delete for good: only for the admin (on this computer no password is asked, so "Just for me" users can).
+// Delete for good and Correct: only for the admin (on this computer no password is asked, so "Just for me" users can).
 $('del').querySelector('.lbl').textContent = t('deleteTalk');
-fetch('/api/auth/me').then((r) => r.json()).then((me) => { if (me.role === 'admin') $('del').classList.remove('hidden'); }).catch(() => {});
+$('fix').querySelector('.lbl').textContent = t('fixTalk');
+$('fix-hint').textContent = t('fixHint');
+fetch('/api/auth/me').then((r) => r.json()).then((me) => { if (me.role === 'admin') { $('del').classList.remove('hidden'); $('fix').classList.remove('hidden'); } }).catch(() => {});
+$('fix').onclick = () => {
+  editing = !editing;
+  $('fix').setAttribute('aria-pressed', String(editing));
+  $('fix-hint').classList.toggle('hidden', !editing);
+  if (editing) { query = ''; $('q').value = ''; following = false; }
+  render();
+};
+// A corrected sentence is saved when you leave it (Enter, Tab or a click elsewhere); Escape puts it back.
+$('doc').addEventListener('keydown', (e) => {
+  const el = e.target.closest?.('.seg');
+  if (!el) return;
+  if (e.key === 'Enter') { e.preventDefault(); el.blur(); }
+  if (e.key === 'Escape') { el.textContent = segs.find((x) => x.id === el.dataset.id)?.text || el.textContent; el.blur(); }
+});
+$('doc').addEventListener('focusout', async (e) => {
+  const el = e.target.closest?.('.seg');
+  if (!el) return;
+  const seg = segs.find((x) => x.id === el.dataset.id);
+  const text = el.textContent.replace(/\s+/g, ' ').trim();
+  if (seg && text && text !== seg.text) {
+    const r = await fetch(`/api/stages/${encodeURIComponent(stageId)}/talks/${encodeURIComponent(talkId)}/captions/${encodeURIComponent(seg.id)}`, {
+      method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ channel: lang, text }),
+    });
+    if (r.ok) { const fixed = await r.json(); Object.assign(seg, fixed); const j = all.find((x) => x.id === seg.id && x.channel === seg.channel); if (j) Object.assign(j, fixed); el.classList.add('saved'); setTimeout(() => el.classList.remove('saved'), 1200); }
+    else el.textContent = seg.text;
+  }
+  if (renderLater) { renderLater = false; setTimeout(render); }
+});
 $('del').onclick = async () => {
   if (!confirm(t('deleteTalkQ'))) return;
   const r = await fetch(`/api/stages/${encodeURIComponent(stageId)}/talks/${encodeURIComponent(talkId)}`, { method: 'DELETE' });

@@ -9,6 +9,7 @@ import { getClient } from './genai.js';
 import { config } from './config.js';
 import { rateLimiter } from './security.js';
 import { chat as localChat } from './local/llm.js';
+import { promptLanguage } from './languages.js';
 
 let ai = null;
 const client = () => ai ?? getClient(); // tests can inject their own (_setClient)
@@ -23,8 +24,7 @@ const perIpAsk = rateLimiter({ windowMs: 60_000, max: Number(process.env.ASK_PER
 const globalAsk = rateLimiter({ windowMs: 60_000, max: ASK_PER_MIN });
 const globalSummary = rateLimiter({ windowMs: 60_000, max: Number(process.env.SUMMARY_RPM || 30) });
 
-const NAMES = { es: 'Spanish (neutral Latin American)', en: 'English', pt: 'Portuguese (Brazil)', fr: 'French', de: 'German', it: 'Italian' };
-const langName = (c) => NAMES[c] || c;
+const langName = (c) => promptLanguage(c); // "gn" → "Guarani": a bare code can be ambiguous
 const USD_IN = 0.30 / 1e6, USD_OUT = 2.5 / 1e6;
 export const assistStats = { requests: 0, errors: 0, cacheHits: 0, usd: 0 };
 

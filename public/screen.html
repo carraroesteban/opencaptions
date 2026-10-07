@@ -22,7 +22,8 @@
     .head { display: flex; justify-content: space-between; align-items: baseline; color: #A8A5AE; font-size: 2.2vh; }
     .head b { color: var(--paper); font-family: var(--font-display); font-weight: 800; letter-spacing: -.01em; }
     #clock { font-variant-numeric: tabular-nums; }
-    .bands { display: flex; flex-direction: column; justify-content: flex-end; gap: 3vh; min-height: 0; }
+    .bands { position: relative; min-height: 0; }
+    #bands { display: flex; flex-direction: column; justify-content: flex-end; gap: 3vh; height: 100%; min-height: 0; }
     .band { line-height: 1.22; transition: opacity 1s; min-height: 0; }
     /* The main language fills the screen from the bottom up; older lines fade out at the top. */
     .band.main { flex: 1 1 auto; display: flex; flex-direction: column; }
@@ -42,6 +43,14 @@
     .foot-l { font-size: 1.8vh; color: #8D8A94; display: flex; align-items: center; gap: .5em; } .foot-l i { font-style: normal; }
     .foot-l .brand { color: #A8A5AE; } .foot-l .brand::before { background-image: url(/brand/mark-dark.svg); } /* always dark: paper O + lime line */
     .fade { opacity: .25; transition: opacity 1s; }
+    /* A break (big card: when we're back, what's next) or music (a quiet note): captions are paused on purpose. */
+    .pause { position: absolute; inset: 0; display: flex; flex-direction: column; justify-content: center; gap: 2.4vh; background: var(--screen-bg, var(--ink)); z-index: 2; text-align: var(--cap-align, left); }
+    #bands.paused { visibility: hidden; }
+    .pause b { font-family: var(--font-display); font-weight: 800; font-size: 11vh; line-height: 1; letter-spacing: -.02em; color: var(--paper); }
+    .pause span { font-size: 4.2vh; color: var(--fog); }
+    .pause span.next { color: var(--paper); }
+    .pause.music b { font-size: 9vh; color: var(--accent); }
+    .pause.music span { font-size: 3.2vh; }
     .fs-hint { position: fixed; top: 3vh; left: 50%; transform: translateX(-50%); background: #1B1A20; border: 1px solid #2A2930; color: var(--fog); font-size: 1.8vh; padding: .8vh 1.6vh; border-radius: 99px; transition: opacity .6s; }
     .fs-hint kbd { font: inherit; font-weight: 700; color: var(--ink); background: var(--lime); border-radius: .5vh; padding: 0 .6vh; }
   </style>
@@ -49,7 +58,7 @@
 <body>
   <main class="wrap">
     <div class="head"><span><b id="stage"></b> <span id="talk"></span></span><span id="clock"></span></div>
-    <div class="bands" id="bands"></div>
+    <div class="bands"><div id="bands"></div><div id="pause" class="pause hidden" role="status"></div></div>
     <div class="foot">
       <div class="foot-l"><span class="brand">OpenCaptions</span> · <i id="powered"></i></div>
       <div class="qr" id="qrbox"><img id="qr" alt="QR" /><div><b id="follow"></b><span id="url"></span></div></div>

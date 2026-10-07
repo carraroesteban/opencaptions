@@ -24,6 +24,7 @@ import { Glossary } from './glossary.js';
 import { Stage } from './stage.js';
 import { Store, toSRT, toVTT, toTXT } from './store.js';
 import { Integrations } from './integrations.js';
+import { Switchers } from './switcher.js';
 import { fromSessionize, fromIcs } from './agenda-import.js';
 import { PullSource } from './pull.js';
 import { systemStats } from './system.js';
@@ -102,16 +103,20 @@ if (!process.env.STAGES && fs.existsSync(STAGES_FILE) && fs.statSync(STAGES_FILE
 }
 fs.mkdirSync(config.dataDir, { recursive: true });
 let integrations = null; // created once the rooms exist (below)
+let switchers = null; // vMix / OBS break scenes (src/switcher.js)
 for (const def of initial) addStage(def);
+switchers = new Switchers({ stages });
 integrations = new Integrations({ stages, talkUrl: (stage, talk) => `${config.publicUrl || lanUrl() || `http://localhost:${config.port}`}/talk.html?stage=${encodeURIComponent(stage)}&talk=${encodeURIComponent(talk)}` });
 
 // First-run setup (the dashboard's welcome wizard): what the organizer chose is kept in data/setup.json.
 const SETUP_FILE = path.join(config.dataDir, 'setup.json');
 const setup = (() => { try { return JSON.parse(fs.readFileSync(SETUP_FILE, 'utf8')); } catch { return { done: false }; } })();
 if (setup.name) Object.assign(config.event, { name: setup.name, named: true });
-// Languages added from the dashboard (on top of event.json's), so French doesn't mean editing JSON.
+// The languages rooms can choose: event.json's, minus the ones removed from the dashboard, plus the ones added there
+// (so French doesn't mean editing JSON, and an event without Portuguese doesn't offer it).
 const baseLanguages = { ...config.event.languages };
-if (setup.languages) config.event.languages = { ...baseLanguages, ...setup.languages };
+const offeredLanguages = (added = {}, removed = []) => ({ ...Object.fromEntries(Object.entries(baseLanguages).filter(([c]) => !removed.includes(c))), ...added });
+config.event.languages = offeredLanguages(setup.languages, setup.removedLanguages);
 // The agenda's time zone, as the wizard read it from the organizer's browser (TZ or event.json's timezone win).
 const tzFixed = !!process.env.TZ;
 if (setup.timezone && !tzFixed) process.env.TZ = setup.timezone;
@@ -133,6 +138,23 @@ app.disable('x-powered-by');
 // Behind a tunnel / reverse proxy on this machine, trust its X-Forwarded-* headers (for req.secure / req.ip).
 app.set('trust proxy', process.env.TRUST_PROXY || 'loopback');
 app.use(securityHeaders);
+// Which data folder this server runs on (a fresh start, FRESH=1, makes a new one every time). Pages compare it with
+// the one this browser remembered things for, and forget them when it changed (public/common.js). Named after the
+// host, so two servers on one computer (different ports) don't make each other's pages forget.
+const DATA_ID = (() => {
+  const f = path.join(config.dataDir, 'instance.json');
+  try { return String(JSON.parse(fs.readFileSync(f, 'utf8')).id); } catch { /* a new data folder */ }
+  const id = crypto.randomBytes(9).toString('base64url');
+  fs.writeFileSync(f, JSON.stringify({ id, createdAt: new Date().toISOString() }, null, 2));
+  return id;
+})();
+app.use((req, res, next) => {
+  const name = `oc_data_${String(req.headers.host || '').replace(/\W/g, '_')}`;
+  if (req.method === 'GET' && !req.path.startsWith('/api/') && cookieValue(req, name) !== DATA_ID) {
+    res.append('Set-Cookie', `${name}=${DATA_ID}; Path=/; SameSite=Lax; Max-Age=31536000${req.secure ? '; Secure' : ''}`);
+  }
+  next();
+});
 app.use('/api', apiRateLimit);
 app.use(express.json({ limit: '256kb' }));
 
@@ -293,6 +315,18 @@ app.post('/api/stages/:id/speaker', crew, getStage, (req, res) => {
   res.json({ ok: true, speaker: req.stage.speaker });
 });
 
+// Break: captions pause, screens and phones show "Break · next talk at…" (the crew, from the dashboard or the room's
+// audio page). Live control: allowed in Event mode. Starting the next talk also ends it.
+app.post('/api/stages/:id/break', crew, getStage, (req, res) => {
+  req.stage.setBreak(!!req.body?.on, { by: 'crew', title: String(req.body?.title || '').slice(0, 120) });
+  res.json({ ok: true, ...req.stage.pauseInfo() });
+});
+// "It isn't music": the room plays a talk with a soundtrack, a video with narration… Caption anyway until the next talk.
+app.post('/api/stages/:id/music', crew, getStage, (req, res) => {
+  req.stage.captionMusic(req.body?.caption !== false);
+  res.json({ ok: true, ...req.stage.pauseInfo() });
+});
+
 app.post('/api/stages/:id/restart', crew, getStage, (req, res) => {
   req.stage.restartEngines();
   res.json({ ok: true });
@@ -364,6 +398,40 @@ app.get('/api/talks', (req, res) => {
 
 // Delete a transcript for good (someone's private call in personal mode, a talk that mustn't be kept). The talk in
 // progress is closed first, so its next words start a new one.
+// Corrections (a misheard name, a wrong number). Live: the crew fixes a caption of the talk in progress and every
+// screen and phone replaces it. After the event: an admin cleans up any saved transcript. Exports use the fix.
+const cleanText = (t) => String(t ?? '').replace(/[\p{Cc}]/gu, ' ').replace(/\s+/g, ' ').trim().slice(0, 1000);
+app.get('/api/stages/:id/captions', crew, getStage, (req, res) => {
+  const channel = req.stage.channelFor(String(req.query.channel || 'orig'));
+  res.json({ channel, talk: req.stage.talk.id, captions: req.stage.history(channel, Math.min(50, Number(req.query.n) || 10)) });
+});
+app.patch('/api/stages/:id/captions/:seg', crew, getStage, (req, res) => {
+  const text = cleanText(req.body?.text);
+  if (!text) return res.status(400).json({ error: 'text required' });
+  const seg = req.stage.correct(req.stage.channelFor(String(req.body?.channel || 'orig')), req.params.seg, text);
+  return seg ? res.json(seg) : res.status(404).json({ error: 'that caption is no longer in the talk in progress' });
+});
+app.patch('/api/stages/:id/talks/:talk/captions/:seg', admin, getStage, (req, res) => {
+  const st = req.stage, text = cleanText(req.body?.text);
+  if (!text) return res.status(400).json({ error: 'text required' });
+  const channel = st.channelFor(String(req.body?.channel || 'orig'));
+  const seg = (req.params.talk === st.talk.id && st.correct(channel, req.params.seg, text)) || (store.enabled && store.correct(st.id, req.params.talk, req.params.seg, text));
+  return seg ? res.json(seg) : res.status(404).json({ error: 'unknown caption' });
+});
+// "Always write it this way": one glossary correction from a fixed caption. Adding is allowed in Event mode (it
+// can't break anything already set up), and it can be undone from the History like any glossary change.
+app.post('/api/glossary/replacements', admin, (req, res) => {
+  const from = String(req.body?.from || '').trim(), to = String(req.body?.to || '').trim();
+  if (!from || !to || from === to) return res.status(400).json({ error: 'from and to required' });
+  try {
+    const before = clone(glossary.data);
+    const reps = [...glossary.data.replacements.filter((r) => r.from.toLowerCase() !== from.toLowerCase() || r.lang), { from, to }];
+    glossary.set({ vocabulary: [...new Set([...glossary.data.vocabulary, to])], replacements: reps });
+    const change = recordChange({ kind: 'glossary.set', summary: `Glossary: always “${to}” (instead of “${from}”)`, before, after: clone(glossary.data) });
+    res.json({ ok: true, change: change.id });
+  } catch (e) { res.status(400).json({ error: e.message }); }
+});
+
 app.delete('/api/stages/:id/talks/:talk', admin, getStage, (req, res) => {
   const st = req.stage, id = req.params.talk;
   if (!store.hasTalk(st.id, id)) return res.status(404).json({ error: 'unknown talk' });
@@ -496,8 +564,8 @@ const alerts = new Alerts({ log: (m) => console.warn(`  ${m}`) });
 /** Is this room supposed to be on air? No agenda for it: always. Otherwise during a talk, or 30 min before one. */
 function onAir(id, now = Date.now()) {
   if (!schedule.entries.some((e) => e.stage === id)) return true;
-  const { current, next } = schedule.slot(id, now);
-  return !!current || (!!next && next.start - now < 30 * 60_000);
+  const { current, nextTalk } = schedule.slot(id, now);
+  return (!!current && !current.break) || (!!nextTalk && nextTalk.start - now < 30 * 60_000);
 }
 setInterval(() => {
   alerts.observe({
@@ -521,6 +589,13 @@ app.delete('/api/integrations/:id', admin, (req, res) => {
   recordChange({ kind: 'integration.remove', summary: 'Connector removed' });
   res.json({ ok: true });
 });
+// Vision mixers (src/switcher.js): vMix or OBS switching to a break scene pauses that room's captions.
+app.get('/api/switchers', admin, (req, res) => res.json({ switchers: switchers.list() }));
+app.post('/api/switchers', admin, (req, res) => {
+  try { res.json(switchers.add(req.body || {})); } catch (e) { res.status(400).json({ error: e.message }); }
+});
+app.delete('/api/switchers/:id', admin, (req, res) => (switchers.remove(req.params.id) ? res.json({ ok: true }) : res.status(404).json({ error: 'unknown vision mixer' })));
+
 app.post('/api/integrations/:id/test', admin, (req, res) => (integrations.test(req.params.id) ? res.json({ ok: true }) : res.status(404).json({ error: 'unknown connector' })));
 
 app.get('/api/alerts', admin, (req, res) => res.json(publicConfig(alerts.cfg)));
@@ -651,10 +726,13 @@ app.get('/api/setup', crew, (req, res) => {
     timezoneFixed: tzFixed,
     languages: config.event.languages,
     mode: setup.mode === 'personal' ? 'personal' : 'event',
+    eventDone: !!setup.eventDone,
     addedLanguages: setup.languages || {},
+    builtInLanguages: Object.keys(baseLanguages),
+    removedLanguages: setup.removedLanguages || [],
     publicTranscripts: PUBLIC_TRANSCRIPTS,
     publicTranscriptsFixed: transcriptsFixed,
-    defaultTargets: config.event.defaultTargets,
+    defaultTargets: config.event.defaultTargets.filter((c) => c in config.event.languages),
     stages: [...stages.values()].map((s) => ({ id: s.id, name: s.def.name, source: s.def.source, targets: s.def.targets })),
     engine: config.engine,
     primaryEngine: config.primaryEngine,
@@ -685,10 +763,26 @@ app.put('/api/setup', admin, (req, res) => {
       return res.status(400).json({ error: 'languages: up to 40 { code: name } pairs, e.g. { "fr": "Français" }' });
     }
     added = Object.fromEntries(l.map(([c, n]) => [c, n.trim()]));
-    const inUse = [...stages.values()].flatMap((st) => [st.def.source, ...st.def.targets]).filter((c) => !(c in baseLanguages) && !(c in added) && c !== 'auto');
-    if (inUse.length) return res.status(409).json({ error: `a room still uses ${[...new Set(inUse)].join(', ')}: change the room first` });
   }
-  if (setup.locked && ('name' in b || 'timezone' in b || 'languages' in b || 'publicTranscripts' in b)) return res.status(423).json(LOCKED);
+  let removed = null;
+  if ('removedLanguages' in b) {
+    removed = Array.isArray(b.removedLanguages) ? [...new Set(b.removedLanguages.map(String))] : null;
+    if (!removed || !removed.every((c) => c in baseLanguages)) return res.status(400).json({ error: `removedLanguages: codes of event.json's languages (${Object.keys(baseLanguages).join(', ')})` });
+  }
+  if (added || removed) {
+    const next = offeredLanguages(added ?? setup.languages, removed ?? setup.removedLanguages);
+    if (!Object.keys(next).length) return res.status(400).json({ error: 'keep at least one language' });
+    // A language a room still uses can't go: say which room, so it's quick to fix.
+    const gone = Object.keys(config.event.languages).filter((c) => !(c in next));
+    const rooms = [...stages.values()].filter((st) => [st.def.source, ...st.def.targets].some((c) => gone.includes(c)));
+    if (rooms.length) {
+      const langs = gone.filter((c) => rooms.some((st) => [st.def.source, ...st.def.targets].includes(c))).map((c) => config.event.languages[c] || c);
+      const names = rooms.map((st) => st.def.name);
+      return res.status(409).json({ code: 'language-in-use', rooms: names, languages: langs, error: `${names.join(', ')} still ${rooms.length > 1 ? 'use' : 'uses'} ${langs.join(', ')}: change ${rooms.length > 1 ? 'those rooms' : 'that room'} first` });
+    }
+  }
+  // Event mode protects the event: no setup changes, and no switching to Just for me (it takes the event offline).
+  if (setup.locked && ('name' in b || 'timezone' in b || 'languages' in b || 'removedLanguages' in b || 'publicTranscripts' in b || b.mode === 'personal')) return res.status(423).json(LOCKED);
   if ('name' in b) {
     if (name !== config.event.name) patch.change = recordChange({ kind: 'event.rename', summary: `Event renamed to "${name}"`, before: config.event.name, after: name }).id;
     patch.name = config.event.name = name;
@@ -696,15 +790,15 @@ app.put('/api/setup', admin, (req, res) => {
   }
   if ('done' in b) patch.done = !!b.done;
   if ('mode' in b) patch.mode = b.mode === 'personal' ? 'personal' : 'event'; // "just for me" or an event
+  if (b.done && b.mode === 'event') patch.eventDone = true; // the wizard was finished for an event at least once
   if ('timezone' in b) {
     const tz = String(b.timezone || '');
     patch.timezone = tz;
     if (!tzFixed) process.env.TZ = tz; // Node reads TZ again on the next date
   }
-  if (added) {
-    patch.languages = added;
-    config.event.languages = { ...baseLanguages, ...added };
-  }
+  if (added) patch.languages = added;
+  if (removed) patch.removedLanguages = removed;
+  if (added || removed) config.event.languages = offeredLanguages(added ?? setup.languages, removed ?? setup.removedLanguages);
   if ('publicTranscripts' in b && b.publicTranscripts !== PUBLIC_TRANSCRIPTS) {
     patch.change = recordChange({ kind: 'transcripts.access', summary: `Transcripts: ${b.publicTranscripts}`, before: PUBLIC_TRANSCRIPTS, after: b.publicTranscripts }).id;
     PUBLIC_TRANSCRIPTS = patch.publicTranscripts = b.publicTranscripts;
@@ -1129,20 +1223,30 @@ const sendJson = (ws, obj) => ws.readyState === 1 && ws.send(JSON.stringify(obj)
 function onIngest(ws, url) {
   const st = stages.get(url.searchParams.get('stage'));
   if (!st) return ws.close(4004, 'unknown stage');
-  stopPull(st.id); // a live ingest takes precedence over a configured pull
+  // role=backup: a second source on standby, captioned only when the main one fails (Stage#failover).
+  const role = url.searchParams.get('role') === 'backup' ? 'backup' : 'primary';
+  if (role === 'primary') stopPull(st.id); // a live ingest takes precedence over a configured pull
   const token = Symbol('ingest');
   st.attachIngest({
     kind: String(url.searchParams.get('kind') || 'browser').slice(0, 20),
     label: String(url.searchParams.get('label') || '').slice(0, 120),
+    role,
     token,
     detach: (why) => { sendJson(ws, { type: 'replaced', why }); ws.close(4000, why); },
   });
   ws.on('message', (data, isBinary) => {
-    if (isBinary && data.length <= 64 * 1024) st.pushAudio(Buffer.isBuffer(data) ? data : Buffer.from(data));
+    if (isBinary && data.length <= 64 * 1024) return st.pushAudio(Buffer.isBuffer(data) ? data : Buffer.from(data), token);
+    // The room's computer can call a break for its own room (the B key on the audio page).
+    if (!isBinary && data.length < 512) {
+      try {
+        const m = JSON.parse(data.toString());
+        if (m.type === 'break') st.setBreak(!!m.on, { by: 'room' });
+      } catch { /* not JSON: ignore */ }
+    }
   });
   const timer = setInterval(() => {
     const s = st.status();
-    sendJson(ws, { type: 'status', level: s.level, gated: s.gated, engines: s.engines.map((e) => ({ target: e.target, state: e.state })), preview: s.preview, alerts: s.alerts, latency: s.latency });
+    sendJson(ws, { type: 'status', role, active: st.active === role, level: s.level, gated: s.gated, brk: s.brk, music: s.music, sound: s.sound, engines: s.engines.map((e) => ({ target: e.target, state: e.state })), preview: s.preview, alerts: s.alerts, latency: s.latency });
   }, 500);
   ws.on('close', () => {
     clearInterval(timer);
@@ -1175,6 +1279,7 @@ function onView(ws, url) {
       talk: st.talk.id,
       history: Object.fromEntries(subs.map((ch) => [ch, st.history(ch, 40)])),
       partial: Object.fromEntries(subs.map((ch) => [ch, st.partial(ch)])),
+      pause: st.pauseInfo(), // a break, or music playing: screens and phones say so
     });
   };
   setup();
@@ -1193,11 +1298,13 @@ function onView(ws, url) {
   const onTitle = () => sendJson(ws, { type: 'title', talk: st.talk.id, title: st.talk.title, speaker: st.talk.speaker || '' });
   const onRemoved = () => ws.close(1012, 'room removed'); // clients reconnect; a re-created room works again
   const onConfig = () => setup();
+  const onPause = () => sendJson(ws, { type: 'pause', ...st.pauseInfo() });
   st.on('caption', onCaption);
   st.on('audio', onAudio);
   st.on('talk', onTalk);
   st.on('title', onTitle);
   st.on('config', onConfig);
+  st.on('pause', onPause);
   st.once('removed', onRemoved);
   ws.on('message', (data, isBinary) => {
     if (isBinary || data.length > 4096) return;
@@ -1227,6 +1334,7 @@ function onView(ws, url) {
     st.off('talk', onTalk);
     st.off('title', onTitle);
     st.off('config', onConfig);
+    st.off('pause', onPause);
     st.off('removed', onRemoved);
   });
 }
@@ -1279,6 +1387,7 @@ server.listen(config.port, config.host, () => {
     ['Rooms', `${[...stages.values()].map((x) => x.def.name).join(', ')} ${tty.c.gray(`(${stages.size})`)}`],
     ['AI', ai],
   ]);
+  if (config.fresh) tty.info(`Fresh start ${tty.c.gray('· nothing from earlier runs, in a temporary folder deleted when you stop · data/ is untouched')}`);
   if (config.engine === 'local') {
     tty.table([['  speech', tty.c.gray(asrInfo().url)], ['  text', tty.c.gray(config.localLlmOff ? 'off' : `${llmInfo().url} · ${localModels()}`)]]);
     checkLocal().then(async ({ asr, llm }) => {
@@ -1299,7 +1408,7 @@ server.listen(config.port, config.host, () => {
   } else {
     console.log(`  ${tty.c.bold('Passwords')} ${tty.c.gray(authMode === 'auto' ? '· this computer needs none; other devices do' : '· required on every device, this one too')}`);
     tty.table([
-      ['Admin token', `${tokens.admin}  ${tty.c.gray(`dashboard, everything${twoFactorOn() ? ' · plus a two-factor code' : ''}${tokens.adminGenerated ? ' · generated, kept in data/secrets.json' : ''}`)}`],
+      ['Admin token', `${tokens.admin}  ${tty.c.gray(`dashboard, everything${twoFactorOn() ? ' · plus a two-factor code' : ''}${tokens.adminGenerated ? ` · generated, kept in ${config.fresh ? 'the temporary folder' : 'data/secrets.json'}` : ''}`)}`],
       ['Crew token', `${tokens.crew}  ${tty.c.gray('dashboard, live controls only: for the crew')}`],
       ['Ingest token', `${tokens.ingest}  ${tty.c.gray('room computers sending audio')}`],
     ]);
@@ -1325,6 +1434,7 @@ process.on('uncaughtException', (e) => console.error('✗ uncaught exception (se
 for (const sig of ['SIGINT', 'SIGTERM']) {
   process.on(sig, () => {
     tunnel.stop();
+    switchers?.stop();
     for (const id of [...stages.keys()]) removeStage(id);
     process.exit(0);
   });

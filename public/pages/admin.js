@@ -69,6 +69,8 @@ const L = {
     },
     txDelete: (n) => `¿Eliminar para siempre la transcripción «${n}»? No se puede deshacer.`,
     wizardLocked: 'Desactivá el modo evento para usar el asistente: puede cambiar salas e idiomas.',
+    toMe: 'Pasar a Solo para mí', toMeBody: (n) => `${n ? `${n === 1 ? 'Hay una sala en vivo' : `Hay ${n} salas en vivo`}: su público deja de ver los subtítulos. ` : ''}Las páginas del público, la pantalla del escenario y el overlay dejan de mostrar el evento hasta que vuelvas a eventos (desde Solo para mí, «Usarlo para eventos»). No se borra nada: salas, agenda y transcripciones quedan como están.`,
+    langInUse: (rooms, langs) => `${rooms.join(', ')} ${rooms.length > 1 ? 'usan' : 'usa'} ${langs.join(', ')}: quitalo de ${rooms.length > 1 ? 'esas salas' : 'esa sala'} primero (Salas → Editar).`,
     noTalks: 'Todavía no hay transcripciones en esta sala.', read: 'Leer', segs: (n) => `${n} frases`,
     k: {
       'room.create': (c) => (c.undoes ? `Sala «${c.after?.name}» restaurada` : `Sala «${c.after?.name}» creada`),
@@ -80,7 +82,7 @@ const L = {
       'engine.mode': (c) => `IA: ${aiLabel(c.after)}`,
       'event.lock': (c) => (c.after ? 'Modo evento activado' : 'Modo evento desactivado'),
     },
-    fields: { name: 'nombre', source: 'idioma de la charla', targets: 'idiomas', translation: 'modo de traducción', pull: 'fuente de audio', loop: 'loop' },
+    fields: { name: 'nombre', source: 'idioma de la charla', targets: 'idiomas', translation: 'modo de traducción', pull: 'fuente de audio', loop: 'loop', musicGuard: 'pausa con música' },
     ai: { auto: 'Automática (Gemini + respaldo)', cloud: 'Siempre Gemini', local: 'Siempre esta computadora' },
     sys: (y, up) => `Encendido hace ${up} · CPU ${y.cpuPct} % · memoria ${y.rssMB} MB · event loop ${y.loopLagMs.p99} ms (p99)`,
     audioNone: 'Sin audio', copied: 'Copiado',
@@ -121,6 +123,8 @@ const L = {
     },
     txDelete: (n) => `Delete the transcript “${n}” for good? This can’t be undone.`,
     wizardLocked: 'Turn off Event mode to use the setup wizard: it can change rooms and languages.',
+    toMe: 'Switch to Just for me', toMeBody: (n) => `${n ? `${n === 1 ? 'A room is live' : `${n} rooms are live`}: its audience stops seeing captions. ` : ''}The audience pages, the stage screen and the overlay stop showing the event until you switch back (from Just for me, “Use it for events”). Nothing is deleted: rooms, the agenda and transcripts stay as they are.`,
+    langInUse: (rooms, langs) => `${rooms.join(', ')} ${rooms.length > 1 ? 'use' : 'uses'} ${langs.join(', ')}: remove it from ${rooms.length > 1 ? 'those rooms' : 'that room'} first (Rooms → Edit).`,
     noTalks: 'No transcripts in this room yet.', read: 'Read', segs: (n) => `${n} lines`,
     k: {
       'room.create': (c) => (c.undoes ? `Room “${c.after?.name}” restored` : `Room “${c.after?.name}” created`),
@@ -132,7 +136,7 @@ const L = {
       'engine.mode': (c) => `AI: ${aiLabel(c.after)}`,
       'event.lock': (c) => (c.after ? 'Event mode turned on' : 'Event mode turned off'),
     },
-    fields: { name: 'name', source: 'talk language', targets: 'languages', translation: 'translation mode', pull: 'audio source', loop: 'loop' },
+    fields: { name: 'name', source: 'talk language', targets: 'languages', translation: 'translation mode', pull: 'audio source', loop: 'loop', musicGuard: 'pause for music' },
     ai: { auto: 'Automatic (Gemini + backup)', cloud: 'Always Gemini', local: 'Always this computer' },
     sys: (y, up) => `Up for ${up} · CPU ${y.cpuPct}% · memory ${y.rssMB} MB · event loop ${y.loopLagMs.p99} ms (p99)`,
     audioNone: 'No audio', copied: 'Copied',
@@ -252,7 +256,7 @@ function refreshView() {
   else if (view === 'agenda') loadAgenda();
   else if (view === 'glossary') loadGlossary();
   else if (view === 'screens') loadScreens();
-  else if (view === 'integrations') loadIntegrations();
+  else if (view === 'integrations') { loadIntegrations(); loadSwitchers(); }
   else if (view === 'transcripts') loadTranscripts();
   else if (view === 'history') loadHistory();
   else if (view === 'settings') loadSettings();
@@ -266,6 +270,8 @@ const hm = (ms) => new Date(ms).toLocaleTimeString(LANG, { hour: '2-digit', minu
 const when = (ms) => new Date(ms).toLocaleString(LANG, { weekday: 'short', hour: '2-digit', minute: '2-digit' });
 const langsOf = (st) => `${st.source === 'auto' || !st.source ? 'auto' : st.source} → ${(st.targets || []).filter((x) => x !== st.source).join(', ') || '—'}`;
 const stateChip = (s) => {
+  if (s.brk) return `<span class="chip warn">${icon('pause')} ${esc(tr('PAUSA'))}${s.brk.by === 'agenda' ? ` · ${esc(tr('agenda'))}` : s.brk.by === 'switcher' ? ' · vMix/OBS' : s.brk.by === 'room' ? ` · ${esc(tr('desde la sala'))}` : ''}</span>`;
+  if (s.music) return `<span class="chip warn">${icon('music')} ${esc(tr('MÚSICA · en pausa'))}</span>`;
   if (!s.ingest) return `<span class="chip">${esc(tr('SIN INGESTA'))}</span>`;
   if (s.engines.length && !s.gated) return `<span class="chip bad"><span class="dot live"></span> ${esc(tr('EN VIVO'))}</span>`;
   if (s.engines.length) return `<span class="chip warn">${esc(tr('EN PAUSA · silencio'))}</span>`;
@@ -275,7 +281,7 @@ const engChip = (e) => {
   const cls = e.state === 'live' ? 'ok' : e.state === 'reconnecting' || e.state === 'resuming' || e.state === 'connecting' ? 'warn' : e.state === 'idle' ? '' : 'bad';
   return `<span class="chip ${cls}" title="${esc(e.lastError || '')}">${esc(e.target)} · ${esc(e.state)}${e.reconnects ? ` · ${e.reconnects}×` : ''}</span>`;
 };
-const alertText = (a) => tr(({ 'no-audio': 'no llega audio', 'muted?': '¿mic muteado? (60s sin señal)', reconnecting: 'reconectando IA', 'high-latency': 'latencia alta', 'mt-throttled': 'traducción limitada por cuota → usando Live' })[a] || a);
+const alertText = (a) => tr(({ 'no-audio': 'no llega audio', 'muted?': '¿mic muteado? (60s sin señal)', reconnecting: 'reconectando IA', 'high-latency': 'latencia alta', 'mt-throttled': 'traducción limitada por cuota → usando Live', 'voice-in-break': 'hay alguien hablando durante la pausa', 'on-backup': 'usando el audio de respaldo' })[a] || a);
 
 // ---------- first-run guide (Live view, until everything is done) ----------
 let scheduleCount = null;
@@ -424,6 +430,7 @@ function renderGrid(s) {
         <div class="actions">
           <button data-a="due" class="primary hidden"></button>
           <button data-a="screens">${icon('qr')}Pantallas y QR</button>
+          <button data-a="break" data-f="brk">${icon('pause')}<span>Pausa</span></button>
           <button data-a="next">${icon('next')}Siguiente charla</button>
           <button data-a="details" class="more" aria-expanded="false"><span>Ver detalles</span>${icon('chevron')}</button>
         </div>
@@ -434,6 +441,7 @@ function renderGrid(s) {
           <div class="metrics" data-f="metrics"></div>
           <div class="preview" data-f="preview" data-no-i18n></div>
           <div class="actions">
+            <button data-a="fix">${icon('wand')}Corregir subtítulos</button>
             <button data-a="rename">${icon('doc')}Renombrar charla</button>
             <button data-a="export">${icon('download')}Transcripciones</button>
             <button data-a="restart">${icon('refresh')}Reconectar IA</button>
@@ -470,7 +478,8 @@ function renderGrid(s) {
     const pk = Math.max(0, Math.min(100, ((20 * Math.log10(st.peak || 1e-6) + 60) / 60) * 100));
     f('lvl').style.width = pct + '%';
     f('pk').style.left = pk + '%';
-    f('ingest').textContent = st.ingest ? `${st.ingest.kind}${st.ingest.label ? ` · ${st.ingest.label}` : ''} · ${tr('hace')} ${ago(st.ingest.since)}` : st.pull ? `pull: ${st.pull}` : tr('Sin fuente de audio. Abrí /ingest.html en la PC del escenario.');
+    f('ingest').textContent = (st.ingest ? `${st.ingest.kind}${st.ingest.label ? ` · ${st.ingest.label}` : ''} · ${tr('hace')} ${ago(st.ingest.since)}` : st.pull ? `pull: ${st.pull}` : tr('Sin fuente de audio. Abrí /ingest.html en la PC del escenario.'))
+      + (st.backup ? ` · ${tr(st.backup.active ? 'RESPALDO AL AIRE' : 'respaldo en espera')}: ${st.backup.kind}${st.backup.label ? ` · ${st.backup.label}` : ''}` : '');
     f('engines').innerHTML = st.engines.length ? st.engines.map(engChip).join('') : `<span class="chip">${esc(tr('sesiones cerradas (0 costo)'))}</span>`;
     const trs = Object.entries(st.latency.tr).map(([k, v]) => `${k} ${sec(v)}`).join(' · ');
     f('metrics').innerHTML = `
@@ -479,7 +488,17 @@ function renderGrid(s) {
       <div>${esc(tr('Público'))}<b>${st.viewers}</b></div>
       <div>Min · US$<b>${st.audioMinIn} · ${st.costUsd.toFixed(2)}</b></div>`;
     f('preview').innerHTML = Object.entries(st.preview).map(([ch, txt]) => `<div><span class="l">${esc(ch)}</span> ${esc(txt ? (txt.length > 80 ? '…' + txt.slice(-80) : txt) : '…')}</div>`).join('');
-    f('alerts').innerHTML = st.alerts.filter((a) => a !== 'no-ingest').map((a) => `<span class="chip bad">${esc(alertText(a))}</span>`).join('');
+    // Break: the button resumes. Music: captions wait for a voice; "it's a talk" captions anyway.
+    const brkBtn = f('brk');
+    brkBtn.classList.toggle('primary', !!st.brk);
+    brkBtn.querySelector('span').textContent = tr(st.brk ? 'Reanudar subtítulos' : 'Pausa');
+    brkBtn.title = tr(st.brk ? 'Termina la pausa: los subtítulos vuelven cuando alguien habla.' : 'Pausa (intervalo, publicidad): los subtítulos se detienen y las pantallas y los celulares muestran la pausa y la próxima charla.');
+    const alertsKey = JSON.stringify([st.alerts, st.music]);
+    if (f('alerts').dataset.key !== alertsKey) {
+      f('alerts').dataset.key = alertsKey;
+      f('alerts').innerHTML = st.alerts.filter((a) => a !== 'no-ingest').map((a) => `<span class="chip bad">${esc(alertText(a))}</span>`).join('')
+        + (st.music ? `<span class="muted-note">${esc(tr('Suena música: los subtítulos vuelven solos cuando alguien hable.'))}</span> <button data-a="musicok">${esc(tr('Es una charla: subtitular igual'))}</button>` : '');
+    }
   }
 }
 
@@ -513,6 +532,12 @@ $('grid').onclick = async (e) => {
     const card = b.closest('.stage'), open = card.classList.toggle('open');
     b.setAttribute('aria-expanded', open);
     b.querySelector('span').textContent = tr(open ? 'Ocultar detalles' : 'Ver detalles');
+  } else if (a === 'break') {
+    await api('POST', `/api/stages/${id}/break`, { on: !st.brk });
+    toast(tr(st.brk ? 'Subtítulos reanudados.' : 'Pausa: las pantallas y los celulares lo muestran.'), { ms: 3000 });
+  } else if (a === 'musicok') {
+    await api('POST', `/api/stages/${id}/music`, { caption: true });
+    toast(tr('Se subtitula igual hasta la próxima charla.'), { ms: 3000 });
   } else if (a === 'screens') {
     screensRoom = id;
     location.hash = '#screens';
@@ -529,7 +554,52 @@ $('grid').onclick = async (e) => {
   } else if (a === 'restart') {
     if (await confirmDialog({ title: t.restartAsk(st.name), body: t.restartAskBody, ok: t.restartOk })) { await api('POST', `/api/stages/${id}/restart`); toast(t.done, { ms: 3000 }); }
   } else if (a === 'export') openExport(st);
+  else if (a === 'fix') openFix(st);
 };
+
+// ---------- Live corrections: fix a misheard caption everywhere at once (PATCH /api/stages/:id/captions/:seg) ----------
+let fixRoom = null, fixCaps = [];
+async function loadFix() {
+  const r = await api('GET', `/api/stages/${fixRoom.id}/captions?channel=${encodeURIComponent($('fix-ch').value)}&n=8`);
+  fixCaps = r.captions;
+  $('fix-list').innerHTML = fixCaps.length
+    ? fixCaps.map((c) => `<textarea class="fix-row" rows="2" data-id="${esc(c.id)}" aria-label="${esc(c.text)}" spellcheck="true">${esc(c.text)}</textarea>`).join('')
+    : `<p class="muted-note">${esc(tr('Todavía no hay frases en esta charla.'))}</p>`;
+}
+async function openFix(st) {
+  fixRoom = st;
+  $('fix-title').textContent = `${tr('Corregir subtítulos')} · ${st.name}`;
+  $('fix-ch').innerHTML = st.languages.map((l) => `<option value="${esc(l)}">${esc(l === 'orig' ? tr('Original') : langLabel(l, ev.languages))}</option>`).join('');
+  $('fix-err').textContent = '';
+  await loadFix();
+  $('dlg-fix').showModal();
+}
+$('fix-ch').onchange = loadFix;
+/** One word changed ("Nerdarla" → "Nerdearla")? Offer to always write it that way (a glossary correction). */
+const oneWord = (a, b) => {
+  const x = a.split(/\s+/), y = b.split(/\s+/);
+  if (x.length !== y.length) return null;
+  const d = x.map((w, i) => [w, y[i]]).filter(([p, q]) => p !== q);
+  const strip = (w) => w.replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, '');
+  return d.length === 1 && strip(d[0][0]) && strip(d[0][1]) ? { from: strip(d[0][0]), to: strip(d[0][1]) } : null;
+};
+$('f-fix').addEventListener('submit', async (e) => {
+  if (e.submitter?.value !== 'ok') return;
+  e.preventDefault();
+  const changed = [...$('fix-list').querySelectorAll('.fix-row')].map((el) => ({ el, c: fixCaps.find((x) => x.id === el.dataset.id), text: el.value.replace(/\s+/g, ' ').trim() })).filter(({ c, text }) => c && text && text !== c.text);
+  try {
+    for (const { c, text } of changed) await api('PATCH', `/api/stages/${fixRoom.id}/captions/${encodeURIComponent(c.id)}`, { channel: $('fix-ch').value, text }, { quiet: true });
+  } catch (err) { $('fix-err').textContent = tr(err.message); return; }
+  $('dlg-fix').close();
+  if (changed.length) toast(tr('Corregido en las pantallas, los celulares y la transcripción.'), { ms: 3000 });
+  const words = changed.map(({ c, text }) => oneWord(c.text, text)).filter(Boolean);
+  if (!isCrew && words.length) {
+    const w = words[0];
+    if (await confirmDialog({ title: tr('¿Escribirlo siempre así?'), body: `«${w.from}» → «${w.to}». ${tr('Se agrega al glosario: corrige las próximas frases y ayuda a la IA a reconocerlo. Se puede deshacer desde el Historial.')}`, ok: tr('Siempre así') })) {
+      try { await api('POST', '/api/glossary/replacements', w); toast(tr('Agregado al glosario.'), { ms: 3000 }); } catch { /* toast shown */ }
+    }
+  }
+});
 function talkDialog({ title, note, ok, name, speaker, speakerField = true }) {
   $('talk-title').textContent = title;
   $('talk-note').textContent = note;
@@ -640,6 +710,7 @@ async function openEdit(id) {
   fe.source.value = st?.source || 'auto';
   fe.pull.value = st?.pull || '';
   fe.loop.checked = !!st?.loop;
+  fe.musicGuard.checked = st ? st.musicGuard !== false : true;
   fe.translation.value = st?.translationDef || '';
   $('edit-targets').innerHTML = Object.entries(ev.languages).map(([c, n]) => `<label class="row"><input type="checkbox" value="${c}" ${(st?.targets || ['es', 'en']).includes(c) ? 'checked' : ''}/> ${esc(n)}</label>`).join('');
   $('dlg-edit').showModal();
@@ -648,7 +719,7 @@ $('add').onclick = () => openEdit(null);
 $('dlg-edit').addEventListener('close', async () => {
   if ($('dlg-edit').returnValue !== 'ok') return;
   const body = {
-    name: fe.name.value, source: fe.source.value, translation: fe.translation.value || '', pull: fe.pull.value.trim(), loop: fe.loop.checked,
+    name: fe.name.value, source: fe.source.value, translation: fe.translation.value || '', pull: fe.pull.value.trim(), loop: fe.loop.checked, musicGuard: fe.musicGuard.checked,
     targets: [...$('edit-targets').querySelectorAll('input:checked')].map((i) => i.value),
   };
   const r = editing ? await api('PATCH', `/api/stages/${editing.id}`, body) : await api('POST', '/api/stages', { id: fe.id.value, ...body });
@@ -661,11 +732,13 @@ $('dlg-edit').addEventListener('close', async () => {
 async function loadAgenda() {
   const list = await (await fetch('/api/schedule')).json();
   scheduleCount = list.length;
-  const names = Object.fromEntries(ev.stages.map((x) => [x.id, x.name]));
+  const names = { ...Object.fromEntries(ev.stages.map((x) => [x.id, x.name])), '*': tr('Todas las salas') };
   const byRoom = {};
   for (const e of list) (byRoom[e.stage] ||= []).push(e);
+  // Breaks (coffee, lunch…): captions pause and screens show the break and the next talk.
+  const brkTag = (e) => (e.break ? ` <span class="chip warn">${icon('pause')} ${esc(tr('pausa'))}</span>` : '');
   $('agenda-current').innerHTML = list.length
-    ? Object.entries(byRoom).map(([room, es]) => `<section class="card flush"><table class="table"><thead><tr><th colspan="3">${esc(names[room] || room)}</th></tr></thead><tbody>${es.map((e) => `<tr><td class="u-w120">${esc(when(e.start))}</td><td><b>${esc(e.title)}</b></td><td class="hide-sm muted-note">${esc(e.speaker || '')}</td></tr>`).join('')}</tbody></table></section>`).join('')
+    ? Object.entries(byRoom).map(([room, es]) => `<section class="card flush"><table class="table"><thead><tr><th colspan="3">${esc(names[room] || room)}</th></tr></thead><tbody>${es.map((e) => `<tr><td class="u-w120">${esc(when(e.start))}</td><td><b>${esc(e.title)}</b>${brkTag(e)}</td><td class="hide-sm muted-note">${esc(e.speaker || '')}</td></tr>`).join('')}</tbody></table></section>`).join('')
     : `<p class="muted-note">${esc(t.agendaNone)}</p>`;
   $('agenda-diff').classList.add('hidden');
   loadImportSource();
@@ -732,7 +805,7 @@ async function loadIntegrations() {
       <td class="r"><button data-conn-test="${esc(c.id)}">${esc(t.conn.test)}</button> <button class="danger" data-conn-del="${esc(c.id)}">${esc(t.conn.remove)}</button></td></tr>`).join('')}</table>`
     : `<p class="empty">${esc(t.conn.none)}</p>`;
 }
-setInterval(() => { if (view === 'integrations' && !$('dlg-conn').open) loadIntegrations().catch(() => {}); }, 3000);
+setInterval(() => { if (view === 'integrations' && !$('dlg-conn').open && !$('dlg-sw').open) { loadIntegrations().catch(() => {}); loadSwitchers().catch(() => {}); } }, 3000);
 $('conn-list').onclick = async (e) => {
   const test = e.target.closest('[data-conn-test]')?.dataset.connTest, del = e.target.closest('[data-conn-del]')?.dataset.connDel;
   if (test) { await api('POST', `/api/integrations/${test}/test`); toast(t.conn.tested); setTimeout(loadIntegrations, 1500); }
@@ -770,6 +843,51 @@ fc.addEventListener('submit', async (e) => {
     if (c.secret) alert(t.conn.secret(c.secret));
     loadIntegrations();
   } catch (err) { $('conn-err').textContent = tr(err.message); }
+});
+
+// ---------- Vision mixers: vMix / OBS break scenes pause a room (src/switcher.js) ----------
+const DEFAULT_SCENES = 'break, pausa, intervalo, receso, almuerzo, lunch, coffee, cafe, publicidad, tanda, comercial, commercial, ads, sponsor, brb, be right back, volvemos, starting soon, empezamos, intermission';
+async function loadSwitchers() {
+  const { switchers } = await api('GET', '/api/switchers');
+  const names = Object.fromEntries(ev.stages.map((x) => [x.id, x.name]));
+  const status = (st) => (st.state === 'ok' ? `<span class="chip ok">${esc(tr('conectado'))}${st.scene ? ` · ${esc(tr('al aire:'))} ${esc(st.scene)}` : ''}</span>` : st.state === 'error' ? `<span class="chip bad">${esc(st.lastError || tr('error'))}</span>` : `<span class="chip">${esc(tr('conectando…'))}</span>`);
+  $('sw-list').innerHTML = switchers.length
+    ? `<table class="table">${switchers.map((w) => `<tr><td><b>${w.type === 'obs' ? 'OBS Studio' : 'vMix'}</b><div class="muted-note">${esc(names[w.stage] || w.stage)} · <code>${esc(w.address)}</code></div><div class="muted-note hide-sm">${esc(tr('Escenas de pausa:'))} ${esc(w.scenes)}</div></td>
+      <td>${status(w.status)}</td><td class="r"><button class="danger" data-sw-del="${esc(w.id)}">${esc(tr('Quitar'))}</button></td></tr>`).join('')}</table>`
+    : `<p class="empty">${esc(tr('Ninguna mezcla conectada.'))}</p>`;
+}
+$('sw-list').onclick = async (e) => {
+  const id = e.target.closest('[data-sw-del]')?.dataset.swDel;
+  if (id) { await api('DELETE', `/api/switchers/${id}`); toast(tr('Desconectado.')); loadSwitchers(); }
+};
+let swType = '';
+const fs = $('f-sw');
+document.querySelector('section.view[data-view="integrations"]').addEventListener('click', (e) => {
+  const type = e.target.closest('[data-switcher]')?.dataset.switcher;
+  if (!type) return;
+  swType = type;
+  $('sw-title').textContent = type === 'obs' ? 'OBS Studio' : 'vMix';
+  $('sw-help').textContent = tr(type === 'obs'
+    ? 'En OBS: Herramientas → Configuración del servidor WebSocket → Habilitar. Copiá la contraseña. La dirección es la IP de la computadora con OBS (puerto 4455).'
+    : 'En vMix: Settings → Web Controller → Enable. La dirección es la IP de la computadora con vMix (puerto 8088). Se usa el título de la entrada al aire.');
+  fs.stage.innerHTML = ev.stages.map((x) => `<option value="${esc(x.id)}">${esc(x.name)}</option>`).join('');
+  fs.url.value = '';
+  fs.url.placeholder = type === 'obs' ? '192.168.1.20:4455' : '192.168.1.20:8088';
+  fs.password.value = '';
+  fs.scenes.value = DEFAULT_SCENES;
+  $('sw-pass').classList.toggle('hidden', type !== 'obs');
+  $('sw-err').textContent = '';
+  $('dlg-sw').showModal();
+});
+fs.addEventListener('submit', async (e) => {
+  if (e.submitter?.value !== 'ok') return;
+  e.preventDefault();
+  try {
+    await api('POST', '/api/switchers', { type: swType, stage: fs.stage.value, url: fs.url.value.trim(), password: fs.password.value, scenes: fs.scenes.value }, { quiet: true });
+    $('dlg-sw').close();
+    toast(tr('Conectado. Al pasar a una escena de pausa, los subtítulos de la sala se pausan.'));
+    loadSwitchers();
+  } catch (err) { $('sw-err').textContent = tr(err.message); }
 });
 
 // ---------- Glossary ----------
@@ -931,34 +1049,48 @@ $('name-form').onsubmit = async (e) => {
   if (r.change) toast(t.renamed(name), { undo: r.change });
   ev = await (await fetch('/api/event')).json();
 };
-// Languages: event.json's are fixed here; the ones added from this page can be removed again.
+// Languages: any of them can be removed while no room uses it (the server says which room does), and added back.
 function renderLanguages(s) {
-  const added = s.addedLanguages || {};
-  $('langs-list').innerHTML = Object.entries(s.languages).map(([c, n]) => `<span class="chip">${esc(n)} <code>${esc(c)}</code>${c in added ? `<button type="button" class="x" data-lang-del="${esc(c)}" data-setup aria-label="${esc(tr('Quitar'))} ${esc(n)}">×</button>` : ''}</span>`).join('');
+  const many = Object.keys(s.languages).length > 1;
+  $('langs-list').innerHTML = Object.entries(s.languages).map(([c, n]) => `<span class="chip">${esc(n)} <code>${esc(c)}</code>${many ? `<button type="button" class="x" data-lang-del="${esc(c)}" data-setup aria-label="${esc(tr('Quitar'))} ${esc(n)}">×</button>` : ''}</span>`).join('');
   const free = Object.entries(LANGUAGE_CATALOG).filter(([c]) => !(c in s.languages)).sort((a, b) => a[1].localeCompare(b[1]));
   $('lang-add').innerHTML = free.map(([c, n]) => `<option value="${c}">${esc(n)} (${c})</option>`).join('');
   setLocked(locked);
 }
-async function saveLanguages(added) {
-  try { await api('PUT', '/api/setup', { languages: added }); } catch { return; } // the toast says why
+async function saveLanguages(body) {
+  try { await api('PUT', '/api/setup', body, { quiet: true }); } catch (e) {
+    const b = e.body || {};
+    toast(b.code === 'language-in-use' ? t.langInUse(b.rooms, b.languages) : tr(e.message), { error: true });
+    return;
+  }
   ev = await (await fetch('/api/event')).json();
   await loadSettings();
 }
 $('lang-form').onsubmit = async (e) => {
   e.preventDefault();
   const c = $('lang-add').value;
-  if (c) await saveLanguages({ ...settingsSetup.addedLanguages, [c]: LANGUAGE_CATALOG[c] });
+  const removed = settingsSetup.removedLanguages || [];
+  if (!c) return;
+  if (removed.includes(c)) await saveLanguages({ removedLanguages: removed.filter((x) => x !== c) }); // one of event.json's, back
+  else await saveLanguages({ languages: { ...settingsSetup.addedLanguages, [c]: LANGUAGE_CATALOG[c] } });
 };
 $('langs-list').onclick = async (e) => {
   const c = e.target.closest('[data-lang-del]')?.dataset.langDel;
   if (!c) return;
-  const rest = { ...settingsSetup.addedLanguages };
-  delete rest[c];
-  await saveLanguages(rest);
+  const body = {};
+  if (c in (settingsSetup.addedLanguages || {})) { const rest = { ...settingsSetup.addedLanguages }; delete rest[c]; body.languages = rest; }
+  if ((settingsSetup.builtInLanguages || []).includes(c)) body.removedLanguages = [...(settingsSetup.removedLanguages || []), c];
+  await saveLanguages(body);
 };
 $('tx-access').onchange = async () => {
   try { await api('PUT', '/api/setup', { publicTranscripts: $('tx-access').value }); toast(tr('Guardado')); } catch { /* toast shown */ }
   await loadSettings();
+};
+// Back to Just for me (the way back from me.html's "Use it for events"): it takes the event offline, so say so.
+$('to-me').onclick = async () => {
+  if (!(await confirmDialog({ title: `${t.toMe}?`, body: t.toMeBody(last?.totals?.live || 0), ok: t.toMe, danger: !!last?.totals?.live }))) return;
+  await api('PUT', '/api/setup', { mode: 'personal' });
+  location.href = '/me.html';
 };
 $('wizard-link').onclick = (e) => { if (locked) { e.preventDefault(); toast(t.wizardLocked, { error: true }); } };
 

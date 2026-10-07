@@ -22,6 +22,11 @@
   <link rel="stylesheet" href="/style.css" />
   <style>
     body { min-height: 100dvh; }
+    /* Correcting (admins): each sentence is editable; it's saved when you leave it. */
+    .seg { border-radius: 4px; box-shadow: 0 0 0 1px var(--line); padding: 0 2px; transition: background .4s; }
+    .seg:focus { outline: 2px solid var(--accent); box-shadow: none; }
+    .seg.saved { background: color-mix(in srgb, var(--ok) 25%, transparent); }
+    #fix[aria-pressed='true'] { background: var(--primary-bg); border-color: var(--primary-bg); color: var(--primary-fg); }
     .wrap { max-width: 1180px; margin: 0 auto; padding: 22px 20px 64px; }
     .top { display: flex; align-items: center; gap: 10px; justify-content: space-between; flex-wrap: wrap; }
     .top a { text-decoration: none; }
@@ -78,6 +83,7 @@
       <div class="search has-icon">
         <input id="q" type="search" autocomplete="off" />
         <span id="count"></span>
+        <span id="fix-hint" class="hidden" role="status"></span>
       </div>
       <div class="actions">
         <a id="live" class="hidden"><button><span class="dot live"></span> <span class="live-lbl"></span></button></a>
@@ -87,6 +93,7 @@
         <button id="copy" data-icon="link"><span class="lbl"></span></button>
         <button id="print" data-icon="print"><span class="lbl"></span></button>
         <button id="settings">Aa</button>
+        <button id="fix" class="hidden" data-icon="wand" aria-pressed="false"><span class="lbl"></span></button>
         <button id="del" class="danger hidden" data-icon="x"><span class="lbl"></span></button>
       </div>
     </div>

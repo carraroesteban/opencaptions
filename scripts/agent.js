@@ -9,7 +9,7 @@
 //
 // Options: --stage, --server (ws[s]://host[:port], default ws://localhost:8080), --token (or INGEST_TOKEN),
 //          --device (index or name; default = system default input), --channel mix|left|right, --gain <x>,
-//          --label <text>, --quiet
+//          --label <text>, --backup (stand by; take over if the room's main audio stops), --quiet
 import { spawn, spawnSync } from 'node:child_process';
 import os from 'node:os';
 import WebSocket from 'ws';
@@ -98,7 +98,7 @@ setInterval(() => {
   if (ws?.readyState === 1 && Date.now() - lastMsgAt > 6000) { console.error('no reply from server for 6 s → reconnecting'); ws.terminate(); }
 }, 2000);
 function connect() {
-  const url = `${server}/ws/ingest?stage=${encodeURIComponent(stage)}&kind=agent&label=${encodeURIComponent(label)}`;
+  const url = `${server}/ws/ingest?stage=${encodeURIComponent(stage)}&kind=agent&label=${encodeURIComponent(label)}${arg('backup') ? '&role=backup' : ''}`;
   ws = new WebSocket(url, { headers: token ? { authorization: `Bearer ${token}` } : {} }); // token in a header, never in the URL
   ws.on('open', () => {
     backoff = 1000;

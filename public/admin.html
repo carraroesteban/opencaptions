@@ -328,6 +328,13 @@
         </div>
         <h2 class="sec">Conectadas</h2>
         <div class="card flush" id="conn-list" data-no-i18n></div>
+        <h2 class="sec">Pausas desde la mezcla de video</h2>
+        <p class="muted-note">Cuando la transmisión pasa a una escena de pausa («Pausa», «Break», «Publicidad»…), los subtítulos de esa sala se pausan solos y las pantallas muestran la pausa y la próxima charla. Al volver, siguen.</p>
+        <div class="tools">
+          <button class="card tool u-left" type="button" data-switcher="vmix"><b data-icon="film">vMix</b><span>Lee qué entrada está al aire (Web Controller, puerto 8088).</span></button>
+          <button class="card tool u-left" type="button" data-switcher="obs"><b data-icon="film">OBS Studio</b><span>Lee la escena al aire (servidor WebSocket de OBS 28 o más nuevo, puerto 4455).</span></button>
+        </div>
+        <div class="card flush" id="sw-list" data-no-i18n></div>
         <h2 class="sec">Ya incluidas</h2>
         <div class="tools">
           <a class="card tool" href="#agenda"><b data-icon="calendar">Sessionize y calendarios</b><span>Importá la agenda desde Sessionize o un enlace de calendario (Google, Outlook).</span></a>
@@ -366,7 +373,7 @@
           <form class="rowbar" id="name-form"><input id="name-in" maxlength="80" class="u-minw220" /><button data-icon="check">Guardar</button></form>
         </section>
         <section class="card setting">
-          <div><h3>Idiomas</h3><p>Los que pueden elegir las salas. Agregá los que necesites; después elegilos en cada sala.</p><div class="chips" id="langs-list" data-no-i18n></div></div>
+          <div><h3>Idiomas</h3><p>Los que pueden elegir las salas. Agregá los que necesites y quitá los que no; después elegilos en cada sala.</p><div class="chips" id="langs-list" data-no-i18n></div></div>
           <form class="rowbar" id="lang-form"><select id="lang-add" aria-label="Idioma para agregar" class="u-minw220"></select><button data-icon="plus">Agregar</button></form>
         </section>
         <section class="card setting">
@@ -410,6 +417,10 @@
           <a href="/welcome.html#name" id="wizard-link"><button data-icon="wand" tabindex="-1">Abrir el asistente</button></a>
         </section>
         <section class="card setting">
+          <div><h3>Solo para mí</h3><p>Usá OpenCaptions solo para vos: tus llamadas, videos y conversaciones en esta compu. Las salas, la agenda y las transcripciones quedan guardadas para cuando vuelvas.</p></div>
+          <button type="button" id="to-me" data-icon="headphones" data-setup>Pasar a Solo para mí</button>
+        </section>
+        <section class="card setting">
           <div><h3>Servidor</h3><p id="sys" data-no-i18n></p></div>
           <span></span>
         </section>
@@ -433,6 +444,16 @@
     <p class="muted-note u-m0 u-bad" id="conn-err" role="alert"></p>
     <div class="dlg-actions"><button value="cancel" formnovalidate>Cancelar</button><button class="primary" id="conn-save" value="ok" data-icon="link">Conectar</button></div>
   </form></dialog>
+  <dialog id="dlg-sw"><form method="dialog" id="f-sw" class="u-stack12">
+    <h3 class="u-m0" id="sw-title"></h3>
+    <p class="muted-note u-m0" id="sw-help"></p>
+    <label class="field">Sala<select name="stage" required></select></label>
+    <label class="field">Dirección de la computadora<input name="url" required autocomplete="off" spellcheck="false" placeholder="192.168.1.20" /></label>
+    <label class="field" id="sw-pass">Contraseña del servidor WebSocket<input name="password" type="password" autocomplete="off" /></label>
+    <label class="field">Escenas de pausa (palabras separadas por comas)<input name="scenes" autocomplete="off" spellcheck="false" /></label>
+    <p class="muted-note u-m0 u-bad" id="sw-err" role="alert"></p>
+    <div class="dlg-actions"><button value="cancel" formnovalidate>Cancelar</button><button class="primary" value="ok" data-icon="link">Conectar</button></div>
+  </form></dialog>
   <dialog id="dlg-edit"><form method="dialog" id="f-edit" class="u-stack12">
     <h3 class="u-m0" id="edit-title">Sala</h3>
     <div class="row u-stretch">
@@ -448,6 +469,7 @@
       <option value="hybrid">Híbrido (subtítulos por texto + voz traducida en todos los idiomas)</option>
     </select></label>
     <label class="field">Pull de audio (opcional): SRT/RTMP/HLS/HTTP o archivo — el server lo toma con ffmpeg<input name="pull" placeholder="rtmp://0.0.0.0:1935/live/sala1 (OBS/vMix → Custom)  ·  srt://0.0.0.0:9001?mode=listener  ·  https://…/stream.m3u8" /></label>
+    <label class="row muted"><input type="checkbox" name="musicGuard" checked /> Pausar los subtítulos cuando suena música (entre charlas, videos)</label>
     <label class="row muted"><input type="checkbox" name="loop" /> Repetir en loop (archivos de prueba)</label>
     <div class="dlg-actions"><button value="cancel" formnovalidate>Cancelar</button><button class="primary" value="ok">Guardar</button></div>
   </form></dialog>
@@ -458,6 +480,14 @@
     <div class="dlg-actions"><button value="cancel">Cancelar</button><button value="ok" id="cf-ok"></button></div>
   </form></dialog>
 
+  <dialog id="dlg-fix"><form method="dialog" id="f-fix" class="u-stack12">
+    <h3 class="u-m0" id="fix-title" data-no-i18n></h3>
+    <p class="muted-note u-m0">Corregí una frase (un nombre mal escuchado, un número): las pantallas, los celulares y la transcripción la reemplazan al instante.</p>
+    <label class="field">Idioma<select id="fix-ch"></select></label>
+    <div id="fix-list" class="u-stack8" data-no-i18n></div>
+    <p class="muted-note u-m0 u-bad" id="fix-err" role="alert"></p>
+    <div class="dlg-actions"><button value="cancel" formnovalidate>Cerrar</button><button class="primary" value="ok" data-icon="check">Guardar correcciones</button></div>
+  </form></dialog>
   <dialog id="dlg-spk"><form method="dialog" class="u-stack12">
     <h3 class="u-m0" id="spk-title" data-no-i18n></h3>
     <label class="field">Nombre<input id="spk-name" maxlength="60" autocomplete="off" /></label>

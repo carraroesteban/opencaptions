@@ -2,6 +2,7 @@
 import dotenv from 'dotenv';
 dotenv.config({ quiet: true });
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -27,7 +28,20 @@ const env = process.env;
 if (event.timezone && !env.TZ) env.TZ = event.timezone;
 const DEFAULT_TARGETS = event.defaultTargets || ['es', 'en'];
 const vertex = /^(1|true)$/i.test(env.GOOGLE_GENAI_USE_VERTEXAI || '');
-const dataDir = path.resolve(ROOT, env.DATA_DIR || 'data');
+// FRESH=1 (or --fresh): start from nothing, to test OpenCaptions as a first-time user. The data folder is a new
+// temporary one, deleted when the server stops; the real one (data/) isn't touched, and .env still applies.
+const fresh = flag('fresh') || /^(1|true|yes|on)$/i.test(env.FRESH || '');
+const dataDir = fresh ? freshDir() : path.resolve(ROOT, env.DATA_DIR || 'data');
+function freshDir() {
+  const base = os.tmpdir();
+  // Leftovers of a run that couldn't clean up (killed, crashed): older than a day.
+  for (const d of fs.readdirSync(base).filter((x) => x.startsWith('opencaptions-fresh-'))) {
+    try { if (Date.now() - fs.statSync(path.join(base, d)).mtimeMs > 86400000) fs.rmSync(path.join(base, d), { recursive: true, force: true }); } catch { /* someone else's */ }
+  }
+  const dir = fs.mkdtempSync(path.join(base, 'opencaptions-fresh-'));
+  process.on('exit', () => { try { fs.rmSync(dir, { recursive: true, force: true }); } catch { /* already gone */ } });
+  return dir;
+}
 // A Gemini key typed in the dashboard (welcome wizard or Settings) is kept in data/secrets.json and wins over
 // GEMINI_API_KEY, so nobody has to edit .env. See src/aikey.js.
 const savedKey = String(readJson(path.join(dataDir, 'secrets.json'), {}).geminiApiKey || '');
@@ -71,8 +85,11 @@ export const config = {
   // The crew's password: the dashboard's live controls only (next talk, restart a room…), never the setup.
   crewToken: env.CREW_TOKEN || '',
   dataDir,
+  fresh,
   // Stop streaming audio to the model after this many seconds of silence (saves cost between talks).
   silenceGateSec: Number(env.SILENCE_GATE_SEC ?? event.silenceGateSec ?? 30),
+  // Pause captions while a room plays music (walk-in music, videos between talks): src/voice.js. Per room: musicGuard.
+  musicGuard: !/^(0|false|off|no)$/i.test(String(env.MUSIC_GUARD ?? event.musicGuard ?? 'on')),
   // Close model sessions entirely after this many seconds without speech / ingest.
   idleCloseSec: Number(env.IDLE_CLOSE_SEC ?? event.idleCloseSec ?? 300),
   // RMS threshold (0..1) to consider a 100ms chunk "speech".
@@ -147,6 +164,7 @@ export function normalizeStage(s) {
     title: s.title || '',
     vocabulary: s.vocabulary || [],
     translation: s.translation || undefined,
+    musicGuard: s.musicGuard === false ? false : undefined, // false: caption music too (a concert, a music class)
   };
 }
 

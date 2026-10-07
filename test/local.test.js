@@ -313,3 +313,59 @@ test('local: a speech server that answers pings but fails every request is retri
   assert.ok(!asr.isNetworkError(new TypeError('x is not a function')), 'a bug is not a network error');
   assert.ok(asr.isNetworkError(Object.assign(new TypeError('fetch failed'), { cause: { code: 'ECONNREFUSED' } })));
 });
+
+test('local: the previous sentences go in as earlier turns, and a translation that repeats them keeps only the new part', async () => {
+  const { stripEcho } = await import('../src/translate.js');
+  const prior = [
+    { text: 'We are also a nonprofit, so we have a board.', out: 'También somos una organización sin fines de lucro, así que tenemos un consejo.' },
+    { text: 'And we\'re a global community.', out: 'Y somos una comunidad global en todo el mundo.' },
+  ];
+  // Measured with gemma3:4b on a real talk: it repeated the previous captions, sometimes cut off ("…").
+  assert.equal(stripEcho('También somos una organización sin fines de lucro, así que tenemos un consejo. Y somos una comunidad global en todo el mundo. De activistas e investigadores.', prior), 'De activistas e investigadores.');
+  assert.equal(stripEcho('Y somos una comunidad global en…', prior), '', 'nothing but a cut-off repeat');
+  assert.equal(stripEcho('Y además somos muchos.', prior), 'Y además somos muchos.', 'a new sentence that starts like the previous one is kept');
+  assert.equal(stripEcho('De activistas.', []), 'De activistas.');
+
+  let n = 0;
+  const srv = await fakeServer(() => ({ body: { message: { content: ++n === 2 ? 'Y somos una comunidad global en…' : n === 3 ? 'De activistas.' : 'Y somos una comunidad global en todo el mundo. De activistas.' } } }));
+  config.localLlmUrl = srv.url;
+  const prev = config.engine;
+  config.engine = 'local';
+  try {
+    assert.equal(await translateText({ text: 'of activists.', from: 'en', to: 'es', prior }), 'De activistas.');
+    const sent = JSON.parse(srv.reqs[0].body).messages;
+    assert.deepEqual(sent.map((m) => m.role), ['system', 'user', 'assistant', 'user', 'assistant', 'user']);
+    assert.equal(sent[2].content, prior[0].out);
+    assert.match(sent.at(-1).content, /of activists\.$/);
+    assert.ok(!sent.some((m) => /context|previous sentences|do not translate them/i.test(m.content)), 'no instruction about the previous sentences that a small model could copy');
+    // Only a repeat came back: asked again without the previous sentences.
+    assert.equal(await translateText({ text: 'of activists.', from: 'en', to: 'es', prior }), 'De activistas.');
+    assert.deepEqual(JSON.parse(srv.reqs[2].body).messages.map((m) => m.role), ['system', 'user']);
+  } finally {
+    config.engine = prev;
+    srv.close();
+  }
+});
+
+test('local: a caption cut at a pause mid-sentence is translated together with the rest of its sentence', async () => {
+  const { SentenceTranslator } = await import('../src/translate.js');
+  // The fake model "translates" by wrapping the text it was asked for.
+  const srv = await fakeServer((req, body) => ({ body: { message: { content: `[${JSON.parse(body).messages.at(-1).content.split('\n').slice(1).join(' ')}]` } } }));
+  config.localLlmUrl = srv.url;
+  const prev = config.engine;
+  config.engine = 'local';
+  try {
+    const finals = [];
+    const q = new SentenceTranslator({ from: 'en', to: 'es', onPartial: () => {}, onFinal: (text) => finals.push(text) });
+    q.feed('And we\'re', { finished: true }); // Whisper's utterance ended at a short pause
+    await sleep(300);
+    assert.deepEqual(finals, [], 'not translated alone');
+    q.feed(' a global community.', { finished: true });
+    for (let i = 0; i < 100 && !finals.length; i++) await sleep(10);
+    assert.deepEqual(finals, ['[And we\'re a global community.]']);
+    q.flush();
+  } finally {
+    config.engine = prev;
+    srv.close();
+  }
+});

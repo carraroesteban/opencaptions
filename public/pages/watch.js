@@ -1,9 +1,11 @@
 // watch.html: page script (kept out of the HTML so the Content-Security-Policy can forbid inline scripts).
-import { qs, t, esc, store, wsUrl, Socket, CaptionState, PcmPlayer, langLabel, wakeLock, getEvent, applyReadingPrefs, setReadingPref, setTheme, liveText } from '/common.js';
+import { qs, t, esc, store, wsUrl, Socket, CaptionState, PcmPlayer, langLabel, wakeLock, getEvent, applyReadingPrefs, setReadingPref, setTheme, pauseView, CaptionFlow } from '/common.js';
 import { mountAssistant } from '/assist-ui.js';
 import { icon, mountIcons } from '/illustrations.js';
 import { prefsControls } from '/i18n.js';
 import { floatingCaptions } from '/floating.js';
+import { Pacer } from '/smooth.js';
+import { Speaker, canSpeak } from '/speak.js';
 const $ = (id) => document.getElementById(id);
 const stageId = qs.get('stage');
 if (!stageId) location.href = '/';
@@ -22,7 +24,9 @@ let dual = store.get('dual', false);
 let size = store.get('size', 24);
 let listening = false;
 let hello = null;
-const states = {};
+const states = {}; // channel → what's on screen (CaptionState), fed word by word by its pacer
+const pacers = {}; // channel → Pacer (smooth.js): the server's bursts come out at the speaker's pace
+const pacer = (ch) => (pacers[ch] ??= new Pacer((seg) => onShown(seg)));
 const player = new PcmPlayer();
 
 $('empty').textContent = t('connecting');
@@ -62,19 +66,25 @@ for (const d of ['dlg-ai', 'dlg-set']) $(d).addEventListener('click', (e) => { i
 
 const channel = () => hello?.map?.[lang] || 'orig';
 const hasAudio = () => channel() !== 'orig' && (hello?.stage?.audioLangs || []).includes(lang);
+// 🎧 Listen: the AI's natural voice where the room has one, otherwise the phone reads the captions aloud (speak.js).
+const listenMode = () => (hasAudio() ? 'ai' : channel() !== 'orig' && canSpeak(lang) ? 'device' : null);
+const speaker = new Speaker();
+let listenWith = null;
+if (typeof speechSynthesis !== 'undefined') speechSynthesis.addEventListener?.('voiceschanged', () => $('listen').classList.toggle('hidden', !listenMode()));
 
 const sock = new Socket(() => wsUrl('/ws/view', {
   stage: stageId,
   langs: [lang || 'orig', dual ? 'orig' : null].filter(Boolean).join(','),
-  audio: listening ? lang : '0',
+  audio: listening && listenWith === 'ai' ? lang : '0',
 }), {
   message(m) {
     if (m.type === 'hello') onHello(m);
     else if (m.type === 'caption') onCaption(m);
+    else if (m.type === 'pause') showPause(m);
     else if (m.type === 'title') $('talk').textContent = [m.title, m.speaker].filter(Boolean).join(' · ');
     else if (m.type === 'talk') {
       $('talk').textContent = [m.title, m.speaker].filter(Boolean).join(' · ');
-      if (m.talk !== hello?.talk) { if (hello) hello.talk = m.talk; for (const s of Object.values(states)) s.clear(); renderAll(); toast(t('talkChanged')); }
+      if (m.talk !== hello?.talk) { if (hello) hello.talk = m.talk; for (const s of Object.values(states)) s.clear(); for (const p of Object.values(pacers)) p.clear(); renderAll(); toast(t('talkChanged')); }
     }
   },
   binary(ab) { if (listening) player.push(ab); },
@@ -99,15 +109,37 @@ function onHello(m) {
     if (next !== lang) { lang = next; return sock.reconnect(); }
   }
   $('langs').innerHTML = langs.map((l) => `<button class="pill" data-lang="${l}" aria-pressed="${l === lang}">${esc(l === 'orig' ? t('original') : langLabel(l, ev.languages))}</button>`).join('');
-  for (const [ch, hist] of Object.entries(m.history)) (states[ch] ??= new CaptionState()).load(hist, m.partial[ch]);
-  $('listen').classList.toggle('hidden', !hasAudio());
+  for (const [ch, hist] of Object.entries(m.history)) {
+    (states[ch] ??= new CaptionState()).load(hist, m.partial[ch]);
+    pacer(ch).load([...hist, m.partial[ch]].filter(Boolean)); // already said: shown at once
+  }
+  $('listen').classList.toggle('hidden', !listenMode());
   $('orig').classList.toggle('hidden', !dual || channel() === 'orig');
   $('doc').href = docUrl();
   $('ai-doc').href = docUrl();
+  showPause(m.pause);
   renderAll();
 }
 
+/** A break or music in the room: say so above the captions (they stop on purpose, nothing is broken). */
+let pauseNow = null;
+function showPause(p) {
+  pauseNow = p;
+  const v = pauseView(p);
+  const el = $('pause');
+  el.classList.toggle('hidden', !v);
+  if (!v) return;
+  el.className = `pause ${v.kind}`;
+  el.innerHTML = `<b>${esc(v.title)}</b>${v.back ? `<span>${esc(v.back)}</span>` : ''}${v.next ? `<span>${esc(v.next)}</span>` : ''}`;
+}
+
 function onCaption(seg) {
+  pacer(seg.channel).push(seg);
+  if (listening && listenWith === 'device' && seg.final && seg.channel === channel()) speaker.say(seg.text);
+}
+
+/** A caption as it's shown now (some of its words, or all of them). */
+function onShown(seg) {
   const s = (states[seg.channel] ??= new CaptionState());
   s.apply(seg);
   if (seg.channel === channel()) renderMain(seg);
@@ -122,42 +154,20 @@ let follow = true;
 $('scroll').addEventListener('scroll', () => { follow = nearBottom(); $('tolive').classList.toggle('hidden', follow); });
 $('tolive').onclick = () => { follow = true; $('scroll').scrollTop = $('scroll').scrollHeight; };
 
+const flow = new CaptionFlow($('text'));
 function renderAll() {
   const s = states[channel()] || new CaptionState();
-  const box = $('text');
-  box.innerHTML = '';
-  s.finals.forEach((f, i) => box.append(para(f, i < s.finals.length - 6, box.lastElementChild)));
-  if (s.partial) box.append(para(s.partial, false, box.lastElementChild));
-  if (!s.finals.length && !s.partial) box.innerHTML = `<div class="empty empty-state">${LOGO}<span>${esc(t('waiting'))}</span></div>`;
+  flow.render([...s.finals, s.partial]);
+  if (!s.finals.length && !s.partial) $('text').innerHTML = `<div class="empty empty-state">${LOGO}<span>${esc(t('waiting'))}</span></div>`;
   renderOrig();
   renderPip();
   scrollEnd();
 }
 
 const LOGO = '<svg class="oc-logo typing" viewBox="0 0 878 664" aria-hidden="true"><use class="o" href="/brand/sprite.svg#oc-o"/><use class="ln" href="/brand/sprite.svg#oc-line"/></svg>';
-function para(seg, old = false, before = null) {
-  const p = document.createElement('p');
-  p.dataset.id = seg.id;
-  // Who is speaking, shown when it changes (the crew sets it on the dashboard).
-  p.dataset.who = seg.spk || '';
-  if (seg.spk && seg.spk !== (before?.dataset.who || '')) p.dataset.spk = seg.spk;
-  liveText(p, seg.text, seg.final);
-  if (!seg.final) p.className = 'partial'; else if (old) p.className = 'old';
-  // Screen readers read each sentence once, when it's final, not every word as the line is being rewritten.
-  if (!seg.final) p.setAttribute('aria-hidden', 'true');
-  return p;
-}
 
 function renderMain(seg) {
-  const box = $('text');
-  box.querySelector('.empty')?.remove();
-  const p = box.querySelector(`p[data-id="${CSS.escape(seg.id)}"]`);
-  if (p) { liveText(p, seg.text, seg.final); p.className = seg.final ? '' : 'partial'; if (seg.final) p.removeAttribute('aria-hidden'); else p.setAttribute('aria-hidden', 'true'); }
-  else box.append(para(seg, false, box.querySelector('p:last-of-type')));
-  // keep the partial last and dim older paragraphs
-  const ps = box.querySelectorAll('p');
-  ps.forEach((el, i) => { if (!el.classList.contains('partial')) el.classList.toggle('old', i < ps.length - 6); });
-  while (box.children.length > 220) box.firstChild.remove();
+  flow.update(seg);
   scrollEnd();
 }
 
@@ -172,11 +182,12 @@ function scrollEnd() { if (follow) requestAnimationFrame(() => { $('scroll').scr
 let last = 0;
 function pulse() { last = Date.now(); }
 setInterval(() => {
-  const live = sock.ready && Date.now() - last < 15000;
+  const brk = !!pauseNow?.brk;
+  const live = sock.ready && !brk && Date.now() - last < 15000;
   const el = $('status');
-  el.className = 'chip' + (live ? ' bad' : '');
+  el.className = 'chip' + (live ? ' bad' : brk ? ' warn' : '');
   el.querySelector('.dot').className = 'dot' + (live ? ' live' : '');
-  el.querySelector('span:last-child').textContent = !sock.ready ? t('connecting') : live ? t('live') : t('paused');
+  el.querySelector('span:last-child').textContent = !sock.ready ? t('connecting') : brk ? t('brk') : live ? t('live') : t('paused');
 }, 1000);
 
 // ---- controls ----
@@ -186,7 +197,7 @@ $('langs').onclick = (e) => {
   lang = b.dataset.lang;
   store.set(`lang.${stageId}`, lang);
   store.set('lang', lang);
-  if (listening && lang === 'orig') toggleListen();
+  if (listening) toggleListen(); // another language: another voice (tap Listen again)
   sock.reconnect();
 };
 const setSize = (d) => { size = Math.min(56, Math.max(14, size + d)); store.set('size', size); document.documentElement.style.setProperty('--size', size + 'px'); $('size-val').textContent = size; scrollEnd(); };
@@ -206,8 +217,12 @@ async function toggleListen() {
   listening = !listening;
   $('listen').setAttribute('aria-pressed', listening);
   $('listen').innerHTML = `${icon('headphones')} <span class="lbl">${esc(listening ? t('stopListen') : t('listen'))}</span>`;
-  if (listening) { await player.start(); toast(t('listenHint')); } else player.stop();
-  sock.reconnect();
+  const was = listenWith;
+  listenWith = listening ? listenMode() : null;
+  if (listenWith === 'device') { speaker.start(lang); toast(t('listenHint')); }
+  else if (listenWith === 'ai') { await player.start(); toast(t('listenHint')); }
+  else { player.stop(); speaker.stop(); }
+  if (listenWith === 'ai' || was === 'ai') sock.reconnect(); // the AI's voice comes over the socket
 }
 $('listen').onclick = toggleListen;
 
@@ -225,6 +240,7 @@ const pip = floatingCaptions({
   button: $('pip'),
   text: () => states[channel()]?.tail(220) || t('waiting'),
   live: () => !!states[channel()]?.partial?.text, // still being spoken → highlight the last word
+  caps: () => pacers[channel()]?.shown() || [], // TV-style lines that never re-wrap
   onError: () => toast(t('error')),
 });
 function renderPip() { pip.render(); }

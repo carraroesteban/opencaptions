@@ -36,5 +36,5 @@ In personal mode nothing is public, not even on your Wi-Fi: the captions, the tr
 
 ## Switch between modes
 
-- **Use it for events** (top right) switches OpenCaptions to events: rooms, QR codes, the dashboard. It asks first; your transcripts stay where they are, but the event side never shows them.
-- To come back, open **Settings → Setup wizard** in the dashboard and choose **Just for me**.
+- **Use it for events** (top right) switches OpenCaptions to events: rooms, QR codes, the dashboard. First it shows, on the page, what stays (your transcripts, still private; your AI; this page, at `/me.html`) and what changes: OpenCaptions opens on the dashboard, the audience pages can be read by anyone who reaches this computer, and what the AI costs or how many rooms this computer keeps up with. The first time, the event's setup wizard comes next.
+- To come back, open **Settings → Just for me** in the dashboard. It says so if rooms are live (their audience stops seeing captions), and it's blocked while Event mode is on. Nothing is deleted either way.

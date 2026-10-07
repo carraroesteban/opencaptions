@@ -1,5 +1,5 @@
 // ingest.html: page script (kept out of the HTML so the Content-Security-Policy can forbid inline scripts).
-import { qs, esc, store, wsUrl, Socket, getEvent, langLabel, takeUrlToken, ingestTicket } from '/common.js';
+import { qs, esc, store, wsUrl, Socket, getEvent, langLabel, takeUrlToken, ingestTicket, wakeLock } from '/common.js';
 import { localize, prefsControls, tr } from '/i18n.js';
 import { icon } from '/illustrations.js';
 import { openMic, openScreenAudio } from '/capture.js';
@@ -15,6 +15,8 @@ $('channel').value = store.get('ingest.channel', 'mix');
 $('gain').value = store.get('ingest.gain', 1);
 $('token').value = takeUrlToken('ingest.token');
 $('auto').checked = store.get('ingest.auto', false);
+$('backup').checked = qs.get('role') === 'backup' || store.get('ingest.backup', false);
+$('backup').onchange = () => { store.set('ingest.backup', $('backup').checked); if (running) { stop(); start(); } };
 
 let ctx, node, stream, media, sock, running = false;
 const pending = [];
@@ -85,7 +87,7 @@ async function start() {
     node.port.onmessage = (e) => onPcm(e.data);
     // USB interface unplugged / "Stop sharing" clicked: say so instead of silently sending nothing.
     stream?.getAudioTracks().forEach((tk) => { tk.onended = () => { alertBox(tr('La entrada de audio se desconectó. Revisá el cable/placa y volvé a empezar.')); setConn('entrada desconectada', 'bad'); }; });
-    const mySock = (sock = new Socket(async () => wsUrl('/ws/ingest', { stage: $('stage').value, kind: 'browser', label: `${$('mode').value}${$('mode').value === 'mic' ? ': ' + ($('device').selectedOptions[0]?.text || '') : ''}`, ticket: await ingestTicket($('token').value) }), {
+    const mySock = (sock = new Socket(async () => wsUrl('/ws/ingest', { stage: $('stage').value, kind: 'browser', role: $('backup').checked ? 'backup' : '', label: `${$('mode').value}${$('mode').value === 'mic' ? ': ' + ($('device').selectedOptions[0]?.text || '') : ''}`, ticket: await ingestTicket($('token').value) }), {
       open() { setConn('conectado', 'ok'); while (pending.length && sock.ready) sock.send(pending.shift()); },
       close(e) {
         if (sock !== mySock) return; // an old connection closing must not tear down the current one
@@ -98,6 +100,8 @@ async function start() {
     if (ctx.state !== 'running') { try { await ctx.resume(); } catch { /* needs a click */ } }
     if (ctx.state !== 'running') { alertBox(tr('El navegador bloqueó el audio: hacé clic en la página (o usá el agente nativo).')); document.addEventListener('click', () => ctx?.resume(), { once: true }); }
     running = true;
+    wakeLock(); // the room's computer must not dim or sleep mid-talk (works on localhost or https)
+    $('brk').classList.remove('hidden');
     goLabel(true);
     $('go').classList.remove('primary');
     $('go').classList.add('danger');
@@ -111,6 +115,7 @@ async function start() {
 
 function stop() {
   running = false;
+  $('brk').classList.add('hidden');
   sock?.close(); sock = null;
   stream?.getTracks().forEach((t) => t.stop()); stream = null;
   media?.pause(); media = null;
@@ -140,10 +145,25 @@ function onPcm(buf) {
   else { pending.push(buf); if (pending.length > 150) pending.shift(); }
 }
 
+// Break from the room (the stage manager, intermission, ads): the server pauses captions and the screens show it.
+let onBreak = false;
+const toggleBreak = () => sock?.send({ type: 'break', on: !onBreak });
+$('brk').onclick = toggleBreak;
+document.addEventListener('keydown', (e) => {
+  if ((e.key === 'b' || e.key === 'B') && running && !e.target.closest('input, select, textarea') && !e.metaKey && !e.ctrlKey) toggleBreak();
+});
+
 function onStatus(m) {
   if (m.type !== 'status') return;
+  onBreak = !!m.brk;
+  $('brk').textContent = tr(onBreak ? 'Reanudar subtítulos (B)' : 'Pausa (B)');
+  $('brk').classList.toggle('primary', onBreak);
   $('engines').innerHTML = [
-    m.gated ? '<span class="chip warn">en pausa (silencio)</span>' : '<span class="chip ok">enviando al modelo</span>',
+    m.role === 'backup' ? `<span class="chip ${m.active ? 'warn' : ''}">${esc(tr(m.active ? 'respaldo · al aire' : 'respaldo · en espera'))}</span>` : '',
+    m.brk ? `<span class="chip warn">${esc(tr('pausa'))}${m.brk.title ? ` · ${esc(m.brk.title)}` : ''}</span>`
+      : m.music ? `<span class="chip warn">♪ ${esc(tr('música: subtítulos en pausa'))}</span>`
+        : m.gated ? '<span class="chip warn">en pausa (silencio)</span>' : '<span class="chip ok">enviando al modelo</span>',
+    m.sound && m.sound !== 'unknown' ? `<span class="chip">${esc(tr({ voice: 'se oye: voz', music: 'se oye: música', quiet: 'se oye: silencio' }[m.sound] || m.sound))}</span>` : '',
     ...m.engines.map((e) => `<span class="chip ${e.state === 'live' ? 'ok' : e.state === 'idle' ? '' : 'warn'}">${esc(e.target)} · ${esc(e.state)}</span>`),
     m.latency?.asr != null ? `<span class="chip">latencia ${(m.latency.asr / 1000).toFixed(1)}s</span>` : '',
     ...m.alerts.map((a) => `<span class="chip bad">${esc(a)}</span>`),

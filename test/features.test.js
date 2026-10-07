@@ -98,9 +98,9 @@ test('agenda: a Swapcard export pasted from Excel (header, tabs, multi-line cell
   ].join('\n');
   const rooms = [{ id: 'main', name: 'Escenario Principal' }, { id: 'sala-a', name: 'Sala A' }, { id: 'sala-b', name: 'Sala B' }];
   const e = parseSchedule(tsv, now, { rooms });
-  assert.deepEqual(e.map((x) => [x.stage, x.title, x.speaker]), [['main', 'Keynote de apertura', 'Ana Pérez, John Doe'], ['sala-a', 'Huertas urbanas para principiantes', 'Luis']]);
+  assert.deepEqual(e.map((x) => [x.stage, x.title, x.speaker, !!x.break]), [['main', 'Keynote de apertura', 'Ana Pérez, John Doe', false], ['sala-a', 'Huertas urbanas para principiantes', 'Luis', false], ['*', 'Coffee break', '', true]]);
   assert.equal(new Date(e[0].start).getHours(), 10);
-  assert.deepEqual(e.skipped.map((s) => s.room), ['Lab 3', '—'], 'rooms without captions are skipped, not fatal');
+  assert.deepEqual(e.skipped.map((s) => s.room), ['Lab 3'], 'rooms without captions are skipped, not fatal; a break without a room is for every room');
 });
 
 test('agenda: date formats', () => {

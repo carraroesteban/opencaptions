@@ -9,8 +9,10 @@ import { GeminiEngine } from './engines/gemini.js';
 import { MockEngine } from './engines/mock.js';
 import { LocalEngine } from './engines/local.js';
 import { SentenceTranslator } from './translate.js';
+import { VoiceDetector } from './voice.js';
 
 const PREROLL_CHUNKS = 6; // 600 ms kept while gated, so the first words aren't clipped
+const PREROLL_MUSIC = 40; // after music: telling a voice from music takes a few seconds, so keep 4 s and send them
 const EMA = (prev, v, a = 0.3) => (prev == null ? v : prev * (1 - a) + v * a);
 // Gemini 3.5 Live Translate paid tier: $0.0053/min input + $0.0315/min output audio (Sept 2026 pricing page).
 const USD_PER_SESSION_MIN = 0.0368;
@@ -28,7 +30,11 @@ export class Stage extends EventEmitter {
     this.ticks = 0;
     this.applyDef(def);
     this.engines = new Map();
-    this.ingest = null; // { kind, label, since, ws? }
+    // Audio sources: the room's computer and, optionally, a backup on another output of the sound desk (another
+    // computer, or the same one with a second interface). Only the active one is captioned; the backup takes over
+    // by itself when the main one fails (see #failover). Each: { kind, label, since, role, token, detach, lastAudioAt, loudAt, okSince, level }.
+    this.sources = { primary: null, backup: null };
+    this.active = 'primary';
     this.level = 0;
     this.peak = 0;
     this.lastAudioAt = 0;
@@ -45,6 +51,13 @@ export class Stage extends EventEmitter {
     this.viewers = 0;
     this.logs = [];
     this.alerts = new Set();
+    // Breaks: captions paused on purpose (the crew, the agenda or the vision mixer said so). Music: paused because
+    // the room is playing music (src/voice.js). Either way no audio goes to the AI: nothing to caption, no cost.
+    this.brk = null; // { by: 'crew'|'agenda'|'switcher', since, title, until }
+    this.music = false;
+    this.musicOverride = false; // the crew said "it's not music" (until the next talk)
+    this.voiceInBreakMs = 0;
+    this.voice = new VoiceDetector({ onChange: (s) => this.#onVoice(s) });
     this.chunker = new Chunker((c) => this.#onChunk(c));
     this.#newTalk(def.title || '', false);
     this.tick = setInterval(() => this.#housekeeping(), 1000);
@@ -93,28 +106,71 @@ export class Stage extends EventEmitter {
   }
 
   // ---------- audio in ----------
+  /** The source being captioned now (the main one, or the backup while it covers), or null. */
+  get ingest() { return this.sources[this.active] || this.sources[this.active === 'primary' ? 'backup' : 'primary'] || null; }
+
   attachIngest(info) {
-    const prev = this.ingest;
-    if (prev?.detach) prev.detach('replaced by a new ingest');
-    this.ingest = { ...info, since: Date.now() };
+    const role = info.role === 'backup' ? 'backup' : 'primary';
+    this.sources[role]?.detach?.('replaced by a new ingest');
+    this.sources[role] = { ...info, role, since: Date.now(), lastAudioAt: 0, loudAt: 0, okSince: 0, level: 0 };
+    if (!this.sources[this.active]) this.active = role;
     this.hadIngest = true; // for alerts: a room that never had a source isn't "disconnected"
-    this.log('info', `ingest connected: ${info.kind} ${info.label || ''}`.trim());
+    this.log('info', `${role === 'backup' ? 'backup audio' : 'ingest'} connected: ${info.kind} ${info.label || ''}`.trim());
     this.emit('ingest');
   }
 
   detachIngest(info) {
-    if (this.ingest && this.ingest.token === info.token) {
-      this.log('warn', `ingest disconnected: ${this.ingest.kind}`);
-      this.ingest = null;
-      this.level = 0;
-      this.#gate('ingest disconnected');
-      this.emit('ingest');
+    const role = Object.keys(this.sources).find((r) => this.sources[r]?.token === info.token);
+    if (!role) return;
+    this.log('warn', `${role === 'backup' ? 'backup audio' : 'ingest'} disconnected: ${this.sources[role].kind}`);
+    this.sources[role] = null;
+    if (role === this.active) {
+      const other = role === 'primary' ? 'backup' : 'primary';
+      if (this.sources[other]) this.#switchSource(other, `${role === 'primary' ? 'the main audio' : 'the backup'} disconnected`);
+      else {
+        this.level = 0;
+        this.#gate('ingest disconnected');
+      }
     }
+    this.emit('ingest');
   }
 
-  pushAudio(buf) {
+  /** Audio from a source (its token); only the active source's audio is captioned, the other one is just measured. */
+  pushAudio(buf, token = null) {
     if (this.destroyed) return;
+    const src = token ? Object.values(this.sources).find((x) => x?.token === token) : this.sources[this.active];
+    if (src) {
+      const now = Date.now();
+      src.level = rms(buf);
+      src.lastAudioAt = now;
+      if (src.level >= config.speechRms) { src.loudAt = now; src.okSince ||= now; } else if (now - src.loudAt > 20000) src.okSince = 0;
+      if (token && src.role !== this.active) return;
+    }
     this.chunker.push(buf);
+  }
+
+  #switchSource(role, why) {
+    if (this.active === role) return;
+    this.active = role;
+    this.log('warn', role === 'backup' ? `switched to the backup audio: ${why}` : `back to the main audio: ${why}`);
+    this.emit('ingest');
+  }
+
+  /**
+   * The backup takes over when the main audio stops (no sound at all for 3 s) or goes silent while the backup
+   * hears people (a fader pulled down, a cable out of the desk). The main one takes back over after 10 s healthy.
+   */
+  #failover(now) {
+    const p = this.sources.primary, b = this.sources.backup;
+    if (!p || !b) return;
+    const dead = (x) => now - x.lastAudioAt > 3000;
+    if (dead(p)) p.okSince = 0;
+    if (this.active === 'primary' && !dead(b)) {
+      if (dead(p)) this.#switchSource('backup', 'no audio from the main source');
+      else if (now - p.loudAt > 20000 && now - b.loudAt < 2000) this.#switchSource('backup', 'the main source has been silent for 20 s while the backup hears sound');
+    } else if (this.active === 'backup' && !dead(p) && p.okSince && now - p.okSince > 10000 && now - p.loudAt < 2000) {
+      this.#switchSource('primary', 'it has been sending sound for 10 s');
+    }
   }
 
   #onChunk(chunk) {
@@ -124,7 +180,11 @@ export class Stage extends EventEmitter {
     this.peak = Math.max(this.peak * 0.95, lvl);
     this.lastAudioAt = now;
     this.audioMsIn += 100;
-    const speech = lvl >= config.speechRms;
+    if (config.musicGuard) this.voice.push(chunk);
+    const loud = lvl >= config.speechRms;
+    // On a break or during music, sound isn't speech to caption: it doesn't wake the AI up.
+    const speech = loud && !this.brk && !this.music;
+    if (this.brk && loud && this.voice.state === 'voice') this.voiceInBreakMs += 100;
 
     if (speech) {
       if (now - this.lastSpeechAt > 800) this.onset = { at: now, asr: true, tr: new Set(this.transTargets) };
@@ -143,7 +203,7 @@ export class Stage extends EventEmitter {
 
     if (this.gated) {
       this.preroll.push(chunk);
-      if (this.preroll.length > PREROLL_CHUNKS) this.preroll.shift();
+      if (this.preroll.length > (this.musicWas ? PREROLL_MUSIC : PREROLL_CHUNKS)) this.preroll.shift();
       return;
     }
     for (const e of this.engines.values()) e.sendAudio(chunk);
@@ -157,6 +217,7 @@ export class Stage extends EventEmitter {
   #ungate() {
     this.#ensureEngines();
     this.gated = false;
+    this.musicWas = false;
     const pre = this.preroll.splice(0);
     for (const c of pre) for (const e of this.engines.values()) e.sendAudio(c);
   }
@@ -167,6 +228,52 @@ export class Stage extends EventEmitter {
     for (const e of this.engines.values()) e.endAudio();
     setTimeout(() => this.#flushTracks(), 2500);
     this.log('info', `audio paused to the model (${reason}) — no cost while silent`);
+  }
+
+  // ---------- breaks and music ----------
+  /**
+   * A break: captions pause and screens show "Break · back at 11:30 · next talk". Set by the crew (dashboard or the
+   * room's audio page), by the agenda (its breaks), or by the vision mixer (vMix/OBS switching to a break scene).
+   */
+  setBreak(on, { by = 'crew', title = '', until = null } = {}) {
+    if (on) {
+      if (this.brk?.by === by && this.brk.title === title) return;
+      this.brk = { by, since: Date.now(), title: String(title || '').slice(0, 120), until: Number(until) || null };
+      this.voiceInBreakMs = 0;
+      this.#gate('break');
+      this.log('info', `break started (${by})${title ? `: ${title}` : ''}`);
+    } else {
+      if (!this.brk) return;
+      this.log('info', `break ended (${this.brk.by})`);
+      this.brk = null;
+    }
+    this.emit('pause');
+  }
+
+  /** The crew says the room isn't playing music (a talk with a soundtrack): caption anyway, until the next talk. */
+  captionMusic(on = true) {
+    this.musicOverride = !!on;
+    if (on && this.music) { this.music = false; this.log('info', 'music: captioning anyway (crew)'); this.emit('pause'); }
+  }
+
+  #onVoice(state) {
+    const music = state === 'music' && this.def.musicGuard !== false && !this.musicOverride;
+    if (music === this.music) return;
+    this.music = music;
+    if (music) {
+      this.musicWas = true;
+      this.#gate('music');
+      this.log('info', 'music in the room → captions paused (no cost)');
+    } else this.log('info', 'voice again → captions resume');
+    this.emit('pause');
+  }
+
+  /** What viewers need to know about a pause: { brk, music }. */
+  pauseInfo() {
+    return {
+      brk: this.brk ? { ...this.brk, next: this.nextTalk || null } : null,
+      music: this.music,
+    };
   }
 
   // ---------- engines ----------
@@ -409,6 +516,8 @@ export class Stage extends EventEmitter {
 
   /** Operator action from the dashboard: also tells the agenda not to rename this slot's talk. */
   newTalk(title = '', speaker = '') {
+    if (this.brk) this.setBreak(false);
+    this.musicOverride = false;
     this.#newTalk(title, true, speaker);
     this.talkSpoken = true; // an operator started it now: timestamps count from this moment (e.g. video subtitling)
     this.#markScheduleHandled();
@@ -511,9 +620,20 @@ export class Stage extends EventEmitter {
    */
   #applySchedule(now) {
     if (!this.schedule) return;
-    const { current, next } = this.schedule.slot(this.id, now);
-    this.nextTalk = next ? { title: next.title, speaker: next.speaker, start: next.start } : null;
+    const { current, next, nextTalk } = this.schedule.slot(this.id, now);
+    this.nextTalk = nextTalk ? { title: nextTalk.title, speaker: nextTalk.speaker, start: nextTalk.start } : null;
     const key = this.#slotKey(current);
+    // A break in the agenda (coffee, lunch…): pause captions and show it, once the room is quiet (a talk running
+    // over is never cut). It ends when the next talk's slot starts, or when someone speaks for a while.
+    if (current?.break) {
+      this.dueTalk = null;
+      if (key !== this.scheduleKey && !this.brk && (this.gated || !this.engines.size || this.talkSegments === 0)) {
+        this.scheduleKey = key;
+        this.setBreak(true, { by: 'agenda', title: current.title, until: next?.start || null });
+      }
+      return;
+    }
+    if (this.brk?.by === 'agenda') this.setBreak(false);
     // The agenda says a new talk has started but the room hasn't switched yet (the speaker is running over):
     // the dashboard shows it and offers to start it with one click.
     this.dueTalk = current && key !== this.scheduleKey && this.talkSegments > 0 && this.talk.title ? { title: current.title, speaker: current.speaker, start: current.start } : null;
@@ -530,6 +650,22 @@ export class Stage extends EventEmitter {
     }
   }
 
+  /**
+   * A person fixes a caption of the talk in progress (a misheard name, a wrong number): every screen and phone
+   * replaces it in place (same id), and the transcript keeps the corrected text.
+   */
+  correct(channel, id, text) {
+    const tr = this.tracks[channel];
+    const i = tr ? tr.finals.findIndex((x) => x.id === id) : -1;
+    if (i < 0) return null;
+    const seg = { ...tr.finals[i], text, edited: true };
+    tr.finals[i] = seg;
+    this.store.append(this.id, this.talk.id, seg);
+    this.log('info', `caption corrected (${channel}): "${text.slice(0, 60)}"`);
+    this.emit('caption', seg);
+    return seg;
+  }
+
   history(channel, n = 30) {
     return this.tracks[channel]?.history(n) || [];
   }
@@ -542,6 +678,7 @@ export class Stage extends EventEmitter {
   // ---------- health ----------
   #housekeeping() {
     const now = Date.now();
+    this.#failover(now);
     if (this.ticks++ % 15 === 0) this.#applySchedule(now);
     this.#countTalk(now);
     // Cost: every open session is billed for streamed audio (input + generated output).
@@ -569,8 +706,20 @@ export class Stage extends EventEmitter {
       this.idleClosed = true;
     }
 
+    // The room's "pause for music" was just turned off: let the music be captioned now.
+    if (this.music && this.def.musicGuard === false) { this.music = false; this.emit('pause'); }
+
+    // Someone has been speaking during an agenda break (the host, a talk starting early): captions come back.
+    // A break the crew or the vision mixer set stays, but the dashboard asks.
+    if (this.brk?.by === 'agenda' && this.voiceInBreakMs > 8000) {
+      this.log('info', 'people speaking during the break → captions resume');
+      this.setBreak(false);
+    }
+
     // Alerts for the production team.
     const alerts = new Set();
+    if (this.brk && this.voiceInBreakMs > 20000) alerts.add('voice-in-break');
+    if (this.active === 'backup' && this.sources.backup) alerts.add('on-backup');
     if (!this.ingest) alerts.add('no-ingest');
     else if (now - this.lastAudioAt > 3000) alerts.add('no-audio');
     else if (this.lowLevelSince && now - this.lowLevelSince > 60000) alerts.add('muted?');
@@ -607,15 +756,21 @@ export class Stage extends EventEmitter {
       mt: Object.fromEntries(Object.entries(this.mtQ || {}).map(([k, q]) => [k, q.stats])),
       pull: this.def.pull || '',
       loop: !!this.def.loop,
+      musicGuard: this.def.musicGuard !== false,
       talk: this.talk,
       nextTalk: this.nextTalk || null,
       dueTalk: this.dueTalk || null,
       speaker: this.speaker || '',
       speakers: speakersOf(this.talk?.speaker),
-      ingest: this.ingest ? { kind: this.ingest.kind, label: this.ingest.label, since: this.ingest.since } : null,
+      ingest: this.ingest ? { kind: this.ingest.kind, label: this.ingest.label, since: this.ingest.since, role: this.ingest.role } : null,
+      backup: this.sources.backup ? { kind: this.sources.backup.kind, label: this.sources.backup.label, since: this.sources.backup.since, active: this.active === 'backup', level: this.sources.backup.level } : null,
       level: this.level,
       peak: this.peak,
       gated: this.gated,
+      brk: this.brk,
+      music: this.music,
+      musicOverride: this.musicOverride,
+      sound: this.voice.state, // what the room sounds like: voice, music, quiet
       lastSpeechAt: this.lastSpeechAt,
       lastCaptionAt: this.lastCaptionAt || 0,
       latency: { asr: round(this.lat.asr), tr: Object.fromEntries(Object.entries(this.lat.tr).map(([k, v]) => [k, round(v)])) },
@@ -635,7 +790,7 @@ export class Stage extends EventEmitter {
     this.emit('removed');
     clearInterval(this.tick);
     this.#stopEngines('removed');
-    this.ingest?.detach?.('stage removed');
+    for (const src of Object.values(this.sources)) src?.detach?.('stage removed');
   }
 }
 

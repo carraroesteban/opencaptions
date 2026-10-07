@@ -1,19 +1,20 @@
 // me.html: OpenCaptions just for you. Whatever goes into the microphone, or whatever the computer plays (a video call, a
 // video, a class), captioned live and translated if you like, in a big window and an always-on-top floating one.
 // One room ("me") behind the scenes; nothing is public in personal mode (see src/server.js).
-import { esc, store, wsUrl, Socket, CaptionState, getEvent, liveText } from '/common.js';
+import { esc, store, wsUrl, Socket, CaptionState, CaptionFlow, getEvent } from '/common.js';
 import { prefsControls, LANG } from '/i18n.js';
 import { mountIcons } from '/illustrations.js';
 import { ensureSignedIn } from '/signin.js';
 import { keyPanel } from '/connect.js';
 import { capture } from '/capture.js';
 import { floatingCaptions } from '/floating.js';
+import { Pacer } from '/smooth.js';
 import { LANGUAGE_CATALOG } from '/languages.js';
 
 const $ = (id) => document.getElementById(id);
 const T = {
   en: {
-    chip: 'Just for me', mine: 'My transcripts', toEvents: 'Use it for events', toEventsQ: 'Switch OpenCaptions to events (rooms, QR codes, the dashboard)? Your transcripts stay here, and you can come back to Just for me from the setup wizard.', src: 'Listen to', mic: 'Microphone', screen: 'Computer sound', both: 'Both', device: 'Microphone',
+    chip: 'Just for me', mine: 'My transcripts', toEvents: 'Use it for events', src: 'Listen to', mic: 'Microphone', screen: 'Computer sound', both: 'Both', device: 'Microphone',
     callWin: (app) => `${app} is open. To caption the call, choose Both (you and the others; use headphones), then share the entire screen with “Share system audio” on.`,
     callMac: (app) => `${app} is open. On a Mac, browsers can’t capture another app’s sound: join the call in Chrome or Edge instead (Zoom, Teams and Webex work on the web) and choose Computer sound, then that tab. Or use the Microphone with the speakers on.`,
     callUse: 'Use Both',
@@ -27,9 +28,21 @@ const T = {
     empty: 'Press “Start captions” and speak, or play something.', original: 'Original', listening: 'Listening', paused: 'Paused (silence)',
     idle: 'Stopped', connecting: 'Connecting…', aiForced: 'OpenCaptions was started in demo mode, so captions are simulated even though a key is saved. Start it normally to use Gemini.', aiMock: 'Captions are simulated until you connect an AI. Paste a free Gemini key (about two minutes):',
     aiTitle: 'The AI that writes the captions', floating: 'Floating captions', transcript: 'Transcript', download: 'Download (.txt)', room: 'Just for me', ai: { gemini: 'Gemini', local: 'On this computer', mock: 'Simulated' },
+    ev: {
+      title: 'Use OpenCaptions for events?', intro: 'It becomes an event dashboard: rooms, a QR code for the audience, the stage screen and the livestream overlay.',
+      keepH: 'Stays as it is', keep: ['Your transcripts, in My transcripts. They stay private.', 'Your AI and its key.', 'This page: Just for me keeps working at /me.html.'],
+      changeH: 'Good to know',
+      opens: 'OpenCaptions opens on the dashboard instead of this page.',
+      public: 'The audience pages open up: anyone who can reach this computer (on the same Wi-Fi, or anywhere with a public address) can read the captions of the event’s rooms. Not yours from here.',
+      gemini: 'Each room uses the AI while it’s live: with a paid Gemini key, about US$ 2.20 per room per hour.',
+      local: 'On this computer, captions keep up with about one room at a time. For more rooms, use Gemini or more computers.',
+      mock: 'Captions stay simulated until you connect an AI.',
+      wizard: 'Next, a short wizard asks for the event’s name, rooms and languages. It shows what will change before applying it.',
+      back: 'To come back: Dashboard → Settings → Just for me. Nothing is deleted either way.', ok: 'Switch to events', cancel: 'Stay here',
+    },
   },
   es: {
-    chip: 'Solo para mí', mine: 'Mis transcripciones', toEvents: 'Usarlo para eventos', toEventsQ: '¿Pasar OpenCaptions a eventos (salas, códigos QR, el panel)? Tus transcripciones quedan acá, y podés volver a Solo para mí desde el asistente.', src: 'Escuchar', mic: 'Micrófono', screen: 'Sonido de la compu', both: 'Los dos', device: 'Micrófono',
+    chip: 'Solo para mí', mine: 'Mis transcripciones', toEvents: 'Usarlo para eventos', src: 'Escuchar', mic: 'Micrófono', screen: 'Sonido de la compu', both: 'Los dos', device: 'Micrófono',
     callWin: (app) => `${app} está abierto. Para subtitular la llamada, elegí Los dos (vos y los demás; usá auriculares) y compartí la pantalla completa con «Compartir audio del sistema» activado.`,
     callMac: (app) => `${app} está abierto. En Mac, los navegadores no pueden tomar el sonido de otra app: entrá a la llamada desde Chrome o Edge (Zoom, Teams y Webex funcionan en la web) y elegí Sonido de la compu, y esa pestaña. O usá el Micrófono con los parlantes encendidos.`,
     callUse: 'Usar Los dos',
@@ -43,6 +56,18 @@ const T = {
     empty: 'Tocá «Empezar a subtitular» y hablá, o poné algo a sonar.', original: 'Original', listening: 'Escuchando', paused: 'En pausa (silencio)',
     idle: 'Detenido', connecting: 'Conectando…', aiForced: 'OpenCaptions se inició en modo demo, así que los subtítulos son simulados aunque haya una key guardada. Inicialo normalmente para usar Gemini.', aiMock: 'Los subtítulos son simulados hasta que conectes una IA. Pegá una key gratuita de Gemini (unos dos minutos):',
     aiTitle: 'La IA que escribe los subtítulos', floating: 'Subtítulos flotantes', transcript: 'Transcripción', download: 'Descargar (.txt)', room: 'Solo para mí', ai: { gemini: 'Gemini', local: 'En esta compu', mock: 'Simulados' },
+    ev: {
+      title: '¿Usar OpenCaptions para eventos?', intro: 'Pasa a ser un panel de evento: salas, un código QR para el público, la pantalla del escenario y el overlay de la transmisión.',
+      keepH: 'Queda igual', keep: ['Tus transcripciones, en Mis transcripciones. Siguen siendo privadas.', 'Tu IA y su key.', 'Esta página: Solo para mí sigue funcionando en /me.html.'],
+      changeH: 'Tené en cuenta',
+      opens: 'OpenCaptions abre en el panel en vez de esta página.',
+      public: 'Las páginas del público se abren: cualquiera que llegue a esta compu (en el mismo Wi-Fi, o desde cualquier lado con una dirección pública) puede leer los subtítulos de las salas del evento. Los tuyos de acá, no.',
+      gemini: 'Cada sala usa la IA mientras está en vivo: con una key paga de Gemini, unos US$ 2,20 por sala por hora.',
+      local: 'En esta compu, los subtítulos dan abasto para una sala a la vez, más o menos. Para más salas, usá Gemini o más computadoras.',
+      mock: 'Los subtítulos siguen simulados hasta que conectes una IA.',
+      wizard: 'Después, un asistente corto te pide el nombre del evento, las salas y los idiomas. Antes de aplicar, muestra qué va a cambiar.',
+      back: 'Para volver: Panel → Ajustes → Solo para mí. En ningún caso se borra nada.', ok: 'Pasar a eventos', cancel: 'Quedarme acá',
+    },
   },
 };
 const t = T[LANG] || T.en;
@@ -86,12 +111,29 @@ if (to && !(room.languages || []).includes(to)) { // a language chosen here befo
 $('mode-chip').textContent = t.chip;
 $('mine-link').append(` ${t.mine}`);
 $('to-events').textContent = t.toEvents;
-// Switching to events is deliberate: ask, then the dashboard (its setup wizard if the event isn't set up yet).
-$('to-events').onclick = async () => {
-  if (!confirm(t.toEventsQ)) return;
-  await api('PUT', '/api/setup', { mode: 'event' });
-  location.href = '/admin.html';
+// Switching to events is deliberate: first what stays and what changes (in the page, not a browser pop-up), then
+// the dashboard (its setup wizard if the event isn't set up yet).
+const li = (cls) => (text) => `<li><span data-icon="${cls}"></span><span>${esc(text)}</span></li>`;
+$('ev-title').textContent = t.ev.title;
+$('ev-intro').textContent = t.ev.intro;
+$('ev-keep-h').textContent = t.ev.keepH;
+$('ev-keep').innerHTML = t.ev.keep.map(li('check')).join('');
+$('ev-change-h').textContent = t.ev.changeH;
+$('ev-back').textContent = t.ev.back;
+$('ev-ok').textContent = t.ev.ok;
+$('ev-cancel').textContent = t.ev.cancel;
+$('to-events').onclick = () => {
+  const ai = S.engine === 'mock' ? 'mock' : S.engine === 'local' ? 'local' : 'gemini';
+  $('ev-change').innerHTML = [t.ev.opens, t.ev.public, t.ev[ai], ...(S.eventDone ? [] : [t.ev.wizard])].map(li('alert')).join('');
+  mountIcons($('dlg-events'));
+  $('dlg-events').returnValue = '';
+  $('dlg-events').showModal();
 };
+$('dlg-events').addEventListener('close', async () => {
+  if ($('dlg-events').returnValue !== 'ok') return;
+  await api('PUT', '/api/setup', { mode: 'event' });
+  location.href = S.eventDone ? '/admin.html' : '/welcome.html#name'; // never set up as an event: its wizard first
+});
 $('src-label').textContent = t.src;
 $('device-label').textContent = t.device;
 $('to-label').textContent = t.to;
@@ -174,28 +216,39 @@ function renderAi() {
 renderAi();
 
 // ---------- captions in ----------
-const states = {};
+const states = {}; // channel → what's on screen, fed word by word by its pacer (smooth.js)
+const pacers = {};
+const pacer = (ch) => (pacers[ch] ??= new Pacer((seg) => { (states[ch] ??= new CaptionState()).apply(seg); shown(ch, seg); }));
 const main = () => (to ? (room.languages.includes(to) ? to : 'orig') : 'orig');
 const view = new Socket(() => wsUrl('/ws/view', { stage: ROOM, langs: [...new Set([main(), 'orig'])].join(',') }), {
   message(m) {
-    if (m.type === 'hello') { for (const [ch, h] of Object.entries(m.history)) (states[ch] = new CaptionState()).load(h, m.partial[ch]); render(); }
-    else if (m.type === 'caption') { (states[m.channel] ??= new CaptionState()).apply(m); render(); }
+    if (m.type === 'hello') {
+      for (const [ch, h] of Object.entries(m.history)) { (states[ch] = new CaptionState()).load(h, m.partial[ch]); pacer(ch).load([...h, m.partial[ch]].filter(Boolean)); }
+      render();
+    } else if (m.type === 'caption') pacer(m.channel).push(m);
   },
 });
-function render() {
-  const st = states[main()];
-  const items = st ? [...st.finals.slice(-40), ...(st.partial?.text ? [{ ...st.partial, partial: true }] : [])] : [];
-  $('text').innerHTML = items.length
-    ? items.map((s, i) => `<p class="${i < items.length - 3 ? 'old' : ''}"></p>`).join('')
-    : `<p class="empty">${esc(t.empty)}</p>`;
-  if (items.length) [...$('text').children].forEach((p, i) => liveText(p, items[i].text, !items[i].partial));
-  $('scroll').scrollTop = $('scroll').scrollHeight;
-  const o = states.orig;
-  $('orig').classList.toggle('hidden', main() === 'orig');
-  if (main() !== 'orig') $('orig').querySelector('span').textContent = o?.tail(160) || '…';
+// Paragraphs that only change where a word was added: the rest of the page stays still.
+const flow = new CaptionFlow($('text'));
+/** A caption as the pacer shows it now: only its own channel's text changes. */
+function shown(ch, seg) {
+  if (ch === main()) { flow.update(seg); $('scroll').scrollTop = $('scroll').scrollHeight; }
+  if (ch === 'orig') renderOrig();
   pip.render();
 }
-const pip = floatingCaptions({ button: $('pip'), text: () => states[main()]?.tail(220) || t.empty, live: () => !!states[main()]?.partial?.text });
+function render() {
+  const st = states[main()];
+  flow.render(st ? [...st.finals.slice(-60), st.partial] : []);
+  if (!$('text').children.length) $('text').innerHTML = `<p class="empty">${esc(t.empty)}</p>`;
+  $('scroll').scrollTop = $('scroll').scrollHeight;
+  renderOrig();
+  pip.render();
+}
+function renderOrig() {
+  $('orig').classList.toggle('hidden', main() === 'orig');
+  if (main() !== 'orig') $('orig').querySelector('span').textContent = states.orig?.tail(160) || '…';
+}
+const pip = floatingCaptions({ button: $('pip'), text: () => states[main()]?.tail(220) || t.empty, live: () => !!states[main()]?.partial?.text, caps: () => pacers[main()]?.shown() || [] });
 
 // ---------- sound out: microphone or computer → the room ----------
 let cap = null, ingest = null, running = false;

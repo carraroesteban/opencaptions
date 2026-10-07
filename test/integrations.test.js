@@ -150,3 +150,17 @@ test('connectors survive a restart', async () => {
   await settle();
   assert.equal(p.calls.at(-1).init.body, 'Still connected.');
 });
+
+test('YouTube: each caption is timed to when it was said (talk start + cue start), not when it was sent', async () => {
+  const st = room();
+  st.talk.startedAt = Date.now() - 10_000;
+  const p = platform();
+  const ints = new Integrations({ stages: new Map([['main', st]]), fetchImpl: p.fetchImpl });
+  await ints.add({ type: 'youtube', stage: 'main', url: YT, lang: 'orig' });
+  st.emit('caption', { id: 'c1', channel: 'orig', lang: 'en', text: 'Said seven seconds into the talk.', start: 7000, end: 9000, final: true });
+  st.emit('caption', { id: 'c1', channel: 'orig', lang: 'en', text: 'A correction is not sent again.', start: 7000, end: 9000, final: true, edited: true });
+  await settle();
+  assert.equal(p.calls.length, 1);
+  const stamp = p.calls[0].init.body.split('\n')[0];
+  assert.ok(Math.abs(Date.parse(stamp + 'Z') - (st.talk.startedAt + 7000)) < 5, `${stamp} = talk start + 7 s`);
+});

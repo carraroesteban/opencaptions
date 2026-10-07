@@ -19,7 +19,7 @@ export const TYPES = {
 // Region codes the platforms expect (Zoom's examples: en-US, es-ES, de-DE…); unknown ones are left out.
 const REGION = { en: 'en-US', es: 'es-ES', pt: 'pt-BR', fr: 'fr-FR', de: 'de-DE', it: 'it-IT', ja: 'ja-JP', zh: 'zh-CN', ko: 'ko-KR', nl: 'nl-NL', ru: 'ru-RU', ar: 'ar-SA', hi: 'hi-IN', pl: 'pl-PL', tr: 'tr-TR', uk: 'uk-UA', sv: 'sv-SE', ca: 'ca-ES' };
 
-const nowIso = () => new Date().toISOString().slice(0, 23); // YouTube: UTC, milliseconds, no "Z"
+const isoAt = (ms) => new Date(ms || Date.now()).toISOString().slice(0, 23); // YouTube: UTC, milliseconds, no "Z"
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const mask = (u) => { try { const x = new URL(u); return `${x.host}${x.pathname}…`; } catch { return '…'; } };
 
@@ -120,7 +120,9 @@ class Sender {
     if (type !== 'teams') u.searchParams.set('seq', String(this.seq)); // Teams: the CART link is used as it is
     if (type === 'zoom' && REGION[p.lang]) u.searchParams.set('lang', REGION[p.lang]);
     // YouTube rejects a charset in the content type; the others take plain UTF-8 text.
-    const body = type === 'youtube' ? `${nowIso()}\n${p.text}\n` : p.text;
+    // A timestamp more than a minute old or in the future (clock trouble) falls back to now.
+    const at = p.at && Math.abs(Date.now() - p.at) < 60_000 ? p.at : Date.now();
+    const body = type === 'youtube' ? `${isoAt(at)}\n${p.text}\n` : p.text;
     return [u.href, { method: 'POST', headers: { 'content-type': type === 'youtube' ? 'text/plain' : 'text/plain; charset=utf-8' }, body, signal }];
   }
 }
@@ -199,7 +201,7 @@ export class Integrations {
       if (!mine.length) continue;
       let talk = { id: st.talk.id, title: st.talk.title, startedAt: st.talk.startedAt, captions: 0 };
       const onCaption = (seg) => {
-        if (!seg.final || !seg.text) return;
+        if (!seg.final || !seg.text || seg.edited) return; // a correction: Zoom, YouTube and Teams already showed it
         talk.captions++;
         for (const d of mine) {
           if (!d.events.includes('caption') || st.channelFor(d.lang) !== seg.channel) continue;
@@ -208,7 +210,10 @@ export class Integrations {
           if (d.type === 'webhook') {
             s.push({ event: 'caption', room: st.id, roomName: st.def.name, talk: st.talk.id, lang, text: seg.text, speaker: seg.spk || null, start: seg.start, end: seg.end, at: new Date().toISOString() });
           } else {
-            for (const text of lines(seg.text, TYPES[d.type].max)) s.push({ text, lang });
+            // YouTube places each caption at its timestamp: when the words were spoken (the cue's start, already
+            // corrected for the AI's delay), not when they were sent, so they line up with the video.
+            const at = d.type === 'youtube' && st.talk?.startedAt ? st.talk.startedAt + (seg.start || 0) : 0;
+            for (const text of lines(seg.text, TYPES[d.type].max)) s.push({ text, lang, at });
           }
         }
       };

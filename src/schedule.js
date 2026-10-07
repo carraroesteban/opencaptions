@@ -14,6 +14,13 @@ import { ROOT } from './config.js';
 
 const FILE = path.resolve(ROOT, process.env.SCHEDULE || 'config/schedule.json');
 
+// Breaks in an agenda (English, Spanish, Portuguese): captions pause and screens show "Break · next talk at…".
+// A title that starts with one of these words, or a row marked { break: true }.
+const BREAK_RE = /^\s*(?:[^\p{L}\p{N}]+\s*)?(coffee|caf[eé]|break|lunch|brunch|dinner|almuerzo|almoço|almoco|cena|jantar|comida|receso|recreo|pausa|intervalo|descanso|merienda|refrigerio|lanche|networking|happy hour|intermission|intermedio|cocktail|c[oó]ctel|coquetel|breakfast|desayuno|caf[eé] da manh[aã])\b/iu;
+export const isBreakTitle = (t) => BREAK_RE.test(String(t || ''));
+// A break row without a room ("Coffee break", all rooms): stage '*'.
+const ALL_ROOMS = /^(\*|all|all rooms|todas|todas las salas|todas as salas|general|plenaria|plenary)?$/i;
+
 /** HH:MM or 10h30 (today), YYYY-MM-DD HH:MM, ISO, or DD/MM/YYYY HH:MM (MM/DD when the day can't be first), with optional AM/PM. */
 function parseTime(s, now = new Date()) {
   // "10h30" and "10h" (common in French and Spanish agendas) mean 10:30 and 10:00.
@@ -133,18 +140,22 @@ export function parseSchedule(input, now = new Date(), { rooms } = {}) {
   const out = [];
   rows.forEach((r, i) => {
     let stage = String(r.stage || '').toLowerCase().trim();
-    if (match) {
+    // Titles alone can mislead ("Networking in Kubernetes", "Café con datos"): a break has no speaker and a short name.
+    const brk = r.break === true || (isBreakTitle(r.title) && !String(r.speaker || '').trim() && String(r.title).trim().length <= 40);
+    if (brk && ALL_ROOMS.test(stage) && !(match && match(r.stage))) stage = '*';
+    else if (match) {
       const id = match(r.stage);
-      if (!id) { skipped.push({ line: i + 1, room: String(r.stage || '').trim() || '—', title: String(r.title || '').trim() }); return; }
-      stage = id;
+      if (!id && brk) stage = '*'; // a break in a place that isn't a room (the hall, the patio): every room pauses
+      else if (!id) { skipped.push({ line: i + 1, room: String(r.stage || '').trim() || '—', title: String(r.title || '').trim() }); return; }
+      else stage = id;
     }
     const start = typeof r.start === 'number' ? r.start : parseTime(r.start, now);
     const title = String(r.title || '').replace(/\s+/g, ' ').trim().slice(0, 200);
     const speaker = String(r.speaker || '').replace(/\s+/g, ' ').trim().slice(0, 120);
-    if (!/^[a-z0-9][a-z0-9_-]{0,39}$/.test(stage)) throw new Error(`line ${i + 1}: invalid room id "${r.stage}"`);
+    if (stage !== '*' && !/^[a-z0-9][a-z0-9_-]{0,39}$/.test(stage)) throw new Error(`line ${i + 1}: invalid room id "${r.stage}"`);
     if (!Number.isFinite(start)) throw new Error(`line ${i + 1}: invalid start "${r.start}" (use HH:MM, YYYY-MM-DD HH:MM or DD/MM/YYYY HH:MM)`);
     if (!title) throw new Error(`line ${i + 1}: missing title`);
-    out.push({ stage, start, title, speaker });
+    out.push(brk ? { stage, start, title, speaker, break: true } : { stage, start, title, speaker });
   });
   out.sort((a, b) => a.start - b.start);
   Object.defineProperty(out, 'skipped', { value: skipped, enumerable: false });
@@ -177,9 +188,12 @@ export class Schedule {
     return entries;
   }
 
-  /** The talk whose slot is running now in a room, and the one after it. */
+  /**
+   * What's on now in a room (a talk or a break), the slot after it, and the next talk (skipping breaks): for
+   * "Break · next talk at 11:30". Breaks for every room (stage '*') count in every room.
+   */
   slot(stage, now = Date.now()) {
-    const list = this.entries.filter((e) => e.stage === stage);
+    const list = this.entries.filter((e) => e.stage === stage || e.stage === '*');
     let current = null, next = null;
     for (const e of list) {
       if (e.start <= now) current = e;
@@ -187,6 +201,7 @@ export class Schedule {
     }
     // A slot older than 3 h without a successor is the end of the day, not "now".
     if (current && !next && now - current.start > 3 * 3600_000) current = null;
-    return { current, next };
+    const nextTalk = list.find((e) => e.start > now && !e.break) || null;
+    return { current, next, nextTalk };
   }
 }

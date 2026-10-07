@@ -59,6 +59,8 @@ Conferences and summits · universities and schools · places of worship · town
 **For your audience**
 
 - **Captions on any phone.** Scan the room's QR code and pick a language. No app, no sign-up.
+- **Smooth to read:** words appear at the speaker's pace and lines roll up like TV captions, on phones, the presenter screen, the overlay and the floating window. Nothing jumps or re-wraps.
+- **Listen in any language:** the translation read aloud in headphones, in the AI's natural voice or the phone's own voice, in any of 82 languages.
 - **What did I miss?** A summary of the last five minutes, or the whole session, in the reader's language.
 - **Ask the talk.** Questions answered only from what was said, with quotes and timestamps.
 - **Transcripts** to read, search, print and download (TXT, SRT, VTT).
@@ -74,6 +76,7 @@ Conferences and summits · universities and schools · places of worship · town
 
 - **Presenter screen** with full-screen captions and the room's QR code.
 - **Livestream overlay** for OBS and vMix, transparent or chroma key, in one or two languages.
+- **Breaks and music:** a break in the agenda, a break scene in vMix or OBS, or the B key on the room's computer pauses the captions; screens and phones show when the talk resumes and what's next. Music between talks is recognized and not captioned (♪ on the overlay).
 - **Visual style editor** for fonts, colors and layout. It builds the URL for you.
 - **Multilingual speakers.** When a host switches language mid-sentence, every caption language follows.
 - **Any audio source:** the sound desk through a PC, a browser tab, or OBS/vMix streaming straight to the server (RTMP, SRT, HLS).
@@ -92,6 +95,8 @@ Conferences and summits · universities and schools · places of worship · town
 - **Agenda import** from Swapcard, Sessionize or any spreadsheet: titles and speaker names appear automatically.
 - **Printable QR posters** for every room, in one click.
 - **Glossary** so names, brands and specialist terms are spelled right.
+- **Fix a caption live:** the crew corrects a misheard word from the dashboard and it changes on every screen and phone; one click adds it to the glossary. Admins can clean up any transcript afterwards.
+- **Backup audio:** a second computer (or another output of the sound desk) stands by for each room and takes over by itself if the main one stops or goes silent.
 - **Offline backup:** if the venue loses internet, captions switch to AI running on your laptop and come back to the cloud on their own.
 - **Agenda from Sessionize or a calendar link** (Google, Outlook): talks get their titles and speakers by themselves.
 - **Alerts on your phone** through ntfy, Telegram, Slack, Discord or a webhook, when a room loses its sound, the AI keeps failing, a talk runs over or the internet drops.

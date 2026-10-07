@@ -49,6 +49,16 @@
     footer a.btn { text-decoration: none; }
     #pip[aria-pressed='true'] { background: var(--primary-bg); border-color: var(--primary-bg); color: var(--primary-fg); }
     @media (max-width: 560px) { #meters { display: none; } #go { min-width: 0; flex: 1; } }
+    /* Switching to events: what stays and what changes, before anything happens. */
+    #dlg-events h3 { margin: 0 0 6px; }
+    #dlg-events h4 { margin: 18px 0 8px; font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--fg2); }
+    #dlg-events ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 8px; }
+    #dlg-events li { display: grid; grid-template-columns: 18px 1fr; gap: 10px; align-items: start; font-size: 15px; line-height: 1.45; }
+    #dlg-events li svg { margin-top: 3px; }
+    #dlg-events .keep svg { color: var(--ok); }
+    #dlg-events .change svg { color: var(--warn); }
+    #dlg-events .back { margin: 18px 0 0; font-size: 14px; color: var(--fg2); }
+    #dlg-events .dlg-actions { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; margin-top: 20px; }
   </style>
 </head>
 <body>
@@ -89,6 +99,14 @@
     <a class="btn" id="doc" target="_blank" rel="noopener" data-icon="doc"></a>
     <a class="btn" id="download" data-icon="download"></a>
   </footer>
+  <dialog id="dlg-events" aria-labelledby="ev-title"><form method="dialog">
+    <h3 id="ev-title"></h3>
+    <p class="u-m0" id="ev-intro"></p>
+    <h4 id="ev-keep-h"></h4><ul class="keep" id="ev-keep"></ul>
+    <h4 id="ev-change-h"></h4><ul class="change" id="ev-change"></ul>
+    <p class="back" id="ev-back"></p>
+    <div class="dlg-actions"><button value="cancel" id="ev-cancel"></button><button value="ok" class="primary" id="ev-ok"></button></div>
+  </form></dialog>
   <script type="module" src="/pages/me.js"></script>
 </body>
 </html>

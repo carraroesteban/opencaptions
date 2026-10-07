@@ -34,7 +34,7 @@
     #text { font-size: var(--size, 24px); line-height: var(--read-lh, 1.45); font-family: var(--read-font, var(--font)); max-width: 820px; margin: 0 auto; font-weight: 400; }
     #text p { margin: 0 0 .6em; transition: color .6s var(--ease); }
     #text p.old { color: var(--fg2); }
-    #text p.partial { color: var(--fg); }
+    #text .partial { color: var(--fg); }
     #text .empty { color: var(--fg2); font-size: 18px; margin-top: 26vh; }
     #orig { border-top: 1px solid var(--line); padding: 12px 20px; font-size: 16px; color: var(--translation); background: var(--bg2); min-height: 3.2em; }
     #orig b { color: var(--fg2); font-size: 11px; letter-spacing: .1em; text-transform: uppercase; margin-right: 8px; }
@@ -47,6 +47,13 @@
     @media (max-width: 440px) { #listen .lbl { display: none; } #dual { display: none; } #pip { display: none; } }
     @media (max-width: 330px) { #ai .lbl { display: none; } }
     footer a.btn { text-decoration: none; }
+    /* A break or music: the captions are paused on purpose, and the phone says so (and when they're back). */
+    .pause { margin: 12px 16px 0; padding: 12px 16px; border-radius: 16px; background: var(--bg2); border: 1px solid var(--line); }
+    .pause b { display: block; font-family: var(--font-display); font-weight: 800; font-size: 19px; letter-spacing: -.01em; }
+    .pause span { display: block; color: var(--fg2); font-size: 15px; margin-top: 2px; }
+    .pause.music { display: flex; align-items: center; gap: 12px; }
+    .pause.music b { font-size: 26px; line-height: 1; }
+    .pause.music span { margin: 0; }
     #tolive { position: fixed; bottom: 86px; left: 50%; transform: translateX(-50%); box-shadow: var(--shadow-lg); border-radius: var(--pill); }
     #listen[aria-pressed='true'], #pip[aria-pressed='true'] { background: var(--primary-bg); border-color: var(--primary-bg); color: var(--primary-fg); }
   </style>
@@ -61,6 +68,7 @@
     <div class="talk" id="talk"></div>
     <div class="langs" id="langs" role="group"></div>
   </header>
+  <div id="pause" class="pause hidden" role="status"></div>
   <div id="scroll" role="main" aria-live="polite"><div id="text"><div class="empty empty-state"><svg class="oc-logo typing" viewBox="0 0 878 664" aria-hidden="true"><use class="o" href="/brand/sprite.svg#oc-o"/><use class="ln" href="/brand/sprite.svg#oc-line"/></svg><span id="empty"></span></div></div></div>
   <div id="orig" class="hidden" role="complementary" aria-label="Original"><b></b><span></span></div>
   <button id="tolive" class="primary hidden"></button>

@@ -24,17 +24,21 @@ export function sessionizeId(s) {
   return id;
 }
 
-/** Sessionize "All" JSON → agenda rows. Breaks and other service sessions are left out. */
+/**
+ * Sessionize "All" JSON → agenda rows. Service sessions (breaks, lunch, registration) become breaks: captions pause
+ * and screens say so; a plenum one (every room) counts in every room. Other plenum sessions are left out.
+ */
 export function fromSessionizeData(data) {
   const rooms = new Map((data.rooms || []).map((r) => [String(r.id), r.name]));
   const people = new Map((data.speakers || []).map((p) => [String(p.id), p.fullName || [p.firstName, p.lastName].filter(Boolean).join(' ')]));
   return (data.sessions || [])
-    .filter((s) => s.startsAt && !s.isServiceSession && !s.isPlenumSession)
+    .filter((s) => s.startsAt && (s.isServiceSession || !s.isPlenumSession))
     .map((s) => ({
-      stage: rooms.get(String(s.roomId)) || s.room || '',
+      stage: s.isServiceSession && s.isPlenumSession ? '*' : rooms.get(String(s.roomId)) || s.room || '',
       start: s.startsAt, // local event time, "2026-10-05T09:30:00"
       title: s.title,
-      speaker: (s.speakers || []).map((x) => (typeof x === 'object' ? x.name || people.get(String(x.id)) : people.get(String(x)))).filter(Boolean).join(', '),
+      speaker: s.isServiceSession ? '' : (s.speakers || []).map((x) => (typeof x === 'object' ? x.name || people.get(String(x.id)) : people.get(String(x)))).filter(Boolean).join(', '),
+      ...(s.isServiceSession ? { break: true } : {}),
     }));
 }
 

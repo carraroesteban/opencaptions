@@ -60,7 +60,10 @@ flowchart LR
 | `src/tunnel.js` | The public address: runs Cloudflare's `cloudflared` (downloaded the first time), reads its address, checks it's reachable |
 | `src/alerts.js` | Alerts on the organizers' phones (ntfy, Telegram, Slack, Discord, webhooks): when to send, once, and when it's over |
 | `src/failover.js` | The offline backup: watches the connection to Google and moves rooms between Gemini and the local engine |
-| `src/stage.js` | One room: receives audio, detects speech, gates silence, owns model sessions and caption tracks, measures latency and cost, raises alerts |
+| `src/stage.js` | One room: receives audio (a main source and an optional backup that takes over by itself), detects speech, gates silence, breaks and music, owns model sessions and caption tracks, applies live corrections, measures latency and cost, raises alerts |
+| `src/voice.js` | Voice or music: how much the sound's spectral brightness moves over 2 s tells speech from music, so a room playing music between talks pauses its captions |
+| `src/switcher.js` | Breaks from the vision mixer: vMix (Web Controller API) or OBS (obs-websocket v5) switching to a break scene pauses that room |
+| `src/languages.js` | Every caption language's English name, for the AI's instructions ("Guarani", not "gn") |
 | `src/engines/gemini.js` | One Gemini Live Translate session: config fallbacks, session resumption, reconnect with backoff, 12 s audio buffer while reconnecting |
 | `src/engines/local.js` | Local engine: cuts audio into utterances and makes Whisper stream (re-transcription about once a second, words committed when two passes agree, a final pass per utterance). See [Local mode](local.md#how-it-works). |
 | `src/local/` | Clients for the local speech server (`asr.js`: whisper.cpp and OpenAI dialects, hallucination filter, request queue) and the local text model (`llm.js`: Ollama and OpenAI dialects, priorities) |
@@ -77,7 +80,7 @@ flowchart LR
 | `src/audio.js` | PCM16 helpers: the 16 kHz format, sound level (RMS), cutting audio into 100 ms chunks |
 | `src/assist.js` | Audience assistant: *What did I miss?* summaries and *Ask the talk* answers from the transcript (Gemini Flash-Lite), cached and rate-limited, with an extractive fallback |
 | `src/schedule.js` | Agenda: parses CSV/JSON, finds the current and next talk per room; the Stage uses it to name talks automatically |
-| `public/` | Vanilla JavaScript pages (audience, transcripts, projector, overlay, ingest, dashboard, wizard, event report, demo, style editor), with no build step |
+| `public/` | Vanilla JavaScript pages (audience, transcripts, projector, overlay, ingest, dashboard, wizard, event report, demo, style editor), with no build step. `smooth.js` paces words at the speaker's rate and rolls lines up TV-style on every caption display; `speak.js` reads captions aloud with the device's voice. |
 | `scripts/` | The starter the desktop apps run (`start.js`), headless agent, feed, load test, multi-room latency test, Gemini check, local mode launcher (`local.js`), bundled speech server (`local-asr-server.js`) and local check; developer tools for the downloads, icons, diagrams and the accessibility check |
 | `deploy/desktop/` | The Mac app and the Windows launcher, their icons and "Read me" files, packaged by `scripts/package-desktop.js` |
 

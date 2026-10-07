@@ -31,6 +31,7 @@ Related docs: [Security](../security-guide.md) · [Event-day runbook](../operati
 | `TRUST_PROXY` | `loopback` | Express `trust proxy` setting — which upstream proxies' `X-Forwarded-*` headers to trust for `req.secure`/`req.ip`. Docker Compose overrides this to `uniquelocal`. |
 | `EVENT_CONFIG` | `config/event.json` | Path to the event config file (relative to the project root). Also determines which file's mtime `data/stages.json` is compared against. |
 | `DATA_DIR` | `data` | Directory for `stages.json`, `secrets.json`, and `transcripts/` (relative to the project root, or absolute). |
+| `FRESH` | unset | `1`: start from nothing, to test OpenCaptions as a first-time user. The data folder is a new temporary one, deleted when the server stops; `DATA_DIR` isn't read or touched, and `.env` still applies. Browsers that open it forget what they remembered for the old data folder (choices, tips already seen). Same as `--fresh` (`npm start -- --fresh`, `npm run local -- --fresh`). |
 
 ### Security & access
 
@@ -149,6 +150,7 @@ See [Latency tuning](../latency.md).
 | Variable | Default | Description |
 |---|---|---|
 | `SILENCE_GATE_SEC` | `30` | Stop streaming audio to the model after this many seconds of silence (no cost while gated); resumes instantly on speech. |
+| `MUSIC_GUARD` | `on` | Pause captions while a room plays music (walk-in music, videos between talks): `src/voice.js` tells speech from music in about 10 s. `off` captions everything. Per room: `"musicGuard": false` in its definition. Also `musicGuard` in `config/event.json`. |
 | `IDLE_CLOSE_SEC` | `300` | Close model sessions entirely after this many seconds without speech or ingest (zero cost, zero live session between talks). |
 | `SPEECH_RMS` | `0.012` | RMS threshold (0–1) for a 100 ms audio chunk to count as "speech" (drives the silence gate and level meter). |
 | `STAGES` | unset | Compact override for the room list: `id:name:source:target1+target2,id2:name2:...` (e.g. `main:Principal,sala2:Sala 2`). Empty fields fall back to the normal per-stage defaults. Takes precedence over both `config/event.json` and `data/stages.json`. |
@@ -195,7 +197,7 @@ Loaded once at startup from the path in `EVENT_CONFIG` (default `config/event.js
 | Key | Type | Default | Description |
 |---|---|---|---|
 | `eventName` | string | `"OpenCaptions"` | Shown in the UI and startup banner. |
-| `accent` | string | `"#D4FF3A"` | Highlight color (CSS color value): the live-word highlighter, search hits and projector labels. Text on it switches between ink and paper automatically for contrast. |
+| `accent` | string | `"#D4FF3A"` | Highlight color (CSS color value): search hits, selected pills and projector labels. Text on it switches between ink and paper automatically for contrast. |
 | `publicUrl` | string | `""` | Canonical external URL. Overridden by `PUBLIC_URL`. |
 | `publicTranscripts` | `"current"` \| `"all"` \| `"none"` | `"current"` | Who may download transcripts. The dashboard's **Settings → Transcripts for the audience** overrides it (saved in `data/setup.json`); `PUBLIC_TRANSCRIPTS` overrides both. |
 | `timezone` | string (IANA zone, e.g. `"America/Argentina/Buenos_Aires"`) | unset | Sets `process.env.TZ` at startup, but only if `TZ` isn't already set in the environment. Controls what "today" and `HH:MM` mean when parsing the schedule's start times (see [Schedule file](#schedule-file-configschedulejson)) — containers default to UTC otherwise. No matching environment variable; set `TZ` directly if you'd rather not use this key. |
@@ -321,7 +323,8 @@ All under `DATA_DIR` (default `data/`), created on demand.
 | Path | Written by | Contents |
 |---|---|---|
 | `data/stages.json` | Every `POST`/`PATCH`/`DELETE /api/stages*` call | JSON array of the current stage definitions (same shape as `event.json`'s `stages`). Takes precedence over `config/event.json` on the next restart — see [precedence](#configuration-reference). |
-| `data/setup.json` | The welcome wizard and the dashboard's Settings | `{ "done", "name", "locked", "tunnel" }`: whether first-run setup is finished, the event name (overrides `eventName` in `config/event.json`), whether Event mode is on, and the public address to bring back after a restart (`{ "mode": "quick" \| "token", "host" }`). |
+| `data/setup.json` | The welcome wizard and the dashboard's Settings | `{ "done", "name", "locked", "tunnel", "mode", "eventDone", "languages", "removedLanguages" }`: whether first-run setup is finished, the event name (overrides `eventName` in `config/event.json`), whether Event mode is on, the public address to bring back after a restart (`{ "mode": "quick" \| "token", "host" }`), `event` or `personal` (Just for me), whether the event wizard was ever finished, and the languages added to or removed from `config/event.json`'s. |
+| `data/instance.json` | First startup with this data folder | `{ "id", "createdAt" }`: names this data folder. Pages get the id in a cookie and forget what the browser remembered for another one (after a fresh start, or a deleted `data/`). |
 | `data/sessions.json` | Signing in to the dashboard | Signed-in devices: `{ hash, pid, role, device, via, createdAt, lastSeen, expiresAt, ip }`. `hash` is the SHA-256 of the session cookie; the cookie itself is never stored. File mode `0600`. Delete it to sign everyone out. |
 | `data/history.jsonl` | Every change to the setup: rooms, agenda, glossary, event name, AI mode, Event mode | One JSON object per line: `{ "id", "at", "kind", "target", "summary", "before", "after", "undoes"? }`. `before` is what an undo puts back. Only appended to; an undo is a new line pointing at the change it reverted. Deleted rooms stay restorable from here (the dashboard's trash). |
 | `data/secrets.json` | First startup, when `AUTH != off` and `ADMIN_TOKEN`/`INGEST_TOKEN`/`CREW_TOKEN` aren't all set via env; the dashboard, when you save a Gemini API key or a Cloudflare tunnel token, change a password or turn on two-factor sign-in | `{ "adminToken", "ingestToken", "crewToken", "geminiApiKey"?, "tunnelToken"?, "totpSecret"?, "alerts"? }` (`alerts`: where phone alerts go, as JSON). Tokens are random 24-character base64url strings (18 random bytes). Written with file mode `0600`. Whichever admin/ingest token you *do* set via env is used in preference to the stored value; the file still fills in the other. A saved `geminiApiKey` wins over `GEMINI_API_KEY`. Never sent to the browser (the dashboard sees only the key's last 4 characters). |

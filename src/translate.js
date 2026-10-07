@@ -11,14 +11,14 @@
 import { getClient } from './genai.js';
 import { config } from './config.js';
 import { chat as localChat, cleanTranslation, llmBusy, llmInfo } from './local/llm.js';
+import { promptLanguage } from './languages.js';
 
 let ai = null;
 const client = () => ai ?? getClient(); // tests can inject their own (_setClient)
 /** Test hook: inject a fake client. */
 export const _setClient = (c) => { ai = c; };
 
-const NAMES = { es: 'Spanish (neutral Latin American)', en: 'English', pt: 'Portuguese (Brazil)', fr: 'French', de: 'German', it: 'Italian' };
-const langName = (c) => NAMES[c] || c;
+const langName = (c) => promptLanguage(c); // "gn" → "Guarani": a bare code can be ambiguous
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 // ---------- process-wide rate limiter ----------
@@ -58,15 +58,16 @@ const USD_IN = 0.30 / 1e6, USD_OUT = 2.5 / 1e6;
  * @param {string | null} o.from
  * @param {string} o.to
  * @param {string[]} [o.context]     previous sentences, for context only
+ * @param {{ text: string, out: string }[]} [o.prior]  previous sentences with their translations (local models)
  * @param {string[]} [o.vocabulary]
  * @param {boolean} [o.partial]      the sentence is still being spoken
  * @param {{ usd?: number, firstChunkMs?: number | null } | null} [o.stats]  cost and timing counters to update
  * @param {(soFar: string) => void} [o.onChunk]  streaming: called with the translation so far as it arrives (Gemini only)
  * @returns {Promise<string>}
  */
-export async function translateText({ text, from, to, context = [], vocabulary = [], partial = false, stats = null, onChunk = null }) {
+export async function translateText({ text, from, to, context = [], prior = [], vocabulary = [], partial = false, stats = null, onChunk = null }) {
   if (config.engine === 'mock') return `(${to}) ${text}`;
-  if (config.engine === 'local') return translateLocal({ text, from, to, context, vocabulary, partial });
+  if (config.engine === 'local') return translateLocal({ text, from, to, prior, vocabulary, partial });
   const sys = [
     `You translate live conference captions from ${from ? langName(from) : 'the speaker\'s language'} to ${langName(to)}.`,
     partial
@@ -121,29 +122,63 @@ export async function translateText({ text, from, to, context = [], vocabulary =
  */
 // TranslateGemma (Google, 2026: Gemma 3 fine-tuned for translation) is trained on exactly this prompt, with plain
 // language names and codes; extra instructions (glossary, context) would be translated along with the text.
-const TG_NAMES = { es: 'Spanish', en: 'English', pt: 'Portuguese', fr: 'French', de: 'German', it: 'Italian', ca: 'Catalan', gl: 'Galician', ja: 'Japanese', zh: 'Chinese', ko: 'Korean', nl: 'Dutch' };
 export function translateGemmaPrompt({ text, from, to }) {
-  const name = (c) => TG_NAMES[String(c).split('-')[0]] || c;
+  const name = (c) => promptLanguage(c, { styled: false }).replace(/ \(.*\)$/, '');
   const src = name(from), dst = name(to);
   return `You are a professional ${src} (${from}) to ${dst} (${to}) translator. Your goal is to accurately convey the meaning and nuances of the original ${src} text while adhering to ${dst} grammar, vocabulary, and cultural sensitivities.\n`
     + `Produce only the ${dst} translation, without any additional explanations or commentary. Please translate the following ${src} text into ${dst}:\n\n\n${text}`;
 }
 
-async function translateLocal({ text, from, to, context, vocabulary, partial }) {
+async function translateLocal({ text, from, to, prior, vocabulary, partial }) {
   const model = llmInfo().mtModel;
   const request = { model, maxTokens: Math.min(400, 32 + Math.ceil(text.length / 2)), temperature: 0.1, timeoutMs: config.mtTimeoutMs, priority: partial ? 0 : 2 };
   // Its prompt needs the source language; until Whisper has detected one, the generic prompt below is used.
   if (/translategemma/i.test(model) && from) return guardLength(text, cleanTranslation((await localChat({ ...request, user: translateGemmaPrompt({ text, from, to }) })).text));
   const system = [
-    `You are a professional live-caption translator. Translate the user's text from ${from ? langName(from) : 'the speaker\'s language'} into ${langName(to)}.`,
+    `You are a professional live-caption translator. Translate each of the user's messages from ${from ? langName(from) : 'the speaker\'s language'} into ${langName(to)}.`,
     partial ? 'The sentence is still being spoken and may be cut off: translate only what is there, do not complete it.' : '',
     'Keep people\'s names, brand and product names, acronyms and specialist terms the way people in the speaker\'s field write them; do not translate names.',
     vocabulary.length ? `Names and terms to keep as written: ${vocabulary.slice(0, 40).join(', ')}.` : '',
-    `Reply with the ${langName(to)} translation only: no quotes, no notes, no explanations, no original text.`,
+    `Reply with the ${langName(to)} translation of the last message only: no quotes, no notes, no explanations, no original text.`,
   ].filter(Boolean).join('\n');
-  const ctx = context.length ? `Previous sentences, for context only (do not translate them): ${context.join(' ')}\n\n` : '';
-  const out = await localChat({ ...request, system, user: `${ctx}Translate into ${langName(to)}:\n${text}` });
-  return guardLength(text, cleanTranslation(out.text));
+  // The previous sentences go in as earlier turns of the conversation, with their translations. Written into the
+  // message instead ("previous sentences, for context only: …"), small models translated them again, or copied
+  // the instruction itself into the caption.
+  const ask = (t) => `Translate into ${langName(to)}:\n${t}`;
+  const history = prior.flatMap((p) => [{ role: /** @type {const} */ ('user'), content: ask(p.text) }, { role: /** @type {const} */ ('assistant'), content: p.out }]);
+  let out = stripEcho(cleanTranslation((await localChat({ ...request, system, history, user: ask(text) })).text), prior);
+  // Nothing left but a repeat of the previous captions: ask again without them.
+  if (!out && prior.length) out = cleanTranslation((await localChat({ ...request, system, user: ask(text) })).text);
+  return guardLength(text, out);
+}
+
+const norm = (w) => w.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^\p{L}\p{N}]/gu, '');
+
+/**
+ * Small models sometimes start with the previous captions again ("We are a nonprofit… And we're a global…" for
+ * "activists and researchers"). Drop every previous translation the answer starts with; a prefix of one that
+ * stops short (the answer was cut off) counts too. Returns '' when the answer was nothing but repeats.
+ */
+export function stripEcho(out, prior = []) {
+  let w = String(out || '').split(/\s+/).filter(Boolean);
+  const outs = prior.map((p) => String(p.out || '').split(/\s+/).filter(Boolean).map(norm).filter(Boolean)).filter((x) => x.length >= 3);
+  for (let changed = true; changed && w.length;) {
+    changed = false;
+    for (const prev of outs) {
+      // Compare word by word, ignoring punctuation and case: "lucro," = "lucro".
+      let i = 0, j = 0;
+      while (i < w.length && j < prev.length) {
+        const a = norm(w[i]);
+        if (!a) { i++; continue; }
+        if (a !== prev[j]) break;
+        i++; j++;
+      }
+      const whole = j === prev.length;
+      const cutShort = i === w.length && j >= 3; // the answer ends inside the repeat
+      if (whole || cutShort) { w = w.slice(i); changed = true; break; }
+    }
+  }
+  return w.join(' ').replace(/^[…\s]+$/, '').trim();
 }
 
 /** A small model stuck in a loop: a translation is never several times longer than its source. */
@@ -153,6 +188,11 @@ function guardLength(source, result) {
 }
 
 const SENTENCE_END = /[.?!…]["')\]»]?(?=\s|$)/g;
+// The local engine ends a caption at every pause, often mid-sentence ("And we're" … "a global community"), and its
+// words arrive a few seconds apart. Translated alone, those pieces come out wrong ("as muchas preguntas"), so its
+// unfinished sentences wait this long for the rest. Meanwhile the provisional translation is on screen.
+const LOCAL_SENTENCE_WAIT_MS = 6000;
+const endsSentence = (t) => /[.?!…。？！]["'”’»)\]]*\s*$/.test(t);
 
 /** Sentence-level translator for one (room, target language). */
 export class SentenceTranslator {
@@ -188,7 +228,7 @@ export class SentenceTranslator {
     this.busyFinal = false;
     this.partialInFlight = false;
     this.lastPartialAt = 0;
-    this.context = [];
+    this.context = []; // the last sentences and their translations, so a translation follows from them
     this.stats = { requests: 0, errors: 0, quotaErrors: 0, avgMs: null, firstChunkMs: null, dropped: 0, usd: 0 };
     this.shown = { id: 0, len: 0 }; // the provisional translation on screen: sentence id and length
   }
@@ -225,8 +265,10 @@ export class SentenceTranslator {
       const i = Math.max(this.buf.lastIndexOf(', ', 200), this.buf.lastIndexOf(' ', 200));
       this.#finalize(this.buf.slice(0, i > 60 ? i + 1 : 200));
     }
-    if (finished) return this.#finalize(this.buf);
-    this.idle = setTimeout(() => this.#finalize(this.buf), 3000); // speaker paused (Gemini fragments can be ~2 s apart)
+    const local = config.engine === 'local';
+    if (finished && (!local || endsSentence(this.buf.trim()))) return this.#finalize(this.buf);
+    // Speaker paused (Gemini fragments can be ~2 s apart; the local engine's, more).
+    this.idle = setTimeout(() => this.#finalize(this.buf), local ? LOCAL_SENTENCE_WAIT_MS : 3000);
     this.#maybePartial();
   }
 
@@ -260,7 +302,7 @@ export class SentenceTranslator {
         // already on screen: a caption must never shrink and grow again.
         const shown = this.shown.id === item.id ? this.shown.len : 0;
         const onChunk = config.mtStream ? (soFar) => { if (soFar.length >= shown) { this.shown = { id: item.id, len: soFar.length }; this.onPartial(soFar, item.id); } } : null;
-        out = await translateText({ text: item.text, from: item.from, to: this.to, context: this.context, vocabulary: this.vocabulary, stats: this.stats, onChunk });
+        out = await translateText({ text: item.text, from: item.from, to: this.to, context: this.context.map((c) => c.text), prior: this.context, vocabulary: this.vocabulary, stats: this.stats, onChunk });
         this.stats.avgMs = this.stats.avgMs == null ? Date.now() - t0 : Math.round(this.stats.avgMs * 0.7 + (Date.now() - t0) * 0.3);
       } catch (e) {
         this.stats.errors++;
@@ -278,7 +320,7 @@ export class SentenceTranslator {
       }
     }
     if (out) {
-      this.context.push(item.text);
+      this.context.push({ text: item.text, out });
       if (this.context.length > 2) this.context.shift();
       this.onFinal(out, item.id);
     } else if (this.degraded()) {
@@ -302,7 +344,7 @@ export class SentenceTranslator {
     const id = this.openId;
     try {
       this.stats.requests++;
-      const out = await translateText({ text, from: this.spoken, to: this.to, context: this.context, vocabulary: this.vocabulary, partial: true, stats: this.stats });
+      const out = await translateText({ text, from: this.spoken, to: this.to, context: this.context.map((c) => c.text), prior: this.context, vocabulary: this.vocabulary, partial: true, stats: this.stats });
       if (out && id === this.openId && this.buf.trim().startsWith(text.slice(0, 10))) { this.shown = { id, len: out.length }; this.onPartial(out, id); }
     } catch (e) {
       this.stats.errors++;

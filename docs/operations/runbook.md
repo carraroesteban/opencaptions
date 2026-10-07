@@ -78,10 +78,19 @@ Install it as a service so it survives reboots ([Deployment](../deployment.md#ru
    chrome --kiosk --autoplay-policy=no-user-gesture-required --use-fake-ui-for-media-stream "https://<server>/ingest.html?stage=<room>&autostart=1"
    ```
 
+**Backup audio (recommended for main rooms):** a second computer on another output of the sound desk (or the same
+computer with a second interface) for the same room. On the audio page tick **This is the room's backup**, or run the
+agent with `--backup`. It stays on standby and takes over by itself when the main source stops sending (3 s) or goes
+silent while the backup still hears the room (20 s), for example a pulled fader or a loose cable. The main source takes
+back over after 10 s of healthy sound. The room card says which one is on air, and the **using the backup audio** alert
+tells you it happened.
+
 **Displays:**
 
 - Projector: `https://<server>/screen.html?stage=<room>` full screen, or the URL from the style editor.
 - vMix: a *Web Browser* input at 1920×1080 with `https://<server>/overlay.html?stage=<room>&lang=es`, used as an overlay on the program output. OBS: *Browser Source* with the same URL. Use one overlay per language or stream. For a mixed-language audience add `&also=en` (or `&also=orig`): a smaller second line in that language under the main one. It hides itself while both lines would show the same words.
+- **Captions in sync with the video:** captions reach the overlay 2–3 s after the words are spoken. To have them line up with the speaker's lips on the stream, delay the camera and microphone sources by the room's delay shown on the dashboard (OBS: a *Render Delay* filter on the video sources and *Sync Offset* in Advanced Audio Properties; vMix: *Delay* on the input). Captions sent to YouTube Live are already timed to when the words were said.
+- **Breaks from the vision mixer:** in **Dashboard → Integrations → Breaks from the vision mixer**, connect vMix (Web Controller, port 8088) or OBS (WebSocket server, port 4455) for each room. When the program output switches to a scene or input whose name says break (Break, Pausa, Intervalo, Publicidad, BRB, Starting soon…), that room's captions pause and its screens show the break; switching back resumes them.
 
 ## Sixty minutes before: sound check (per room)
 
@@ -109,6 +118,12 @@ The system:
 
 Turn on **Event mode** (bottom of the dashboard's sidebar, or **Settings**) when doors open. It locks the setup on the server: nobody can delete or change rooms, the agenda, the glossary or the event name by accident. Everything you need during talks keeps working: starting the next talk, renaming the current one, reconnecting a room and the AI switch.
 
+**Breaks:** press **Break** on the room card (or **B** on the room's audio page) for an intermission, ads or anything that shouldn't be captioned; the screens and phones show the break, when the talk resumes and the next talk. **Resume captions**, **Next talk**, or the next talk's start in the agenda ends it. Breaks in the agenda (coffee, lunch: titles with no speaker, or Sessionize service sessions) start by themselves once the room is quiet, and end early if people speak for a while. If a break someone started by hand goes on while people are speaking, the card warns you.
+
+**Music:** walk-in music, a sponsor video or a song between talks is recognized after about 10 s and not captioned (♪ on screens and the overlay, at no cost); captions come back as soon as someone speaks. If a talk with a soundtrack is taken for music, press **It's a talk: caption anyway** on the card.
+
+**Fixing a caption:** **See details → Fix captions** lists the latest sentences; correct one and it changes on every screen, phone and the transcript at once. If you changed a single word (a speaker's name), you're offered to always write it that way: it goes to the glossary, and can be undone from History.
+
 **Who's speaking:** on each room card, tap the speaker's name (the agenda's speakers are listed), **Host**, **Audience (Q&A)** or **Other…**. Captions on phones, the transcript and the subtitle files name the speaker from then on.
 
 When a speaker runs over, the room's card turns orange and says which talk is due. Press **Start "…"** when the next speaker begins, or let the room switch by itself at the next pause. **Next talk** starts one by hand, with the title and speaker from the agenda already filled in.
@@ -131,7 +146,10 @@ With **alerts on your phone** set up (Settings → Alerts), the ones that last r
 | **Reconnecting** | The Gemini session is reconnecting | Wait about 5 s. If it persists, open the room's details and press **Reconnect AI**. Audio is buffered for 12 s. |
 | **High latency** | Transcription more than 6 s behind | Normal for a few seconds after a reconnect. If it persists, press **Reconnect AI** and check the server's network. |
 | **Translation throttled** | Text translation hit a quota limit (429) | Automatic fallback is active. If frequent, raise the tier or set `MT_PARTIAL_MS=3000`. |
-| Misspelled names | Speaker, product or acronym | **Dashboard → Glossary** → add a replacement. It applies instantly. |
+| **Using the backup audio** | The main source stopped or went silent; the backup is on air | Check the main computer, its cable and the desk output. It takes back over by itself after 10 s of sound. |
+| **Someone speaking during the break** | A break set by hand (or by the vision mixer) while people speak | If the talk started, press **Resume captions**. |
+| **Music · paused** | Music detected in the room | Nothing to do. If it's actually a talk, press **It's a talk: caption anyway**. |
+| Misspelled names | Speaker, product or acronym | **Fix captions** on the room card, and accept "always write it this way"; or **Dashboard → Glossary** → add a replacement. It applies instantly. |
 | Wrong language | The talk isn't in the configured language | **Dashboard → Rooms → Edit → Talk language** → *Detect automatically* (switches are handled live) |
 
 ### Plan B
@@ -141,7 +159,7 @@ With **alerts on your phone** set up (Settings → Alerts), the ones that last r
 | A room loses network | The agent buffers about 15 s and resends | If it lasts longer, connect the PC to a 4G/5G hotspot. |
 | The server loses network | With the [offline backup](../local.md#offline-backup), captions move to this computer in about 15 s and back when the connection is stable. Without it, no captions until it returns; pages reconnect by themselves. | Start with `npm run local -- --fallback` at venues with shaky internet. Topology B avoids venue outages affecting the server. |
 | Server restart | Screens, phones and agents reconnect by themselves. Saved transcripts stay in `data/`. | `docker compose restart` or restart the service |
-| The browser hangs on a venue PC | No audio from that room | Reopen the URL. Kiosk mode with autostart recovers by itself. The agent avoids this entirely. |
+| The browser hangs on a venue PC | No audio from that room (or the backup takes over, if the room has one) | Reopen the URL. Kiosk mode with autostart recovers by itself. The agent avoids this entirely. Set the room computers' power settings to never sleep: the audio page keeps the screen on only on localhost or HTTPS. |
 | Gemini outage or credit exhausted | Captions stop. The dashboard shows the error per room, and the server keeps retrying. | Check status and billing in AI Studio. Show a slide explaining captions are temporarily unavailable. |
 | Suspected password leak | An unknown source replaces a room's audio, or an unknown device is signed in | Follow [Responding to a leaked password or a lost device](../security-guide.md#responding-to-a-leaked-password-or-a-lost-device). |
 

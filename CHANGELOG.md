@@ -4,6 +4,41 @@ All notable changes to this project are documented in this file. The format foll
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-10-07
+
+What a professional event needs beyond captions, measured against the AI captioning services used at big conferences.
+
+### Added
+
+- **Smooth captions.** The AI sends words in bursts and sometimes rewrites the last ones; every caption display used to show them as they came, and the stage screen, the overlay and the floating window cut the text by character count, so the visible lines re-wrapped with every new word. Now words come out one by one at the speaker's own pace (measured from how fast they arrive, never more than ~1.2 s behind), a word the AI keeps rewriting waits a moment until it settles, and lines roll up like TV captions: new words go on the last line, everything slides up one line when it's full, and old lines leave whole, so the visible ones never move sideways. On phones, the presenter screen, the overlay, the floating window and Just for me. Measured in headless Chrome on a replayed talk: one word at a time, no line re-wrapped. Respects *reduce motion*.
+- **Captions don't blink at the end of the line.** The lime highlighter jumped to every new word, three times a second, and read as "still thinking"; Just for me also redrew every paragraph on every word of either language, replaying it. Now each new word fades in once, and only the caption that changed is touched (measured on Just for me and the phone page with local mode: 0 paragraphs redrawn in 75 s, one fade per word).
+- **Paragraphs end with a sentence.** The local engine ends a caption at every pause, often mid-sentence, and each one used to be its own paragraph. On Just for me and phones, captions now flow into paragraphs that end with a sentence; in the transcript page and the .txt download too, which broke at every 4-second pause (on a 35-minute talk in local mode: 28 of 37 paragraphs ended mid-sentence before, 1 of 69 now).
+- **Start from nothing, for testing** (`FRESH=1`, or `npm start -- --fresh` / `npm run local -- --fresh`): a new, empty data folder in a temporary place, deleted when the server stops. Your `data/` folder isn't touched, and `.env` still applies. Browsers that open it forget the choices and tips they remembered (pages now learn which data folder they belong to).
+- **Back to Just for me from the dashboard** (**Settings → Just for me**), with a warning when rooms are live. Blocked in Event mode, since it takes the event offline.
+- **Breaks.** Captions pause on purpose and every screen says so: phones show a banner and the presenter screen a card with *Back at 11:30* and the next talk; the overlay hides. A break starts from **Break** on the room's card, the **B** key on the room's audio page, the agenda, or the vision mixer, and ends with **Resume captions**, **Next talk**, or the next talk's slot. No audio goes to the AI meanwhile (no cost).
+- **Breaks from the agenda.** Rows like *Coffee break*, *Almuerzo* or *Receso* (with no speaker), Sessionize service sessions, and breaks without a room (for every room) are kept as breaks. They start once the room is quiet, so a talk running over is never cut, and end early if people speak for a while.
+- **Breaks from vMix or OBS** (**Integrations → Breaks from the vision mixer**): when the program output switches to a scene or input whose name says break (Break, Pausa, Publicidad, BRB, Starting soon…), that room's captions pause; switching back resumes them. vMix through its Web Controller API, OBS 28+ through obs-websocket v5 with its password (kept as a secret).
+- **Music isn't captioned.** Walk-in music, a sponsor video or a song between talks is recognized after about ten seconds and captions pause (♪ on the screens and the overlay, at no cost) until someone speaks; the seconds before the voice is confirmed are sent then, so the first words aren't lost. Tuned on talks in English, Spanish and Portuguese (alone and over background music) and 19 music tracks: no speech was ever taken for music, 18 of 19 tracks were detected. **It's a talk: caption anyway** on the card, and a per-room setting, for talks with a soundtrack or music classes. `MUSIC_GUARD=off` turns it off.
+- **Backup audio for each room.** A second computer (or another output of the sound desk) connects as the room's backup (**This is the room's backup** on the audio page, or `agent.js --backup`) and stands by. It takes over by itself when the main source stops sending (3 s) or goes silent while the backup still hears the room (20 s: a pulled fader, a loose cable), and hands back after the main one has sent sound for 10 s. The card says which is on air, and an alert says when the backup is.
+- **Fix a caption live.** **See details → Fix captions** on a room card lists the latest sentences in any language; a correction replaces the caption on every phone, screen and overlay at once, and the transcript keeps it. Changing a single word offers to always write it that way (a glossary correction, also added to the AI's vocabulary, undoable from History).
+- **Correct a transcript afterwards.** On a transcript's page, admins press **Correct** and edit any sentence in place; downloads (TXT, SRT, VTT) use the corrected text.
+- **Listen in any language.** The 🎧 button reads the translation aloud with the phone's own voice in languages where the AI's natural voice isn't running (it plays the AI's voice where it is). Free and offline; when the voice falls behind, it skips ahead instead of drifting further from the room.
+- **82 caption languages** (from 40): Afrikaans, Amharic, Armenian, Georgian, Hausa, Igbo, Yoruba, Zulu, Khmer, Lao, Burmese, Nepali, Sinhala, the Balkan and Baltic languages and more.
+
+### Changed
+
+- **"Use it for events" explains itself in the page** instead of a browser pop-up: what stays (your transcripts, still private; your AI; Just for me at `/me.html`) and what changes (the dashboard opens first, the audience pages open to anyone who reaches the computer, what the AI costs per room or how many rooms this computer keeps up with). The first time, the event's setup wizard comes next.
+- **Any language can be removed in Settings**, also Spanish, English and Portuguese from `config/event.json`, as long as no room uses it (it says which room does) and one language is left. Removed ones can be added back.
+- **Local mode translates whole sentences.** A caption that ends at a pause mid-sentence waits up to 6 s for the rest instead of being translated alone ("as muchas preguntas", "zonas rurales. Clínicas."). The previous sentences go to the model as earlier turns with their translations: written into the message, `gemma3:4b` copied that instruction into 4 of 90 captions of a real talk and repeated earlier captions in 3; now none. A translation that still starts with the previous captions is cut back to the new part.
+- **The AI gets every language's name, not its code.** Translations and summaries were asked for "into gn" or "into no" for every language except six; now "into Guarani", "into Norwegian (Bokmål)".
+- **YouTube Live captions are timed to when the words were said** (the talk's start plus the caption's start, corrected for the AI's delay) instead of when they were sent, so they line up with the video. Corrections aren't resent to Zoom, YouTube or Teams.
+- **The room's audio page keeps the computer awake** while it's sending (on localhost or HTTPS), and shows what the room sounds like (voice, music, silence).
+- A transcript line saved twice with the same id (a correction, or a translation that finished late) is read once, with the newest text.
+
+### Fixed
+
+- **The stream overlay showed the word "OpenCaptions" next to the captions.** Its heading for screen readers was hidden by a style the overlay doesn't load, so it appeared on the livestream. Since 0.2.0.
+
 ## [0.3.1] - 2026-10-06
 
 ### Added

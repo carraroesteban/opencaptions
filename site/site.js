@@ -12,7 +12,7 @@ document.getElementById('theme')?.addEventListener('click', () => {
 const nav = document.querySelector('.nav');
 addEventListener('scroll', () => nav?.classList.toggle('scrolled', scrollY > 8), { passive: true });
 
-// Live captions demo: words arrive one by one, the live word gets the highlighter sweep.
+// Live captions demo: words arrive one by one, each new word fades in (as in the app).
 const cap = document.getElementById('cap');
 const orig = document.getElementById('orig-txt');
 if (cap) {

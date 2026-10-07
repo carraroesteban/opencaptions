@@ -327,6 +327,7 @@ const childEnv = {
   LOCAL_ASR_LABEL: speech.label,
   ...(speech.model ? { LOCAL_ASR_MODEL: speech.model } : {}),
   ...(text ? { LOCAL_LLM_URL: text.url, LOCAL_LLM_MODEL: text.model, LOCAL_MT_MODEL: text.mtModel || '' } : { LOCAL_LLM: 'off' }),
+  ...(flag('fresh') ? { FRESH: '1' } : {}), // a clean start in a temporary data folder (see src/config.js)
 };
 console.log('');
 const script = flag('check') ? path.join(ROOT, 'scripts', 'check-local.js') : path.join(ROOT, 'src', 'server.js');

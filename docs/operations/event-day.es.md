@@ -108,6 +108,14 @@ No hay que tocar nada más. El sistema:
 - reinicia una sesión si hay voz pero no llega texto durante 20 s;
 - si la traducción de texto queda limitada por cuota, usa temporalmente la traducción de Live Translate.
 
+**Pausas:** tocá **Pausa** en la tarjeta de la sala (o la tecla **B** en la página de audio de la sala) para un intervalo, publicidad o lo que no haya que subtitular: las pantallas y los celulares muestran la pausa, cuándo vuelve la charla y cuál sigue. Termina con **Reanudar subtítulos**, **Siguiente charla** o cuando empieza la próxima charla de la agenda. Las pausas de la agenda (café, almuerzo: títulos sin orador, o las sesiones de servicio de Sessionize) empiezan solas cuando la sala queda en silencio, y terminan antes si alguien habla un rato. Con vMix u OBS conectados (**Integraciones → Pausas desde la mezcla de video**), pasar a una escena de pausa («Pausa», «Break», «Publicidad», «Volvemos»…) pausa los subtítulos de esa sala, y volver los reanuda.
+
+**Música:** la música de entrada, un video de un sponsor o una canción entre charlas se reconoce en unos 10 s y no se subtitula (♪ en las pantallas y el overlay, sin costo); los subtítulos vuelven apenas alguien habla. Si una charla con música de fondo se toma por música, tocá **Es una charla: subtitular igual**.
+
+**Corregir un subtítulo:** **Ver detalles → Corregir subtítulos** muestra las últimas frases; corregí una y cambia al instante en todas las pantallas, los celulares y la transcripción. Si cambiaste una sola palabra (el nombre de un orador), te ofrece escribirla siempre así: se suma al glosario y se puede deshacer desde el Historial.
+
+**Audio de respaldo:** en las salas principales, una segunda computadora en otra salida de la consola, con **Es el respaldo de la sala** marcado en la página de audio (o el agente con `--backup`). Queda en espera y entra sola si la principal deja de mandar audio (3 s) o se queda muda mientras el respaldo sí oye la sala (20 s). La principal vuelve sola tras 10 s de sonido.
+
 **Quién habla:** en cada sala del panel, tocá el nombre de quien habla (sale de la agenda), «Presentación», «Público (preguntas)» u «Otro…». Los subtítulos, la transcripción y los archivos SRT/VTT lo nombran desde ese momento.
 
 **Si una charla se pasa de hora**, la tarjeta de la sala se pone naranja y dice qué charla toca. Tocá **Empezar «…»** cuando empiece el siguiente speaker, o dejá que cambie sola en la próxima pausa. **Siguiente charla** inicia una a mano, con el título y el speaker de la agenda ya cargados.
@@ -128,7 +136,10 @@ Con las alertas en el celular configuradas, las que duran te llegan estés donde
 | **reconectando IA** | La sesión de Gemini se está reconectando | Esperar ~5 s; si persiste, **Ver detalles → Reconectar IA**. El audio queda en buffer (12 s). |
 | **latencia alta** | Transcripción más de 6 s atrás | Normal unos segundos tras reconectar; si persiste, **Reconectar IA** y revisar la red del server. |
 | **traducción limitada por cuota** | Límite de Flash‑Lite | Automático (usa Live). Si es frecuente: subir de plan o `MT_PARTIAL_MS=3000`. |
-| Términos mal escritos | Nombres o siglas | Panel → Glosario → agregar una corrección. Se aplica al instante. |
+| **usando el audio de respaldo** | La fuente principal se cortó o se quedó muda; está al aire el respaldo | Revisar la computadora principal, su cable y la salida de la consola. Vuelve sola tras 10 s de sonido. |
+| **hay alguien hablando durante la pausa** | Una pausa puesta a mano (o por la mezcla) mientras alguien habla | Si empezó la charla, **Reanudar subtítulos**. |
+| **MÚSICA · en pausa** | Suena música en la sala | Nada. Si es una charla, **Es una charla: subtitular igual**. |
+| Términos mal escritos | Nombres o siglas | **Corregir subtítulos** en la tarjeta de la sala y aceptar «escribirlo siempre así»; o Panel → Glosario → agregar una corrección. Se aplica al instante. |
 | Idioma equivocado | La charla es en otro idioma | Panel → Salas → Editar → *Idioma de la charla* → «Detectar automáticamente». |
 
 ### Plan B

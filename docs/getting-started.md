@@ -40,6 +40,8 @@ The first time you open the dashboard, a short welcome wizard asks for your even
 
 Nothing is captioned yet, because no room is receiving audio.
 
+To see it again as a first-time user (the wizard, empty transcripts, no remembered choices), start with `--fresh`, for example `npm run mock -- --fresh`, or put `FRESH=1` in `.env`. Everything starts empty in a temporary folder that's deleted when you stop the server; your `data/` folder isn't touched.
+
 ## 3. Send audio to a room
 
 Open a second terminal in the same folder and play the bundled English sample into the room called `main`:

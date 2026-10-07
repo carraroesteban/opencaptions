@@ -52,7 +52,7 @@ Both are served by OpenCaptions itself from `public/fonts/` (downloaded once wit
 
 ## Motion
 
-- **Highlighter sweep on the live word** (`.live-word`, set by `liveText()` / `liveHtml()` in `common.js`). The lime and an ink copy of the word sweep in together, so the word is always ink on lime, even in dark mode.
+- **The newest word fades in** (`.live-word`, set by `liveText()` / `liveHtml()` in `common.js` and by the roll-up in `smooth.js`), once, in 0.2 s. Captions don't use the highlighter: words arrive one at a time, and a lime block hopping from word to word three times a second read as "still thinking" and pulled the eye away from the text. The highlighter stays in the illustrations, search hits and the website's statement.
 - **The caption line types out of the O** (`.oc-logo.typing` loops, as on the waiting screen; `.oc-logo.typed` plays once, as on the website).
 
 Both are turned off for people who ask for reduced motion.

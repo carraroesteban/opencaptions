@@ -272,6 +272,27 @@ Send a room's final captions to Zoom, YouTube Live, Microsoft Teams or a webhook
 
 What each platform receives: Zoom, `POST <link>&seq=N&lang=<region>` with the caption as `text/plain; charset=utf-8`; YouTube, `POST <link>&seq=N` with `<UTC time, YYYY-MM-DDTHH:MM:SS.mmm>\n<caption>\n` as `text/plain`; Teams, `POST <link>` unchanged, with lines of up to 120 characters. `seq` (Zoom, YouTube) grows by one per caption, not per retry. Webhooks get JSON (`caption`, `talk.ended`, `test`), signed in `X-OpenCaptions-Signature: sha256=<HMAC-SHA256 of the body>`; the payloads are in [Integrations](../integrations.md#webhooks).
 
+### Vision mixers (breaks from vMix or OBS)
+
+`src/switcher.js`, how-to in [Integrations](../integrations.md#breaks-from-vmix-or-obs). Allowed in Event mode.
+
+| Method & path | Auth | Notes |
+|---|---|---|
+| `GET /api/switchers` | Admin | `{ switchers: [{ id, type: "vmix" \| "obs", stage, scenes, address, hasPassword, status: { state: "connecting" \| "ok" \| "error", scene, lastError, since } }] }`. The OBS password is never returned. |
+| `POST /api/switchers` | Admin | Body `{ type, stage, url, password?, scenes? }`. `url` may be just the computer's address (`192.168.1.20`): vMix becomes `http://…:8088/api`, OBS `ws://…:4455`. `scenes`: comma-separated break words. |
+| `DELETE /api/switchers/:id` | Admin | Disconnect; ends a break it had started. |
+
+### Breaks, music and corrections
+
+| Method & path | Auth | Notes |
+|---|---|---|
+| `POST /api/stages/:id/break` | Crew | Body `{ on: true \| false, title? }`. Captions pause (no audio goes to the AI) and viewers get a `pause` message. Allowed in Event mode. Starting a new talk also ends a break. |
+| `POST /api/stages/:id/music` | Crew | Body `{ caption: true }`: the room isn't playing music (a talk with a soundtrack): caption anyway until the next talk. |
+| `GET /api/stages/:id/captions?channel=orig&n=10` | Crew | The latest final captions of the talk in progress (≤ 50): `{ channel, talk, captions: [seg] }`. |
+| `PATCH /api/stages/:id/captions/:seg` | Crew | Body `{ channel, text }`. Corrects a caption of the talk in progress: viewers receive it again (same `id`, `final: true`, `edited: true`) and replace it; the transcript keeps the fix. `404` if it's no longer in the talk in progress. Not resent to Zoom, YouTube or Teams. |
+| `PATCH /api/stages/:id/talks/:talk/captions/:seg` | Admin | Body `{ channel, text }`. Corrects any saved transcript (appended to `captions.jsonl`; the newest text of each caption wins when read, and exports use it). |
+| `POST /api/glossary/replacements` | Admin | Body `{ from, to }`: one glossary correction ("always write it this way"); `to` is also added to the vocabulary. Allowed in Event mode (it only adds). Recorded in History, so it can be undone. |
+
 ### Transcripts & exports
 
 | Method & path | Auth | Notes |
@@ -472,8 +493,8 @@ curl -X POST http://localhost:8080/api/stages/main/ask \
 
 | Method | Path | Auth | Description |
 |---|---|---|---|
-| `GET` | `/api/setup` | crew | First-run state for the welcome wizard: `done`, `locked`, event `name` and `named` (`false` until someone names the event), `languages` (event.json's plus the ones added from the dashboard), `addedLanguages`, `publicTranscripts` and `publicTranscriptsFixed` (`true` when `PUBLIC_TRANSCRIPTS` is set in the environment), `defaultTargets`, `stages` (`id`, `name`, `source`, `targets`), `engine`, `primaryEngine`, `failover`, `ai` (see below), `tunnel` (see below), `tunnelTokenSaved`, `tunnelMoved` (`true` when the free address differs from the one used before the last restart, so printed QR codes are out of date), `publicUrl` (the address QR codes use for this request), `publicUrlSource` (`config` = `PUBLIC_URL` / `publicUrl`, `tunnel`, or `auto` = the address the page was opened with, or this computer's Wi-Fi address instead of `localhost`), `lanUrl` and `port`. |
-| `PUT` | `/api/setup` | admin | Body `{ "name"?: string, "done"?: boolean, "timezone"?: string, "languages"?: { code: name }, "publicTranscripts"?: "current" \| "all" \| "none" }`. Renames the event (1–80 characters), marks the wizard as finished, sets the agenda's time zone, replaces the languages added from the dashboard (up to 40; `409` if a room still uses one being removed), and sets who can read transcripts (`409` when `PUBLIC_TRANSCRIPTS` fixes it). Everything is validated before anything changes. Saved in `data/setup.json`; the name overrides `eventName` from `config/event.json`. All but `done` answer `423` in Event mode. |
+| `GET` | `/api/setup` | crew | First-run state for the welcome wizard: `done`, `locked`, event `name` and `named` (`false` until someone names the event), `languages` (event.json's, minus the ones removed and plus the ones added from the dashboard), `addedLanguages`, `builtInLanguages` (event.json's codes), `removedLanguages`, `mode` (`event` or `personal`: Just for me), `eventDone` (`true` once the wizard was finished for an event), `publicTranscripts` and `publicTranscriptsFixed` (`true` when `PUBLIC_TRANSCRIPTS` is set in the environment), `defaultTargets`, `stages` (`id`, `name`, `source`, `targets`), `engine`, `primaryEngine`, `failover`, `ai` (see below), `tunnel` (see below), `tunnelTokenSaved`, `tunnelMoved` (`true` when the free address differs from the one used before the last restart, so printed QR codes are out of date), `publicUrl` (the address QR codes use for this request), `publicUrlSource` (`config` = `PUBLIC_URL` / `publicUrl`, `tunnel`, or `auto` = the address the page was opened with, or this computer's Wi-Fi address instead of `localhost`), `lanUrl` and `port`. |
+| `PUT` | `/api/setup` | admin | Body `{ "name"?: string, "done"?: boolean, "mode"?: "event" \| "personal", "timezone"?: string, "languages"?: { code: name }, "removedLanguages"?: [code], "publicTranscripts"?: "current" \| "all" \| "none" }`. Renames the event (1–80 characters), marks the wizard as finished, switches between an event and Just for me, sets the agenda's time zone, replaces the languages added from the dashboard (up to 40) and the ones of `config/event.json` that aren't offered (`400` for other codes, or when no language would be left), and sets who can read transcripts (`409` when `PUBLIC_TRANSCRIPTS` fixes it). A language a room still uses can't go: `409` with `{ "code": "language-in-use", "rooms": [names], "languages": [names] }`. Everything is validated before anything changes. Saved in `data/setup.json`; the name overrides `eventName` from `config/event.json`. All but `done` and `mode: "event"` answer `423` in Event mode (switching to Just for me would take the event offline). |
 | `POST` | `/api/lock` | admin | Event mode. Body `{ "locked": true \| false }`. While locked, the setup endpoints below answer `423 Locked` with `{ "locked": true }`: creating, changing (except the current talk's `title`) and deleting rooms, `PUT /api/schedule`, `PUT /api/glossary`, renaming the event and undoing changes. Live operations keep working: `POST /api/stages/:id/talk`, `/restart`, `/youtube`, the pull controls and `POST /api/engine`. Recorded in the history. |
 | `GET` | `/api/history` | crew | `{ "locked", "changes": [...], "trash": [...] }`. `changes` are the latest setup changes, newest first: `{ id, at, kind, target, summary, before, after, undoes?, undone }` (`kind`: `room.create`, `room.update`, `room.delete`, `agenda.set`, `glossary.set`, `event.rename`, `engine.mode`, `event.lock`, `ai.key`, `tunnel`, `auth.signin`, `auth.signout`, `auth.password`, `auth.2fa`; `by` is who made it: the signed-in device's name, the work account, `this computer` or `admin password (script)`; agenda and glossary snapshots are summarized as counts). `trash` lists deleted rooms that haven't been restored: `{ id, at, room }`. |
 | `POST` | `/api/history/:id/undo` | admin | Put back what that change replaced: a deleted room comes back exactly as it was, a changed room returns to its old settings, the agenda or glossary to the previous version, and so on. The undo is recorded as a new change. `409` if already undone; `423` in Event mode. |
@@ -595,13 +616,14 @@ just that connection with code `1009` instead.
 
 ### `WS /ws/ingest` — send audio into a room
 
-`wss://host/ws/ingest?stage=<id>&kind=<label>&label=<text>&ticket=<ticket>` (browsers), or with an `Authorization: Bearer <ingest password>` header (the agent and scripts)
+`wss://host/ws/ingest?stage=<id>&kind=<label>&label=<text>&role=<backup>&ticket=<ticket>` (browsers), or with an `Authorization: Bearer <ingest password>` header (the agent and scripts)
 
 | Query param | Notes |
 |---|---|
 | `stage` | Required. Unknown stage → connection closes with `4004`. |
 | `kind` | Free text, ≤ 20 chars, shown on the dashboard (`browser`, `agent`, `pull`, …). Default `browser`. |
 | `label` | Free text, ≤ 120 chars, shown on the dashboard (e.g. mic device name). |
+| `role` | `backup`: a standby source for the room. Only the main source is captioned; the backup takes over when the main one stops sending (3 s) or goes silent while the backup hears sound (20 s), and hands back after the main one has sent sound for 10 s. A new backup replaces the previous backup, not the main source. |
 | `ticket` | A single-use ticket from `POST /api/ingest/ticket` (valid 60 s), if not sending a password header. A `token` parameter is refused. |
 
 **Auth**: a ticket, an ingest/crew/admin password in the `Authorization` header, or a session. **Origin check**: yes. Connecting **replaces** any existing
@@ -612,15 +634,20 @@ Client → server:
 - **Binary frames**: raw **PCM16LE, mono, 16 kHz**. The reference clients send 100 ms frames (3200 bytes).
   Frames over **64 KB** are silently dropped (not an error, not a close) — send small, regular chunks.
   Server `maxPayload` for the whole connection is 256 KB.
-- Text/JSON frames are not read by this endpoint (ignored).
+- Text frames: `{"type":"break","on":true|false}` starts or ends a break for this room (the B key on the audio page). Anything else is ignored.
 
 Server → client, every 500 ms while connected:
 
 ```json
 {
   "type": "status",
+  "role": "primary",
+  "active": true,
   "level": 0.041,
   "gated": false,
+  "brk": null,
+  "music": false,
+  "sound": "voice",
   "engines": [{ "target": "es", "state": "live" }],
   "preview": { "orig": "…the last words heard…", "es": "…las últimas palabras…" },
   "alerts": [],
@@ -699,6 +726,14 @@ Server → client:
 
 `spk` is present when the crew has said who is speaking (`POST /api/stages/:id/speaker`). Exports use it: WebVTT
 voice tags (`<v Ana Pérez>`) on every cue, and the name before the text in SRT and TXT when the speaker changes.
+A final caption that arrives again with the same `id` and `"edited": true` is a correction from the crew: replace it.
+
+```json
+// captions paused on purpose: a break (by "crew", "room", "agenda" or "switcher"), or music in the room.
+// Also in hello as "pause". { brk: null, music: false } = captions running again.
+{ "type": "pause", "brk": { "by": "agenda", "since": 1791375874168, "title": "Coffee break", "until": 1791377674168,
+  "next": { "title": "After the coffee", "speaker": "Bo", "start": 1791377674168 } }, "music": false }
+```
 
 ```json
 // whenever the room's operator starts a NEW talk (a new talk.id — clients should clear their captions)
