@@ -18,6 +18,7 @@ All notable changes to this project are documented in this file. The format foll
 
 ### Fixed
 
+- **The event report and the dashboard's log showed Just for me.** In event mode, the report (`/report.html`, `GET /api/report` and its CSV), which the crew can read, listed the personal room's calls with their titles, length, words and speakers, and the dashboard's log showed their titles and corrected captions. In Just for me, the report listed the event's rooms. Both now keep to the rooms the rest of the app shows.
 - The simulated AI (`ENGINE=mock`, used by the tests and demos) threw away audio while it was "connecting", so a test failed on the Linux CI runners, whose timers are precise. It now keeps that audio and sends it once connected, as the Gemini engine does.
 
 ## [0.4.1] - 2026-10-08
