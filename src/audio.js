@@ -28,3 +28,38 @@ export class Chunker {
     }
   }
 }
+
+// G.711 μ-law: 16-bit samples as 8 bits (logarithmic steps, fine for speech), half the bytes of PCM16. The room's
+// sound goes to phones in it (src/server.js, docs/accessibility.md); public/common.js decodes it.
+const MU_BIAS = 0x84;
+const MU_CLIP = 32635;
+// Segment (exponent) of a biased magnitude, by its top bits.
+const MU_EXP = Uint8Array.from({ length: 256 }, (_, i) => (i ? Math.min(7, Math.floor(Math.log2(i))) : 0));
+
+/** PCM16LE mono → μ-law bytes (one per sample). */
+export function muLaw(pcm) {
+  const n = pcm.length >> 1;
+  const out = Buffer.allocUnsafe(n);
+  for (let i = 0; i < n; i++) {
+    let s = pcm.readInt16LE(i * 2);
+    const sign = s < 0 ? 0x80 : 0;
+    if (sign) s = -s;
+    if (s > MU_CLIP) s = MU_CLIP;
+    s += MU_BIAS;
+    const exp = MU_EXP[(s >> 7) & 0xff];
+    out[i] = ~(sign | (exp << 4) | ((s >> (exp + 3)) & 0x0f)) & 0xff;
+  }
+  return out;
+}
+
+/** μ-law bytes → Int16Array. */
+export function muLawDecode(bytes) {
+  const out = new Int16Array(bytes.length);
+  for (let i = 0; i < bytes.length; i++) {
+    const u = ~bytes[i] & 0xff;
+    const exp = (u >> 4) & 7;
+    const s = ((((u & 0x0f) << 3) + MU_BIAS) << exp) - MU_BIAS;
+    out[i] = u & 0x80 ? -s : s;
+  }
+  return out;
+}

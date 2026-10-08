@@ -49,6 +49,8 @@ export class Stage extends EventEmitter {
     this.audioMsIn = 0;
     this.costUsd = 0;
     this.viewers = 0;
+    // Phones playing the room's own sound (assistive listening, src/server.js): the room's audio as it comes in.
+    this.soundListeners = new Set();
     this.logs = [];
     this.alerts = new Set();
     // Breaks: captions paused on purpose (the crew, the agenda or the vision mixer said so). Music: paused because
@@ -99,6 +101,9 @@ export class Stage extends EventEmitter {
     if (running) this.#ensureEngines();
     this.emit('config');
   }
+
+  /** How many phones may play the room's sound at once. */
+  soundMax() { return this.def.roomSoundMax ?? config.roomSoundMax; }
 
   channelFor(lang) {
     if (!lang || lang === 'orig') return 'orig';
@@ -180,6 +185,8 @@ export class Stage extends EventEmitter {
     this.peak = Math.max(this.peak * 0.95, lvl);
     this.lastAudioAt = now;
     this.audioMsIn += 100;
+    // The room's sound, for phones that play it: everything the room hears, breaks and music included.
+    if (this.soundListeners.size) this.emit('sound', chunk);
     if (config.musicGuard) this.voice.push(chunk);
     const loud = lvl >= config.speechRms;
     // On a break or during music, sound isn't speech to caption: it doesn't wake the AI up.
@@ -763,6 +770,9 @@ export class Stage extends EventEmitter {
       pull: this.def.pull || '',
       loop: !!this.def.loop,
       musicGuard: this.def.musicGuard !== false,
+      roomSound: !!this.def.roomSound,
+      roomSoundMax: this.soundMax(),
+      roomSoundListeners: this.soundListeners.size,
       talk: this.talk,
       nextTalk: this.nextTalk || null,
       dueTalk: this.dueTalk || null,

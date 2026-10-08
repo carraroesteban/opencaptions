@@ -25,7 +25,7 @@ const T = {
     backToLive: 'Volver al vivo', waiting: 'Esperando que empiece a hablar alguien…', connecting: 'Conectando…',
     followOnPhone: 'Seguí los subtítulos en tu celu', scan: 'Escaneá el QR', stages: 'Salas', uiLang: 'Idioma de la página', fmtText: 'texto', fmtSubs: 'subtítulos', fmtWeb: 'web', screenTitle: 'Pantalla', liveCaptions: 'Subtítulos en vivo', production: 'Producción', myTranscripts: 'Mis transcripciones', myTranscriptsHint: 'Todo lo que subtitulaste en esta compu: leelo, buscalo o descargalo.', backCaptions: 'Subtítulos',
     fontSize: 'Tamaño', newTalk: 'Nueva charla', poweredBy: 'Subtítulos generados con IA · pueden contener errores',
-    listenHint: 'Usá auriculares', talkChanged: 'Empezó una nueva charla', allStages: 'Todas las salas', theme: 'Tema',
+    listenHint: 'Usá auriculares', roomSoundHint: 'El sonido de la sala · usá auriculares o conectá tus audífonos', soundFull: 'El sonido de la sala está completo: ya lo escucha el máximo de personas. Los subtítulos siguen. Probá de nuevo en unos minutos.', soundOff: 'El sonido de la sala se apagó. Los subtítulos siguen.', talkChanged: 'Empezó una nueva charla', allStages: 'Todas las salas', theme: 'Tema',
     brk: 'Pausa', brkSub: 'Los subtítulos siguen cuando vuelva la charla.', backAt: 'Volvemos a las', nextUp: 'Próxima charla', musicOn: 'Suena música · los subtítulos vuelven cuando alguien hable',
     fixTalk: 'Corregir', fixHint: 'Tocá una frase para corregirla: se guarda al salir de ella (Enter). Las descargas usan el texto corregido.',
     deleteTalk: 'Eliminar', deleteTalkQ: '¿Eliminar para siempre esta transcripción? No se puede deshacer.',
@@ -37,7 +37,7 @@ const T = {
     backToLive: 'Back to live', waiting: 'Waiting for someone to start speaking…', connecting: 'Connecting…',
     followOnPhone: 'Follow the captions on your phone', scan: 'Scan the QR code', stages: 'Rooms', uiLang: 'Page language', fmtText: 'text', fmtSubs: 'captions', fmtWeb: 'web', screenTitle: 'Screen', liveCaptions: 'Live captions', production: 'Production', myTranscripts: 'My transcripts', myTranscriptsHint: 'Everything you captioned on this computer: read, search or download it.', backCaptions: 'Captions',
     fontSize: 'Size', newTalk: 'New talk', poweredBy: 'AI-generated captions · may contain errors',
-    listenHint: 'Use headphones', talkChanged: 'A new talk started', allStages: 'All rooms', theme: 'Theme',
+    listenHint: 'Use headphones', roomSoundHint: 'The room’s sound · use earbuds or connect your hearing aids', soundFull: 'The room’s sound is full: the most people it allows are already listening. Captions keep working. Try again in a few minutes.', soundOff: 'The room’s sound was turned off. Captions keep working.', talkChanged: 'A new talk started', allStages: 'All rooms', theme: 'Theme',
     brk: 'Break', brkSub: 'Captions continue when the talk resumes.', backAt: 'Back at', nextUp: 'Next talk', musicOn: 'Music playing · captions return when someone speaks',
     fixTalk: 'Correct', fixHint: 'Tap a sentence to correct it: it’s saved when you leave it (Enter). Downloads use the corrected text.',
     deleteTalk: 'Delete', deleteTalkQ: 'Delete this transcript for good? This can’t be undone.',
@@ -49,7 +49,7 @@ const T = {
     backToLive: 'Voltar ao vivo', waiting: 'Esperando alguém começar a falar…', connecting: 'Conectando…',
     followOnPhone: 'Acompanhe as legendas no celular', scan: 'Escaneie o QR', stages: 'Salas', uiLang: 'Idioma da página', fmtText: 'texto', fmtSubs: 'legendas', fmtWeb: 'web', screenTitle: 'Tela', liveCaptions: 'Legendas ao vivo', production: 'Produção', myTranscripts: 'Minhas transcrições', myTranscriptsHint: 'Tudo o que você legendou neste computador: leia, pesquise ou baixe.', backCaptions: 'Legendas',
     fontSize: 'Tamanho', newTalk: 'Nova palestra', poweredBy: 'Legendas geradas por IA · podem conter erros',
-    listenHint: 'Use fones de ouvido', talkChanged: 'Começou uma nova palestra', allStages: 'Todas as salas', theme: 'Tema',
+    listenHint: 'Use fones de ouvido', roomSoundHint: 'O som da sala · use fones de ouvido ou conecte seus aparelhos auditivos', soundFull: 'O som da sala está lotado: o máximo de pessoas já está ouvindo. As legendas continuam. Tente de novo em alguns minutos.', soundOff: 'O som da sala foi desligado. As legendas continuam.', talkChanged: 'Começou uma nova palestra', allStages: 'Todas as salas', theme: 'Tema',
     brk: 'Intervalo', brkSub: 'As legendas continuam quando a palestra voltar.', backAt: 'Voltamos às', nextUp: 'Próxima palestra', musicOn: 'Tocando música · as legendas voltam quando alguém falar',
     fixTalk: 'Corrigir', fixHint: 'Toque numa frase para corrigi-la: ela é salva quando você sai dela (Enter). Os downloads usam o texto corrigido.',
     deleteTalk: 'Excluir', deleteTalkQ: 'Excluir esta transcrição para sempre? Não dá para desfazer.',
@@ -274,9 +274,24 @@ export class CaptionFlow {
   }
 }
 
-/** Plays streamed PCM16 24 kHz translated speech. */
+// G.711 μ-law byte → sample (-1..1): the room's sound comes this way, half the bytes of PCM16 (src/audio.js).
+const MU_LAW = Float32Array.from({ length: 256 }, (_, b) => {
+  const u = ~b & 0xff, exp = (u >> 4) & 7;
+  const s = ((((u & 0x0f) << 3) + 0x84) << exp) - 0x84;
+  return (u & 0x80 ? -s : s) / 32768;
+});
+
+/**
+ * Plays streamed audio: the AI's translated voice (PCM16, 24 kHz) or the room's own sound (μ-law, 16 kHz).
+ * Each chunk is queued right after the previous one; a short cushion absorbs network jitter. Once more than `maxAhead`
+ * seconds are queued (a burst after the network stalled), new chunks are skipped until only `catchUp` seconds are left:
+ * never two chunks at once, and the room's sound comes back close to the speaker's lips.
+ */
 export class PcmPlayer {
-  constructor(rate = 24000) { this.rate = rate; this.ctx = null; this.t = 0; }
+  /** @param {number} [rate]  @param {{ format?: 'pcm16'|'mulaw', maxAhead?: number, catchUp?: number }} [o] */
+  constructor(rate = 24000, { format = 'pcm16', maxAhead = 3, catchUp = maxAhead } = {}) {
+    Object.assign(this, { rate, format, maxAhead, catchUp, ctx: null, t: 0, catching: false });
+  }
   async start() {
     // iOS: play even with the ring/silent switch on (Web Audio is muted as "ambient" otherwise).
     try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch { /* older browsers */ }
@@ -286,16 +301,21 @@ export class PcmPlayer {
   }
   push(ab) {
     if (!this.ctx) return;
-    const i16 = new Int16Array(ab);
-    const buf = this.ctx.createBuffer(1, i16.length, this.rate);
+    const now = this.ctx.currentTime;
+    if (this.t > now + this.maxAhead) this.catching = true;
+    if (this.catching) { if (this.t > now + this.catchUp) return; this.catching = false; } // too far behind → skip
+    const mu = this.format === 'mulaw';
+    const src8 = mu ? new Uint8Array(ab) : null, i16 = mu ? null : new Int16Array(ab, 0, ab.byteLength >> 1);
+    const n = mu ? src8.length : i16.length;
+    if (!n) return;
+    const buf = this.ctx.createBuffer(1, n, this.rate);
     const ch = buf.getChannelData(0);
-    for (let i = 0; i < i16.length; i++) ch[i] = i16[i] / 32768;
+    if (mu) for (let i = 0; i < n; i++) ch[i] = MU_LAW[src8[i]];
+    else for (let i = 0; i < n; i++) ch[i] = i16[i] / 32768;
     const src = this.ctx.createBufferSource();
     src.buffer = buf;
     src.connect(this.ctx.destination);
-    const now = this.ctx.currentTime;
     if (this.t < now + 0.05) this.t = now + 0.1; // underrun → small cushion
-    if (this.t > now + 3) this.t = now + 0.1; // drifted too far behind → catch up
     src.start(this.t);
     this.t += buf.duration;
   }

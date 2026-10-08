@@ -27,12 +27,14 @@ let hello = null;
 const states = {}; // channel → what's on screen (CaptionState), fed word by word by its pacer
 const pacers = {}; // channel → Pacer (smooth.js): the server's bursts come out at the speaker's pace
 const pacer = (ch) => (pacers[ch] ??= new Pacer((seg) => onShown(seg)));
-const player = new PcmPlayer();
+const player = new PcmPlayer(); // the AI's translated voice
+// The room's own sound (assistive listening): after a network stall, what's late is skipped (over 0.4 s queued, back to
+// 0.15 s), so the sound stays with the speaker's lips.
+const roomPlayer = new PcmPlayer(16000, { format: 'mulaw', maxAhead: 0.4, catchUp: 0.15 });
 
 $('empty').textContent = t('connecting');
 $('tolive').innerHTML = `${icon('arrowdown')} ${esc(t('backToLive'))}`;
 $('dual').textContent = t('dual');
-$('listen').innerHTML = `${icon('headphones')} <span class="lbl">${esc(t('listen'))}</span>`;
 $('orig').querySelector('b').textContent = t('original');
 document.documentElement.style.setProperty('--size', size + 'px');
 let prefs = applyReadingPrefs();
@@ -71,8 +73,9 @@ for (const d of ['dlg-ai', 'dlg-set']) $(d).addEventListener('click', (e) => { i
 
 const channel = () => hello?.map?.[lang] || 'orig';
 const hasAudio = () => channel() !== 'orig' && (hello?.stage?.audioLangs || []).includes(lang);
-// 🎧 Listen: the AI's natural voice where the room has one, otherwise the phone reads the captions aloud (speak.js).
-const listenMode = () => (hasAudio() ? 'ai' : channel() !== 'orig' && canSpeak(lang) ? 'device' : null);
+// 🎧 Listen: on Original, the room's own sound where the room allows it (hearing aids, earbuds). In a translation, the
+// AI's natural voice where the room has one, otherwise the phone reads the captions aloud (speak.js).
+const listenMode = () => (channel() === 'orig' ? (hello?.stage?.roomSound ? 'room' : null) : hasAudio() ? 'ai' : canSpeak(lang) ? 'device' : null);
 const speaker = new Speaker();
 let listenWith = null;
 if (typeof speechSynthesis !== 'undefined') speechSynthesis.addEventListener?.('voiceschanged', () => $('listen').classList.toggle('hidden', !listenMode()));
@@ -80,19 +83,20 @@ if (typeof speechSynthesis !== 'undefined') speechSynthesis.addEventListener?.('
 const sock = new Socket(() => wsUrl('/ws/view', {
   stage: stageId,
   langs: [lang || 'orig', dual ? 'orig' : null].filter(Boolean).join(','),
-  audio: listening && listenWith === 'ai' ? lang : '0',
+  audio: !listening ? '0' : listenWith === 'ai' ? lang : listenWith === 'room' ? 'orig' : '0',
 }), {
   message(m) {
     if (m.type === 'hello') onHello(m);
     else if (m.type === 'caption') onCaption(m);
     else if (m.type === 'pause') showPause(m);
+    else if (m.type === 'listen') onListen(m);
     else if (m.type === 'title') $('talk').textContent = [m.title, m.speaker].filter(Boolean).join(' · ');
     else if (m.type === 'talk') {
       $('talk').textContent = [m.title, m.speaker].filter(Boolean).join(' · ');
       if (m.talk !== hello?.talk) { if (hello) hello.talk = m.talk; for (const s of Object.values(states)) s.clear(); for (const p of Object.values(pacers)) p.clear(); renderAll(); toast(t('talkChanged')); }
     }
   },
-  binary(ab) { if (listening) player.push(ab); },
+  binary(ab) { if (listening) (listenWith === 'room' ? roomPlayer : player).push(ab); },
   close(e) { if (e.code === 4004) location.href = '/'; },
 });
 // A phone waking from sleep can hold a dead socket for minutes: after a long absence, reconnect (history comes back).
@@ -119,6 +123,7 @@ function onHello(m) {
     pacer(ch).load([...hist, m.partial[ch]].filter(Boolean)); // already said: shown at once
   }
   $('listen').classList.toggle('hidden', !listenMode());
+  if (m.listen) onListen(m.listen);
   $('orig').classList.toggle('hidden', !dual || channel() === 'orig');
   $('doc').href = docUrl();
   $('ai-doc').href = docUrl();
@@ -219,18 +224,44 @@ const setDual = (on) => {
 $('dual').onclick = () => setDual(!dual);
 $('l-dual').textContent = t('dual');
 opts($('dual-opts'), [['false', t('no')], ['true', t('yes')]], String(dual), (v) => setDual(v === 'true'));
+const showListenButton = () => {
+  $('listen').setAttribute('aria-pressed', listening);
+  $('listen').setAttribute('aria-label', listening ? t('stopListen') : t('listen')); // phones show the icon alone
+  $('listen').innerHTML = `${icon('headphones')} <span class="lbl">${esc(listening ? t('stopListen') : t('listen'))}</span>`;
+};
+showListenButton();
 async function toggleListen() {
   listening = !listening;
-  $('listen').setAttribute('aria-pressed', listening);
-  $('listen').innerHTML = `${icon('headphones')} <span class="lbl">${esc(listening ? t('stopListen') : t('listen'))}</span>`;
+  showListenButton();
+  showListenNote(null);
   const was = listenWith;
   listenWith = listening ? listenMode() : null;
   if (listenWith === 'device') { speaker.start(lang); toast(t('listenHint')); }
   else if (listenWith === 'ai') { await player.start(); toast(t('listenHint')); }
-  else { player.stop(); speaker.stop(); }
-  if (listenWith === 'ai' || was === 'ai') sock.reconnect(); // the AI's voice comes over the socket
+  else if (listenWith === 'room') { await roomPlayer.start(); toast(t('roomSoundHint')); }
+  else { player.stop(); roomPlayer.stop(); speaker.stop(); }
+  const streamed = (w) => w === 'ai' || w === 'room';
+  if (streamed(listenWith) || streamed(was)) sock.reconnect(); // the AI's voice and the room's sound come over the socket
 }
 $('listen').onclick = toggleListen;
+
+/** The server's answer about the room's sound: refused (full, or turned off) → stop and say why. */
+function onListen(l) {
+  if (l.channel !== 'orig' || listenWith !== 'room' || !listening) return;
+  if (l.ok) return showListenNote(null);
+  listening = false;
+  listenWith = null;
+  roomPlayer.stop();
+  showListenButton();
+  showListenNote(l.why === 'full' ? t('soundFull') : t('soundOff'));
+}
+/** A note that stays until it's closed or Listen is tapped again (a toast would be gone before it's read). */
+function showListenNote(msg) {
+  $('listen-note').classList.toggle('hidden', !msg);
+  $('listen-note').querySelector('span').textContent = msg || '';
+}
+$('listen-note-close').onclick = () => showListenNote(null);
+$('listen-note-close').setAttribute('aria-label', t('close'));
 
 function toast(msg) {
   const d = document.createElement('div');

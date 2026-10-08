@@ -7,6 +7,7 @@ All notable changes to this project are documented in this file. The format foll
 ### Added
 
 - **Every transcript in one .zip** (dashboard → **Transcripts** → **Download all (.zip)**, or `GET /api/transcripts.zip?day=&room=` for scripts; admin only). A folder per room and per talk (date, time and title), with SRT, VTT and TXT of the original and of every language the talk was translated into, like the bulk export of the captioning services used at big conferences. Before, it was one talk and one language at a time. In Just for me, only your own transcripts. Written with a small ZIP writer of its own (`src/zip.js`), so no new dependency.
+- **The room's sound on phones** (assistive listening). People with hearing aids, cochlear implants or earbuds can hear the room on their phone, as some captioning services offer: **Original → 🎧 Listen**. It's a setting per room, off by default (**Rooms → Edit → The room's sound on phones**), because anyone with the room's link can then listen; the dialog says so. It plays with the iPhone's silent switch on, keeps going through breaks and music (it's the room's sound, not the captions), never plays in Just for me, and arrives about 0.24 s after the room's microphone. Each phone gets 128 kbit/s: 16 kHz μ-law, half the 16-bit audio the server receives. With 50 and 200 phones on one room the server used 1.8 % and 3.1 % of one CPU core (1.2 % with none) and sent 6.4 and 25.6 Mbit/s, so the venue's Wi-Fi is the limit: 100 phones per room by default (`ROOM_SOUND_MAX`, or per room in its dialog). The next phone is told the room's sound is full and that captions keep working. The room's card on the dashboard shows how many are listening. Numbers and how to check the Wi-Fi: [accessibility](docs/accessibility.md#hearing-the-room-on-a-phone). `npm run loadtest -- --listeners N` measures it. API: `/ws/view?audio=orig`, `listen` in `hello`, `roomSound` and `roomSoundMax` on rooms, `opencaptions_room_sound_listeners`.
 
 ### Changed
 
@@ -19,6 +20,7 @@ All notable changes to this project are documented in this file. The format foll
 ### Fixed
 
 - **The event report and the dashboard's log showed Just for me.** In event mode, the report (`/report.html`, `GET /api/report` and its CSV), which the crew can read, listed the personal room's calls with their titles, length, words and speakers, and the dashboard's log showed their titles and corrected captions. In Just for me, the report listed the event's rooms. Both now keep to the rooms the rest of the app shows.
+- A phone more than 3 s behind on the translated voice played two pieces of audio at once while it caught up. It now skips the late audio instead.
 - The simulated AI (`ENGINE=mock`, used by the tests and demos) threw away audio while it was "connecting", so a test failed on the Linux CI runners, whose timers are precise. It now keeps that audio and sends it once connected, as the Gemini engine does.
 
 ## [0.4.1] - 2026-10-08

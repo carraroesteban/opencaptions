@@ -32,6 +32,8 @@ Latency did not degrade with 30 simultaneous rooms. The onset-based metric can r
 
 The dashboard shows these per room as a moving average. Measure your own setup with `npm run multi` (see [Measure it yourself](#measure-it-yourself)).
 
+**The room's sound on phones** (assistive listening) doesn't go through the AI: about 0.24 s from the room's microphone to the phone's speaker, measured in a browser ([accessibility](accessibility.md#delay-end-to-end)).
+
 ## Where the time goes
 
 <picture>

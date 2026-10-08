@@ -82,7 +82,7 @@ const L = {
       'engine.mode': (c) => `IA: ${aiLabel(c.after)}`,
       'event.lock': (c) => (c.after ? 'Modo evento activado' : 'Modo evento desactivado'),
     },
-    fields: { name: 'nombre', source: 'idioma de la charla', targets: 'idiomas', translation: 'modo de traducción', pull: 'fuente de audio', loop: 'loop', musicGuard: 'pausa con música' },
+    fields: { name: 'nombre', source: 'idioma de la charla', targets: 'idiomas', translation: 'modo de traducción', pull: 'fuente de audio', loop: 'loop', musicGuard: 'pausa con música', roomSound: 'sonido de la sala', roomSoundMax: 'máximo de oyentes' },
     ai: { auto: 'Automática (nube + respaldo)', cloud: 'Siempre en la nube', local: 'Siempre esta computadora' },
     sys: (y, up) => `Encendido hace ${up} · CPU ${y.cpuPct} % · memoria ${y.rssMB} MB · event loop ${y.loopLagMs.p99} ms (p99)`,
     audioNone: 'Sin audio', copied: 'Copiado',
@@ -136,7 +136,7 @@ const L = {
       'engine.mode': (c) => `AI: ${aiLabel(c.after)}`,
       'event.lock': (c) => (c.after ? 'Event mode turned on' : 'Event mode turned off'),
     },
-    fields: { name: 'name', source: 'talk language', targets: 'languages', translation: 'translation mode', pull: 'audio source', loop: 'loop', musicGuard: 'pause for music' },
+    fields: { name: 'name', source: 'talk language', targets: 'languages', translation: 'translation mode', pull: 'audio source', loop: 'loop', musicGuard: 'pause for music', roomSound: 'room sound', roomSoundMax: 'most listeners' },
     ai: { auto: 'Automatic (cloud + backup)', cloud: 'Always in the cloud', local: 'Always this computer' },
     sys: (y, up) => `Up for ${up} · CPU ${y.cpuPct}% · memory ${y.rssMB} MB · event loop ${y.loopLagMs.p99} ms (p99)`,
     audioNone: 'No audio', copied: 'Copied',
@@ -470,7 +470,7 @@ function renderGrid(s) {
     if (due) dueBtn.textContent = t.startDue(due.title.length > 28 ? due.title.slice(0, 27) + '…' : due.title);
     f('said').textContent = (st.preview.orig ?? Object.values(st.preview)[0] ?? '').slice(-220);
     const lat = Math.max(st.latency.asr || 0, ...Object.values(st.latency.tr).filter((v) => v != null));
-    f('stats').innerHTML = `<span title="${esc(tr('Público'))}">${icon('eye')}<b>${st.viewers}</b></span><span title="${esc(tr('Latencia'))}">${icon('clock')}<b>${lat ? sec(lat) : '—'}</b></span><span title="${esc(tr('Costo estimado'))}">${icon('coin')}<b>US$ ${st.costUsd.toFixed(2)}</b></span>`;
+    f('stats').innerHTML = `<span title="${esc(tr('Público'))}">${icon('eye')}<b>${st.viewers}</b></span><span title="${esc(tr('Latencia'))}">${icon('clock')}<b>${lat ? sec(lat) : '—'}</b></span><span title="${esc(tr('Costo estimado'))}">${icon('coin')}<b>US$ ${st.costUsd.toFixed(2)}</b></span>${st.roomSound ? `<span title="${esc(tr('Escuchando el sonido de la sala'))}">${icon('headphones')}<b>${st.roomSoundListeners}/${st.roomSoundMax}</b></span>` : ''}`;
     el.classList.toggle('alert', st.alerts.some((a) => a !== 'no-ingest'));
     f('state').innerHTML = stateChip(st);
     f('sub').innerHTML = `<code>${esc(st.id)}</code> · <span class="chip">${esc(st.mode)}</span> · ${esc(st.source === 'auto' ? `auto${st.detectedLang ? ` (${st.detectedLang})` : ''}` : st.source)} → ${esc(st.targets.filter((x) => x !== st.source).join(', ') || '—')}`;
@@ -711,15 +711,20 @@ async function openEdit(id) {
   fe.pull.value = st?.pull || '';
   fe.loop.checked = !!st?.loop;
   fe.musicGuard.checked = st ? st.musicGuard !== false : true;
+  fe.roomSound.checked = !!st?.roomSound;
+  fe.roomSoundMax.value = st?.roomSoundMax ?? ''; // a new room: the server's default (ROOM_SOUND_MAX, 100)
+  fe.roomSoundMax.disabled = !fe.roomSound.checked;
   fe.translation.value = st?.translationDef || '';
   $('edit-targets').innerHTML = Object.entries(ev.languages).map(([c, n]) => `<label class="row"><input type="checkbox" value="${c}" ${(st?.targets || ['es', 'en']).includes(c) ? 'checked' : ''}/> ${esc(n)}</label>`).join('');
   $('dlg-edit').showModal();
 }
 $('add').onclick = () => openEdit(null);
+fe.roomSound.onchange = () => { fe.roomSoundMax.disabled = !fe.roomSound.checked; };
 $('dlg-edit').addEventListener('close', async () => {
   if ($('dlg-edit').returnValue !== 'ok') return;
   const body = {
     name: fe.name.value, source: fe.source.value, translation: fe.translation.value || '', pull: fe.pull.value.trim(), loop: fe.loop.checked, musicGuard: fe.musicGuard.checked,
+    roomSound: fe.roomSound.checked, roomSoundMax: fe.roomSound.checked && fe.roomSoundMax.value ? Number(fe.roomSoundMax.value) : undefined,
     targets: [...$('edit-targets').querySelectorAll('input:checked')].map((i) => i.value),
   };
   const r = editing ? await api('PATCH', `/api/stages/${editing.id}`, body) : await api('POST', '/api/stages', { id: fe.id.value, ...body });
