@@ -90,6 +90,9 @@ export const config = {
   silenceGateSec: Number(env.SILENCE_GATE_SEC ?? event.silenceGateSec ?? 30),
   // Pause captions while a room plays music (walk-in music, videos between talks): src/voice.js. Per room: musicGuard.
   musicGuard: !/^(0|false|off|no)$/i.test(String(env.MUSIC_GUARD ?? event.musicGuard ?? 'on')),
+  // The room's sound on phones (assistive listening, per room: roomSound): how many phones may listen to one room at
+  // once, unless the room sets its own roomSoundMax. Each one is 128 kbit/s from the server (docs/accessibility.md).
+  roomSoundMax: Number(env.ROOM_SOUND_MAX ?? event.roomSoundMax ?? 100),
   // Close model sessions entirely after this many seconds without speech / ingest.
   idleCloseSec: Number(env.IDLE_CLOSE_SEC ?? event.idleCloseSec ?? 300),
   // RMS threshold (0..1) to consider a 100ms chunk "speech".
@@ -165,6 +168,10 @@ export function normalizeStage(s) {
     vocabulary: s.vocabulary || [],
     translation: s.translation || undefined,
     musicGuard: s.musicGuard === false ? false : undefined, // false: caption music too (a concert, a music class)
+    // Assistive listening: phones can play the room's own sound (hearing aids, earbuds). Off unless turned on: anyone
+    // with the room's link hears the room, so it's a choice per room.
+    roomSound: s.roomSound === true ? true : undefined,
+    roomSoundMax: s.roomSoundMax == null || s.roomSoundMax === '' ? undefined : Number(s.roomSoundMax), // listeners at once
   };
 }
 

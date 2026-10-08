@@ -55,6 +55,9 @@
     .pause.music { display: flex; align-items: center; gap: 12px; }
     .pause.music b { font-size: 26px; line-height: 1; }
     .pause.music span { margin: 0; }
+    .pause.note { display: flex; align-items: flex-start; gap: 10px; font-size: 15px; }
+    .pause.note span { flex: 1; color: var(--fg); margin: 0; }
+    .pause.note button { flex: none; padding: 4px 8px; }
     #tolive { position: fixed; bottom: 86px; left: 50%; transform: translateX(-50%); box-shadow: var(--shadow-lg); border-radius: var(--pill); }
     #listen[aria-pressed='true'], #pip[aria-pressed='true'] { background: var(--primary-bg); border-color: var(--primary-bg); color: var(--primary-fg); }
   </style>
@@ -70,6 +73,7 @@
     <div class="langs" id="langs" role="group"></div>
   </header>
   <div id="pause" class="pause hidden" role="status"></div>
+  <div id="listen-note" class="pause note hidden" role="status"><span></span><button id="listen-note-close" data-icon="x"></button></div>
   <div id="scroll" role="main" aria-live="polite"><div id="text"><div class="empty empty-state"><svg class="oc-logo typing" viewBox="0 0 878 664" aria-hidden="true"><use class="o" href="/brand/sprite.svg#oc-o"/><use class="ln" href="/brand/sprite.svg#oc-line"/></svg><span id="empty"></span></div></div></div>
   <div id="orig" class="hidden" role="complementary" aria-label="Original"><b></b><span></span></div>
   <button id="tolive" class="primary hidden"></button>

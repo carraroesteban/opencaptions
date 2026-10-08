@@ -6,7 +6,7 @@ This page explains what OpenCaptions protects, which attacks it defends against 
 
 - The server is secure by default. The dashboard needs sign-in, and sending audio a password, from every device except the server machine itself. The crew gets a password that only runs the live controls; two-factor codes and company sign-in are available.
 - Caption pages are public on purpose.
-- Audio is never stored.
+- Audio is never stored. A room's sound reaches phones only in rooms where an admin turns it on (assistive listening, off by default).
 - Transcripts can be switched off or deleted automatically.
 - For organizations with compliance needs, run Gemini through Google Cloud Vertex AI inside your own project.
 
@@ -191,6 +191,7 @@ To embed pages in another site, set `FRAME_ANCESTORS`, for example `'self' https
 Room audio ──(WSS/TLS)──► OpenCaptions server ──(TLS)──► Google Gemini (Live Translate + Flash-Lite)
                                │
                                ├──► viewers / screens / overlays (WSS/TLS): caption text (+ translated voice if enabled)
+                               ├──► phones listening (WSS/TLS): the room's own sound, only in rooms that have it on
                                └──► disk: caption text per talk (JSONL), optional, with retention
 ```
 
@@ -199,6 +200,7 @@ Room audio ──(WSS/TLS)──► OpenCaptions server ──(TLS)──► Goo
 | Raw audio | Server memory (a reconnect buffer of at most 12 s; the venue agent keeps about 15 s client-side), then Gemini, or the local speech server in local mode | **Never written to disk** |
 | Transcripts and translations | Viewers and `data/transcripts/` | Yes by default. `STORE_TRANSCRIPTS=false` disables storage. `RETENTION_DAYS=N` deletes old ones. |
 | Translated voice | Relayed in memory to listeners | Never stored |
+| The room's sound (assistive listening) | Relayed in memory, as it arrives, to phones listening on rooms where an admin turned it on (off by default) | Never stored |
 | Room config, glossary, agenda | `config/`, `data/stages.json` | Yes. Speaker names from the agenda. |
 | Signed-in devices and the History | `data/sessions.json` (a hash of each session, the device's name, its address), `data/history.jsonl` (who changed what) | Yes. Sessions expire after `SESSION_HOURS`. |
 | Alerts | Sent to the services you choose (ntfy, Telegram, Slack, Discord, a webhook): room names and what went wrong, never captions | Not stored by OpenCaptions |
@@ -212,12 +214,13 @@ Viewers need no account, so access is per kind of data and per role. *This compu
 | Data | Audience (no sign-in) | Crew password | Admin password | Just for me |
 |---|---|---|---|---|
 | Live captions and translations of a room, the translated voice | Anyone with the room's address (the QR code) | ✓ | ✓ | Only this computer and devices signed in with the admin password |
+| The room's sound, live (assistive listening for hearing aids and earbuds) | Only in rooms where an admin turned on **The room's sound on phones** (off by default). Then anyone with the room's address can listen, from anywhere, up to the room's listener limit. | Listens like the audience; can't turn it on | Turns it on or off per room | Never, not even for its own room |
 | Transcripts of talks, *What did I miss?* and *Ask the talk* | As set in **Settings → Transcripts for the audience**: the talk in progress (default), every talk, or none | Read | Read, correct, delete | Only this computer and signed-in devices |
 | Room names, talk titles, speakers, the agenda | Shown on the audience pages | ✓ | ✓, and change them | Not used |
 | Room status, the glossary, the History | No | Read (stream addresses left out: they can carry keys) | Read and change | Not used |
 | Integrations, vision mixers, alerts, signed-in devices | No | No | ✓ | Not used |
 | Passwords, the Gemini API key, the tunnel token, the two-factor secret | No | No | Never shown again after saving (the key's last 4 characters) | Same |
-| Room audio | Never (only the translated voice) | A level meter | A level meter | Never leaves the computer except to the AI |
+| Room audio | Only live, in rooms that play their sound (the row above). Never recorded. | A level meter | A level meter | Never leaves the computer except to the AI |
 
 Nobody sees viewers: there are no viewer accounts, cookies, analytics or logs of who read what. A browser remembers its own choices (language, text size, theme) in its local storage, which is never sent.
 

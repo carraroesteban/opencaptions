@@ -182,6 +182,8 @@ required and immutable on create):
 | `translation` | string | `"text"` \| `"live"` \| `"hybrid"`, or omit to use the server default (`TRANSLATION_MODE`). |
 | `pull` | string | Audio source URL/path the server pulls with ffmpeg (`srt://`, `rtmp://`, `https://…`, or a file under `samples/`/`MEDIA_DIR`). Empty string stops an active pull. Validated with the same SSRF checks as the YouTube endpoint (see [Security](../security-guide.md)). |
 | `loop` | boolean | Loop a file-based `pull`. |
+| `roomSound` | boolean | `true`: phones can play the room's own sound (assistive listening, `/ws/view?audio=orig`). Default off. **Anyone with the room's address can then listen**, from anywhere. |
+| `roomSoundMax` | integer | 1–5000. How many phones may play the room's sound at once. Default `ROOM_SOUND_MAX` (100). |
 | `vocabulary` | string[] | ≤ 500 terms, biases speech recognition for this room (merged with the global glossary). |
 
 Response (both endpoints): the room's [`status()`](#stage-status-object) object. Changing
@@ -193,6 +195,8 @@ actually changed, so re-saving the same dialog is a no-op:
   `POST /api/stages/:id/talk` for that.
 - A changed `pull` or `loop` (re)starts or stops the audio pull; submitting the same `pull` URL/`loop` value
   that's already configured leaves an active pull running untouched.
+- A changed `roomSound` sends every phone on the room a fresh `hello` (Listen shows or hides on Original). Turning it
+  off stops every phone playing it at once. A lower `roomSoundMax` doesn't cut off phones already listening.
 
 ```bash
 # Create a room
@@ -694,13 +698,13 @@ agent with device listing, reconnect-with-backoff and buffering while offline.)
 
 ### `WS /ws/view` — receive captions (and optional translated audio)
 
-`wss://host/ws/view?stage=<id>&langs=<code,code,…>&audio=<code|0>`
+`wss://host/ws/view?stage=<id>&langs=<code,code,…>&audio=<code|orig|0>`
 
 | Query param | Notes |
 |---|---|
 | `stage` | Required. Unknown stage → `4004`. |
 | `langs` | Comma-separated caption channels to subscribe to (`orig` plus target codes). `lang` (singular) also accepted. Default `orig`. |
-| `audio` | A language code to also receive translated **voice** audio for, or `0`/omit for none. Only honored if that language has a live "Live"-mode voice session (`stage.audioLangs`). |
+| `audio` | A language code to also receive translated **voice** audio for, `orig` for **the room's own sound** (assistive listening), or `0`/omit for none. A language is only honored if it has a live "Live"-mode voice session (`stage.audioLangs`); `orig` only if the room has `roomSound` on (`stage.roomSound`), the server isn't in Just for me, and fewer than `roomSoundMax` phones are already listening. The answer is `listen` in `hello`. |
 
 **Auth**: none. **Origin check**: skipped for this endpoint (it's meant to be embeddable/public). Subject to
 the `RATE_LIMIT_WS` connect-flood limit and the `MAX_VIEWERS` cap like any socket.
@@ -713,14 +717,21 @@ Server → client:
   "type": "hello",
   "stage": { "id": "main", "name": "Auditorio", "title": "Designing cities for everyone",
              "speaker": "Ana Pérez", "next": { "title": "Rust for Go developers", "speaker": "John Doe", "start": 1758728530441 },
-             "languages": ["orig", "en", "es"], "source": "auto", "audioLangs": ["es"], "mode": "text" },
+             "languages": ["orig", "en", "es"], "source": "auto", "audioLangs": ["es"], "roomSound": true, "mode": "text" },
   "languages": { "en": "English", "es": "Español" },
   "map": { "orig": "orig", "es": "es" },       // requested lang → actual channel
   "talk": "2026-09-24T14-02-10-441Z",
   "history": { "orig": [ /* up to 40 recent segments */ ], "es": [ /* … */ ] },
-  "partial": { "orig": null, "es": { "id": "es-…", "channel": "es", "text": "…", "final": false } }
+  "partial": { "orig": null, "es": { "id": "es-…", "channel": "es", "text": "…", "final": false } },
+  "listen": { "channel": "orig", "ok": true, "format": "mulaw", "rate": 16000 } // only when audio= asked for sound
 }
 ```
+
+`stage.roomSound` says whether this room plays its own sound to phones (the room's setting, and never in Just for me).
+`listen` answers `audio=`: `{ channel, ok: true, format, rate }` when the sound comes (`mulaw` at 16000 Hz for
+`orig`, `pcm16` at 24000 Hz for a translated voice), or `{ channel, ok: false, why }`: `why` is `off` (the room
+doesn't play its sound), `full` (`roomSoundMax` phones are already listening) or `none` (that language has no voice).
+A refused or stopped phone isn't put back by itself when a place frees up: it asks again (`subscribe`, or reconnect).
 
 ```json
 // one per caption update (interim or final)
@@ -750,9 +761,18 @@ A final caption that arrives again with the same `id` and `"edited": true` is a 
 { "type": "title", "talk": "2026-09-24T14-02-10-441Z", "title": "Designing cities for everyone, revisited", "speaker": "Ana Pérez" }
 ```
 
+```json
+// the room's sound stopped for this phone: the room's setting was turned off, or the server went to Just for me
+{ "type": "listen", "channel": "orig", "ok": false, "why": "off" }
+```
+
 - **Binary frames**: translated speech audio — raw PCM16LE mono **24 kHz** — sent only while `audio=<lang>`
   is subscribed and that language has a live voice session; server-side backpressure drops frames once
   `bufferedAmount` exceeds 512 KB rather than letting a slow client fall behind.
+- **Binary frames with `audio=orig`**: the room's own sound as it reaches the server, **G.711 μ-law, mono, 16 kHz**,
+  one frame per 100 ms (1600 bytes, 128 kbit/s), through breaks and music too. Decode each byte with the standard
+  μ-law table (`public/common.js` `PcmPlayer`, `src/audio.js` `muLawDecode`). Frames are dropped while the
+  phone has over 32 KB (~2 s) unsent: a phone that can't keep up skips audio rather than falling behind the room.
 - **Backpressure on captions too**: if a client's `bufferedAmount` is already over 1 MB when a new `caption`
   message would be sent, that message is dropped and the connection is terminated outright
   (`ws.terminate()`) rather than queuing further — a client that can't keep up is disconnected and simply
@@ -778,7 +798,7 @@ Minimal browser viewer:
 const ws = new WebSocket('wss://subs.example.com/ws/view?stage=main&langs=es,orig');
 ws.binaryType = 'arraybuffer';
 ws.onmessage = (e) => {
-  if (typeof e.data !== 'string') return; // translated audio — feed to a PCM16 24 kHz player if you want it
+  if (typeof e.data !== 'string') return; // audio: PCM16 24 kHz (a translated voice) or μ-law 16 kHz (audio=orig)
   const msg = JSON.parse(e.data);
   if (msg.type === 'caption') console.log(`[${msg.channel}]`, msg.text, msg.final ? '' : '…');
 };
@@ -849,6 +869,7 @@ inside every `admin` `status` broadcast:
 | `latency` | object | `{ asr: ms\|null, tr: { <lang>: ms } }` — smoothed speech→caption / speech→translation latency. |
 | `engines` | object[] | One per running model session: `{ target, state, level, reconnects, resumes, errors, lastError, connectedAt, stateSince, audioMs, tokens, … }`. `state` ∈ `idle`\|`connecting`\|`live`\|`reconnecting`\|`resuming`; `stateSince` (epoch ms) is when it last changed `state` (the stage's `alerts` uses it to tell a slow `connecting`/`resuming` from a fresh one). The stage's `alerts` also treat a hypothetical `error` state as reconnecting-like, but no engine currently emits it — failures instead increment `errors`/`lastError` and trigger a reconnect. |
 | `viewers` | number | Currently connected `/ws/view` sockets for this room. |
+| `roomSound`, `roomSoundMax`, `roomSoundListeners` | boolean, number, number | Whether phones can play the room's sound, how many may at once, and how many are now. |
 | `audioMinIn` | number | Minutes of audio received so far. |
 | `costUsd`, `costLiveUsd` | number | Estimated Gemini spend (all-in / Live-session-only). |
 | `alerts` | string[] | Any of `no-ingest`, `no-audio`, `muted?`, `reconnecting`, `high-latency`, `mt-throttled`. |
@@ -872,6 +893,7 @@ scrape_configs:
 | Metric | Labels | Meaning |
 |---|---|---|
 | `opencaptions_viewers` | `stage` | Connected `/ws/view` sockets. |
+| `opencaptions_room_sound_listeners` | `stage` | Phones playing the room's sound (`audio=orig`). |
 | `opencaptions_audio_level` | `stage` | Current input RMS, 0–1. |
 | `opencaptions_ingest_connected` | `stage` | `1` if an audio source is attached, else `0`. |
 | `opencaptions_cost_usd_total` | `stage` | Estimated cumulative Gemini spend for the room. |

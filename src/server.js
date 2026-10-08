@@ -28,6 +28,7 @@ import { Integrations } from './integrations.js';
 import { Switchers } from './switcher.js';
 import { fromSessionize, fromIcs } from './agenda-import.js';
 import { PullSource } from './pull.js';
+import { muLaw } from './audio.js';
 import { systemStats } from './system.js';
 import { summarize, ask, audienceAiEnabled, assistStats } from './assist.js';
 import { Schedule, parseSchedule } from './schedule.js';
@@ -62,6 +63,7 @@ function validateStage(def) {
   if (!def.targets.length || def.targets.length > 8 || !def.targets.every((t) => LANG_RE.test(t))) throw new Error('targets: 1-8 language codes');
   if (def.translation && !['text', 'live', 'hybrid'].includes(def.translation)) throw new Error('translation must be text|live|hybrid');
   if (!Array.isArray(def.vocabulary) || def.vocabulary.length > 500) throw new Error('vocabulary: up to 500 terms');
+  if (def.roomSoundMax !== undefined && !(Number.isInteger(def.roomSoundMax) && def.roomSoundMax >= 1 && def.roomSoundMax <= 5000)) throw new Error('roomSoundMax: 1-5000 listeners');
 }
 
 function addStage(def) {
@@ -73,6 +75,7 @@ function addStage(def) {
   // The dashboard's log covers the rooms it lists: the personal room's log has its talk titles and corrected captions.
   // (No dashboard is connected yet while the saved rooms load.)
   st.on('log', (entry) => { if (admins.size && visibleStages().includes(st)) broadcastAdmin({ type: 'log', ...entry }); });
+  st.on('sound', (chunk) => sendSound(st, chunk));
   stages.set(def.id, st);
   if (def.pull) startPull(st, def.pull, def.loop);
   integrations?.attachAll(); // a restored room gets its Zoom/YouTube/Teams/webhook connectors back
@@ -252,7 +255,10 @@ app.patch('/api/stages/:id', crew, getStage, async (req, res) => {
   if ('title' in b && (b.title || '') !== (st.talk.title || '')) st.setTitle(b.title || '');
   const langsChanged = def.source !== old.source || def.targets.join() !== old.targets.join() || def.translation !== old.translation;
   if (langsChanged) st.reconfigure(def);
-  else st.def = def;
+  else {
+    st.def = def;
+    if (!!def.roomSound !== !!old.roomSound) st.emit('config'); // phones show or hide Listen on Original; listeners stop
+  }
   const pullChanged = ('pull' in b && (b.pull || '') !== (old.pull || '')) || ('loop' in b && !!b.loop !== !!old.loop);
   if (pullChanged) {
     if (def.pull) startPull(st, def.pull, def.loop); else stopPull(st.id);
@@ -344,6 +350,18 @@ const PERSONAL_ROOM = 'me'; // the room me.html captions into
 // in event mode never the personal one. Its captions are someone's own calls: private in both modes.
 const visibleStages = () => [...stages.values()].filter((st) => personal() === (st.id === PERSONAL_ROOM));
 const isPrivate = (stageId) => personal() || stageId === PERSONAL_ROOM;
+// The room's sound on phones (assistive listening for hearing aids and earbuds): only where the room's setting allows
+// it, and never in Just for me or its room (someone's own calls). Anyone with the room's link can listen.
+const soundAllowed = (st) => !!st.def.roomSound && !isPrivate(st.id);
+const SOUND_FORMAT = { format: 'mulaw', rate: 16000 }; // 100 ms = 1600 bytes, 128 kbit/s
+// A phone this far behind (~2 s) misses audio instead of falling further behind: the room is live, not a recording.
+const SOUND_BACKLOG = 32 * 1024;
+/** 100 ms of the room's audio to every phone playing it, encoded once. */
+function sendSound(st, chunk) {
+  if (!soundAllowed(st)) { for (const l of st.soundListeners) l.stop('off'); return; }
+  const frame = muLaw(chunk);
+  for (const { ws } of st.soundListeners) if (ws.readyState === 1 && ws.bufferedAmount < SOUND_BACKLOG) ws.send(frame, { binary: true });
+}
 // Just for me has no event: no event name on its pages (the one from an earlier event stays saved for going back).
 const eventName = () => (personal() ? 'OpenCaptions' : config.event.name || 'OpenCaptions');
 const isCurrent = (st, talkId) => !talkId || talkId === st.talk.id;
@@ -854,7 +872,10 @@ app.put('/api/setup', admin, (req, res) => {
   }
   const change = patch.change ?? null;
   delete patch.change;
+  const modeChanged = 'mode' in patch && patch.mode !== (setup.mode === 'personal' ? 'personal' : 'event');
   saveSetup(patch);
+  // Just for me never plays a room's sound: phones listening stop now, and Listen comes back with the event.
+  if (modeChanged) for (const st of stages.values()) if (st.def.roomSound) st.emit('config');
   res.json({ ok: true, done: !!setup.done, name: config.event.name, change });
 });
 
@@ -1058,6 +1079,7 @@ app.get('/metrics', crew, (req, res) => { // Prometheus: send `Authorization: Be
     const st = s.status();
     const l = `stage="${st.id}"`;
     lines.push(`opencaptions_viewers{${l}} ${st.viewers}`);
+    lines.push(`opencaptions_room_sound_listeners{${l}} ${st.roomSoundListeners}`);
     lines.push(`opencaptions_audio_level{${l}} ${st.level.toFixed(4)}`);
     lines.push(`opencaptions_ingest_connected{${l}} ${st.ingest ? 1 : 0}`);
     lines.push(`opencaptions_cost_usd_total{${l}} ${st.costUsd}`);
@@ -1313,22 +1335,39 @@ function onView(ws, url) {
   if (!st) return ws.close(4004, 'unknown stage');
   let subs = [];
   let audioCh = null;
+  // This phone playing the room's own sound (audio=orig), in st.soundListeners while it does. Once refused or stopped,
+  // it has to ask again (Listen): a place freeing up or the setting coming back doesn't start sound nobody asked for.
+  const sound = {
+    ws,
+    stop: (why) => { st.soundListeners.delete(sound); url.searchParams.set('audio', '0'); sendJson(ws, { type: 'listen', channel: 'orig', ok: false, why }); },
+  };
   const setup = () => {
     const langs = (url.searchParams.get('langs') || url.searchParams.get('lang') || 'orig').split(',').filter(Boolean);
     const map = Object.fromEntries(langs.map((l) => [l, st.channelFor(l)]));
     subs = [...new Set(Object.values(map))];
     const a = url.searchParams.get('audio');
-    audioCh = a && a !== '0' ? st.channelFor(a) : null;
+    audioCh = a && a !== '0' && a !== 'orig' ? st.channelFor(a) : null;
     if (!st.audioLangs.includes(audioCh)) audioCh = null; // only languages with a Live voice session
+    // What the phone will hear: the room's sound (if the room allows it and isn't full) or a translated voice.
+    let listen = null;
+    if (a === 'orig') {
+      const why = !soundAllowed(st) ? 'off' : !st.soundListeners.has(sound) && st.soundListeners.size >= st.soundMax() ? 'full' : null;
+      if (why) { st.soundListeners.delete(sound); url.searchParams.set('audio', '0'); } else st.soundListeners.add(sound);
+      listen = why ? { channel: 'orig', ok: false, why } : { channel: 'orig', ok: true, ...SOUND_FORMAT };
+    } else {
+      st.soundListeners.delete(sound);
+      if (a && a !== '0') listen = audioCh ? { channel: audioCh, ok: true, format: 'pcm16', rate: 24000 } : { channel: st.channelFor(a), ok: false, why: 'none' };
+    }
     sendJson(ws, {
       type: 'hello',
-      stage: { id: st.id, name: st.def.name, title: st.talk.title, speaker: st.talk.speaker || '', next: st.nextTalk || null, languages: st.languages, source: st.source || 'auto', audioLangs: st.audioLangs, mode: st.mode },
+      stage: { id: st.id, name: st.def.name, title: st.talk.title, speaker: st.talk.speaker || '', next: st.nextTalk || null, languages: st.languages, source: st.source || 'auto', audioLangs: st.audioLangs, roomSound: soundAllowed(st), mode: st.mode },
       languages: Object.fromEntries(st.languages.map((l) => [l, l === 'orig' ? 'Original' : langName(l)])),
       map,
       talk: st.talk.id,
       history: Object.fromEntries(subs.map((ch) => [ch, st.history(ch, 40)])),
       partial: Object.fromEntries(subs.map((ch) => [ch, st.partial(ch)])),
       pause: st.pauseInfo(), // a break, or music playing: screens and phones say so
+      listen,
     });
   };
   setup();
@@ -1376,6 +1415,7 @@ function onView(ws, url) {
   }, 25000);
   ws.on('close', () => {
     clearInterval(ping);
+    st.soundListeners.delete(sound);
     st.viewers--;
     viewerCount--;
     st.off('caption', onCaption);

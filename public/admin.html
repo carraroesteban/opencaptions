@@ -470,6 +470,11 @@
     </select></label>
     <label class="field">Pull de audio (opcional): SRT/RTMP/HLS/HTTP o archivo — el server lo toma con ffmpeg<input name="pull" placeholder="rtmp://0.0.0.0:1935/live/sala1 (OBS/vMix → Custom)  ·  srt://0.0.0.0:9001?mode=listener  ·  https://…/stream.m3u8" /></label>
     <label class="row muted"><input type="checkbox" name="musicGuard" checked /> Pausar los subtítulos cuando suena música (entre charlas, videos)</label>
+    <div class="u-stack8">
+      <label class="row muted"><input type="checkbox" name="roomSound" /> El sonido de la sala en los celulares (escucha asistida)</label>
+      <p class="muted-note u-m0">Para quien usa audífonos o auriculares: escucha la sala en su celular, en Original → Escuchar. Cualquiera que tenga el enlace de la sala la escucha, aunque no esté en ella: activalo solo si lo que se dice ahí es público. El sonido no se guarda.</p>
+      <label class="field">Máximo de personas escuchando a la vez<input name="roomSoundMax" type="number" min="1" max="5000" step="1" inputmode="numeric" placeholder="100" /></label>
+    </div>
     <label class="row muted"><input type="checkbox" name="loop" /> Repetir en loop (archivos de prueba)</label>
     <div class="dlg-actions"><button value="cancel" formnovalidate>Cancelar</button><button class="primary" value="ok">Guardar</button></div>
   </form></dialog>

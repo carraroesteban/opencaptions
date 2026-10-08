@@ -13,6 +13,7 @@ All traffic uses TLS on port 443 once HTTPS is configured. Nothing at the venue 
 | Venue PC (agent or browser) | OpenCaptions server | WSS 443 (`/ws/ingest`) | Room audio, 16 kHz PCM, about 260 kbps |
 | OpenCaptions server | `generativelanguage.googleapis.com` (API key) or `<region>-aiplatform.googleapis.com` (Vertex AI) | WSS/HTTPS 443 | Gemini Live Translate and Flash-Lite |
 | Phones, projectors, vMix/OBS | OpenCaptions server | HTTPS/WSS 443 (`/ws/view`) | Pages and captions |
+| Phones listening to a room's sound | OpenCaptions server | WSS 443 (`/ws/view?audio=orig`) | The room's own sound, 16 kHz μ-law, 128 kbps per phone. Only rooms that have it on ([accessibility](accessibility.md#hearing-the-room-on-a-phone)). |
 | Production team | OpenCaptions server | HTTPS/WSS 443 (`/admin.html`, `/ws/admin`) | Dashboard |
 | Browsers on `/demo.html` | `www.youtube.com` | HTTPS 443 | YouTube demo player only |
 | Server (optional) | Stream sources | SRT/RTMP/RTSP/UDP/HTTPS | Pulling audio from vMix, OBS or an encoder |

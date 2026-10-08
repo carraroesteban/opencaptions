@@ -30,7 +30,45 @@ Automated tools find roughly a third to a half of real accessibility problems. T
 - **Motion:** captions don't blink or move at the end of the line: each new word fades in once, and a paragraph is never redrawn while you read it. The fade and page animations stop with the system's "reduce motion" setting.
 - **Contrast:** text meets 4.5:1 (large text 3:1) on every surface, in both themes.
 
-## Testing with people
+## Hearing the room on a phone
+
+Some people hear a talk better with its sound in their ears than from the room's speakers: people whose hearing aids or cochlear implants stream from a phone, people who use earbuds to cut out the room's echo and chatter, and people sitting far from a speaker. Venues often provide an assistive listening system for them (a hearing loop, or FM or infrared receivers). OpenCaptions can also send each room's own sound to phones, as some captioning services do.
+
+- **Turn it on per room:** **Rooms → Edit → The room's sound on phones**. It's off by default.
+- **On the phone:** pick **Original**, then 🎧 **Listen**. The sound plays in earbuds, headphones or hearing aids paired with the phone (Bluetooth, Made for iPhone, Android's hearing aid streaming). On iPhone it plays with the silent switch on, like the translated voice.
+- **Privacy:** anyone with the room's link can listen, even from outside the venue if the server has a public address. Turn it on only in rooms whose talks are public, not in closed-door sessions. The sound isn't recorded, and it never plays in Just for me (its room is someone's own calls). See [who can see what](security-guide.md#who-can-see-what).
+- **Breaks and music:** it keeps playing. It's the room's sound, not the captions.
+- **Delay:** about a quarter of a second from the room's microphone to the phone's speaker (measured below), so the sound stays with the speaker's lips. Bluetooth earbuds and hearing aids add their own delay, often 100–200 ms. A phone on a weak connection skips a little audio rather than falling behind the room.
+- **A limit per room:** 100 phones at once by default (**Most people listening at once** in the room's dialog, or `ROOM_SOUND_MAX`). The next phone is told the room's sound is full and that captions keep working. The dashboard shows how many are listening (🎧 on the room's card).
+- **What it doesn't replace:** it depends on the venue's Wi-Fi and on people's phones and batteries. Where a venue has to provide an assistive listening system (for example under the ADA in the United States), keep it: this adds to it.
+
+### What it costs
+
+Each phone gets the room's audio as it reaches the server, 16 kHz mono in [μ-law](https://en.wikipedia.org/wiki/%CE%9C-law_algorithm) (8 bits a sample, as phone networks use): **128 kbit/s**, half of the 16-bit audio the server receives. Speech keeps about 37 dB of signal-to-noise ratio. Each 100 ms of audio is encoded once per room (about 5 µs) and sent to every phone listening.
+
+Measured with `npm run loadtest -- --stages 1 --listeners N --seconds 60 --cleanup` (`samples/talk-en.wav`, simulated AI, server and phones on one MacBook Pro M3 Pro, Node.js 22, October 2026):
+
+| Phones listening to one room | Server CPU (% of one core) | Sent by the server | Ingest → phone (p50 / p99) |
+|---|---|---|---|
+| 0 | 1.2 % | — | — |
+| 50 | 1.8 % (2.0 % as 16-bit) | 6.4 Mbit/s (12.8 as 16-bit) | 1.1 / 11 ms |
+| 200 | 3.1 % (3.2 % as 16-bit) | 25.6 Mbit/s (51.1 as 16-bit) | 2.5 / 35 ms |
+
+Sending the 16-bit audio as it arrives took the same CPU and twice the network, so the room's sound goes as μ-law. Memory didn't grow (about 50 MB). At 200 phones, 57 of 119,800 frames arrived more than 150 ms after the previous one, with the 200 test phones on the same laptop as the server. The server barely notices; **the venue's Wi-Fi is the limit**. 100 phones in a room need about 13 Mbit/s of it. Before raising a room's limit, ask the venue what its Wi-Fi can carry (see [networking](networking.md)). On a server in the cloud, the same goes for its outbound bandwidth.
+
+### Delay, end to end
+
+Measured in Chrome on the same MacBook, with the server on `localhost` and one page acting as both the room's audio source and the phone: a click went into the room every second, timed from when a microphone would have picked it up to when it left the computer's speakers. **238 ms** at the median, 253 ms at most, over 30 seconds that included four network stalls of 0.8 s.
+
+| Step | Time |
+|---|---|
+| The room's computer fills 100 ms of audio before sending it | 100 ms |
+| Network and server (on `localhost`; a venue's Wi-Fi adds a few to a few tens of ms) | about 1 ms |
+| Queued on the phone, to ride out network jitter (the same cushion as the translated voice) | about 105 ms |
+| The device's audio output (Chrome's `outputLatency`) | 32 ms |
+
+After a stall, the phone skips the audio that arrived late instead of playing it late: once more than 0.4 s is queued, it drops back to 0.15 s. So the delay is back to normal within a second, and two pieces of audio never play at once. The microphone, Bluetooth earbuds and hearing aids add their own delay.
+
 
 Before a large event, ask someone who uses these tools every day to try it, and pay them for their time. A quick check you can do yourself:
 
