@@ -4,6 +4,10 @@ All notable changes to this project are documented in this file. The format foll
 
 ## [Unreleased]
 
+### Added
+
+- **Every transcript in one .zip** (dashboard → **Transcripts** → **Download all (.zip)**, or `GET /api/transcripts.zip?day=&room=` for scripts; admin only). A folder per room and per talk (date, time and title), with SRT, VTT and TXT of the original and of every language the talk was translated into, like the bulk export of the captioning services used at big conferences. Before, it was one talk and one language at a time. In Just for me, only your own transcripts. Written with a small ZIP writer of its own (`src/zip.js`), so no new dependency.
+
 ### Changed
 
 - **Alerts in Settings, redone.** Each destination was a collapsed row: you clicked its description to open it, and its steps, the language, Save and the pause links were squeezed into one long column. Now the card shows what triggers an alert and the destinations as tiles, each saying whether it's connected. A tile opens its own dialog with roomy steps, and **Save and send a test** tests that destination alone (`POST /api/alerts/test` takes a `type`). The language is saved as soon as it's picked. The card went from about 930 to 400 pixels tall.
