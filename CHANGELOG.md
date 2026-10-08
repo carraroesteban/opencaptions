@@ -4,6 +4,25 @@ All notable changes to this project are documented in this file. The format foll
 
 ## [Unreleased]
 
+## [0.4.1] - 2026-10-08
+
+Reading options from the captioning services used at big conferences, and fixes found right after 0.4.0.
+
+### Added
+
+- **Whole sentences** (phones, **Aa → Captions**): a caption appears once its sentence is finished and doesn't change after that, for people who find words appearing one by one hard to follow. Word by word stays the default.
+- **High contrast** (phones and transcripts, **Aa → Theme**): pure black and white, older lines not dimmed, heavier text, the original in yellow. For low vision.
+- **Who can see what** ([security guide](docs/security-guide.md#who-can-see-what)): every kind of data against the audience, crew, admin and Just for me, in one table. **Pages and where they lead** ([architecture](docs/architecture.md#pages-and-where-they-lead)): every page, who opens it, how they get there and what happens when something is wrong.
+
+### Fixed
+
+- **Gemini keys made since May 2026 were refused.** AI Studio now only creates "auth keys", which start with `AQ.` (about 53 characters); the dashboard, the welcome wizard and `npm run setup` only accepted the older `AIza…` format. Now only copy-paste slips are refused (spaces, a cut-off key) and Google decides whether the key works. Live captions, translation and the key check were verified with a real `AQ.` key.
+- **The agenda could pause a room again right after the crew resumed it.** During an agenda break (coffee, lunch), a break the crew, the room's computer or the vision mixer started or ended before the agenda's own one kicked in wasn't remembered, so the agenda paused the room at the next quiet moment. Now their decision wins for that slot, as a manual **New talk** does.
+- **Caption pages set a cookie in 0.4.0**, breaking the privacy promise that they set none: the fresh start told pages their data folder that way. Now pages ask `GET /api/instance` instead, and the first page after a change reloads once without the old choices.
+- A fresh start's temporary folder is also removed when the terminal window is closed, not only with Ctrl+C.
+- A half-typed API key is no longer wiped when the Settings panel refreshes while you click elsewhere.
+- The test suite hung on Windows (a process stopped twice); a test that hangs now fails after 2 minutes, and CI stops after 15.
+
 ## [0.4.0] - 2026-10-07
 
 What a professional event needs beyond captions, measured against the AI captioning services used at big conferences.
@@ -13,7 +32,7 @@ What a professional event needs beyond captions, measured against the AI caption
 - **Smooth captions.** The AI sends words in bursts and sometimes rewrites the last ones; every caption display used to show them as they came, and the stage screen, the overlay and the floating window cut the text by character count, so the visible lines re-wrapped with every new word. Now words come out one by one at the speaker's own pace (measured from how fast they arrive, never more than ~1.2 s behind), a word the AI keeps rewriting waits a moment until it settles, and lines roll up like TV captions: new words go on the last line, everything slides up one line when it's full, and old lines leave whole, so the visible ones never move sideways. On phones, the presenter screen, the overlay, the floating window and Just for me. Measured in headless Chrome on a replayed talk: one word at a time, no line re-wrapped. Respects *reduce motion*.
 - **Captions don't blink at the end of the line.** The lime highlighter jumped to every new word, three times a second, and read as "still thinking"; Just for me also redrew every paragraph on every word of either language, replaying it. Now each new word fades in once, and only the caption that changed is touched (measured on Just for me and the phone page with local mode: 0 paragraphs redrawn in 75 s, one fade per word).
 - **Paragraphs end with a sentence.** The local engine ends a caption at every pause, often mid-sentence, and each one used to be its own paragraph. On Just for me and phones, captions now flow into paragraphs that end with a sentence; in the transcript page and the .txt download too, which broke at every 4-second pause (on a 35-minute talk in local mode: 28 of 37 paragraphs ended mid-sentence before, 1 of 69 now).
-- **Start from nothing, for testing** (`FRESH=1`, or `npm start -- --fresh` / `npm run local -- --fresh`): a new, empty data folder in a temporary place, deleted when the server stops. Your `data/` folder isn't touched, and `.env` still applies. Browsers that open it forget the choices and tips they remembered (pages ask `GET /api/instance` which data folder the server runs on; no cookie).
+- **Start from nothing, for testing** (`FRESH=1`, or `npm start -- --fresh` / `npm run local -- --fresh`): a new, empty data folder in a temporary place, deleted when the server stops. Your `data/` folder isn't touched, and `.env` still applies. Browsers that open it forget the choices and tips they remembered (pages now learn which data folder they belong to).
 - **Back to Just for me from the dashboard** (**Settings → Just for me**), with a warning when rooms are live. Blocked in Event mode, since it takes the event offline.
 - **Breaks.** Captions pause on purpose and every screen says so: phones show a banner and the presenter screen a card with *Back at 11:30* and the next talk; the overlay hides. A break starts from **Break** on the room's card, the **B** key on the room's audio page, the agenda, or the vision mixer, and ends with **Resume captions**, **Next talk**, or the next talk's slot. No audio goes to the AI meanwhile (no cost).
 - **Breaks from the agenda.** Rows like *Coffee break*, *Almuerzo* or *Receso* (with no speaker), Sessionize service sessions, and breaks without a room (for every room) are kept as breaks. They start once the room is quiet, so a talk running over is never cut, and end early if people speak for a while.
@@ -23,15 +42,7 @@ What a professional event needs beyond captions, measured against the AI caption
 - **Fix a caption live.** **See details → Fix captions** on a room card lists the latest sentences in any language; a correction replaces the caption on every phone, screen and overlay at once, and the transcript keeps it. Changing a single word offers to always write it that way (a glossary correction, also added to the AI's vocabulary, undoable from History).
 - **Correct a transcript afterwards.** On a transcript's page, admins press **Correct** and edit any sentence in place; downloads (TXT, SRT, VTT) use the corrected text.
 - **Listen in any language.** The 🎧 button reads the translation aloud with the phone's own voice in languages where the AI's natural voice isn't running (it plays the AI's voice where it is). Free and offline; when the voice falls behind, it skips ahead instead of drifting further from the room.
-- **Whole sentences** (phones, **Aa → Captions**): a caption appears once its sentence is finished and doesn't change after that, for people who find words appearing one by one hard to follow. Word by word stays the default.
-- **High contrast** (phones and transcripts, **Aa → Theme**): pure black and white, older lines not dimmed, heavier text, the original in yellow. For low vision.
-- **Who can see what** ([security guide](docs/security-guide.md#who-can-see-what)): every kind of data against the audience, crew, admin and Just for me, in one table. **Pages and where they lead** ([architecture](docs/architecture.md#pages-and-where-they-lead)): every page, who opens it, how they get there and what happens when something is wrong.
 - **82 caption languages** (from 40): Afrikaans, Amharic, Armenian, Georgian, Hausa, Igbo, Yoruba, Zulu, Khmer, Lao, Burmese, Nepali, Sinhala, the Balkan and Baltic languages and more.
-
-### Fixed
-
-- **Gemini keys made since May 2026 were refused.** AI Studio now only creates "auth keys", which start with `AQ.` (about 53 characters); the dashboard, the welcome wizard and `npm run setup` only accepted the older `AIza…` format. Now only copy-paste slips are refused (spaces, a cut-off key) and Google decides whether the key works. Live captions, translation and the key check were verified with a real `AQ.` key.
-- A half-typed API key is no longer wiped when the Settings panel refreshes while you click elsewhere.
 
 ### Changed
 

@@ -28,6 +28,7 @@ jobs:
         shell: bash
         run: for f in src/*.js src/engines/*.js src/local/*.js scripts/*.js; do node --check "$f"; done
       - run: npm test
+        timeout-minutes: 15 # the suite takes about a minute: a hang fails fast instead of running for hours
 
   lint:
     name: lint + types

@@ -1425,7 +1425,8 @@ server.listen(config.port, config.host, () => {
 process.on('unhandledRejection', (/** @type {any} */ e) => console.error('✗ unhandled rejection:', e?.stack || e));
 process.on('uncaughtException', (e) => console.error('✗ uncaught exception (server kept running):', e?.stack || e));
 
-for (const sig of ['SIGINT', 'SIGTERM']) {
+// SIGHUP: the terminal window was closed (on Windows, the console window), so a fresh start's folder goes too.
+for (const sig of ['SIGINT', 'SIGTERM', 'SIGHUP']) {
   process.on(sig, () => {
     tunnel.stop();
     switchers?.stop();

@@ -23,7 +23,8 @@ async function server(extra) {
     const r = await fetch(base + url, { method, headers: { authorization: 'Bearer t', 'content-type': 'application/json' }, body: body ? JSON.stringify(body) : undefined });
     return { status: r.status, body: await r.json().catch(() => ({})) };
   };
-  const stop = () => new Promise((r) => { p.once('exit', r); p.kill('SIGTERM'); });
+  // Already gone? (On Windows a killed process has no exit code, only a signal.)
+  const stop = () => new Promise((r) => { if (p.exitCode !== null || p.signalCode !== null) return r(); p.once('exit', r); p.kill('SIGTERM'); });
   return { p, port, base, api, stop };
 }
 
@@ -54,11 +55,14 @@ test('FRESH=1: an empty temporary data folder, deleted when the server stops; th
     const dir = path.join(os.tmpdir(), made[0]);
     assert.ok(fs.existsSync(path.join(dir, 'instance.json')));
     await s.stop();
-    assert.ok(!fs.existsSync(dir), 'gone when the server stops');
+    // Windows can't let a process clean up when it's killed (Ctrl+C or closing the window can); there the folder is
+    // removed by the next fresh start once it's a day old.
+    if (process.platform !== 'win32') assert.ok(!fs.existsSync(dir), 'gone when the server stops');
+    else fs.rmSync(dir, { recursive: true, force: true });
     assert.deepEqual(JSON.parse(fs.readFileSync(path.join(old, 'setup.json'), 'utf8')).name, 'Old event', 'the real data folder is untouched');
     assert.ok(fs.existsSync(path.join(old, 'transcripts', 'me', 'x')));
   } finally {
-    if (s.p.exitCode == null) await s.stop();
+    await s.stop();
     fs.rmSync(old, { recursive: true, force: true });
   }
 });

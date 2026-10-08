@@ -96,6 +96,17 @@ test('the crew pauses a room: phones are told, no captions while on break, and r
   ing.close(); p.ws.close();
 });
 
+test('the crew ending a break during the agenda\'s break wins: the agenda doesn\'t pause the room again', async () => {
+  // A room created during the coffee break: the crew pauses and resumes it before the agenda's first check (once a
+  // second), as happens when the crew is quicker than the agenda. Resuming means captions stay on for that slot.
+  assert.equal((await api('POST', '/api/stages', { id: 'room-q', name: 'Room Q', source: 'auto', targets: ['es'] })).status, 200);
+  assert.equal((await api('POST', '/api/stages/room-q/break', { on: true })).status, 200);
+  assert.equal((await api('POST', '/api/stages/room-q/break', { on: false })).status, 200);
+  await sleep(2500); // a quiet room, several agenda checks
+  assert.equal((await room('room-q')).brk, null, 'still no break: the crew decided for this slot');
+  await api('DELETE', '/api/stages/room-q');
+});
+
 test('the room’s own computer calls a break (the B key on the audio page)', async () => {
   const ing = await ingest('room-a');
   ing.send(JSON.stringify({ type: 'break', on: true }));

@@ -236,6 +236,12 @@ export class Stage extends EventEmitter {
    * room's audio page), by the agenda (its breaks), or by the vision mixer (vMix/OBS switching to a break scene).
    */
   setBreak(on, { by = 'crew', title = '', until = null } = {}) {
+    // Someone (the crew, the room's computer, the vision mixer) starting or ending a break during the agenda's break
+    // wins for that slot, as a manual New talk does: the agenda won't pause the room again at the next quiet moment.
+    if (by !== 'agenda') {
+      const cur = this.schedule?.slot(this.id).current;
+      if (cur?.break) this.scheduleKey = this.#slotKey(cur);
+    }
     if (on) {
       if (this.brk?.by === by && this.brk.title === title) return;
       this.brk = { by, since: Date.now(), title: String(title || '').slice(0, 120), until: Number(until) || null };
@@ -633,7 +639,7 @@ export class Stage extends EventEmitter {
       }
       return;
     }
-    if (this.brk?.by === 'agenda') this.setBreak(false);
+    if (this.brk?.by === 'agenda') this.setBreak(false, { by: 'agenda' });
     // The agenda says a new talk has started but the room hasn't switched yet (the speaker is running over):
     // the dashboard shows it and offers to start it with one click.
     this.dueTalk = current && key !== this.scheduleKey && this.talkSegments > 0 && this.talk.title ? { title: current.title, speaker: current.speaker, start: current.start } : null;
@@ -713,7 +719,7 @@ export class Stage extends EventEmitter {
     // A break the crew or the vision mixer set stays, but the dashboard asks.
     if (this.brk?.by === 'agenda' && this.voiceInBreakMs > 8000) {
       this.log('info', 'people speaking during the break → captions resume');
-      this.setBreak(false);
+      this.setBreak(false, { by: 'agenda' });
     }
 
     // Alerts for the production team.

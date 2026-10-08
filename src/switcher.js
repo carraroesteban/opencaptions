@@ -176,7 +176,7 @@ export class Switchers {
     this.defs = this.defs.filter((x) => x.id !== id);
     this.#save();
     const st = this.stages.get(d.stage);
-    if (st?.brk?.by === 'switcher') st.setBreak(false);
+    if (st?.brk?.by === 'switcher') st.setBreak(false, { by: 'switcher' });
     return true;
   }
 
@@ -187,7 +187,7 @@ export class Switchers {
       const st = this.stages.get(def.stage);
       if (!st) return;
       if (isBreakScene(scene, def.scenes)) st.setBreak(true, { by: 'switcher', title: scene });
-      else if (st.brk?.by === 'switcher') st.setBreak(false);
+      else if (st.brk?.by === 'switcher') st.setBreak(false, { by: 'switcher' });
     });
     this.watchers.set(def.id, w);
   }
