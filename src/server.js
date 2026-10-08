@@ -70,7 +70,9 @@ function addStage(def) {
   if (stages.has(def.id)) throw new Error(`stage ${def.id} exists`);
   if (stages.size >= MAX_STAGES) throw new Error(`MAX_STAGES (${MAX_STAGES}) reached`);
   const st = new Stage(def, { glossary, store, schedule });
-  st.on('log', (entry) => broadcastAdmin({ type: 'log', ...entry }));
+  // The dashboard's log covers the rooms it lists: the personal room's log has its talk titles and corrected captions.
+  // (No dashboard is connected yet while the saved rooms load.)
+  st.on('log', (entry) => { if (admins.size && visibleStages().includes(st)) broadcastAdmin({ type: 'log', ...entry }); });
   stages.set(def.id, st);
   if (def.pull) startPull(st, def.pull, def.loop);
   integrations?.attachAll(); // a restored room gets its Zoom/YouTube/Teams/webhook connectors back
@@ -470,7 +472,7 @@ function roomTalks(st) {
 function eventReport(day = '') {
   const rooms = [];
   const days = new Set();
-  for (const st of stages.values()) {
+  for (const st of visibleStages()) { // the event's rooms; in Just for me, only the personal one
     const talks = [];
     for (const m of roomTalks(st)) {
       const segs = talkSegs(st, m.id).filter((x) => x.channel === 'orig');
@@ -1390,7 +1392,7 @@ function onAdmin(ws, who) {
   ws.session = who?.session || null; // signed in with a cookie: dropped once that device is signed out
   ws.crew = who?.role !== 'admin'; // gets audio addresses without their keys
   admins.add(ws);
-  sendJson(ws, { type: 'logs', logs: [...stages.values()].flatMap((s) => s.logs).sort((a, b) => a.t - b.t).slice(-150) });
+  sendJson(ws, { type: 'logs', logs: visibleStages().flatMap((s) => s.logs).sort((a, b) => a.t - b.t).slice(-150) });
   ws.on('close', () => admins.delete(ws));
 }
 

@@ -245,7 +245,7 @@ curl -X DELETE http://localhost:8080/api/stages/main/pull -H "Authorization: Bea
 
 | Method & path | Auth | Notes |
 |---|---|---|
-| `GET /api/report?day=YYYY-MM-DD` | Crew or admin | Every talk with captions, per room: `{ event, generatedAt, day, days, languages, totals, rooms: [{ id, name, totals, talks: [{ id, title, speaker, speakers, startedAt, durationMs, words, languages, peakViewers, viewerMinutes, costUsd, current }] }] }`. `day` (optional) keeps one day; `days` lists the days with talks. `peakViewers` = most people with the captions open at once; `viewerMinutes` = all of them added up; `costUsd` = this talk's AI spend (estimate). Shown at `/report.html`. |
+| `GET /api/report?day=YYYY-MM-DD` | Crew or admin | Every talk with captions, per room (the event's rooms; in Just for me, only the personal room): `{ event, generatedAt, day, days, languages, totals, rooms: [{ id, name, totals, talks: [{ id, title, speaker, speakers, startedAt, durationMs, words, languages, peakViewers, viewerMinutes, costUsd, current }] }] }`. `day` (optional) keeps one day; `days` lists the days with talks. `peakViewers` = most people with the captions open at once; `viewerMinutes` = all of them added up; `costUsd` = this talk's AI spend (estimate). Shown at `/report.html`. |
 | `GET /api/report.csv?day=` | Crew or admin | The same as a spreadsheet (UTF-8 with BOM, so Excel shows accents): `room, talk, speaker, date, start, minutes, words, caption_languages, peak_viewers, viewer_minutes, cost_usd`. Cells that start with `=`, `+`, `-` or `@` are quoted so spreadsheets never run them as formulas. |
 
 ### Alerts
@@ -795,12 +795,12 @@ signed out or expiring.
 Server → client:
 
 ```json
-// once, on connect: the last 150 log entries across all rooms, oldest first
+// once, on connect: the last 150 log entries across the event's rooms (in Just for me, the personal room's), oldest first
 { "type": "logs", "logs": [{ "t": 1758724930441, "stage": "main", "level": "info", "msg": "ingest connected: browser" }] }
 ```
 
 ```json
-// pushed as it happens
+// pushed as it happens, for the same rooms
 { "type": "log", "t": 1758724931002, "stage": "main", "level": "warn", "msg": "es: no transcription for 20s of speech → restarting session" }
 ```
 
