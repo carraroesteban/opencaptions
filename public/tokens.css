@@ -47,7 +47,7 @@
   --accent: var(--lime);       /* events may override with their own colour (config/event.json → accent) */
   --on-accent: var(--ink);
   --accent-fg: var(--ink);     /* emphasis as text/stroke: never lime on light */
-  --hl: var(--accent);         /* highlighter fill (the live word, search hits, selection) */
+  --hl: var(--accent);         /* highlighter fill (search hits, selection) */
   --hl-ink: var(--on-accent);
   --primary-bg: var(--ink);    /* main action + selected state: ink on light, lime on dark */
   --primary-fg: var(--paper);
@@ -79,6 +79,18 @@
     --chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5l5 5 5-5' fill='none' stroke='%23FAF8F3' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
     color-scheme: dark;
   }
+}
+/* ---- semantic: high contrast (for low vision; chosen in the phone's Aa settings) ----
+   Pure black and white, nothing dimmed: older lines stay white, the original text is yellow, lines are visible. */
+:root[data-theme='contrast'] {
+  --bg: #000; --bg2: #000; --bg3: #1F1F1F; --fg: #FFF; --fg2: #FFF;
+  --line: #FFF; --line-strong: #FFF; --translation: #FFE14D;
+  --accent-fg: #FFE14D; --primary-bg: #FFE14D; --primary-fg: #000; --logo-o: #FFF; --logo-line: #FFE14D;
+  --ok: #7CFFAE; --warn: #FFE14D; --bad: #FF9B8A; --focus: #FFE14D; --hl: #FFE14D; --hl-ink: #000;
+  --shadow-sm: none; --shadow: none; --shadow-lg: none; --scrim: rgba(0, 0, 0, .8);
+  --logo: url(/brand/mark-dark.svg);
+  --chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5l5 5 5-5' fill='none' stroke='%23FFFFFF' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  color-scheme: dark;
 }
 :root[data-theme='dark'] {
   --bg: var(--ink); --bg2: #19181D; --bg3: var(--graphite); --fg: var(--paper); --fg2: #A8A5AE;

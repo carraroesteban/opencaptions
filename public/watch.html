@@ -35,6 +35,7 @@
     #text p { margin: 0 0 .6em; transition: color .6s var(--ease); }
     #text p.old { color: var(--fg2); }
     #text .partial { color: var(--fg); }
+    :root[data-theme='contrast'] #text { font-weight: 600; } /* low vision: heavier strokes, nothing dimmed */
     #text .empty { color: var(--fg2); font-size: 18px; margin-top: 26vh; }
     #orig { border-top: 1px solid var(--line); padding: 12px 20px; font-size: 16px; color: var(--translation); background: var(--bg2); min-height: 3.2em; }
     #orig b { color: var(--fg2); font-size: 11px; letter-spacing: .1em; text-transform: uppercase; margin-right: 8px; }
@@ -93,6 +94,7 @@
     <div class="set-row"><span id="l-size"></span><span class="row"><button id="smaller" aria-label="A−">A−</button><b id="size-val" class="u-num"></b><button id="bigger" aria-label="A+">A+</button></span></div>
     <div class="set-row"><span id="l-font"></span><span class="row" id="font-opts"></span></div>
     <div class="set-row"><span id="l-lh"></span><span class="row" id="lh-opts"></span></div>
+    <div class="set-row"><span id="l-flow"></span><span class="row" id="flow-opts"></span></div>
     <div class="set-row"><span id="l-theme"></span><span class="row" id="theme-opts"></span></div>
     <div class="set-row"><span id="l-dual"></span><span class="row" id="dual-opts"></span></div>
     <div class="set-row"><span id="l-ui"></span><span id="ui-slot"></span></div>

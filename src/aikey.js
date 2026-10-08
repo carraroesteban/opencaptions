@@ -36,8 +36,12 @@ export function keyInfo() {
   };
 }
 
-/** A Gemini Developer API key looks like AIza… (39 characters); anything else is surely a copy-paste slip. */
-export const looksLikeKey = (k) => /^AIza[\w-]{30,}$/.test(k);
+/**
+ * Could this be a Gemini API key? Only copy-paste slips are refused here (spaces, a cut-off key, the key's name);
+ * Google decides the rest (checkKey). The format changes: keys made in AI Studio since May 2026 are "auth keys"
+ * that start with AQ. (about 53 characters), older ones start with AIza (39). Same rule in public/connect.js.
+ */
+export const looksLikeKey = (k) => /^[\w.-]{30,300}$/.test(k);
 
 /**
  * Ask Google whether this key works, by reading the caption translation model's details (free, no tokens used).

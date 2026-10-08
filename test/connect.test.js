@@ -11,6 +11,8 @@ import path from 'node:path';
 import { Tunnel } from '../src/tunnel.js';
 
 const GOOD = 'AIzaGOODgoodGOODgoodGOODgoodGOODgood123';
+// AI Studio's keys since May 2026 ("auth keys"): AQ. and about 53 characters.
+const GOOD_AQ = 'AQ.Ab8FAKEfakeFAKEfake-fake_FAKEfakeFAKEfakeFAKEfake1';
 const PORT = 25000 + Math.floor(Math.random() * 2000);
 const base = `http://127.0.0.1:${PORT}`;
 const h = { 'content-type': 'application/json', authorization: 'Bearer t' };
@@ -24,7 +26,7 @@ const status = async () => (await fetch(`${base}/api/status`, { headers: h })).j
 before(async () => {
   // Google's model endpoint, as far as checking a key goes.
   google = http.createServer((req, res) => {
-    const ok = req.headers['x-goog-api-key'] === GOOD;
+    const ok = [GOOD, GOOD_AQ].includes(String(req.headers['x-goog-api-key']));
     res.writeHead(ok ? 200 : 400, { 'content-type': 'application/json' });
     res.end(JSON.stringify(ok ? { name: 'models/x' } : { error: { message: 'API key not valid. Please pass a valid API key.' } }));
   });
@@ -56,6 +58,17 @@ test('a key Google rejects is not saved, and the reason is given', async () => {
   assert.equal((await api('PUT', '/api/ai/key', { key: 'sk-not-a-gemini-key' })).body.code, 'format');
   assert.equal((await status()).engine, 'mock');
   assert.ok(!fs.existsSync(path.join(dataDir, 'secrets.json')) || !fs.readFileSync(path.join(dataDir, 'secrets.json'), 'utf8').includes('AIza'));
+});
+
+test('keys in the new format (AQ., since May 2026) are accepted; copy-paste slips are not', async () => {
+  const { looksLikeKey } = await import('../src/aikey.js');
+  assert.deepEqual(await api('POST', '/api/ai/key/check', { key: GOOD_AQ }), { status: 200, body: { ok: true, code: 'ok' } });
+  for (const slip of ['AQ.Ab8FAKE fakeFAKEfake-fake_FAKEfakeFAKEfakeFAKE1', 'AQ.Ab8FAKE', 'Gemini API Key', '']) {
+    assert.equal(looksLikeKey(slip), false, slip);
+    assert.equal((await api('POST', '/api/ai/key/check', { key: slip })).body.code, 'format', slip);
+  }
+  assert.ok(looksLikeKey(GOOD) && looksLikeKey(GOOD_AQ));
+  assert.match(fs.readFileSync('public/connect.js', 'utf8'), /\/\^\[\\w\.-\]\{30,300\}\$\//, 'the dashboard checks the same way');
 });
 
 test('a good key is saved privately, switches the rooms to Gemini, and is never sent back', async () => {

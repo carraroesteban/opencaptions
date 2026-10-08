@@ -139,8 +139,8 @@ app.disable('x-powered-by');
 app.set('trust proxy', process.env.TRUST_PROXY || 'loopback');
 app.use(securityHeaders);
 // Which data folder this server runs on (a fresh start, FRESH=1, makes a new one every time). Pages compare it with
-// the one this browser remembered things for, and forget them when it changed (public/common.js). Named after the
-// host, so two servers on one computer (different ports) don't make each other's pages forget.
+// the one this browser remembered things for, and forget them when it changed (public/common.js). Asked for with
+// GET /api/instance, not set in a cookie: caption pages set no cookies.
 const DATA_ID = (() => {
   const f = path.join(config.dataDir, 'instance.json');
   try { return String(JSON.parse(fs.readFileSync(f, 'utf8')).id); } catch { /* a new data folder */ }
@@ -148,13 +148,6 @@ const DATA_ID = (() => {
   fs.writeFileSync(f, JSON.stringify({ id, createdAt: new Date().toISOString() }, null, 2));
   return id;
 })();
-app.use((req, res, next) => {
-  const name = `oc_data_${String(req.headers.host || '').replace(/\W/g, '_')}`;
-  if (req.method === 'GET' && !req.path.startsWith('/api/') && cookieValue(req, name) !== DATA_ID) {
-    res.append('Set-Cookie', `${name}=${DATA_ID}; Path=/; SameSite=Lax; Max-Age=31536000${req.secure ? '; Secure' : ''}`);
-  }
-  next();
-});
 app.use('/api', apiRateLimit);
 app.use(express.json({ limit: '256kb' }));
 
@@ -201,6 +194,7 @@ app.get('/healthz', (req, res) => {
   res.json({ ok: true, stages: stages.size, engine: config.engine, cpuPct: sys.cpuPct, rssMB: sys.rssMB, loopLagP99Ms: sys.loopLagMs.p99 });
 });
 
+app.get('/api/instance', (req, res) => res.set('Cache-Control', 'no-store').json({ id: DATA_ID }));
 app.get('/api/event', (req, res) => {
   res.json({
     name: eventName(),
@@ -897,7 +891,7 @@ app.post('/api/ai/key/check', admin, async (req, res) => {
 });
 app.put('/api/ai/key', admin, async (req, res) => {
   const key = String(req.body?.key || '').trim();
-  if (!looksLikeKey(key)) return res.status(400).json({ ok: false, code: 'format', error: 'That doesn\'t look like a Gemini API key (they start with "AIza")' });
+  if (!looksLikeKey(key)) return res.status(400).json({ ok: false, code: 'format', error: 'That doesn\'t look like a Gemini API key (copy the whole key: it starts with "AQ.", or "AIza" if it\'s older)' });
   const check = req.body?.force ? { ok: true, code: 'unchecked' } : await checkKey(key);
   if (!check.ok) return res.status(400).json({ ...check, error: `Google didn't accept the key (${check.code})` });
   saveKey(key);

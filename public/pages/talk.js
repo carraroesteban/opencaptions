@@ -207,7 +207,7 @@ const opts = (el, items, cur, onPick) => {
 };
 opts($('font-opts'), [['default', t('fontDefault')], ['legible', t('fontLegible')], ['easy', t('fontEasy')]], prefs.font || 'default', (v) => { prefs = setReadingPref('font', v); });
 opts($('lh-opts'), [['1.3', '1'], ['1.5', '1.5'], ['1.8', '2']], prefs.lh || 1.5, (v) => { prefs = setReadingPref('lh', Number(v)); });
-opts($('theme-opts'), [['auto', t('themeAuto')], ['light', t('themeLight')], ['dark', t('themeDark')]], store.get('theme', null) || 'auto', setTheme);
+opts($('theme-opts'), [['auto', t('themeAuto')], ['light', t('themeLight')], ['dark', t('themeDark')], ['contrast', t('themeContrast')]], store.get('theme', null) || 'auto', setTheme);
 const setSize = (d) => { size = Math.min(40, Math.max(14, size + d)); store.set('docSize', size); document.documentElement.style.setProperty('--size', size + 'px'); $('size-val').textContent = size; };
 $('size-val').textContent = size;
 $('smaller').onclick = () => setSize(-1);

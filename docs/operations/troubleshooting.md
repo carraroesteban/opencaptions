@@ -16,7 +16,7 @@ Find the symptom, then follow the steps in order. Server logs are printed in the
 
 | Symptom | Cause | Fix |
 |---|---|---|
-| **Settings → Gemini** says the key isn't valid, or `npm run check` shows 401 | The key was copied incompletely, or was deleted | Copy the whole key again from AI Studio (it starts with `AIza`) |
+| **Settings → Gemini** says the key isn't valid, or `npm run check` shows 401 | The key was copied incompletely, or was deleted | Copy the whole key again from AI Studio. Keys made since May 2026 start with `AQ.` (about 53 characters), older ones with `AIza` (39) |
 | "The key exists but can't use Gemini" (403) | The key's project can't use the Gemini API, or the key is restricted | In AI Studio, create the key in a new project. Check API restrictions on the key. |
 | 429 errors in the log | Free tier or per-minute quota reached | Enable billing. Set `MT_RPM` to your limit or raise `MT_PARTIAL_MS`. |
 | Some rooms never go live when many run at once | Concurrent Live session limit | Check your tier's limit. Reduce rooms or shard across projects. |

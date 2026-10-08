@@ -205,6 +205,22 @@ Room audio ──(WSS/TLS)──► OpenCaptions server ──(TLS)──► Goo
 | Viewers | Nothing collected: no accounts, cookies, analytics or IP logs | Nothing |
 | Passwords, the Gemini API key, the Cloudflare tunnel token, the two-factor secret and alert destinations | `.env` or `data/secrets.json` (file mode 600) | Keep both out of version control. `.gitignore` already covers them. A key or tunnel token pasted in the dashboard goes to `data/secrets.json` and is never sent back to any browser: the dashboard sees only the key's last 4 characters, and the history records that the key changed, not the key. Google checks a new key before it's saved. |
 
+### Who can see what
+
+Viewers need no account, so access is per kind of data and per role. *This computer* is the server itself, which needs no password unless `AUTH=token`.
+
+| Data | Audience (no sign-in) | Crew password | Admin password | Just for me |
+|---|---|---|---|---|
+| Live captions and translations of a room, the translated voice | Anyone with the room's address (the QR code) | ✓ | ✓ | Only this computer and devices signed in with the admin password |
+| Transcripts of talks, *What did I miss?* and *Ask the talk* | As set in **Settings → Transcripts for the audience**: the talk in progress (default), every talk, or none | Read | Read, correct, delete | Only this computer and signed-in devices |
+| Room names, talk titles, speakers, the agenda | Shown on the audience pages | ✓ | ✓, and change them | Not used |
+| Room status, the glossary, the History | No | Read (stream addresses left out: they can carry keys) | Read and change | Not used |
+| Integrations, vision mixers, alerts, signed-in devices | No | No | ✓ | Not used |
+| Passwords, the Gemini API key, the tunnel token, the two-factor secret | No | No | Never shown again after saving (the key's last 4 characters) | Same |
+| Room audio | Never (only the translated voice) | A level meter | A level meter | Never leaves the computer except to the AI |
+
+Nobody sees viewers: there are no viewer accounts, cookies, analytics or logs of who read what. A browser remembers its own choices (language, text size, theme) in its local storage, which is never sent.
+
 ## Choosing the AI backend
 
 | | Gemini Developer API (API key, AI Studio) | Google Cloud Vertex AI (recommended for companies) | [Local mode](local.md) (`ENGINE=local`) |

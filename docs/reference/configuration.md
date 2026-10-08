@@ -324,7 +324,7 @@ All under `DATA_DIR` (default `data/`), created on demand.
 |---|---|---|
 | `data/stages.json` | Every `POST`/`PATCH`/`DELETE /api/stages*` call | JSON array of the current stage definitions (same shape as `event.json`'s `stages`). Takes precedence over `config/event.json` on the next restart — see [precedence](#configuration-reference). |
 | `data/setup.json` | The welcome wizard and the dashboard's Settings | `{ "done", "name", "locked", "tunnel", "mode", "eventDone", "languages", "removedLanguages" }`: whether first-run setup is finished, the event name (overrides `eventName` in `config/event.json`), whether Event mode is on, the public address to bring back after a restart (`{ "mode": "quick" \| "token", "host" }`), `event` or `personal` (Just for me), whether the event wizard was ever finished, and the languages added to or removed from `config/event.json`'s. |
-| `data/instance.json` | First startup with this data folder | `{ "id", "createdAt" }`: names this data folder. Pages get the id in a cookie and forget what the browser remembered for another one (after a fresh start, or a deleted `data/`). |
+| `data/instance.json` | First startup with this data folder | `{ "id", "createdAt" }`: names this data folder. Pages read it from `GET /api/instance` and forget what the browser remembered for another one (after a fresh start, or a deleted `data/`). |
 | `data/sessions.json` | Signing in to the dashboard | Signed-in devices: `{ hash, pid, role, device, via, createdAt, lastSeen, expiresAt, ip }`. `hash` is the SHA-256 of the session cookie; the cookie itself is never stored. File mode `0600`. Delete it to sign everyone out. |
 | `data/history.jsonl` | Every change to the setup: rooms, agenda, glossary, event name, AI mode, Event mode | One JSON object per line: `{ "id", "at", "kind", "target", "summary", "before", "after", "undoes"? }`. `before` is what an undo puts back. Only appended to; an undo is a new line pointing at the change it reverted. Deleted rooms stay restorable from here (the dashboard's trash). |
 | `data/secrets.json` | First startup, when `AUTH != off` and `ADMIN_TOKEN`/`INGEST_TOKEN`/`CREW_TOKEN` aren't all set via env; the dashboard, when you save a Gemini API key or a Cloudflare tunnel token, change a password or turn on two-factor sign-in | `{ "adminToken", "ingestToken", "crewToken", "geminiApiKey"?, "tunnelToken"?, "totpSecret"?, "alerts"? }` (`alerts`: where phone alerts go, as JSON). Tokens are random 24-character base64url strings (18 random bytes). Written with file mode `0600`. Whichever admin/ingest token you *do* set via env is used in preference to the stored value; the file still fills in the other. A saved `geminiApiKey` wins over `GEMINI_API_KEY`. Never sent to the browser (the dashboard sees only the key's last 4 characters). |
@@ -368,7 +368,7 @@ The fastest way to reach any of these is `npm run setup` (see [Command-line tool
 **Exposed on a conference LAN, with fixed tokens** (so admin/ingest links survive a server restart):
 
 ```env
-GEMINI_API_KEY=AIza...
+GEMINI_API_KEY=AQ....
 HOST=0.0.0.0
 AUTH=token
 ADMIN_TOKEN=<openssl rand -base64 24>
@@ -379,7 +379,7 @@ RATE_LIMIT_WS=6000
 **Behind a Cloudflare Tunnel** (`docker compose --profile tunnel up`):
 
 ```env
-GEMINI_API_KEY=AIza...
+GEMINI_API_KEY=AQ....
 PUBLIC_URL=https://subs.example.com
 AUTH=token
 ADMIN_TOKEN=<openssl rand -base64 24>

@@ -84,6 +84,26 @@ flowchart LR
 | `scripts/` | The starter the desktop apps run (`start.js`), headless agent, feed, load test, multi-room latency test, Gemini check, local mode launcher (`local.js`), bundled speech server (`local-asr-server.js`) and local check; developer tools for the downloads, icons, diagrams and the accessibility check |
 | `deploy/desktop/` | The Mac app and the Windows launcher, their icons and "Read me" files, packaged by `scripts/package-desktop.js` |
 
+## Pages and where they lead
+
+Every page, who opens it and where it goes next. In Just for me, the event's pages (marked †) redirect to `/me.html`.
+
+| Page | Who | How they get there | Leads to | When something is wrong |
+|---|---|---|---|---|
+| `/` † | Audience | The event's address | A room's captions; the transcripts | |
+| `/s/<room>` † | Audience | The QR code or the address on the room's poster | `/watch.html?stage=<room>` | |
+| `/watch.html` † | Audience | A room on `/`, or the QR code | The transcript, *What did I miss?*, the floating window | No room, or an unknown one: back to `/`. A break or music: a banner says so. |
+| `/talks.html`, `/talk.html` | Audience, organizers | `/`, a room's page, the dashboard | A talk's transcript, downloads | Transcripts closed to the audience: only the ones they may read are listed (the talk in progress, or none) |
+| `/screen.html` † | The projector | **Screens and QR** in the dashboard | | A break: a card with the time and the next talk |
+| `/overlay.html` † | vMix or OBS | **Screens and QR** | | Transparent with no captions; hidden during a break |
+| `/ingest.html` † | Room computers | **Screens and QR**, or `npm run agent` instead | | A wrong ingest password: it says so and stops. The main source drops: the backup takes over. |
+| `/admin.html` | Organizers, crew | `http://localhost:8080/admin.html` on the server; other devices sign in | Everything below | Setup not finished: `/welcome.html`. Just for me: `/me.html`. |
+| `/welcome.html` | Organizers | The first start, or **Settings → Setup wizard** | The dashboard, or Just for me | Crew: back to the dashboard |
+| `/kit.html` † | Organizers | **Screens and QR** | Printing | |
+| `/report.html` † | Organizers | The dashboard | A CSV download | |
+| `/demo.html` †, `/style.html` | Organizers | The dashboard | | |
+| `/me.html` | One person | The first start in Just for me, or **Settings → Just for me** | My transcripts; events (after a dialog) | No AI connected: simulated captions and a place to paste the key |
+
 ## Data flow for one sentence
 
 <picture>

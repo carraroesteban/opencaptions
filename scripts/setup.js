@@ -56,8 +56,8 @@ let apiKey = '';
 if (engine === 'gemini') {
   console.log(dim('  Get a Gemini API key at https://aistudio.google.com/apikey (leave empty to try it in simulated mode).'));
   apiKey = await ask('  Gemini API key', envOld.GEMINI_API_KEY ? '•••• keep current' : '');
-  if (apiKey && !apiKey.startsWith('••••') && !/^AIza[\w-]{30,}$/.test(apiKey)) {
-    console.log(dim('  That doesn\'t look like a Gemini API key (they start with "AIza" and are about 39 characters).'));
+  if (apiKey && !apiKey.startsWith('••••') && !/^[\w.-]{30,300}$/.test(apiKey)) { // same rule as src/aikey.js
+    console.log(dim('  That doesn\'t look like a Gemini API key (copy the whole key: it starts with "AQ.", or "AIza" if it\'s older).'));
     apiKey = await ask('  Paste it again, or press Enter to keep what you typed', apiKey);
   }
 }

@@ -15,7 +15,7 @@ const T = {
     s1: 'Abrí Google AI Studio, entrá con una cuenta de Google y tocá «Create API key».',
     s1Link: 'Abrir AI Studio',
     s2: 'Copiá la key y pegala acá:',
-    keyPh: 'AIza…',
+    keyPh: 'AQ.…',
     check: 'Comprobar y conectar',
     checking: 'Comprobando con Google…',
     replace: 'Cambiar la key',
@@ -24,7 +24,7 @@ const T = {
     saved: 'Listo: los subtítulos ahora vienen de Gemini.',
     savedLocal: 'Key guardada. Las salas siguen con la IA de esta computadora; se usa cuando pasen a Gemini.',
     quota: 'Conectado, pero esta key no tiene cuota gratis ahora: los subtítulos empiezan cuando se renueve (o activá la facturación en AI Studio).',
-    format: 'Eso no parece una API key de Gemini: empiezan con «AIza» y tienen unos 39 caracteres.',
+    format: 'Eso no parece una API key de Gemini: copiala entera desde AI Studio, sin espacios (empieza con «AQ.», o con «AIza» si es más vieja).',
     invalid: 'Google dice que la key no es válida. Copiala de nuevo desde AI Studio, completa.',
     forbidden: 'La key existe pero no puede usar Gemini. En AI Studio, creala en un proyecto nuevo.',
     offline: 'No se pudo contactar a Google. ¿Esta computadora tiene internet?',
@@ -64,7 +64,7 @@ const T = {
     s1: 'Open Google AI Studio, sign in with a Google account and click “Create API key”.',
     s1Link: 'Open AI Studio',
     s2: 'Copy the key and paste it here:',
-    keyPh: 'AIza…',
+    keyPh: 'AQ.…',
     check: 'Check and connect',
     checking: 'Checking with Google…',
     replace: 'Change the key',
@@ -73,7 +73,7 @@ const T = {
     saved: 'Done: captions now come from Gemini.',
     savedLocal: 'Key saved. Rooms keep using this computer’s AI; the key is used when they move to Gemini.',
     quota: 'Connected, but this key has no free quota left right now: captions start when it resets (or turn on billing in AI Studio).',
-    format: 'That doesn’t look like a Gemini API key: they start with “AIza” and are about 39 characters long.',
+    format: 'That doesn’t look like a Gemini API key: copy the whole key from AI Studio, with no spaces (it starts with “AQ.”, or “AIza” if it’s older).',
     invalid: 'Google says the key isn’t valid. Copy all of it again from AI Studio.',
     forbidden: 'The key exists but can’t use Gemini. In AI Studio, create it in a new project.',
     offline: 'Couldn’t reach Google. Does this computer have internet?',
@@ -169,9 +169,12 @@ export function keyPanel(el, { api, confirm = async (m) => window.confirm(m), on
     e.preventDefault();
     const key = /** @type {HTMLFormElement} */ (e.target).key.value.trim();
     draft = key;
-    if (!/^AIza[\w-]{30,}$/.test(key)) { msg = { text: t.format, cls: 'bad' }; pending = ''; return render(); }
+    // Only copy-paste slips here (same rule as src/aikey.js): new keys start with AQ., older ones with AIza; Google decides.
+    if (!/^[\w.-]{30,300}$/.test(key)) { msg = { text: t.format, cls: 'bad' }; pending = ''; return render(); }
     save(key);
   });
+  // The panel is redrawn with the server's status every few seconds (not while you're in it): keep what was typed.
+  el.addEventListener('input', (e) => { const i = /** @type {HTMLInputElement} */ (e.target); if (i.name === 'key') draft = i.value; });
   el.addEventListener('click', async (e) => {
     const a = /** @type {HTMLElement} */ (e.target).closest('[data-cx]')?.getAttribute('data-cx');
     if (a === 'open') { open = true; msg = { text: '', cls: '' }; render(); el.querySelector('input')?.focus(); }

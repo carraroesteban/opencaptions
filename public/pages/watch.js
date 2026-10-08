@@ -53,13 +53,18 @@ $('l-size').textContent = t('textSize');
 $('l-font').textContent = t('font');
 $('l-lh').textContent = t('lineSpacing');
 $('l-theme').textContent = t('theme');
+$('l-flow').textContent = t('flow');
 const opts = (el, items, cur, onPick) => {
   el.innerHTML = items.map(([v, label]) => `<button class="pill" data-v="${v}" aria-pressed="${String(v) === String(cur)}">${esc(label)}</button>`).join('');
   el.onclick = (e) => { const b = e.target.closest('[data-v]'); if (!b) return; el.querySelectorAll('[data-v]').forEach((x) => x.setAttribute('aria-pressed', x === b)); onPick(b.dataset.v); };
 };
 opts($('font-opts'), [['default', t('fontDefault')], ['legible', t('fontLegible')], ['easy', t('fontEasy')]], prefs.font || 'default', (v) => { prefs = setReadingPref('font', v); scrollEnd(); });
 opts($('lh-opts'), [['1.3', '1'], ['1.5', '1.5'], ['1.8', '2']], prefs.lh || 1.5, (v) => { prefs = setReadingPref('lh', Number(v)); scrollEnd(); });
-opts($('theme-opts'), [['auto', t('themeAuto')], ['light', t('themeLight')], ['dark', t('themeDark')]], store.get('theme', null) || 'auto', setTheme);
+// Whole sentences: a caption appears once its sentence is finished and never changes after that. Calmer to read for
+// some people (and what some captioning services offer as "complete phrases only"), a few seconds later.
+const whole = () => !!prefs.whole;
+opts($('flow-opts'), [['word', t('wordByWord')], ['whole', t('wholeSentences')]], whole() ? 'whole' : 'word', (v) => { prefs = setReadingPref('whole', v === 'whole'); renderAll(); });
+opts($('theme-opts'), [['auto', t('themeAuto')], ['light', t('themeLight')], ['dark', t('themeDark')], ['contrast', t('themeContrast')]], store.get('theme', null) || 'auto', setTheme);
 $('settings').onclick = () => $('dlg-set').showModal();
 $('set-close').onclick = () => $('dlg-set').close();
 for (const d of ['dlg-ai', 'dlg-set']) $(d).addEventListener('click', (e) => { if (e.target === $(d)) $(d).close(); }); // tap outside closes
@@ -157,7 +162,7 @@ $('tolive').onclick = () => { follow = true; $('scroll').scrollTop = $('scroll')
 const flow = new CaptionFlow($('text'));
 function renderAll() {
   const s = states[channel()] || new CaptionState();
-  flow.render([...s.finals, s.partial]);
+  flow.render([...s.finals, whole() ? null : s.partial]);
   if (!s.finals.length && !s.partial) $('text').innerHTML = `<div class="empty empty-state">${LOGO}<span>${esc(t('waiting'))}</span></div>`;
   renderOrig();
   renderPip();
@@ -167,6 +172,7 @@ function renderAll() {
 const LOGO = '<svg class="oc-logo typing" viewBox="0 0 878 664" aria-hidden="true"><use class="o" href="/brand/sprite.svg#oc-o"/><use class="ln" href="/brand/sprite.svg#oc-line"/></svg>';
 
 function renderMain(seg) {
+  if (whole() && !seg.final) return; // whole sentences: the one being spoken isn't shown yet
   flow.update(seg);
   scrollEnd();
 }

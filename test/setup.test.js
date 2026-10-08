@@ -63,18 +63,19 @@ test('FRESH=1: an empty temporary data folder, deleted when the server stops; th
   }
 });
 
-test('pages learn which data folder this is, so a browser forgets what it remembered for another one', async () => {
-  const name = `oc_data_127_0_0_1_${main.port}`;
-  const r = await fetch(`${main.base}/`);
-  const cookie = r.headers.getSetCookie().find((c) => c.startsWith(`${name}=`));
-  assert.ok(cookie, 'named after the host and port, so two servers on one computer stay apart');
-  const id = cookie.split(';')[0].split('=')[1];
+test('pages learn which data folder this is, so a browser forgets what it remembered for another one, with no cookie', async () => {
+  const r = await fetch(`${main.base}/api/instance`);
+  assert.equal(r.headers.get('cache-control'), 'no-store');
+  const { id } = await r.json();
   assert.equal(id, JSON.parse(fs.readFileSync(path.join(dataDir, 'instance.json'), 'utf8')).id, 'kept with the data');
-  const again = await fetch(`${main.base}/watch.html`, { headers: { cookie: `${name}=${id}` } });
-  assert.ok(!again.headers.getSetCookie().some((c) => c.startsWith(name)), 'not sent again when the browser has it');
-  const apiCall = await fetch(`${main.base}/api/event`);
-  assert.ok(!apiCall.headers.getSetCookie().some((c) => c.startsWith(name)), 'pages only, not the API');
-  assert.match(fs.readFileSync('public/common.js', 'utf8'), /oc_data_\$\{location\.host\.replace\(\/\\W\/g, '_'\)\}/, 'the page reads the same name');
+  // Caption pages set no cookies (the privacy page promises it).
+  for (const page of ['/', '/watch.html?stage=main', '/talks.html', '/screen.html', '/overlay.html']) {
+    const res = await fetch(main.base + page);
+    assert.deepEqual(res.headers.getSetCookie(), [], page);
+  }
+  const common = fs.readFileSync('public/common.js', 'utf8');
+  assert.match(common, /fetch\('\/api\/instance'/, 'every page asks');
+  assert.ok(!/document\.cookie/.test(common));
 });
 
 test('any language can be removed while no room uses it, and added back', async () => {
