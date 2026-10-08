@@ -188,6 +188,9 @@ const DICTS = {
     'Pantalla del escenario / proyector': 'Stage screen / projector', 'Overlay con fondo verde (chroma key)': 'Overlay with green background (chroma key)',
     'Charla': 'Talk',
     'Sin título': 'Untitled', 'Todavía no hay transcripciones.': 'No transcripts yet.',
+    'Descargar todo (.zip)': 'Download all (.zip)', 'Todas las charlas de esta sala, en cada idioma: SRT, VTT y TXT': 'Every talk in this room, in each language: SRT, VTT and TXT',
+    'Es demasiado para un solo archivo. Desde la API se puede descargar un día por vez.': 'Too much for one file. The API can download one day at a time.',
+    'No se pudo preparar la descarga.': 'The download couldn’t be prepared.',
     // ingest
     'Ingesta de audio · OpenCaptions': 'Audio ingest · OpenCaptions', 'Ingesta de audio del escenario': 'Stage audio ingest', 'Escenario': 'Stage', 'Fuente': 'Source',
     'Micrófono / placa de audio': 'Microphone / sound card', 'Pestaña o pantalla (audio de un stream, YouTube…)': 'Tab or screen (audio from a stream, YouTube…)',

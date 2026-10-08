@@ -40,7 +40,7 @@ There are three passwords (`src/auth.js`), auto-generated and printed on first s
 
 Roles: **admin** can call everything below. **crew** can call `GET /api/status`, `GET /api/setup`, `GET /api/history`,
 `GET /api/glossary`, `GET /metrics`, `POST /api/stages/:id/talk`, `PATCH /api/stages/:id` with only `title`, `POST /api/stages/:id/restart`,
-`DELETE /api/stages/:id/pull` and `POST …/pull/stop`, `POST /api/engine`, the transcripts, and `WS /ws/admin`; anything
+`DELETE /api/stages/:id/pull` and `POST …/pull/stop`, `POST /api/engine`, the transcripts (one talk at a time, not `GET /api/transcripts.zip`), and `WS /ws/admin`; anything
 else answers `403` with `{ "role": "crew" }`. Unauthenticated calls answer `401`.
 
 | Endpoint group | Who can call it |
@@ -49,7 +49,7 @@ else answers `403` with `{ "role": "crew" }`. Unauthenticated calls answer `401`
 | `GET /api/talks`, `GET /api/stages/:id/talks`, `GET /api/stages/:id/talks/:talk`, `GET /api/stages/:id/export.:fmt` | Depends on `PUBLIC_TRANSCRIPTS` — see [Transcripts & exports](#transcripts--exports); crew or admin otherwise |
 | `GET /api/stages/:id/summary`, `POST /api/stages/:id/ask` | Depends on `PUBLIC_TRANSCRIPTS` — see [Audience AI](#audience-ai-summaries--ask) |
 | The live controls listed above, `GET /metrics`, `WS /ws/admin` | Crew or admin |
-| Everything else: rooms, agenda, glossary, setup, Event mode, undo, AI key, public address, `/api/auth/sessions`, `/api/auth/passwords`, `/api/auth/2fa/*` | Admin |
+| Everything else: rooms, agenda, glossary, setup, Event mode, undo, AI key, public address, every transcript in one `.zip`, `/api/auth/sessions`, `/api/auth/passwords`, `/api/auth/2fa/*` | Admin |
 | `POST /api/ingest/ticket` | Ingest, crew or admin password (in a header), or a session. Returns `{ ticket, expiresIn: 60 }`: a single-use ticket for `WS /ws/ingest?ticket=…`, so browsers on room computers never put the password in a URL. |
 | `WS /ws/ingest` | A ticket (`?ticket=`), a password in the `Authorization` header (the agent), or a session. A password in the URL (`?token=`) is refused on sockets. |
 | `WS /ws/view` | Public — no auth |
@@ -302,6 +302,7 @@ What each platform receives: Zoom, `POST <link>&seq=N&lang=<region>` with the ca
 | `GET /api/stages/:id/talks/:talk` | Depends on `PUBLIC_TRANSCRIPTS` and which talk | One talk's metadata (`talkInfo`, below). `:talk` is a saved talk id, or the literal `current`. |
 | `DELETE /api/stages/:id/talks/:talk` | Admin | Delete a saved transcript for good (captions and metadata); the talk in progress is closed first. Recorded in the history (not undoable). `404` if there's no such talk. |
 | `GET /api/stages/:id/export.:fmt` | Public for the **talk in progress**; admin for past talks | Download/stream a talk's captions. |
+| `GET /api/transcripts.zip?day=YYYY-MM-DD&room=:id` | Admin | Every talk with captions in one `.zip`: a folder per room (its name), one per talk (`2026-10-08 10.30 Opening keynote`: date, time and title, made safe for Windows, macOS and Linux), and `original.srt`, `original.vtt`, `original.txt` (what was spoken) plus `<lang>.srt`, `.vtt` and `.txt` for each language the talk was translated into. Each file is what `export.:fmt` gives for that talk and language. The same talks as the [event report](#event-report), the talk in progress included. `day` and `room` (both optional) keep one day or one room. In Just for me, only the personal room. `404` for an unknown room or when there's nothing to download; `413` past 100 MB (built in memory): ask for one day or one room at a time. The dashboard's **Transcripts** view downloads the room it shows. |
 
 Access to a specific talk — its listing, metadata, export, [summary and ask](#audience-ai-summaries--ask) — is
 controlled by one rule (`canReadTalk` in `src/server.js`), driven by `PUBLIC_TRANSCRIPTS` (env var, or
@@ -383,6 +384,8 @@ above, which counts only the `orig` channel.)
 ```bash
 curl "http://localhost:8080/api/stages/main/export.srt?lang=es" -o captions-es.srt
 curl "http://localhost:8080/api/stages/main/export.txt?lang=es&talk=2026-09-24T14-02-10-441Z"
+# Every talk of one day, every room and language (admin)
+curl -H "Authorization: Bearer $ADMIN_TOKEN" "https://subs.example.com/api/transcripts.zip?day=2026-09-24" -o transcripts.zip
 ```
 
 `/talk.html` (linked from `/watch.html`'s transcript button, and from `/talks.html`) is where captions actually get

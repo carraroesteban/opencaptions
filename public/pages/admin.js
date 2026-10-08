@@ -976,8 +976,10 @@ async function loadTranscripts() {
 }
 async function renderTranscripts() {
   const st = ev.stages.find((s) => s.id === $('tx-room').value);
+  $('tx-zip').disabled = true;
   if (!st) { $('tx-list').innerHTML = ''; return; }
   const talks = await api('GET', `/api/stages/${encodeURIComponent(st.id)}/talks`);
+  $('tx-zip').disabled = !talks.length;
   $('tx-list').innerHTML = talks.length ? `<table class="table">${talks.map((x) => `<tr><td><b>${esc(x.title || tr('Sin título'))}</b><div class="muted-note">${esc(when(x.startedAt))} · ${esc(t.segs(x.segments))}</div></td>
     <td class="hide-sm">${st.languages.map((l) => `<div class="muted-note"><b>${esc(langLabel(l, ev.languages))}</b>: ${['srt', 'vtt', 'txt'].map((f) => `<a href="/api/stages/${st.id}/export.${f}?lang=${l}&talk=${encodeURIComponent(x.id)}">${f}</a>`).join(' · ')}</div>`).join('')}</td>
     <td class="r"><a href="/talk.html?stage=${encodeURIComponent(st.id)}&talk=${encodeURIComponent(x.id)}" target="_blank"><button tabindex="-1">${icon('doc')} ${esc(t.read)}</button></a>${isCrew ? '' : ` <button class="danger" data-tx-del="${esc(x.id)}" data-tx-title="${esc(x.title || '')}">${esc(tr('Eliminar'))}</button>`}</td></tr>`).join('')}</table>` : `<p class="empty">${esc(t.noTalks)}</p>`;
@@ -989,6 +991,30 @@ $('tx-list').onclick = async (e) => {
   renderTranscripts();
 };
 $('tx-room').onchange = () => { txRoom = $('tx-room').value; renderTranscripts(); };
+// Every talk of the room in one .zip (SRT, VTT and TXT in each language). Fetched rather than linked, so a refusal
+// (too big, nothing yet) shows as a message instead of downloading an error.
+$('tx-zip').onclick = async () => {
+  const b = $('tx-zip');
+  b.disabled = true;
+  b.setAttribute('aria-busy', 'true');
+  try {
+    const r = await fetch(`/api/transcripts.zip?room=${encodeURIComponent($('tx-room').value)}`);
+    if (r.status === 401) return askToken();
+    if (!r.ok) return toast(r.status === 404 ? t.noTalks : tr(r.status === 413 ? 'Es demasiado para un solo archivo. Desde la API se puede descargar un día por vez.' : 'No se pudo preparar la descarga.'), { error: true });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(await r.blob());
+    a.download = /filename="([^"]+)"/.exec(r.headers.get('content-disposition') || '')?.[1] || 'opencaptions-transcripts.zip';
+    document.body.append(a); // Firefox only downloads from a link in the page
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 60_000);
+  } catch {
+    toast(tr('No se pudo preparar la descarga.'), { error: true });
+  } finally {
+    b.disabled = false;
+    b.removeAttribute('aria-busy');
+  }
+};
 function openExport(st) {
   txRoom = st.id;
   location.hash = '#transcripts';

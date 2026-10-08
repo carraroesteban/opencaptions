@@ -23,6 +23,7 @@ import { resetClient } from './genai.js';
 import { Glossary } from './glossary.js';
 import { Stage } from './stage.js';
 import { Store, toSRT, toVTT, toTXT } from './store.js';
+import { Zip, ZipTooLarge, safeName } from './zip.js';
 import { Integrations } from './integrations.js';
 import { Switchers } from './switcher.js';
 import { fromSessionize, fromIcs } from './agenda-import.js';
@@ -460,15 +461,18 @@ app.get('/api/stages/:id/export.:fmt', getStage, talkAccess, (req, res) => {
 
 // ---- event report: every talk with its length, words, audience and cost, for sponsors or the boss ----
 const dayOf = (ms) => { const d = new Date(ms); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
+/** A room's talks: the saved ones, and the talk in progress, whose counters live in memory (saved every minute). */
+function roomTalks(st) {
+  const metas = new Map(store.listTalks(st.id).map((m) => [m.id, m]));
+  if (st.talkSegments > 0) metas.set(st.talk.id, { ...metas.get(st.talk.id), ...st.talk });
+  return [...metas.values()];
+}
 function eventReport(day = '') {
   const rooms = [];
   const days = new Set();
   for (const st of stages.values()) {
-    const metas = new Map(store.listTalks(st.id).map((m) => [m.id, m]));
-    // The talk in progress: its counters live in memory (saved every minute).
-    if (st.talkSegments > 0) metas.set(st.talk.id, { ...metas.get(st.talk.id), ...st.talk });
     const talks = [];
-    for (const m of metas.values()) {
+    for (const m of roomTalks(st)) {
       const segs = talkSegs(st, m.id).filter((x) => x.channel === 'orig');
       if (!segs.length) continue;
       days.add(dayOf(m.startedAt));
@@ -510,6 +514,54 @@ app.get('/api/report.csv', crew, (req, res) => {
   }
   res.set('Content-Disposition', `attachment; filename="opencaptions-report${r.day ? `-${r.day}` : ''}.csv"`);
   res.type('text/csv').send('\ufeff' + rows.map((x) => x.map(cell).join(',')).join('\r\n') + '\r\n'); // BOM: Excel reads the accents
+});
+
+// ---- every transcript in one .zip, for the organizers' archive: a folder per room, one per talk ("2026-10-08 10.30
+// Opening keynote"), and SRT, VTT and TXT in each of its languages (original.* is what was spoken). The same talks
+// as the report and the same files as the single-talk export. Admin only; in Just for me, only the personal room. ----
+const ZIP_MAX_MB = 100; // built in memory: a whole multi-day event in many languages may need ?day= or ?room=
+const hhmm = (ms) => { const d = new Date(ms); return `${String(d.getHours()).padStart(2, '0')}.${String(d.getMinutes()).padStart(2, '0')}`; };
+app.get('/api/transcripts.zip', admin, async (req, res) => {
+  const day = dayParam(req.query.day), room = String(req.query.room || '');
+  const rooms = visibleStages().filter((st) => !room || st.id === room);
+  if (room && !rooms.length) return res.status(404).json({ error: 'unknown room' });
+  const zip = new Zip({ maxBytes: ZIP_MAX_MB * 1024 * 1024 });
+  const taken = new Set(); // Windows and macOS ignore case: "Room A" and "room a" would be one folder
+  const unique = (dir, name) => {
+    let n = name;
+    for (let i = 2; taken.has(`${dir}/${n}`.toLowerCase()); i++) n = `${name} (${i})`;
+    taken.add(`${dir}/${n}`.toLowerCase());
+    return n;
+  };
+  try {
+    for (const st of rooms) {
+      let roomDir = '';
+      for (const m of roomTalks(st).sort((a, b) => a.startedAt - b.startedAt)) {
+        if (day && dayOf(m.startedAt) !== day) continue;
+        const all = talkSegs(st, m.id);
+        if (!all.some((x) => x.channel === 'orig')) continue; // like the report: talks with captions
+        roomDir ||= unique('', safeName(st.def.name, safeName(st.id)));
+        const talkDir = unique(roomDir, safeName(`${dayOf(m.startedAt)} ${hhmm(m.startedAt)} ${m.title || ''}`, safeName(m.id), 100));
+        const mtime = new Date(m.startedAt + all.reduce((a, x) => Math.max(a, x.end || 0), 0)); // when the talk ended
+        const channels = [...new Set(all.map((x) => x.channel))].sort((a, b) => (a === 'orig' ? -1 : b === 'orig' ? 1 : a.localeCompare(b)));
+        for (const ch of channels) {
+          const segs = all.filter((x) => x.channel === ch);
+          const file = `${roomDir}/${talkDir}/${ch === 'orig' ? 'original' : safeName(ch)}`;
+          zip.add(`${file}.srt`, toSRT(segs), mtime);
+          zip.add(`${file}.vtt`, toVTT(segs), mtime);
+          zip.add(`${file}.txt`, toTXT(segs), mtime);
+        }
+        await new Promise((r) => setImmediate(r)); // a big archive doesn't hold up the live captions
+      }
+    }
+  } catch (e) {
+    if (!(e instanceof ZipTooLarge)) throw e;
+    return res.status(413).json({ error: `Too many transcripts for one download (over ${ZIP_MAX_MB} MB): download one day (?day=YYYY-MM-DD) or one room (?room=) at a time.`, maxMB: ZIP_MAX_MB });
+  }
+  if (!zip.count) return res.status(404).json({ error: day ? `no transcripts on ${day}` : 'no transcripts yet' });
+  const name = `opencaptions-transcripts${day ? `-${day}` : ''}${room ? `-${room}` : ''}.zip`.replace(/[^\w.-]/g, '_');
+  res.set('Content-Disposition', `attachment; filename="${name}"`);
+  res.type('application/zip').send(zip.toBuffer());
 });
 
 // ---- audience AI: "what did I miss?" summaries and questions about the talk (see src/assist.js) ----
