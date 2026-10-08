@@ -4,6 +4,14 @@ All notable changes to this project are documented in this file. The format foll
 
 ## [Unreleased]
 
+### Changed
+
+- **eslint 10** (with `@eslint/js` 10, which only work together). Its new recommended rules found two values assigned and then overwritten, and two errors that dropped the original one (now kept as `cause`). Dependabot now sends the eslint packages in one pull request, and keeps `@types/node` off major versions newer than the Node.js line the type check targets.
+
+### Fixed
+
+- The simulated AI (`ENGINE=mock`, used by the tests and demos) threw away audio while it was "connecting", so a test failed on the Linux CI runners, whose timers are precise. It now keeps that audio and sends it once connected, as the Gemini engine does.
+
 ## [0.4.1] - 2026-10-08
 
 Reading options from the captioning services used at big conferences, and fixes found right after 0.4.0.

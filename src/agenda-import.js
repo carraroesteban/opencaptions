@@ -46,7 +46,7 @@ export async function fromSessionize(idOrUrl) {
   const id = sessionizeId(idOrUrl);
   let data;
   try { data = JSON.parse(await getText(`https://sessionize.com/api/v2/${id}/view/All`, 'application/json')); } catch (e) {
-    throw new Error(e instanceof SyntaxError ? 'Sessionize didn’t send an agenda: make sure the API endpoint includes "All" data' : e.message);
+    throw new Error(e instanceof SyntaxError ? 'Sessionize didn’t send an agenda: make sure the API endpoint includes "All" data' : e.message, { cause: e });
   }
   return fromSessionizeData(data);
 }

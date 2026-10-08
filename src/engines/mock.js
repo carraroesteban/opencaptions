@@ -48,16 +48,24 @@ export class MockEngine extends EventEmitter {
     this.word = 0;
     this.speechMs = 0;
     this.queue = [];
+    this.pending = []; // audio that arrives while "connecting", sent once live (as the Gemini engine buffers it)
   }
 
   start() {
     this.state = 'connecting';
     this.emit('state', this.state);
-    setTimeout(() => { this.state = 'live'; this.stats.connectedAt = Date.now(); this.emit('state', 'live'); }, 400);
+    setTimeout(() => {
+      if (this.state !== 'connecting') return; // stopped meanwhile
+      this.state = 'live';
+      this.stats.connectedAt = Date.now();
+      this.emit('state', 'live');
+      for (const c of this.pending.splice(0)) this.sendAudio(c);
+    }, 400);
   }
 
   stop() {
     this.state = 'idle';
+    this.pending = [];
     this.emit('state', 'idle');
     for (const t of this.queue) clearTimeout(t);
     this.queue = [];
@@ -67,6 +75,7 @@ export class MockEngine extends EventEmitter {
   endAudio() {}
 
   sendAudio(chunk) {
+    if (this.state === 'connecting') { this.pending.push(chunk); if (this.pending.length > 120) this.pending.shift(); return; } // 12 s, like Gemini's buffer
     if (this.state !== 'live') return;
     this.stats.audioMs += 100;
     if (rms(chunk) < 0.008) return;

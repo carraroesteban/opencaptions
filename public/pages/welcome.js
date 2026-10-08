@@ -180,7 +180,7 @@ async function buildPlan() {
     ops.push({ type: 'langs', id: x.id, label: t.opLangs(x.name, langText(x.source, x.targets), langText(A.spoken, A.targets)), note: custom ? t.opCustom : '', on: !custom });
   }
   for (const x of S.stages.filter((x) => !keep.has(x.id))) {
-    let talks = 0;
+    let talks;
     try { talks = (await api('GET', `/api/stages/${encodeURIComponent(x.id)}/talks`)).filter((k) => k.segments > 0).length; } catch { /* unknown: be careful */ talks = 1; }
     ops.push({ type: 'delete', id: x.id, label: t.opDelete(x.name), note: t.opDeleteNote(talks), on: talks === 0, danger: true });
   }

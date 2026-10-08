@@ -7,7 +7,13 @@ updates:
     directory: /
     schedule: { interval: weekly }
     groups:
+      # eslint and @eslint/js only work at the same major version: one pull request for both.
+      eslint: { patterns: ['eslint', '@eslint/*'] }
       minor-and-patch: { update-types: [minor, patch] }
+    ignore:
+      # Node's type definitions stay on an older Node.js line (22), so the type check flags APIs only newer ones have.
+      - dependency-name: '@types/node'
+        update-types: ['version-update:semver-major']
   - package-ecosystem: github-actions
     directory: /
     schedule: { interval: weekly }

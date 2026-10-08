@@ -16,7 +16,7 @@ function readJson(p, fallback) {
     return JSON.parse(fs.readFileSync(path.resolve(ROOT, p), 'utf8'));
   } catch (e) {
     if (fallback !== undefined) return fallback;
-    throw new Error(`Cannot read ${p}: ${e.message}`);
+    throw new Error(`Cannot read ${p}: ${e.message}`, { cause: e });
   }
 }
 

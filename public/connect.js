@@ -127,7 +127,7 @@ export function keyPanel(el, { api, confirm = async (m) => window.confirm(m), on
   el.classList.add('connect');
   function render() {
     const ai = setup?.ai || {};
-    let html = '';
+    let html;
     if (ai.vertex) html = `<p class="cx-status ok">${icon('check')}<span>${esc(t.vertex)}</span></p>`;
     else if (ai.set) {
       html = `<p class="cx-status ok">${icon('check')}<span>${esc(t.keyOn(ai.last4, ai.source))}</span></p>`;
