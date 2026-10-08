@@ -86,18 +86,17 @@ The design details are in [Architecture](architecture.md), and the reasons behin
 | Platforms | macOS tested end to end, including the Mac app; Linux tested in CI and in Docker; Windows tested by hand and in CI ([Requirements](requirements.md#support-levels)) |
 | Vertex AI backend | Implemented, not yet tested end to end |
 | Local mode (Whisper + Ollama) | Implemented; measured on CPUs with the bundled speech server (one room). GPU and Neural Engine backends, and several rooms per machine, not measured yet ([Local mode](local.md#measured-results)) |
-| Automated tests | 108 tests on Linux, macOS and Windows: captions, exports, sign-in and roles, security rules, alerts, reconnection edge cases, the assistant, the agenda, local mode, and an end-to-end test that replays a recorded Gemini session. Every page is checked against WCAG 2.2 AA (`npm run a11y`). `npm run local -- --check` tests local models end to end. |
+| Automated tests | 171 tests on Linux, macOS and Windows: captions, exports, live corrections, breaks, sign-in and roles, security rules, alerts, reconnection edge cases, the assistant, the agenda, local mode, and an end-to-end test that replays a recorded Gemini session. Every page is checked against WCAG 2.2 AA (`npm run a11y`). `npm run local -- --check` tests local models end to end. |
 | Version | 0.x (pre-release). Breaking changes are listed in the [changelog](../CHANGELOG.md). |
 
 ## Roadmap
 
 1. **Signed apps and more ways to install:** sign the Mac app and Windows launcher (no first-launch warning), `npx opencaptions`, a Homebrew tap and a winget entry.
-2. **Fixing a caption by hand** during the talk, for names the AI gets wrong.
-3. **Closed captions inside the video stream** (CEA-608/708) for broadcasters and YouTube Live.
-4. **Telling voices apart** automatically, so the crew doesn't have to label speakers.
-5. **Local mode:** measure GPU and Neural Engine backends, several rooms per machine, and a local translated voice.
+2. **Closed captions inside the video stream** (CEA-608/708) for broadcasters and YouTube Live.
+3. **Telling voices apart** automatically, so the crew doesn't have to label speakers.
+4. **Local mode:** measure GPU and Neural Engine backends, several rooms per machine, and a local translated voice.
 
-Done recently (0.2.0): the Mac app and Windows launcher; the welcome wizard with the API key and a one-click public address; Event mode with undo; sign-in with admin and crew roles, two-factor and company sign-in; alerts on the organizers' phones; speaker labels; the event report; streaming translation; the offline backup; and an accessibility check of every page.
+Done recently (0.4): fixing captions live and transcripts afterwards, smooth TV-style captions, breaks from the agenda, local translations by whole sentence. Earlier (0.2.0): the Mac app and Windows launcher; the welcome wizard with the API key and a one-click public address; Event mode with undo; sign-in with admin and crew roles, two-factor and company sign-in; alerts on the organizers' phones; speaker labels; the event report; streaming translation; the offline backup; and an accessibility check of every page.
 
 ## License
 
