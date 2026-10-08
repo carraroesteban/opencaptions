@@ -22,7 +22,7 @@ A shorter Spanish version for venue crews is in [event-day.es.md](event-day.es.m
 - [ ] Choose a topology and deploy the server ([Deployment](../deployment.md)).
 - [ ] Set up HTTPS: **Settings → Public address** (use your own domain for the event: a quick address changes on every restart), or your own proxy with `PUBLIC_URL` set to the final address.
 - [ ] Note the three passwords from the startup window (admin, crew, room computers), or set your own with `ADMIN_TOKEN`, `CREW_TOKEN` and `INGEST_TOKEN` (`openssl rand -base64 24`). Store them in the team's password manager.
-- [ ] Set up **alerts on your phone** (Settings → Alerts: the free ntfy app takes two minutes) and send a test.
+- [ ] Set up **alerts on your phone**: Settings → Alerts → **ntfy app** (free, two minutes), follow the steps and press **Save and send a test**.
 - [ ] Give volunteers and technicians the **crew password** (live controls only), not the admin one. Turn on **two-factor sign-in** in Settings → Access.
 - [ ] Walk through the [hardening checklist](../security-guide.md#hardening-checklist).
 - [ ] Enable billing on the Gemini project and set a budget alert.

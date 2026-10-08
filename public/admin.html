@@ -338,7 +338,7 @@
         <h2 class="sec">Ya incluidas</h2>
         <div class="tools">
           <a class="card tool" href="#agenda"><b data-icon="calendar">Sessionize y calendarios</b><span>Importá la agenda desde Sessionize o un enlace de calendario (Google, Outlook).</span></a>
-          <a class="card tool" href="#settings"><b data-icon="alert">Slack, Teams, Telegram, Discord</b><span>Alertas al celular del equipo cuando algo necesita atención.</span></a>
+          <a class="card tool" href="#settings"><b data-icon="alert">ntfy, Telegram, Slack, Discord</b><span>Alertas al celular del equipo cuando algo necesita atención (Ajustes → Alertas).</span></a>
           <a class="card tool" href="#screens"><b data-icon="monitor">OBS y vMix</b><span>Overlay transparente para el streaming, y audio por RTMP o SRT.</span></a>
           <a class="card tool" href="https://github.com/carraroesteban/opencaptions/blob/main/docs/security-guide.md#company-sign-in" target="_blank" rel="noopener"><b data-icon="shield">Google y Microsoft</b><span>Inicio de sesión con las cuentas de la empresa (OpenID Connect).</span></a>
         </div>
@@ -395,8 +395,8 @@
           <div id="alerts-panel" data-no-i18n></div>
         </section>
         <section class="card">
-          <h3 class="u-h17">Gemini (la IA en la nube)</h3>
-          <p class="muted-note u-mb14">La API key con la que OpenCaptions usa Gemini. Se guarda en este servidor y nunca se muestra completa.</p>
+          <h3 class="u-h17">IA en la nube</h3>
+          <p class="muted-note u-mb14">La API key de Gemini, la IA de Google con la que OpenCaptions subtitula en la nube. Se guarda en este servidor y nunca se muestra completa.</p>
           <div id="key-panel" data-no-i18n></div>
         </section>
         <section class="card">
@@ -407,8 +407,8 @@
         <section class="card setting hidden" id="ai-setting">
           <div><h3>IA y respaldo sin internet</h3><p id="ai-desc"></p></div>
           <select id="ai-mode" aria-label="Motor de IA">
-            <option value="auto">Automática: Gemini, y esta computadora si se corta internet</option>
-            <option value="cloud">Siempre Gemini (nube)</option>
+            <option value="auto">Automática: la nube, y esta computadora si se corta internet</option>
+            <option value="cloud">Siempre en la nube</option>
             <option value="local">Siempre esta computadora</option>
           </select>
         </section>

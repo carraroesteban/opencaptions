@@ -83,7 +83,7 @@ const L = {
       'event.lock': (c) => (c.after ? 'Modo evento activado' : 'Modo evento desactivado'),
     },
     fields: { name: 'nombre', source: 'idioma de la charla', targets: 'idiomas', translation: 'modo de traducción', pull: 'fuente de audio', loop: 'loop', musicGuard: 'pausa con música' },
-    ai: { auto: 'Automática (Gemini + respaldo)', cloud: 'Siempre Gemini', local: 'Siempre esta computadora' },
+    ai: { auto: 'Automática (nube + respaldo)', cloud: 'Siempre en la nube', local: 'Siempre esta computadora' },
     sys: (y, up) => `Encendido hace ${up} · CPU ${y.cpuPct} % · memoria ${y.rssMB} MB · event loop ${y.loopLagMs.p99} ms (p99)`,
     audioNone: 'Sin audio', copied: 'Copiado',
   },
@@ -137,7 +137,7 @@ const L = {
       'event.lock': (c) => (c.after ? 'Event mode turned on' : 'Event mode turned off'),
     },
     fields: { name: 'name', source: 'talk language', targets: 'languages', translation: 'translation mode', pull: 'audio source', loop: 'loop', musicGuard: 'pause for music' },
-    ai: { auto: 'Automatic (Gemini + backup)', cloud: 'Always Gemini', local: 'Always this computer' },
+    ai: { auto: 'Automatic (cloud + backup)', cloud: 'Always in the cloud', local: 'Always this computer' },
     sys: (y, up) => `Up for ${up} · CPU ${y.cpuPct}% · memory ${y.rssMB} MB · event loop ${y.loopLagMs.p99} ms (p99)`,
     audioNone: 'No audio', copied: 'Copied',
   },
@@ -295,7 +295,7 @@ const OB = {
     localNoLlm: (u) => `no responde el modelo de traducción (<code>${u}</code>): corré <code>npm run local</code> o abrí Ollama`,
     localMissing: (m) => `falta el modelo <code>${m}</code>: <code>ollama pull ${m}</code>`,
     localReady: (m) => `listo · ${m} · el audio no sale de esta computadora`,
-    engineLocal: 'Motor de IA local', engineGemini: 'Conectar Gemini', ready: (m) => `listo · ${m}`,
+    engineLocal: 'Motor de IA local', engineGemini: 'Conectar la IA en la nube', ready: (m) => `listo · ${m}`,
     noKey: '<a href="#settings">pegá tu API key en Ajustes</a> (unos dos minutos), o corré la IA en esta computadora con <code>npm run local</code>. Mientras tanto, los subtítulos son simulados.',
     address: 'Dirección pública para los celulares', addressD: (u) => (u ? esc(u) : '<a href="#settings">creala en Ajustes</a> para que los celulares abran los subtítulos desde cualquier red (opcional si comparten el Wi-Fi)'),
     rooms: 'Crear las salas', roomsD: (n) => `${n} ${n === 1 ? 'sala' : 'salas'} · <a href="#rooms">ver salas</a>`,
@@ -311,7 +311,7 @@ const OB = {
     localNoLlm: (u) => `the translation model isn't responding (<code>${u}</code>): run <code>npm run local</code> or open Ollama`,
     localMissing: (m) => `model <code>${m}</code> is missing: <code>ollama pull ${m}</code>`,
     localReady: (m) => `ready · ${m} · audio never leaves this computer`,
-    engineLocal: 'Local AI engine', engineGemini: 'Connect Gemini', ready: (m) => `ready · ${m}`,
+    engineLocal: 'Local AI engine', engineGemini: 'Connect the cloud AI', ready: (m) => `ready · ${m}`,
     noKey: '<a href="#settings">paste your API key in Settings</a> (about two minutes), or run the AI on this computer with <code>npm run local</code>. Until then, captions are simulated.',
     address: 'A public address for phones', addressD: (u) => (u ? esc(u) : '<a href="#settings">create one in Settings</a> so phones can open the captions from any network (optional on a shared Wi-Fi)'),
     rooms: 'Create your rooms', roomsD: (n) => `${n} ${n === 1 ? 'room' : 'rooms'} · <a href="#rooms">see rooms</a>`,
@@ -367,7 +367,7 @@ function renderNet(f) {
     html = `${icon('offline')}<div><b>${esc(tr(f.mode === 'local' ? 'Usando la IA de esta computadora' : 'Sin internet: los subtítulos siguen funcionando'))}</b><p>${esc(tr(f.mode === 'auto' ? 'La IA de esta computadora genera los subtítulos. Vuelven a Gemini solos cuando la conexión se estabilice.' : 'Elegido desde el panel. Para volver a Gemini, cambiá el selector de IA.'))}</p></div>`;
   } else if (f.online === false) {
     bad = !f.localReady;
-    html = `${icon('offline')}<div><b>${esc(tr('Sin conexión con Gemini'))}</b><p>${esc(tr(f.localReady ? (f.mode === 'auto' ? 'Si no vuelve en unos segundos, los subtítulos pasan a esta computadora.' : 'Hay un respaldo listo en esta computadora: elegí «IA automática» o «Siempre esta computadora».') : 'No hay respaldo local. La próxima vez iniciá con: npm run local -- --fallback'))}</p></div>`;
+    html = `${icon('offline')}<div><b>${esc(tr('Sin conexión con la IA en la nube'))}</b><p>${esc(tr(f.localReady ? (f.mode === 'auto' ? 'Si no vuelve en unos segundos, los subtítulos pasan a esta computadora.' : 'Hay un respaldo listo en esta computadora: elegí «IA automática» o «Siempre esta computadora».') : 'No hay respaldo local. La próxima vez iniciá con: npm run local -- --fallback'))}</p></div>`;
   }
   $('netbar').classList.toggle('hidden', !html);
   $('netbar').classList.toggle('bad', bad);
@@ -389,7 +389,7 @@ function render(s) {
   renderOnboard(s);
   $('engine').textContent = s.engine === 'gemini' ? `Gemini · ${s.model}` : s.engine === 'local' ? `Local · ${s.model}` : tr('Modo simulado (sin API key)');
   $('engine').className = 'chip ' + (s.engine === 'mock' ? 'warn' : s.engine === 'local' && !localOk(s.local) ? 'bad' : 'ok');
-  $('engine').title = s.engine === 'mock' ? tr('Conectar Gemini en Ajustes') : '';
+  $('engine').title = s.engine === 'mock' ? tr('Conectar la IA en la nube en Ajustes') : '';
   $('engine').style.cursor = s.engine === 'mock' ? 'pointer' : '';
   renderNet(s.failover);
   $('k-live').textContent = `${s.totals.live}/${s.totals.stages}`;

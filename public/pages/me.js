@@ -27,7 +27,7 @@ const T = {
     ended: 'The sound source stopped (the microphone was unplugged or sharing ended).',
     empty: 'Press “Start captions” and speak, or play something.', original: 'Original', listening: 'Listening', paused: 'Paused (silence)',
     idle: 'Stopped', connecting: 'Connecting…', aiForced: 'OpenCaptions was started in demo mode, so captions are simulated even though a key is saved. Start it normally to use Gemini.', aiMock: 'Captions are simulated until you connect an AI. Paste a free Gemini key (about two minutes):',
-    aiTitle: 'The AI that writes the captions', floating: 'Floating captions', transcript: 'Transcript', download: 'Download (.txt)', room: 'Just for me', ai: { gemini: 'Gemini', local: 'On this computer', mock: 'Simulated' },
+    aiTitle: 'The AI that writes the captions', floating: 'Floating captions', transcript: 'Transcript', download: 'Download (.txt)', room: 'Just for me', ai: { gemini: 'In the cloud', local: 'On this computer', mock: 'Simulated' },
     ev: {
       title: 'Use OpenCaptions for events?', intro: 'It becomes an event dashboard: rooms, a QR code for the audience, the stage screen and the livestream overlay.',
       keepH: 'Stays as it is', keep: ['Your transcripts, in My transcripts. They stay private.', 'Your AI and its key.', 'This page: Just for me keeps working at /me.html.'],
@@ -55,7 +55,7 @@ const T = {
     ended: 'Se cortó el sonido (se desconectó el micrófono o se dejó de compartir).',
     empty: 'Tocá «Empezar a subtitular» y hablá, o poné algo a sonar.', original: 'Original', listening: 'Escuchando', paused: 'En pausa (silencio)',
     idle: 'Detenido', connecting: 'Conectando…', aiForced: 'OpenCaptions se inició en modo demo, así que los subtítulos son simulados aunque haya una key guardada. Inicialo normalmente para usar Gemini.', aiMock: 'Los subtítulos son simulados hasta que conectes una IA. Pegá una key gratuita de Gemini (unos dos minutos):',
-    aiTitle: 'La IA que escribe los subtítulos', floating: 'Subtítulos flotantes', transcript: 'Transcripción', download: 'Descargar (.txt)', room: 'Solo para mí', ai: { gemini: 'Gemini', local: 'En esta compu', mock: 'Simulados' },
+    aiTitle: 'La IA que escribe los subtítulos', floating: 'Subtítulos flotantes', transcript: 'Transcripción', download: 'Descargar (.txt)', room: 'Solo para mí', ai: { gemini: 'En la nube', local: 'En esta compu', mock: 'Simulados' },
     ev: {
       title: '¿Usar OpenCaptions para eventos?', intro: 'Pasa a ser un panel de evento: salas, un código QR para el público, la pantalla del escenario y el overlay de la transmisión.',
       keepH: 'Queda igual', keep: ['Tus transcripciones, en Mis transcripciones. Siguen siendo privadas.', 'Tu IA y su key.', 'Esta página: Solo para mí sigue funcionando en /me.html.'],

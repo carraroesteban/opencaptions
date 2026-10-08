@@ -81,7 +81,7 @@ A scene or input whose name contains one of the **break words** (default: break,
 
 ## Already built in
 
-- **Alerts** to Slack, Microsoft Teams, Telegram, Discord, ntfy or a webhook: **Settings → Alerts on your phone**.
+- **Alerts** to the ntfy app, Telegram, Slack, Discord or a webhook: **Settings → Alerts on your phone**. Pick a destination, follow its steps and press **Save and send a test**.
 - **OBS and vMix**: the transparent overlay (**Screens and QR**), and room audio over RTMP or SRT ([Deployment](deployment.md)).
 - **Company sign-in** with Google, Microsoft or any OpenID Connect provider ([Security](security-guide.md#company-sign-in)).
 

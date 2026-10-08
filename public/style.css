@@ -234,14 +234,39 @@ dialog.signin button.sso { width: 100%; justify-content: center; }
 .u-code-input { font-size: 24px !important; letter-spacing: .2em; }
 .u-bg-setup { background-image: url(/art/setup.webp) !important; }
 
-/* Settings → Alerts (public/alerts-ui.js) */
-.alerts .al-ch { border: 1px solid var(--line); border-radius: 12px; background: var(--bg2); }
-.alerts .al-ch summary { display: grid; gap: 2px; padding: 10px 12px; cursor: pointer; list-style: none; }
-.alerts .al-ch summary::-webkit-details-marker { display: none; }
-.alerts .al-ch summary label { display: flex; gap: 8px; align-items: center; }
-.alerts .al-ch summary small { color: var(--fg2); font-size: 13px; padding-left: 26px; }
-.alerts .al-body { display: grid; gap: 10px; padding: 0 12px 12px; }
-.alerts .cx-row button svg { width: 16px; height: 16px; margin: 0; }
+/* Settings → Alerts (public/alerts-ui.js): what triggers an alert, the destinations as tiles, and a dialog per
+   destination with room for its steps. */
+.alerts { display: grid; gap: 18px; }
+.alerts .al-when { padding: 14px 16px; border-radius: 14px; background: var(--bg2); border: 1px solid var(--line); }
+.alerts .al-when > p:first-child { margin: 0 0 10px; font-weight: 700; }
+.alerts .al-when ul { margin: 0; padding: 0; list-style: none; display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 8px 18px; }
+.alerts .al-when li { display: flex; gap: 10px; align-items: center; font-size: 14px; }
+.alerts .al-when li svg { color: var(--fg2); }
+.alerts .al-when .cx-fine { margin: 10px 0 0; }
+.alerts .al-h { margin: 0 0 -6px; font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--fg2); }
+.alerts .al-grid { grid-template-columns: repeat(auto-fill, minmax(168px, 1fr)); }
+.alerts .al-tile { align-content: start; gap: 6px; text-align: left; padding: 16px; min-height: 132px; }
+.alerts .al-tile b { font-size: 15px; font-weight: 700; }
+.alerts .al-tile b svg { width: 18px; height: 18px; }
+.alerts .al-tile:hover { border-color: var(--line-strong); box-shadow: var(--shadow); }
+.alerts .al-tile.on { border-color: color-mix(in srgb, var(--ok) 45%, var(--line)); }
+.alerts .al-state { margin-top: auto; padding-top: 6px; font-size: 13px; font-weight: 600; color: var(--accent-fg); display: flex; gap: 6px; align-items: center; min-width: 0; }
+.alerts .al-state.ok { color: var(--ok); }
+.alerts .al-state code { font-weight: 400; color: var(--fg2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.alerts .al-foot { display: flex; flex-wrap: wrap; gap: 12px 18px; align-items: end; justify-content: space-between; padding-top: 14px; border-top: 1px solid var(--line); }
+.alerts .al-foot .field { min-width: 200px; }
+.al-dlg { max-width: min(600px, 94vw); }
+.al-dlg:not([open]) { display: none; } /* .connect lays panels out as a grid: a closed dialog must still hide */
+.al-dlg .al-title { display: flex; gap: 10px; align-items: center; margin: 0; font-size: 20px; }
+.al-dlg .al-title svg { width: 22px; height: 22px; }
+.al-dlg .al-steps { margin: 4px 0 0; padding-left: 22px; display: grid; gap: 14px; font-size: 15px; line-height: 1.5; }
+.al-dlg .al-steps li::marker { font-weight: 700; }
+.al-dlg .al-copy { display: flex; gap: 8px; margin-top: 8px; }
+.al-dlg .al-copy code { flex: 1; padding: 10px 12px; border-radius: 10px; background: var(--bg3); font-size: 15px; overflow-wrap: anywhere; }
+.al-dlg .field small { color: var(--fg2); font-size: 13px; line-height: 1.4; }
+.al-dlg .al-err { margin: 0; padding: 10px 12px; border-radius: 10px; color: var(--bad); background: color-mix(in srgb, var(--bad) 10%, transparent); font-size: 14px; }
+.al-dlg .dlg-actions { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; margin-top: 6px; }
+.al-dlg .al-remove { margin-right: auto; color: var(--bad); }
 
 /* Speaker labels (set on the dashboard): a small name where the speaker changes */
 p[data-spk]::before { content: attr(data-spk); display: block; margin-bottom: .15em; font-family: var(--font); font-size: max(12px, .5em); font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--fg2); }

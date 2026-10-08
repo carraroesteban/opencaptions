@@ -603,8 +603,9 @@ app.put('/api/alerts', admin, (req, res) => {
   } catch (e) { res.status(400).json({ error: e.message }); }
 });
 app.post('/api/alerts/test', admin, async (req, res) => {
-  if (!alerts.cfg.channels.length) return res.status(400).json({ error: 'add where alerts should go first' });
-  res.json({ results: await alerts.test() });
+  const type = String(req.body?.type || '');
+  if (!alerts.cfg.channels.some((c) => !type || c.type === type)) return res.status(400).json({ error: type ? `${type} isn't set up` : 'add where alerts should go first' });
+  res.json({ results: await alerts.test(type) });
 });
 // Pause them (a rehearsal, the end of the day): crew too, it's their phone that buzzes.
 app.post('/api/alerts/snooze', crew, (req, res) => {

@@ -6,6 +6,10 @@ All notable changes to this project are documented in this file. The format foll
 
 ### Changed
 
+- **Alerts in Settings, redone.** Each destination was a collapsed row: you clicked its description to open it, and its steps, the language, Save and the pause links were squeezed into one long column. Now the card shows what triggers an alert and the destinations as tiles, each saying whether it's connected. A tile opens its own dialog with roomy steps, and **Save and send a test** tests that destination alone (`POST /api/alerts/test` takes a `type`). The language is saved as soon as it's picked. The card went from about 930 to 400 pixels tall.
+- **No brand in titles.** The AI options are *In the cloud* and *On your own computer* on the website, in Settings, the AI mode selector, the setup wizard and Just for me; Gemini (Google's) and the open models are named in the descriptions. The website's cloud option has its own illustration now, as the local one did.
+- The Integrations page listed Microsoft Teams for alerts (they go to ntfy, Telegram, Slack, Discord or a webhook).
+
 - **eslint 10** (with `@eslint/js` 10, which only work together). Its new recommended rules found two values assigned and then overwritten, and two errors that dropped the original one (now kept as `cause`). Dependabot now sends the eslint packages in one pull request, and keeps `@types/node` off major versions newer than the Node.js line the type check targets.
 
 ### Fixed

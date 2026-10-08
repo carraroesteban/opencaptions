@@ -225,16 +225,20 @@ export class Alerts {
     return this.dispatch(m);
   }
 
-  /** Send to every channel. @param {Message} m @returns {Promise<Array<{ type: string, ok: boolean, error?: string }>>} */
-  async dispatch(m) {
-    const results = await Promise.all(this.cfg.channels.map(async (ch) => {
+  /**
+   * Send to every channel, or to one kind (`type`, e.g. a test right after setting it up).
+   * @param {Message} m @param {string} [type] @returns {Promise<Array<{ type: string, ok: boolean, error?: string }>>}
+   */
+  async dispatch(m, type = '') {
+    const results = await Promise.all(this.cfg.channels.filter((ch) => !type || ch.type === type).map(async (ch) => {
       try { await this.send(ch, m); return { type: ch.type, ok: true }; } catch (e) { return { type: ch.type, ok: false, error: e.message }; }
     }));
     for (const r of results) if (!r.ok) this.log(`alert to ${r.type} failed: ${r.error}`);
     return results;
   }
 
-  test() { return this.dispatch({ key: 'test', severity: 'info', ...pair(this.t.test()) }); }
+  /** @param {string} [type]  only this destination */
+  test(type = '') { return this.dispatch({ key: 'test', severity: 'info', ...pair(this.t.test()) }, type); }
 
   /** @param {Partial<AlertConfig>} patch */
   configure(patch) {

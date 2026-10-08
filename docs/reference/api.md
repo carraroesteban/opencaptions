@@ -254,7 +254,7 @@ curl -X DELETE http://localhost:8080/api/stages/main/pull -H "Authorization: Bea
 |---|---|---|
 | `GET /api/alerts` | Admin | `{ lang, snoozeUntil, channels: [{ type, topic?, server?, chat?, token?, url? }] }` with tokens and webhook paths shortened (`…abcd`), never in full. |
 | `PUT /api/alerts` | Admin | Body `{ lang: "es" \| "en", channels: [...] }`, each `{ type: "ntfy", topic, server? }`, `{ type: "telegram", token, chat }`, or `{ type: "slack" \| "discord" \| "webhook", url }`. A hidden or empty secret keeps the saved one. Saved in `data/secrets.json`. `400` with the reason if one isn't valid. |
-| `POST /api/alerts/test` | Admin | Sends a test message to every channel: `{ results: [{ type, ok, error? }] }`. |
+| `POST /api/alerts/test` | Admin | Sends a test message to every channel, or only to one with `{ "type": "ntfy" }` (the dashboard tests a destination right after it is set up): `{ results: [{ type, ok, error? }] }`. |
 | `POST /api/alerts/snooze` | Crew or admin | Body `{ minutes }` (0 resumes, up to 1440). |
 
 What's sent, and when (`src/alerts.js`): a room's audio source disconnected for 1 minute (only if it had one and the agenda says the room is on, or it has no agenda), connected but no sound for 1 minute, a very low level for 2 more minutes, the AI reconnecting for 1 minute, translations throttled for 2 minutes, captions over 6 s late for 3 minutes, a talk 5 minutes past the agenda, the offline backup switching, no internet and no backup for 30 s, the public address down for 30 s or a quick address changing. Each one once, plus once more when it's over. At most 20 messages per 10 minutes; the rest are summed up in one. The generic webhook gets `{ source: "opencaptions", event, room, severity, resolved, title, text, at }`.

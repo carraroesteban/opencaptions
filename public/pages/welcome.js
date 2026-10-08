@@ -34,7 +34,7 @@ const T = {
     opRename: (n) => `Rename the event to “${n}”`, opCreate: (n) => `Add the room “${n}”`, opRenameRoom: (a, b) => `Rename “${a}” to “${b}”`,
     opDelete: (n) => `Remove “${n}”`, opDeleteNote: (k) => (k ? `It has ${k} transcript${k === 1 ? '' : 's'}: they’re kept, and the room can be restored from History.` : 'You can restore it from History.'),
     opLangs: (n, a, b) => `Change “${n}” from ${a} to ${b}`, opCustom: 'This room has its own language setup: tick to change it too.', aiH: 'How captions are made', later: 'Skip for now',
-    gemini: 'Connected to Gemini', geminiD: 'Captions and translations come from Google’s Gemini, in the cloud. About 3 seconds behind the speaker.',
+    gemini: 'Connected to the cloud AI', geminiD: 'Captions and translations come from Google’s Gemini, in the cloud. About 3 seconds behind the speaker.',
     local: 'Running on this computer', localD: 'Speech recognition and translation run here. The audio never leaves the building, and it works without internet.',
     mock: 'Demo mode: captions are simulated', mockD: 'Everything works so you can explore, but the words are made up. To caption real talks, pick one of these and restart:',
     mockGemini: 'Cloud (best quality): add a Gemini API key', mockLocal: 'On this computer, no account needed:',
@@ -46,7 +46,7 @@ const T = {
     test: 'Just try it first', testD: 'Talk into your microphone and watch the captions appear.',
     k6: 'All set', doneH: 'You’re ready.', sEvent: 'Event', sRooms: 'Rooms', sLangs: 'Captions', sAI: 'AI',
     openDash: 'Open the dashboard', printQr: 'Print the QR codes', seeAudience: 'See what the audience sees', autoL: 'auto-detected',
-    aiG: 'Gemini (cloud)', aiL: 'This computer', aiM: 'Demo mode', withBackup: ' + offline backup',
+    aiG: 'In the cloud', aiL: 'This computer', aiM: 'Demo mode', withBackup: ' + offline backup',
   },
   es: {
     title: 'Bienvenida · OpenCaptions',
@@ -71,7 +71,7 @@ const T = {
     opRename: (n) => `Renombrar el evento a “${n}”`, opCreate: (n) => `Agregar la sala “${n}”`, opRenameRoom: (a, b) => `Renombrar “${a}” a “${b}”`,
     opDelete: (n) => `Quitar “${n}”`, opDeleteNote: (k) => (k ? `Tiene ${k} ${k === 1 ? 'transcripción' : 'transcripciones'}: se conservan, y la sala se puede recuperar desde el Historial.` : 'Podés recuperarla desde el Historial.'),
     opLangs: (n, a, b) => `Cambiar “${n}” de ${a} a ${b}`, opCustom: 'Esta sala tiene su propia configuración de idiomas: tildala para cambiarla también.', aiH: 'Cómo se generan los subtítulos', later: 'Saltar por ahora',
-    gemini: 'Conectado a Gemini', geminiD: 'Los subtítulos y traducciones vienen de Gemini de Google, en la nube. Unos 3 segundos detrás de quien habla.',
+    gemini: 'Conectado a la IA en la nube', geminiD: 'Los subtítulos y traducciones vienen de Gemini de Google, en la nube. Unos 3 segundos detrás de quien habla.',
     local: 'Funcionando en esta computadora', localD: 'El reconocimiento de voz y la traducción corren acá. El audio no sale del lugar y funciona sin internet.',
     mock: 'Modo demo: los subtítulos son simulados', mockD: 'Todo funciona para que lo recorras, pero las palabras son inventadas. Para subtitular charlas reales, elegí una opción y reiniciá:',
     mockGemini: 'En la nube (mejor calidad): agregá una API key de Gemini', mockLocal: 'En esta computadora, sin cuenta:',
@@ -83,7 +83,7 @@ const T = {
     test: 'Probarlo primero', testD: 'Hablá al micrófono y mirá cómo aparecen los subtítulos.',
     k6: 'Listo', doneH: 'Ya está todo.', sEvent: 'Evento', sRooms: 'Salas', sLangs: 'Subtítulos', sAI: 'IA',
     openDash: 'Abrir el panel', printQr: 'Imprimir los QR', seeAudience: 'Ver lo que ve el público', autoL: 'detección automática',
-    aiG: 'Gemini (nube)', aiL: 'Esta computadora', aiM: 'Modo demo', withBackup: ' + respaldo sin internet',
+    aiG: 'En la nube', aiL: 'Esta computadora', aiM: 'Modo demo', withBackup: ' + respaldo sin internet',
   },
 };
 const t = T[LANG] || T.en;
