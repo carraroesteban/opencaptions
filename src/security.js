@@ -228,7 +228,7 @@ export async function checkPullUrl(input, { httpOnly = false } = {}) {
   if (!/^[a-z][a-z0-9+.-]*:\/\//i.test(s) || s.startsWith('file://')) {
     if (httpOnly) throw new Error('an http(s) URL is required');
     const p = path.resolve(ROOT, s.replace(/^file:\/\//, ''));
-    if (!MEDIA_DIRS.some((d) => p === d || p.startsWith(d + path.sep))) throw new Error(`local files must be inside samples/ or MEDIA_DIR (got ${s})`);
+    if (!MEDIA_DIRS.some((d) => p === d || p.startsWith(d + path.sep))) throw new Error(`OpenCaptions only plays files from its samples folder (got ${s}). Copy the file there and write samples/${path.basename(p)}, or add its folder to MEDIA_DIR in .env and restart. For a file on your own computer, open the room’s sound page instead and choose “A recording”.`);
     return;
   }
   let u;

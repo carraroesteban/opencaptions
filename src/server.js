@@ -24,10 +24,11 @@ import { Glossary } from './glossary.js';
 import { Stage } from './stage.js';
 import { Store, toSRT, toVTT, toTXT } from './store.js';
 import { Zip, ZipTooLarge, safeName } from './zip.js';
+import { Recordings, mountRecordings } from './recording.js';
 import { Integrations } from './integrations.js';
 import { Switchers } from './switcher.js';
 import { fromSessionize, fromIcs } from './agenda-import.js';
-import { PullSource } from './pull.js';
+import { PullSource, ffmpegBin } from './pull.js';
 import { muLaw } from './audio.js';
 import { systemStats } from './system.js';
 import { summarize, ask, audienceAiEnabled, assistStats } from './assist.js';
@@ -82,18 +83,29 @@ function addStage(def) {
   return st;
 }
 
-function removeStage(id) {
+/** @param {string} [why]  'room removed', or 'server restarting' when the server stops (room computers reconnect) */
+function removeStage(id, why) {
   const st = stages.get(id);
   if (!st) return;
   stopPull(id);
-  st.destroy();
+  st.destroy(why);
   stages.delete(id);
   integrations?.attachAll();
 }
 
 function startPull(st, url, loop, opts = {}) {
   stopPull(st.id);
-  pulls.set(st.id, new PullSource(st, url, { loop, ...opts }));
+  const pull = new PullSource(st, url, {
+    loop,
+    ...opts,
+    // A file without loop plays once. Then the room has no audio source: the file comes off the room's settings, so
+    // neither a restart nor a room computer leaving (onIngest) plays it again from the top.
+    onFinish: () => {
+      if (pulls.get(st.id) === pull) pulls.delete(st.id);
+      if (stages.get(st.id) === st && st.def.pull === url) { st.def = { ...st.def, pull: '' }; persistStages(); }
+    },
+  });
+  pulls.set(st.id, pull);
 }
 
 function stopPull(id) {
@@ -466,8 +478,9 @@ app.get('/api/stages/:id/export.:fmt', getStage, talkAccess, (req, res) => {
   const st = req.stage;
   const talkId = req.query.talk || st.talk.id;
   if (!isCurrent(st, talkId) && !talkInfo(st, talkId)) return res.status(404).json({ error: 'unknown talk' });
-  const channel = st.channelFor(req.query.lang);
   const all = talkSegs(st, talkId);
+  // A language the talk has, even one the room doesn't caption (now): a recording's own languages, a removed one.
+  const channel = all.some((s) => s.channel === req.query.lang) ? String(req.query.lang) : st.channelFor(req.query.lang);
   const segs = all.filter((s) => s.channel === channel);
   const fmt = req.params.fmt;
   const name = `${st.id}-${talkId}-${req.query.lang || 'orig'}.${fmt}`.replace(/[^\w.-]/g, '_'); // query values: never raw in a header
@@ -584,6 +597,15 @@ app.get('/api/transcripts.zip', admin, async (req, res) => {
   res.type('application/zip').send(zip.toBuffer());
 });
 
+// ---- caption a recording: a file from anyone's computer becomes a transcript of a room, much faster than real time,
+// without going through the live room (src/recording.js). Admin only; the file is deleted once it's captioned. ----
+const recordings = new Recordings({
+  store, glossary,
+  room: (id) => visibleStages().find((st) => st.id === id)?.def || null,
+  busy: () => [...stages.values()].some((st) => st.engines.size > 0 && !st.gated),
+});
+mountRecordings(app, { admin, recordings });
+
 // ---- audience AI: "what did I miss?" summaries and questions about the talk (see src/assist.js) ----
 const LANG_OK = (l) => /^[a-z]{2,3}(-[A-Za-z0-9]{2,8})?$/.test(l || '');
 app.get('/api/stages/:id/summary', getStage, talkAccess, async (req, res) => {
@@ -623,6 +645,35 @@ app.post('/api/ingest/ticket', need('ingest'), (req, res) => {
   res.json({ ticket, expiresIn: 60 });
 });
 const useTicket = (t) => { const ok = !!t && (tickets.get(t) || 0) > Date.now(); tickets.delete(t); return ok; };
+// A room link (Screens and QR, the setup wizard): /ingest.html?stage=…&link=<code>. Opening it signs that one browser
+// in to send audio and nothing else (an 'ingest' session, listed in Settings → Access), so nobody has to find the
+// room-computer password. The code works once, for 30 minutes, and only its hash is kept. A browser that can already
+// send audio (the server computer, a signed-in dashboard) doesn't use it up.
+const LINK_MINUTES = 30;
+const roomLinks = new Map(); // sha256(code) → { stage, expires }
+const linkHash = (c) => crypto.createHash('sha256').update(String(c)).digest('hex');
+setInterval(() => { for (const [k, v] of roomLinks) if (v.expires < Date.now()) roomLinks.delete(k); }, 60_000).unref();
+app.post('/api/ingest/link', admin, (req, res) => {
+  const st = stages.get(String(req.body?.stage || ''));
+  if (!st) return res.status(404).json({ error: 'unknown stage' });
+  const code = crypto.randomBytes(18).toString('base64url');
+  roomLinks.set(linkHash(code), { stage: st.id, expires: Date.now() + LINK_MINUTES * 60_000 });
+  recordChange({ kind: 'auth.link', target: st.id, after: st.def.name, summary: `Link made for a room computer (${st.def.name})` });
+  res.json({ url: `${publicUrl(req)}/ingest.html?stage=${encodeURIComponent(st.id)}&link=${code}`, expiresIn: LINK_MINUTES * 60 });
+});
+app.post('/api/ingest/link/use', (req, res) => {
+  if (!originAllowed(req)) return res.status(403).json({ error: 'refused: this request came from another website' });
+  if (allows(identify(req, reqUrl(req)), 'ingest')) return res.json({ ok: true, already: true });
+  const h = linkHash(req.body?.link || ''), l = roomLinks.get(h);
+  roomLinks.delete(h);
+  if (!l || l.expires < Date.now()) {
+    if (!noteAuthFailure(req)) return res.set('Retry-After', '600').status(429).json({ error: 'too many failed attempts: wait 10 minutes' });
+    return res.status(401).json({ error: 'This link was already used or is more than 30 minutes old. Make a new one in the dashboard: Screens and QR → Computer next to the stage.' });
+  }
+  const name = stages.get(l.stage)?.def.name || l.stage;
+  const { cookie } = createSession({ role: 'ingest', device: `Room computer · ${name}`, via: 'link' }, req);
+  res.set('Set-Cookie', cookie).json({ ok: true, stage: l.stage });
+});
 
 // Alerts on the organizer's phone (src/alerts.js): the server checks every 5 s and messages ntfy, Telegram, Slack,
 // Discord or a webhook when a room loses its sound, the AI keeps failing, a talk runs over or the internet drops.
@@ -800,7 +851,8 @@ app.get('/api/setup', crew, (req, res) => {
     publicTranscripts: PUBLIC_TRANSCRIPTS,
     publicTranscriptsFixed: transcriptsFixed,
     defaultTargets: config.event.defaultTargets.filter((c) => c in config.event.languages),
-    stages: [...stages.values()].map((s) => ({ id: s.id, name: s.def.name, source: s.def.source, targets: s.def.targets })),
+    stages: [...stages.values()].map((s) => ({ id: s.id, name: s.def.name, source: s.def.source, targets: s.def.targets, pull: allows(req.who, 'admin') ? s.def.pull || '' : redactUrl(s.def.pull || '') })),
+    ffmpeg: !!ffmpegBin(), // OBS / vMix can stream a room's sound in only through ffmpeg
     engine: config.engine,
     primaryEngine: config.primaryEngine,
     failover: failover?.status() || null,
@@ -1256,6 +1308,7 @@ function startTunnel(mode, host) {
 const wss = new WebSocketServer({ noServer: true, perMessageDeflate: false, maxPayload: 256 * 1024 });
 const reject = (socket, code, msg) => { socket.write(`HTTP/1.1 ${code} ${msg}\r\nConnection: close\r\n\r\n`); socket.destroy(); };
 let viewerCount = 0;
+let stopping = false; // Ctrl+C: the rooms are gone, so a quick reconnect must not be told its room doesn't exist (4004)
 
 server.on('upgrade', (req, socket, head) => {
   let url;
@@ -1263,6 +1316,7 @@ server.on('upgrade', (req, socket, head) => {
   socket.on('error', () => {}); // aborted handshakes must never become uncaught exceptions
   const kind = { '/ws/ingest': 'ingest', '/ws/view': 'view', '/ws/admin': 'admin' }[url.pathname];
   if (!kind) return socket.destroy();
+  if (stopping) return reject(socket, 503, 'Service Unavailable');
   if (!wsAllowed(req)) return reject(socket, 429, 'Too Many Requests');
   if (kind !== 'view' && !originAllowed(req)) return reject(socket, 403, 'Forbidden');
   if (kind === 'view' && viewerCount >= MAX_VIEWERS) return reject(socket, 503, 'Service Unavailable');
@@ -1303,7 +1357,13 @@ function onIngest(ws, url) {
     label: String(url.searchParams.get('label') || '').slice(0, 120),
     role,
     token,
-    detach: (why) => { sendJson(ws, { type: 'replaced', why }); ws.close(4000, why); },
+    // 4000 only when another source took the room: the client stops. When the room is removed or the server stops,
+    // 1012: the client reconnects (after a restart the room is back; after a delete it gets 4004).
+    detach: (why) => {
+      if (st.destroyed) return ws.close(1012, why);
+      sendJson(ws, { type: 'replaced', why });
+      ws.close(4000, why);
+    },
   });
   ws.on('message', (data, isBinary) => {
     if (isBinary && data.length <= 64 * 1024) return st.pushAudio(Buffer.isBuffer(data) ? data : Buffer.from(data), token);
@@ -1384,7 +1444,7 @@ function onView(ws, url) {
   };
   const onTalk = () => sendJson(ws, { type: 'talk', talk: st.talk.id, title: st.talk.title, speaker: st.talk.speaker || '' });
   const onTitle = () => sendJson(ws, { type: 'title', talk: st.talk.id, title: st.talk.title, speaker: st.talk.speaker || '' });
-  const onRemoved = () => ws.close(1012, 'room removed'); // clients reconnect; a re-created room works again
+  const onRemoved = (why = 'room removed') => ws.close(1012, why); // clients reconnect; a re-created room works again
   const onConfig = () => setup();
   const onPause = () => sendJson(ws, { type: 'pause', ...st.pauseInfo() });
   st.on('caption', onCaption);
@@ -1499,7 +1559,7 @@ server.listen(config.port, config.host, () => {
     tty.table([
       ['Admin token', `${tokens.admin}  ${tty.c.gray(`dashboard, everything${twoFactorOn() ? ' · plus a two-factor code' : ''}${tokens.adminGenerated ? ` · generated, kept in ${config.fresh ? 'the temporary folder' : 'data/secrets.json'}` : ''}`)}`],
       ['Crew token', `${tokens.crew}  ${tty.c.gray('dashboard, live controls only: for the crew')}`],
-      ['Ingest token', `${tokens.ingest}  ${tty.c.gray('room computers sending audio')}`],
+      ['Ingest token', `${tokens.ingest}  ${tty.c.gray('room computers sending audio · easier: a one-time link from Dashboard → Screens and QR')}`],
     ]);
     // Docker: the browser on the host counts as another device, so hand over a link that signs in directly.
     if (process.env.OC_DOCKER) console.log(`\n${tty.sym.arrow} Open the dashboard: ${config.publicUrl || 'http://localhost:8080'}/admin.html?token=${tokens.admin}`);
@@ -1521,11 +1581,22 @@ process.on('unhandledRejection', (/** @type {any} */ e) => console.error('✗ un
 process.on('uncaughtException', (e) => console.error('✗ uncaught exception (server kept running):', e?.stack || e));
 
 // SIGHUP: the terminal window was closed (on Windows, the console window), so a fresh start's folder goes too.
+// Every socket hears 1012 "server restarting", never 4000 ("another source took your room"), so room computers and
+// phones reconnect by themselves once the server is back. The close frames get up to a second to go out; a second
+// Ctrl+C quits at once.
 for (const sig of ['SIGINT', 'SIGTERM', 'SIGHUP']) {
   process.on(sig, () => {
+    if (stopping) process.exit(0);
+    stopping = true;
     tunnel.stop();
     switchers?.stop();
-    for (const id of [...stages.keys()]) removeStage(id);
-    process.exit(0);
+    for (const id of [...stages.keys()]) removeStage(id, 'server restarting');
+    let open = wss.clients.size;
+    if (!open) process.exit(0);
+    for (const ws of wss.clients) {
+      ws.once('close', () => { if (--open === 0) process.exit(0); });
+      ws.close(1012, 'server restarting'); // the dashboards (the rooms' sockets are closing already)
+    }
+    setTimeout(() => process.exit(0), 1000);
   });
 }

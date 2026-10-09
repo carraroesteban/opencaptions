@@ -63,11 +63,12 @@ const USD_IN = 0.30 / 1e6, USD_OUT = 2.5 / 1e6;
  * @param {boolean} [o.partial]      the sentence is still being spoken
  * @param {{ usd?: number, firstChunkMs?: number | null } | null} [o.stats]  cost and timing counters to update
  * @param {(soFar: string) => void} [o.onChunk]  streaming: called with the translation so far as it arrives (Gemini only)
+ * @param {number} [o.priority]  local model's queue: below 2 waits for the live rooms' sentences (a recording uses 1)
  * @returns {Promise<string>}
  */
-export async function translateText({ text, from, to, context = [], prior = [], vocabulary = [], partial = false, stats = null, onChunk = null }) {
+export async function translateText({ text, from, to, context = [], prior = [], vocabulary = [], partial = false, stats = null, onChunk = null, priority }) {
   if (config.engine === 'mock') return `(${to}) ${text}`;
-  if (config.engine === 'local') return translateLocal({ text, from, to, prior, vocabulary, partial });
+  if (config.engine === 'local') return translateLocal({ text, from, to, prior, vocabulary, partial, priority });
   const sys = [
     `You translate live conference captions from ${from ? langName(from) : 'the speaker\'s language'} to ${langName(to)}.`,
     partial
@@ -129,9 +130,9 @@ export function translateGemmaPrompt({ text, from, to }) {
     + `Produce only the ${dst} translation, without any additional explanations or commentary. Please translate the following ${src} text into ${dst}:\n\n\n${text}`;
 }
 
-async function translateLocal({ text, from, to, prior, vocabulary, partial }) {
+async function translateLocal({ text, from, to, prior, vocabulary, partial, priority }) {
   const model = llmInfo().mtModel;
-  const request = { model, maxTokens: Math.min(400, 32 + Math.ceil(text.length / 2)), temperature: 0.1, timeoutMs: config.mtTimeoutMs, priority: partial ? 0 : 2 };
+  const request = { model, maxTokens: Math.min(400, 32 + Math.ceil(text.length / 2)), temperature: 0.1, timeoutMs: config.mtTimeoutMs, priority: priority ?? (partial ? 0 : 2) };
   // Its prompt needs the source language; until Whisper has detected one, the generic prompt below is used.
   if (/translategemma/i.test(model) && from) return guardLength(text, cleanTranslation((await localChat({ ...request, user: translateGemmaPrompt({ text, from, to }) })).text));
   const system = [

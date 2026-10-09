@@ -107,6 +107,11 @@ export const config = {
   // How often the in-progress sentence is re-translated as a provisional caption (ms).
   mtPartialMs: Number(env.MT_PARTIAL_MS ?? event.mtPartialMs ?? 1500),
   textModel: env.TEXT_MODEL || event.textModel || 'gemini-3.5-flash-lite',
+  // Captioning a recorded file (src/recording.js): the model that transcribes it with timestamps (the regular API, not
+  // Live), the largest upload accepted, and how many pieces of it are worked on at once.
+  recordingModel: env.RECORDING_MODEL || event.recordingModel || 'gemini-3.5-flash-lite',
+  recordingMaxMb: Number(env.RECORDING_MAX_MB ?? event.recordingMaxMb ?? 2048),
+  recordingConcurrency: Math.max(1, Number(env.RECORDING_CONCURRENCY ?? event.recordingConcurrency ?? 4)),
   ...engineDefaults(engine),
   // Optional: shorten the model's end-of-speech wait (ms) to cut caption latency, e.g. 300.
   vadSilenceMs: Number(env.VAD_SILENCE_MS ?? event.vadSilenceMs ?? 0),

@@ -252,7 +252,7 @@ Full details: [Requirements](docs/requirements.md).
 
 1. **Server.** Run it at the venue or in the cloud. For HTTPS, click **Settings → Public address** (free, through Cloudflare), or put your own HTTPS in front and set `PUBLIC_URL`. [Choosing a setup](docs/deployment.md#choose-a-topology).
 2. **Rooms.** The welcome wizard asks for them the first time you open the dashboard. Then paste your agenda and print the QR posters.
-3. **Audio.** Point OBS/vMix at `rtmp://<server>:1935/live/<room>`, or run the small agent on the PC connected to each room's sound desk.
+3. **Sound.** The wizard's last step shows each way in, on screen: a computer next to the stage opens the room's sound page (from another computer, a one-time link or QR code, with no password to type), OBS or vMix stream to an address it makes for the room, or the small agent runs on the PC connected to the sound desk.
 4. **Screens.** Open the presenter screen next to the stage and add the overlay to your stream.
 5. **Showtime.** Nothing to press: rooms pause in silence, resume on speech and follow the agenda.
 

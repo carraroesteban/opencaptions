@@ -800,13 +800,14 @@ export class Stage extends EventEmitter {
     };
   }
 
-  destroy() {
+  /** @param {string} [why]  told to the sources: 'room removed', or 'server restarting' when the server stops */
+  destroy(why = 'room removed') {
     this.destroyed = true;
     clearTimeout(this.pendingTimer);
-    this.emit('removed');
+    this.emit('removed', why);
     clearInterval(this.tick);
     this.#stopEngines('removed');
-    for (const src of Object.values(this.sources)) src?.detach?.('stage removed');
+    for (const src of Object.values(this.sources)) src?.detach?.(why);
   }
 }
 

@@ -26,6 +26,7 @@ The docs follow the [Diátaxis](https://diataxis.fr/) framework. Each page has o
 | [Latency](latency.md) | Explanation + how-to | Understand where the seconds go and tune for lower delay. |
 | [Just for me](personal.md) | How-to | Use OpenCaptions on your own computer: captions and translation of your calls, videos and conversations, from the microphone or the computer's sound. |
 | [Integrations](integrations.md) | How-to + reference | Send captions into Zoom, YouTube Live, Microsoft Teams or a webhook, and import the agenda from Sessionize or a calendar. |
+| [Caption a recording](recording.md) | How-to | Turn an audio or video file into a transcript with captions in each language, much faster than real time. |
 | [Local mode](local.md) | How-to + explanation | Run speech recognition and translation on your own computer: no API key, no internet, no cost per hour. |
 | [Event-day runbook](operations/runbook.md) | How-to | Prepare and operate the rooms on the day. |
 | [Troubleshooting](operations/troubleshooting.md) | How-to | Fix a specific symptom quickly. |

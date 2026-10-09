@@ -1,5 +1,5 @@
 // welcome.html: page script (kept out of the HTML so the Content-Security-Policy can forbid inline scripts).
-import { esc } from '/common.js';
+import { esc, store } from '/common.js';
 import { prefsControls, LANG } from '/i18n.js';
 import { icon } from '/illustrations.js';
 import { ensureSignedIn, signInScreen } from '/signin.js';
@@ -40,10 +40,31 @@ const T = {
     mockGemini: 'Cloud (best quality): add a Gemini API key', mockLocal: 'On this computer, no account needed:',
     backupOn: 'Offline backup is ready', backupOnD: 'If the internet goes down, captions keep running on this computer and switch back when it returns.',
     backupOff: 'Optional: an offline backup', backupOffD: 'Start the server with this command and captions keep running on this computer if the venue loses internet:',
-    k5: 'Step 7 of 7 · Sound', audioH: 'Connect the sound', audioP: 'OpenCaptions listens to each room’s audio. Pick whatever is easiest; you can try it right now.',
-    mic: 'A microphone on this computer', micD: 'Open the room’s audio page in a browser next to the stage and allow the microphone.',
-    mixer: 'The sound desk or a stream', mixerD: 'Send the mixer’s output, OBS, vMix or an RTMP/SRT stream. Ask your AV team, it takes a minute.',
+    k5: 'Step 7 of 7 · Sound', audioH: 'Connect the sound', audioP: 'OpenCaptions listens to each room’s sound. Pick how the sound gets here; you can try it right now.',
+    whichRoom: 'Which room?',
+    mic: 'A microphone or the sound desk, into a computer', micD: 'A computer next to the stage gets the sound by cable and sends it from a browser page.',
+    micSteps: ['Plug a microphone into that computer, or a spare output of the sound desk (ask the sound technician for an “aux” output), straight in or through a USB sound card.',
+      'Open this room’s sound page on that computer: with the button if it’s this one, or with the link or QR code on another one.',
+      'Pick the input, press Start captioning and say something: the level bar moves and the captions appear.'],
+    openHere: 'Open the sound page here', makeLink: 'Link for another computer', copy: 'Copy', copied: 'Copied', open: 'Open',
+    linkNote: (hm) => `Works once, until ${hm}: it lets that computer send this room’s sound and nothing else, with no password to type.`,
+    linkQr: 'QR code of the link, to open it with a tablet or phone camera',
+    linkHttp: 'This address isn’t secure (http), so the browser on the other computer won’t let it use a microphone. Create a public address first (step 6), then make the link again.',
+    stream: 'OBS, vMix or another streaming app', streamD: 'Already streaming the event? Send OpenCaptions a copy of the stream, with no extra computer.',
+    getAddr: 'Get an address for this room', rtmp: 'RTMP (OBS, vMix)', srt: 'SRT', protoQ: 'Your app sends',
+    rtmpSteps: ['In OBS: Settings → Stream → Service: Custom. In vMix: Settings → Outputs / Streaming → Destination: Custom RTMP Server.',
+      'Paste the server and the stream key below, and start streaming.',
+      'The room’s card in the dashboard shows the sound arriving.'],
+    srtSteps: ['In OBS: Settings → Stream → Service: Custom. In vMix: Settings → Outputs / Streaming → Destination: SRT, type Caller.',
+      'Paste the address below (in vMix, its host name and port), and start streaming.',
+      'The room’s card in the dashboard shows the sound arriving.'],
+    server: 'Server', key: 'Stream key', address: 'Address',
+    replaces: (u) => `This room gets its sound from ${u} now. A new address replaces it.`,
+    sameNet: (p) => `The computer that streams must reach this one on the network. If it doesn’t connect, the firewall here must let port ${p} in. Streaming from this same computer? Use 127.0.0.1 instead.`,
+    noFfmpeg: 'This needs ffmpeg, which didn’t install with OpenCaptions on this computer. Use a computer with a microphone instead, or install ffmpeg and restart.',
+    rec: 'A recording', recD: 'A video or audio file of a talk: OpenCaptions captions it in minutes and keeps the transcript with the room’s others.', recOpen: 'Choose the recording',
     test: 'Just try it first', testD: 'Talk into your microphone and watch the captions appear.',
+    more: 'More details: every way to connect the sound, in the guide',
     k6: 'All set', doneH: 'You’re ready.', sEvent: 'Event', sRooms: 'Rooms', sLangs: 'Captions', sAI: 'AI',
     openDash: 'Open the dashboard', printQr: 'Print the QR codes', seeAudience: 'See what the audience sees', autoL: 'auto-detected',
     aiG: 'In the cloud', aiL: 'This computer', aiM: 'Demo mode', withBackup: ' + offline backup',
@@ -77,10 +98,31 @@ const T = {
     mockGemini: 'En la nube (mejor calidad): agregá una API key de Gemini', mockLocal: 'En esta computadora, sin cuenta:',
     backupOn: 'Respaldo sin internet listo', backupOnD: 'Si se corta internet, los subtítulos siguen en esta computadora y vuelven a la nube cuando regresa.',
     backupOff: 'Opcional: un respaldo sin internet', backupOffD: 'Iniciá el servidor con este comando y los subtítulos siguen en esta computadora si el lugar se queda sin internet:',
-    k5: 'Paso 7 de 7 · Sonido', audioH: 'Conectá el sonido', audioP: 'OpenCaptions escucha el audio de cada sala. Elegí lo más fácil; podés probarlo ahora mismo.',
-    mic: 'Un micrófono en esta computadora', micD: 'Abrí la página de audio de la sala en un navegador junto al escenario y permití el micrófono.',
-    mixer: 'La consola de sonido o un stream', mixerD: 'Mandá la salida de la consola, OBS, vMix o un stream RTMP/SRT. Pedíselo a técnica, es un minuto.',
+    k5: 'Paso 7 de 7 · Sonido', audioH: 'Conectá el sonido', audioP: 'OpenCaptions escucha el sonido de cada sala. Elegí cómo llega el sonido; podés probarlo ahora mismo.',
+    whichRoom: '¿Qué sala?',
+    mic: 'Un micrófono o la consola, a una computadora', micD: 'Una computadora junto al escenario recibe el sonido por cable y lo envía desde una página del navegador.',
+    micSteps: ['Conectá a esa computadora un micrófono, o una salida libre de la consola (pedile a quien maneja el sonido una salida “aux”), directo o con una placa de sonido USB.',
+      'Abrí la página de sonido de esta sala en esa computadora: con el botón si es esta, o con el enlace o el QR si es otra.',
+      'Elegí la entrada, tocá Empezar a transcribir y decí algo: la barra de nivel se mueve y aparecen los subtítulos.'],
+    openHere: 'Abrir la página de sonido acá', makeLink: 'Enlace para otra computadora', copy: 'Copiar', copied: 'Copiado', open: 'Abrir',
+    linkNote: (hm) => `Sirve una vez, hasta las ${hm}: deja que esa computadora envíe el sonido de esta sala y nada más, sin escribir contraseñas.`,
+    linkQr: 'QR del enlace, para abrirlo con la cámara de una tablet o un celular',
+    linkHttp: 'Esta dirección no es segura (http), así que el navegador de la otra computadora no le va a dejar usar un micrófono. Creá primero una dirección pública (paso 6) y volvé a crear el enlace.',
+    stream: 'OBS, vMix u otro programa de streaming', streamD: '¿Ya transmiten el evento? Mandale a OpenCaptions una copia de la transmisión, sin otra computadora.',
+    getAddr: 'Crear una dirección para esta sala', rtmp: 'RTMP (OBS, vMix)', srt: 'SRT', protoQ: 'Tu programa envía',
+    rtmpSteps: ['En OBS: Ajustes → Emisión → Servicio: Personalizado. En vMix: Settings → Outputs / Streaming → Destination: Custom RTMP Server.',
+      'Pegá el servidor y la clave de retransmisión de abajo, y empezá a transmitir.',
+      'La tarjeta de la sala en el panel muestra que llega el sonido.'],
+    srtSteps: ['En OBS: Ajustes → Emisión → Servicio: Personalizado. En vMix: Settings → Outputs / Streaming → Destination: SRT, tipo Caller.',
+      'Pegá la dirección de abajo (en vMix, el nombre del host y el puerto), y empezá a transmitir.',
+      'La tarjeta de la sala en el panel muestra que llega el sonido.'],
+    server: 'Servidor', key: 'Clave de retransmisión', address: 'Dirección',
+    replaces: (u) => `Ahora esta sala toma el sonido de ${u}. Una dirección nueva la reemplaza.`,
+    sameNet: (p) => `La computadora que transmite tiene que llegar a esta por la red. Si no conecta, el firewall de esta tiene que dejar entrar el puerto ${p}. ¿Transmitís desde esta misma computadora? Usá 127.0.0.1.`,
+    noFfmpeg: 'Esto necesita ffmpeg, que no se instaló con OpenCaptions en esta computadora. Usá una computadora con micrófono, o instalá ffmpeg y reiniciá.',
+    rec: 'Una grabación', recD: 'Un archivo de video o audio de una charla: OpenCaptions lo subtitula en minutos y guarda la transcripción con las demás de la sala.', recOpen: 'Elegir la grabación',
     test: 'Probarlo primero', testD: 'Hablá al micrófono y mirá cómo aparecen los subtítulos.',
+    more: 'Más detalles: todas las formas de conectar el sonido, en la guía',
     k6: 'Listo', doneH: 'Ya está todo.', sEvent: 'Evento', sRooms: 'Salas', sLangs: 'Subtítulos', sAI: 'IA',
     openDash: 'Abrir el panel', printQr: 'Imprimir los QR', seeAudience: 'Ver lo que ve el público', autoL: 'detección automática',
     aiG: 'En la nube', aiL: 'Esta computadora', aiM: 'Modo demo', withBackup: ' + respaldo sin internet',
@@ -132,10 +174,16 @@ function show(i) {
   if (!img.src.endsWith(src)) { img.classList.add('fade'); setTimeout(() => { img.src = src; img.onload = () => img.classList.remove('fade'); }, 150); }
   if (steps[cur].dataset.step === 'done') renderSummary();
   if (steps[cur].dataset.step === 'review') buildPlan().catch(fail);
+  if (steps[cur].dataset.step === 'audio') renderSound();
   steps[cur].querySelector('input, .primary')?.focus({ preventScroll: true });
   history.replaceState(null, '', `#${steps[cur].dataset.step}`);
+  store.set('welcome.at', { step: steps[cur].dataset.step, t: Date.now() });
 }
-const start = steps.findIndex((s) => `#${s.dataset.step}` === location.hash);
+// Where to start: the step in the address, else where this browser left off today (the dashboard sends an unfinished
+// setup back here, and opening the room's sound page from step 7 must not mean starting over from step 1).
+const left = store.get('welcome.at', null);
+const resume = !location.hash && left && Date.now() - left.t < 24 * 3600_000 ? `#${left.step}` : location.hash;
+const start = steps.findIndex((s) => `#${s.dataset.step}` === resume);
 // Preload the illustrations so steps switch instantly.
 for (const s of steps) new Image().src = `/art/${s.dataset.art}.webp`;
 
@@ -230,6 +278,7 @@ document.addEventListener('click', async (e) => {
   }
   if (b.hasAttribute('data-finish')) {
     try { await api('PUT', '/api/setup', { done: true, mode: 'event' }); } catch (err) { return fail(err); }
+    store.set('welcome.at', null); // done: next time (Settings → the wizard) starts from the beginning
     location.href = '/admin.html';
   }
 });
@@ -316,12 +365,89 @@ setInterval(async () => {
   try { S = await api('GET', '/api/setup'); shareP.update(S); } catch { /* next time */ }
 }, 2000);
 
-// ---------- audio ----------
-$('audio').innerHTML = [
-  ['mic', t.mic, t.micD, '/ingest.html'],
-  ['sliders', t.mixer, t.mixerD, 'https://github.com/carraroesteban/opencaptions/blob/main/docs/operations/runbook.md'],
-  ['play', t.test, t.testD, '/demo.html?mode=mic'],
-].map(([ic, title, desc, href]) => `<a class="opt" href="${href}" target="_blank" rel="noopener"><div class="ic">${icon(ic)}</div><div><b>${title}</b><span>${desc}</span></div></a>`).join('');
+// ---------- sound: each way in, with its steps right here ----------
+// "I have a recording": the room's sound page plays the file today. When the dashboard can caption a recording by
+// itself (Transcripts), point this there instead.
+const recordingUrl = (room) => `/admin.html?dashboard#transcripts?record=${encodeURIComponent(room)}`; // Transcripts → Caption a recording
+const RUNBOOK = 'https://github.com/carraroesteban/opencaptions/blob/main/docs/operations/runbook.md#two-hours-before-set-up-each-room';
+let soundRoom = new URLSearchParams(location.search).get('room') || S.stages[0]?.id || ''; // ?room= from a room's card
+let proto = 'rtmp';
+const roomLinks = {}; // room → { url, until } from POST /api/ingest/link
+// OBS and vMix stream to this computer (ffmpeg listens): RTMP on 1935 and up, SRT on 9001 and up, one port per room.
+const LISTEN = {
+  rtmp: { re: /^rtmps?:\/\/(?:0\.0\.0\.0|\[::\])(?::(\d+))?\/live\/(.+)$/i, base: 1935, pull: (port, room) => `rtmp://0.0.0.0:${port}/live/${room}` },
+  srt: { re: /^srt:\/\/(?:0\.0\.0\.0|\[::\])?:(\d+)\?mode=listener$/i, base: 9001, pull: (port) => `srt://0.0.0.0:${port}?mode=listener` },
+};
+const listening = (room, p) => { const m = (S.stages.find((x) => x.id === room)?.pull || '').match(LISTEN[p].re); return m ? Number(m[1] || 1935) : 0; };
+const pickProto = () => { proto = listening(soundRoom, 'srt') ? 'srt' : 'rtmp'; }; // show the address the room already has
+pickProto();
+function freePort(room, p) {
+  const used = new Set(S.stages.filter((x) => x.id !== room).map((x) => listening(x.id, p)).filter(Boolean));
+  let port = LISTEN[p].base;
+  while (used.has(port)) port++;
+  return port;
+}
+// The address OBS or vMix types in: this computer on the venue network, not "localhost" (unless that's all there is).
+function serverHost() {
+  const loop = /^(localhost|127\.0\.0\.1|\[::1\])$/i;
+  for (const u of [S.lanUrl, location.origin, S.tunnel?.state === 'on' ? '' : S.publicUrl]) {
+    try { const h = new URL(u).hostname; if (h && !loop.test(h)) return h; } catch { /* not set */ }
+  }
+  return '127.0.0.1';
+}
+const copyRow = (label, value) => `<label class="field">${esc(label)}<div class="copy"><input readonly value="${esc(value)}" /><button type="button" data-copy="${esc(value)}">${esc(t.copy)}</button></div></label>`;
+const steps3 = (list) => `<ol class="steps">${list.map((x) => `<li>${esc(x)}</li>`).join('')}</ol>`;
+function micBody() {
+  const l = roomLinks[soundRoom];
+  return `${steps3(t.micSteps)}
+    <div class="row-btns"><a href="/ingest.html?stage=${encodeURIComponent(soundRoom)}" target="_blank" rel="noopener"><button type="button" class="primary" tabindex="-1">${icon('mic')}<span>${esc(t.openHere)}</span></button></a><button type="button" data-sound="link">${icon('link')}<span>${esc(t.makeLink)}</span></button></div>
+    ${l ? `<div class="qrrow"><img src="/api/qr.svg?text=${encodeURIComponent(l.url)}" alt="${esc(t.linkQr)}" width="140" height="140" /><div class="u-stack8 u-minw0">${copyRow(t.makeLink, l.url)}<p class="hint u-m0">${esc(t.linkNote(l.until))}</p>${l.url.startsWith('http:') ? `<p class="err u-m0">${esc(t.linkHttp)}</p>` : ''}</div></div>` : ''}`;
+}
+function streamBody() {
+  if (!S.ffmpeg) return `<p class="hint u-m0">${esc(t.noFfmpeg)}</p>`;
+  const port = listening(soundRoom, proto), host = serverHost();
+  const cur = S.stages.find((x) => x.id === soundRoom)?.pull || '';
+  return `<div class="pills" role="radiogroup" aria-label="${esc(t.protoQ)}">${['rtmp', 'srt'].map((p) => `<button type="button" class="pill" role="radio" aria-checked="${proto === p}" aria-pressed="${proto === p}" data-proto="${p}">${esc(t[p])}</button>`).join('')}</div>
+    ${port ? `${steps3(proto === 'rtmp' ? t.rtmpSteps : t.srtSteps)}
+      ${proto === 'rtmp' ? copyRow(t.server, `rtmp://${host}:${port}/live`) + copyRow(t.key, soundRoom) : copyRow(t.address, `srt://${host}:${port}`)}
+      <p class="hint u-m0">${esc(t.sameNet(`${port}${proto === 'srt' ? '/udp' : ''}`))}</p>`
+    : `${cur ? `<p class="hint u-m0">${esc(t.replaces(cur))}</p>` : ''}<div class="row-btns"><button type="button" class="primary" data-sound="address">${icon('link')}<span>${esc(t.getAddr)}</span></button></div>`}`;
+}
+const recBody = () => `<div class="row-btns"><a href="${recordingUrl(soundRoom)}" target="_blank" rel="noopener"><button type="button" class="primary" tabindex="-1">${icon('film')}<span>${esc(t.recOpen)}</span></button></a></div>`;
+function renderSound() {
+  if (!S.stages.some((x) => x.id === soundRoom)) soundRoom = S.stages[0]?.id || ''; // rooms changed on the review step
+  const open = new Set([...$('audio').querySelectorAll('details[open]')].map((d) => d.dataset.k));
+  const card = (k, ic, title, desc, body) => `<details class="opt sound" data-k="${k}"${open.has(k) ? ' open' : ''}><summary><div class="ic">${icon(ic)}</div><div><b>${esc(title)}</b><span>${esc(desc)}</span></div><span class="chev">${icon('chevron')}</span></summary><div class="sound-body">${body}</div></details>`;
+  $('audio').innerHTML = (S.stages.length > 1 ? `<div><p class="q">${esc(t.whichRoom)}</p><div class="pills u-m0" role="radiogroup" aria-label="${esc(t.whichRoom)}">${S.stages.map((x) => `<button type="button" class="pill" role="radio" aria-checked="${x.id === soundRoom}" aria-pressed="${x.id === soundRoom}" data-room="${esc(x.id)}">${esc(x.name)}</button>`).join('')}</div></div>` : '')
+    + card('mic', 'mic', t.mic, t.micD, micBody())
+    + card('stream', 'monitor', t.stream, t.streamD, streamBody())
+    + card('rec', 'film', t.rec, t.recD, recBody())
+    + `<a class="opt" href="/demo.html?mode=mic" target="_blank" rel="noopener"><div class="ic">${icon('play')}</div><div><b>${esc(t.test)}</b><span>${esc(t.testD)}</span></div></a>`
+    + `<p class="hint u-m0"><a href="${RUNBOOK}" target="_blank" rel="noopener">${esc(t.more)}</a></p>`;
+}
+$('audio').addEventListener('click', async (e) => {
+  const b = e.target.closest('button');
+  if (!b) return;
+  if (b.dataset.room) { soundRoom = b.dataset.room; pickProto(); return renderSound(); }
+  if (b.dataset.proto) { proto = b.dataset.proto; return renderSound(); }
+  if (b.dataset.copy) {
+    try { await navigator.clipboard.writeText(b.dataset.copy); b.textContent = t.copied; setTimeout(() => { b.textContent = t.copy; }, 1500); } catch { b.previousElementSibling?.select(); }
+    return;
+  }
+  if (!b.dataset.sound) return; // the buttons inside links just open them
+  b.disabled = true;
+  try {
+    if (b.dataset.sound === 'link') {
+      const r = await api('POST', '/api/ingest/link', { stage: soundRoom });
+      roomLinks[soundRoom] = { url: r.url, until: new Date(Date.now() + r.expiresIn * 1000).toLocaleTimeString(LANG, { hour: '2-digit', minute: '2-digit' }) };
+    } else if (b.dataset.sound === 'address') {
+      await api('PATCH', `/api/stages/${encodeURIComponent(soundRoom)}`, { pull: LISTEN[proto].pull(freePort(soundRoom, proto), soundRoom) });
+      S = await api('GET', '/api/setup');
+    }
+    renderSound();
+  } catch (err) { fail(err); } finally { b.disabled = false; }
+});
+renderSound();
 
 // ---------- summary ----------
 function renderSummary() {
@@ -347,5 +473,6 @@ show(start >= 0 ? start : 0);
 // finishing this wizard later switches back to event mode.
 $('just-me').onclick = async () => {
   try { await api('PUT', '/api/setup', { done: true, mode: 'personal' }); } catch (err) { return fail(err); }
+  store.set('welcome.at', null);
   location.href = '/me.html';
 };

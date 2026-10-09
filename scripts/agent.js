@@ -117,6 +117,8 @@ function connect() {
       setTimeout(connect, 60000);
       return;
     }
+    // A drop, or 1012 "server restarting" (a restart never says 4000): back as soon as the server is. 1012 "room
+    // removed" is followed by 4004 on reconnecting.
     console.error(`connection closed (${code} ${reason || ''}); retrying in ${backoff / 1000}s`);
     setTimeout(connect, backoff);
     backoff = Math.min(backoff * 2, 15000);

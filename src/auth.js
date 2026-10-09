@@ -9,6 +9,8 @@
 //     the browser an HttpOnly, SameSite=Strict cookie. The password itself is never kept in the browser or put in
 //     a link. Sessions expire (SESSION_HOURS, default 24), are listed in Settings → Access, and each one can be
 //     signed out;
+//   • a room link (Screens and QR, the setup wizard): a single-use code that signs one browser in to send a room's
+//     audio and nothing else (a session with the 'ingest' role), so the room-computer password never has to travel;
 //   • a password in a header (Authorization: Bearer …) for scripts and room computers. The admin password is refused
 //     this way while two-factor sign-in is on: a leaked password alone must not be enough.
 //
@@ -28,7 +30,7 @@ const RANK = { ingest: 0, crew: 1, admin: 2 };
 
 /**
  * @typedef {{ role: 'admin' | 'crew' | 'ingest', via: 'off' | 'local' | 'session' | 'token', label: string, session?: Session }} Identity
- * @typedef {{ hash: string, pid: string, role: 'admin' | 'crew', device: string, via: string, createdAt: number, lastSeen: number, expiresAt: number, ip: string }} Session
+ * @typedef {{ hash: string, pid: string, role: 'admin' | 'crew' | 'ingest', device: string, via: string, createdAt: number, lastSeen: number, expiresAt: number, ip: string }} Session
  */
 
 // ---------------------------------------------------------------- sessions
@@ -54,7 +56,7 @@ export const cleanDevice = (s) => String(s || '').replace(/[\p{Cc}<>]/gu, '').tr
 
 /**
  * Start a session and return the Set-Cookie value.
- * @param {{ role: 'admin' | 'crew', device: string, via: string }} who
+ * @param {{ role: 'admin' | 'crew' | 'ingest', device: string, via: string }} who
  * @param {import('express').Request} req
  */
 export function createSession(who, req) {

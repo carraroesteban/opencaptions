@@ -153,11 +153,16 @@ export function openAudio(input, { realtime = true, loop = false, start = 0, via
     return out;
   }
   const proc = spawn(bin, ffmpegArgs(input, { realtime, loop, start }), { stdio: ['ignore', 'pipe', 'pipe'] });
-  proc.stdout.pipe(out);
+  // The output ends only once ffmpeg has exited, so a failure is an 'error' and never looks like the end of a file.
+  proc.stdout.pipe(out, { end: false });
   let err = '';
   proc.stderr.on('data', (b) => { err = (err + b.toString()).slice(-400); out.emit('log', b.toString().trim()); });
   proc.on('error', (e) => out.destroy(new Error(`ffmpeg failed to start: ${e.message}`)));
-  proc.on('close', (code) => { if (code && code !== 255 && !out.destroyed) out.destroy(new Error(`ffmpeg exited with code ${code}: ${err.trim()}`)); });
+  proc.on('close', (code) => {
+    if (out.destroyed) return;
+    if (code && code !== 255) out.destroy(new Error(`ffmpeg exited with code ${code}: ${err.trim()}`));
+    else out.end();
+  });
   out.stopAudio = () => { try { proc.kill('SIGKILL'); } catch { /* ignore */ } };
   return out;
 }
@@ -193,7 +198,10 @@ function openViaYtDlp(pageUrl, out, { start = 0 }) {
   return out;
 }
 
-/** Server-side ingest for a stage: pulls a URL/file and restarts it with backoff. */
+/**
+ * Server-side ingest for a stage: pulls a URL/file. A live stream is restarted with backoff whenever it drops or ends;
+ * a file plays once (or loops with `loop`), and only a failure is retried.
+ */
 export class PullSource {
   /**
    * @param {import('./stage.js').Stage} stage  the room that receives the audio
@@ -202,11 +210,12 @@ export class PullSource {
    * @param {boolean} [o.loop]      loop a file
    * @param {number}  [o.start]     start offset in seconds
    * @param {boolean} [o.realtime]  pace input at 1× (default: files yes, live streams no)
-   * @param {boolean} [o.once]      don't restart when the input ends (e.g. a YouTube video)
+   * @param {boolean} [o.once]      don't restart when the input ends (e.g. a YouTube video); files without loop never do
    * @param {string}  [o.label]     shown on the dashboard instead of the URL
    * @param {string | null} [o.via] 'ytdlp' to resolve a YouTube page first
+   * @param {() => void} [o.onFinish] called once when the input played to its end and won't restart
    */
-  constructor(stage, url, { loop = false, start = 0, realtime, once = false, label, via = null } = {}) {
+  constructor(stage, url, { loop = false, start = 0, realtime, once = false, label, via = null, onFinish } = {}) {
     this.via = via;
     this.firstData = new Promise((res, rej) => { this._resolveFirst = res; this._rejectFirst = rej; });
     this.firstData.catch(() => {}); // only the YouTube endpoint awaits it; never an unhandled rejection
@@ -215,8 +224,12 @@ export class PullSource {
     this.loop = loop;
     this.start = start;
     // Files (local or http(s) media files) are paced at 1×; live streams (SRT/RTMP/HLS) arrive in real time already.
-    this.realtime = realtime ?? (!isUrl(url) || /^https?:\/\/[^?#]+\.(mp3|mp4|m4a|aac|wav|webm|ogg|opus|flac|mkv|mov)([?#]|$)/i.test(url));
-    this.once = once;
+    this.file = !isUrl(url) || /^https?:\/\/[^?#]+\.(mp3|mp4|m4a|aac|wav|webm|ogg|opus|flac|mkv|mov)([?#]|$)/i.test(url);
+    this.realtime = realtime ?? this.file;
+    // A file that reaches its end has finished: playing it again would caption the same talk twice (and keep a paid
+    // AI session open). An http(s) file loops by being opened again (ffmpeg only loops local files).
+    this.once = once || (this.file && !loop);
+    this.onFinish = onFinish;
     this.label = label || url;
     this.token = Symbol('pull');
     this.stopped = false;
@@ -237,7 +250,12 @@ export class PullSource {
       this.src = null;
       this.stage.detachIngest({ token: this.token });
       if (this.stopped) return;
-      if (this.once && why === 'ended') { this.stage.log('info', 'pull finished'); this.stopped = true; return; }
+      if (this.once && why === 'ended') {
+        this.stage.log('info', this.file && !this.loop ? 'pull finished: the file played to the end (Repeat in loop is off)' : 'pull finished');
+        this.stopped = true;
+        this.onFinish?.();
+        return;
+      }
       this.stage.log('warn', `pull ${why}, retrying in ${this.backoff / 1000}s`);
       this.timer = setTimeout(() => this.#open(), this.backoff);
       this.backoff = Math.min(this.backoff * 2, 30000);

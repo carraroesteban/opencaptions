@@ -9,7 +9,7 @@ const T = {
     devices: 'Dispositivos con sesión iniciada',
     devicesHint: 'Cada sesión dura 24 horas. Si alguien perdió un dispositivo o dejó el equipo, cerrale la sesión.',
     thisOne: 'Este dispositivo',
-    viaSso: 'cuenta de la organización', viaPw: 'contraseña',
+    viaSso: 'cuenta de la organización', viaPw: 'contraseña', viaLink: 'enlace de la sala',
     active: (a) => `activo ${a}`,
     signOut: 'Cerrar sesión', signOutOthers: 'Cerrar todas las demás sesiones',
     signOutAsk: (d) => `¿Cerrar la sesión de “${d}”? Tendrá que volver a ingresar.`,
@@ -19,11 +19,11 @@ const T = {
     passwords: 'Contraseñas',
     pwAdmin: 'Administración', pwAdminD: 'Todo el panel, incluida la configuración.',
     pwCrew: 'Equipo', pwCrewD: 'Solo los controles en vivo: siguiente charla, renombrar, reconectar. Dásela a voluntarios y técnicos.',
-    pwIngest: 'Computadoras de las salas', pwIngestD: 'Para enviar el audio de cada sala. No abre el panel.',
+    pwIngest: 'Computadoras de las salas', pwIngestD: 'Para enviar el sonido de cada sala. No abre el panel. Más fácil: un enlace para cada computadora, desde Pantallas y QR.',
     change: 'Cambiar', fromEnv: 'definida en .env',
     changeAsk: (w) => `¿Cambiar la contraseña de ${w}? La actual deja de funcionar y se cierran las sesiones que la usaron.`,
     newPw: 'Nueva contraseña. Copiala ahora: no se vuelve a mostrar.', copy: 'Copiar', copied: 'Copiada',
-    ingestNote: 'Actualizala en cada computadora de sala (agente o página de audio).',
+    ingestNote: 'Actualizala en cada computadora de sala (agente o página de sonido). Las que entraron con un enlace de la sala siguen funcionando.',
     tfa: 'Verificación en dos pasos',
     tfaOn: 'Activada: la contraseña de administración también pide un código de la app de autenticación.',
     tfaOff: 'Desactivada. Activala para que una contraseña filtrada no alcance para entrar.',
@@ -45,7 +45,7 @@ const T = {
     devices: 'Signed-in devices',
     devicesHint: 'Each session lasts 24 hours. If someone lost a device or left the crew, sign it out.',
     thisOne: 'This device',
-    viaSso: 'company account', viaPw: 'password',
+    viaSso: 'company account', viaPw: 'password', viaLink: 'room link',
     active: (a) => `active ${a}`,
     signOut: 'Sign out', signOutOthers: 'Sign out every other device',
     signOutAsk: (d) => `Sign out “${d}”? It will have to sign in again.`,
@@ -55,11 +55,11 @@ const T = {
     passwords: 'Passwords',
     pwAdmin: 'Admin', pwAdminD: 'The whole dashboard, setup included.',
     pwCrew: 'Crew', pwCrewD: 'Live controls only: next talk, rename, reconnect. Give it to volunteers and technicians.',
-    pwIngest: 'Room computers', pwIngestD: 'For sending each room’s audio. It doesn’t open the dashboard.',
+    pwIngest: 'Room computers', pwIngestD: 'For sending each room’s sound. It doesn’t open the dashboard. Easier: a link for each computer, from Screens and QR.',
     change: 'Change', fromEnv: 'set in .env',
     changeAsk: (w) => `Change the ${w} password? The current one stops working, and devices signed in with it are signed out.`,
     newPw: 'New password. Copy it now: it won’t be shown again.', copy: 'Copy', copied: 'Copied',
-    ingestNote: 'Update it on every room computer (agent or audio page).',
+    ingestNote: 'Update it on every room computer (agent or sound page). Those that opened a room link keep working.',
     tfa: 'Two-factor sign-in',
     tfaOn: 'On: the admin password also needs a code from an authenticator app.',
     tfaOff: 'Off. Turn it on so a leaked password isn’t enough to get in.',
@@ -112,8 +112,8 @@ export function accessPanel(el, { api, confirm, toast, me }) {
       <h4>${esc(t.devices)}</h4>
       <p class="cx-fine">${esc(who.via === 'local' ? t.local : t.devicesHint)}</p>
       <div class="ax-list">${sessions.length ? sessions.map((x) => `<div class="ax-row">
-          ${icon(x.role === 'crew' ? 'headphones' : 'shield')}
-          <span><b>${esc(x.device)}</b><small>${esc(x.role === 'crew' ? t.pwCrew : t.pwAdmin)} · ${esc(x.via === 'sso' ? t.viaSso : t.viaPw)} · ${esc(t.active(ago(x.lastSeen)))}</small></span>
+          ${icon(x.role === 'ingest' ? 'mic' : x.role === 'crew' ? 'headphones' : 'shield')}
+          <span><b>${esc(x.device)}</b><small>${esc(names[x.role] || t.pwAdmin)} · ${esc(x.via === 'sso' ? t.viaSso : x.via === 'link' ? t.viaLink : t.viaPw)} · ${esc(t.active(ago(x.lastSeen)))}</small></span>
           ${x.current ? `<span class="chip ok">${esc(t.thisOne)}</span>` : `<button type="button" data-ax="out" data-id="${esc(x.id)}" data-name="${esc(x.device)}">${esc(t.signOut)}</button>`}
         </div>`).join('') : `<p class="cx-fine">${esc(t.none)}</p>`}</div>
       ${others.length ? `<div class="cx-row"><button type="button" class="cx-link" data-ax="others">${esc(t.signOutOthers)}</button></div>` : ''}

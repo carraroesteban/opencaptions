@@ -39,6 +39,8 @@ See [Local mode → Troubleshooting](../local.md#troubleshooting) for the speech
 | Company sign-in: "started in another browser" or "expired" | The sign-in was finished in a different browser, or took over 10 minutes | Start again from the same browser |
 | Company sign-in: the provider says the redirect address doesn't match | The callback registered with the provider differs from the server's public address | Register `https://<public address>/auth/oidc/callback`, or set `OIDC_REDIRECT_URI` |
 | Agent or ingest page: `bad ingest token` | Wrong or old room password | Use the current ingest password (the admin and crew ones also work). Changed it in Settings → Access? Update every room computer. |
+| Sound page: "This computer can’t send sound yet" or "needs the room link or the password" | A computer other than the server, not signed in | Open a room link from **Screens and QR → Computer next to the stage** (works once, 30 minutes), or type the room computer password |
+| Sound page: "This link was already used or is more than 30 minutes old" | Room links work once | Make a new one in **Screens and QR**. A browser that is already signed in (or the server computer) doesn't use a link up. |
 | `HTTP 403` when opening the dashboard or ingest socket | The page's origin doesn't match the server host (a custom domain or embed) | Set `PUBLIC_URL`, or add the origin to `ALLOWED_ORIGINS` |
 | `HTTP 429 too many failed attempts` | 20 wrong passwords from one address within 10 minutes | Wait 10 minutes or restart the server. Then fix the password. |
 | Scripts get 401 inside Docker, or after turning on two-factor | Requests from the host aren't local in Docker; with two-factor on, the admin password alone opens nothing | Run the script on the server computer (inside the container: `docker compose exec opencaptions node scripts/…`), or turn off two-factor while you use it |
@@ -52,7 +54,7 @@ See [Local mode → Troubleshooting](../local.md#troubleshooting) for the speech
 | Browser ingest: microphone blocked | Page isn't HTTPS or localhost | Use the HTTPS URL ([Deployment](../deployment.md#https)) |
 | Captions only for one speaker in a panel | The desk sends mics on different channels | Use `--channel mix` or fix the desk bus |
 | Pull refused: `private/loopback address` | HTTP pull from a LAN host is blocked by default | Set `PULL_ALLOW_PRIVATE=1` if the source is trusted, or use SRT |
-| Pull refused: `local files must be inside samples/ or MEDIA_DIR` | File path outside the allowed folders | Move the file, or set `MEDIA_DIR` |
+| Room audio address refused: `OpenCaptions only plays files from its samples folder` | File path outside the allowed folders | Copy the file into `samples/` and write `samples/<name>`, or add its folder to `MEDIA_DIR`. For a file on your own computer, use the room's sound page → **A recording** instead. |
 | YouTube demo: `no audio after 25 s` | `yt-dlp` missing, outdated or rate-limited | `brew upgrade yt-dlp` or `pip install -U yt-dlp`. Retry with fewer rooms. |
 
 ## Captions

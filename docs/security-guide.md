@@ -61,6 +61,7 @@ flowchart LR
 |---|---|
 | Anyone | Read room names, captions, the glossary, the current talk's transcript (configurable), QR codes and `/healthz` |
 | Holder of `INGEST_TOKEN` | Send audio to any room |
+| Whoever opens an unused room link first | The same as `INGEST_TOKEN`, in that one browser, until its session expires or is signed out |
 | Holder of `CREW_TOKEN`, or a crew account (company sign-in) | The live controls and reading the dashboard; never the setup |
 | Holder of `ADMIN_TOKEN` (plus a two-factor code, when on), or an admin account | Everything, including sending audio |
 | A process on the server host (`AUTH=auto`) | Everything, without a token. Anyone who can run code on the host can already read `.env`. |
@@ -127,7 +128,9 @@ Three passwords, each with its own job:
 | **Crew** (`CREW_TOKEN`) | The dashboard's live controls only: start the next talk, rename the current one, reconnect a room, stop a pull, the offline-backup switch; reading the status, transcripts and history. Never the setup, Settings or Event mode. | Volunteers and technicians |
 | **Ingest** (`INGEST_TOKEN`) | Sending a room's audio. It doesn't open the dashboard. | Room computers |
 
-Any that isn't set is generated on first start (24 random characters), stored in `data/secrets.json` (file mode 600) and printed in the startup screen. **Settings → Access → Passwords** changes a generated one: the new value is shown once, the old one stops working, and every device signed in with it is signed out. One set in `.env` is changed there, followed by a restart.
+Any that isn't set is generated on first start (24 random characters), stored in `data/secrets.json` (file mode 600) and printed in the startup screen.
+
+**Room links** spare room computers the ingest password. An admin makes one in **Screens and QR → Computer next to the stage** (or the wizard's step 7): `https://<server>/ingest.html?stage=<room>&link=<code>`, also as a QR code. Opening it signs that one browser in with a session that can send audio and nothing else (no dashboard, no status, no setup). The code is random (144 bits), works **once**, expires after **30 minutes**, is kept only as a hash in memory (a restart voids unused ones), and leaves the address bar as soon as the page reads it. A browser that can already send audio doesn't use it up. Each link made is recorded in the History, and the session it creates is listed in **Settings → Access → Signed-in devices** as "Room computer · <room>", where it can be signed out. Like the ingest password, it isn't tied to one room. Treat an unused link like the password: send it only to the person at that computer, and make a new one if it leaked. **Settings → Access → Passwords** changes a generated one: the new value is shown once, the old one stops working, and every device signed in with it is signed out. One set in `.env` is changed there, followed by a restart.
 
 ### Signing in
 

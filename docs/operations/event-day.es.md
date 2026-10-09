@@ -38,7 +38,7 @@ Objetivo: **cero operadores dedicados durante las charlas**. Una persona de prod
 3. **Contraseñas e ingreso.** La computadora del server no pide contraseña; cualquier otro dispositivo ingresa al panel con una. Hay tres, y la ventana de OpenCaptions las muestra al arrancar (o definilas vos con `ADMIN_TOKEN`, `CREW_TOKEN` e `INGEST_TOKEN`):
    - **Administración** (`Admin token`): todo el panel. Solo para la organización. Activá la **verificación en dos pasos** en Ajustes → Acceso.
    - **Equipo** (`Crew token`): para voluntarios y técnicos. Solo maneja los controles en vivo (siguiente charla, renombrar, quién habla, reconectar); no puede cambiar ni borrar la configuración.
-   - **Computadoras de las salas** (`Ingest token`): para mandar el audio; no abre el panel.
+   - **Computadoras de las salas** (`Ingest token`): para mandar el sonido; no abre el panel. Casi nunca hace falta: en **Pantallas y QR → Computadora junto al escenario**, **Crear un enlace para esa computadora** da un enlace (y un QR) que sirve una vez, por 30 minutos, y deja a esa computadora enviar el sonido de la sala sin escribir ninguna contraseña.
 
    **Ajustes → Acceso** muestra qué dispositivos tienen sesión iniciada (y permite cerrarlas) y cambia las contraseñas. El público, el proyector y el overlay **no** necesitan contraseña.
 4. **Alertas en el celular:** Ajustes → Alertas → **App ntfy** (gratis, dos minutos): seguí los pasos y tocá **Guardar y probar**. Avisa si una sala se queda sin sonido, si la IA falla, si una charla se pasa 5 minutos o si se corta internet.
@@ -130,8 +130,9 @@ Con las alertas en el celular configuradas, las que duran te llegan estés donde
 
 | Alerta | Qué significa | Acción |
 |---|---|---|
-| **SIN INGESTA** | La PC de la sala no está mandando audio | Revisar el agente o que `/ingest.html` esté abierto. Con autostart vuelve sola tras un reinicio. |
-| **no llega audio** | Hay conexión pero no llega sonido | La red de la PC; reiniciar el agente o recargar `/ingest.html`. |
+| **SIN SONIDO** | La computadora de la sala no está mandando sonido | Revisar el agente o que la página de sonido de la sala esté abierta (en la tarjeta: **Abrir la página de sonido**). Con «Empezar solo al abrir esta página» vuelve sola tras un reinicio. |
+| **ESPERANDO EL STREAM** | La sala espera el sonido de OBS o vMix y no llega nada | Empezar a transmitir a la dirección de la sala (en la tarjeta: **Ver la dirección**). |
+| **no llega audio** | Hay conexión pero no llega sonido | La red de la computadora; reiniciar el agente o recargar la página de sonido. |
 | **¿mic muteado?** | 60 s de señal casi nula | Fader de la consola, cable o entrada equivocada. |
 | **reconectando IA** | La sesión de Gemini se está reconectando | Esperar ~5 s; si persiste, **Ver detalles → Reconectar IA**. El audio queda en buffer (12 s). |
 | **latencia alta** | Transcripción más de 6 s atrás | Normal unos segundos tras reconectar; si persiste, **Reconectar IA** y revisar la red del server. |

@@ -48,13 +48,13 @@ A shorter Spanish version for venue crews is in [event-day.es.md](event-day.es.m
 
 ## Two hours before: set up each room
 
-Choose one audio path per room:
+Choose one audio path per room. The setup wizard's last step (**Settings → Open the wizard**, or **See the address** on a room's card) walks through A and C on screen.
 
 | Option | When | Per-room hardware |
 |---|---|---|
-| **A. Pull the stream** | The desk already feeds vMix or OBS | None. **Dashboard → Rooms → Edit → Audio pull**: `rtmp://0.0.0.0:1935/live/<room>` and point OBS/vMix at it (*Stream → Custom → `rtmp://<server>:1935/live`*, key `<room>`), or `srt://…` / `https://…m3u8`. An HLS stream on the LAN needs `PULL_ALLOW_PRIVATE=1`. |
+| **A. OBS or vMix stream** | The desk already feeds vMix or OBS | None. In the wizard's step 7, **OBS, vMix or another streaming app → Get an address for this room** sets the room up and shows the server and stream key to paste (*OBS: Settings → Stream → Service: Custom*; *vMix: Outputs / Streaming → Custom RTMP Server*), or an SRT address. Each room gets its own port (RTMP from 1935, SRT from 9001). By hand: **Dashboard → Rooms → Edit → Sound from a stream or a file**: `rtmp://0.0.0.0:1935/live/<room>`, `srt://0.0.0.0:9001?mode=listener` or `https://…m3u8` (an HLS stream on the LAN needs `PULL_ALLOW_PRIVATE=1`). |
 | **B. Headless agent** (recommended with a PC) | Audio arrives by cable at a PC | Mini PC running `scripts/agent.js` as a service, with no browser |
-| C. Browser ingest page | Quick or emergency setup | Any PC with Chrome |
+| C. Browser sound page | Quick or emergency setup | Any PC with Chrome |
 
 **B. Headless agent:**
 
@@ -68,10 +68,10 @@ Install it as a service so it survives reboots ([Deployment](../deployment.md#ru
 - `--channel left|right` when the desk sends different content on each channel.
 - `--gain 1.5` for a quiet feed.
 
-**C. Browser page:**
+**C. Browser sound page:**
 
-1. Open `https://<server>/ingest.html?stage=<room>&token=<INGEST_TOKEN>` in Chrome. The room computer keeps the password and removes it from the address bar; the audio connection uses a one-minute ticket, never the password.
-2. Choose the input and channel, and tick **Auto-start**.
+1. On the server computer, open the room's card → **Open the sound page**. On another computer, open a room link: **Dashboard → Screens and QR → Computer next to the stage → Make a link for that computer** (or **Link for another computer** in the wizard), then open it there or scan its QR code. The link works once, for 30 minutes, and signs that browser in to send sound only (it's listed in **Settings → Access** and can be signed out there); no password travels. Without a link, `https://<server>/ingest.html?stage=<room>&token=<INGEST_TOKEN>` still works: the room computer keeps the password and removes it from the address bar. Either way the audio connection uses a one-minute ticket, never the password.
+2. Choose the input and channel, and tick **Start by itself when this page opens**.
 3. For an unattended kiosk, run:
 
    ```
@@ -140,7 +140,8 @@ With **alerts on your phone** set up (Settings → Alerts), the ones that last r
 
 | Alert | Meaning | Action |
 |---|---|---|
-| **No ingest** | The room isn't sending audio | Check the agent service or the ingest page. After a reboot, autostart brings it back. |
+| **No sound yet** | The room isn't sending audio | Check the agent service or the room's sound page (the card's **Open the sound page**). After a reboot, autostart brings it back. |
+| **Waiting for the stream** | The room expects OBS or vMix, and nothing is streaming to it | Start streaming to the room's address (the card's **See the address**). |
 | **No audio** | Connected, but no audio packets arriving | Check the venue PC's network. Restart the agent or reload the page. |
 | **Muted?** | 60 s of near-silence | Check the desk fader, the cable and the selected input. |
 | **Reconnecting** | The Gemini session is reconnecting | Wait about 5 s. If it persists, open the room's details and press **Reconnect AI**. Audio is buffered for 12 s. |

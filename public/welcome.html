@@ -66,6 +66,24 @@
     .opt b { display: block; font-size: 16px; }
     .opt span { font-size: 14px; color: var(--fg2); }
     .opt.good .ic { background: var(--primary-bg); color: var(--primary-fg); }
+    /* Step 7: each way to connect the sound opens in place, with its steps, its address or link, and a QR code. */
+    details.opt.sound { display: block; padding: 0; }
+    details.sound:hover { border-color: var(--line-strong); }
+    details.sound > summary { display: grid; grid-template-columns: 40px minmax(0, 1fr) 20px; gap: 14px; align-items: start; padding: 16px 18px; cursor: pointer; list-style: none; border-radius: 16px; }
+    details.sound > summary::-webkit-details-marker { display: none; }
+    details.sound > summary:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+    details.sound .chev { align-self: center; color: var(--fg2); transition: transform var(--dur) var(--ease); }
+    details.sound[open] .chev { transform: rotate(180deg); }
+    .sound-body { display: grid; gap: 12px; padding: 0 18px 18px 72px; font-size: 15px; }
+    .sound-body span { font-size: inherit; color: inherit; }
+    @media (max-width: 600px) { .sound-body { padding-left: 18px; } }
+    .steps { margin: 0; padding-left: 20px; display: grid; gap: 6px; line-height: 1.45; }
+    .row-btns { display: flex; flex-wrap: wrap; gap: 8px; }
+    .copy { display: flex; gap: 6px; }
+    .copy input { flex: 1; min-width: 0; font-family: var(--mono); font-size: 13px; }
+    .qrrow { display: grid; grid-template-columns: 140px minmax(0, 1fr); gap: 16px; align-items: center; }
+    .qrrow img { width: 140px; height: auto; background: #fff; border-radius: 10px; padding: 4px; border: 1px solid var(--line); }
+    @media (max-width: 600px) { .qrrow { grid-template-columns: minmax(0, 1fr); } }
     pre.cmd { margin: 8px 0 0; background: var(--ink); color: var(--paper); border-radius: 10px; padding: 9px 12px; font-size: 13px; overflow-x: auto; }
     pre.cmd code { background: none; color: inherit; padding: 0; font-size: inherit; } /* the shared inline-code chip is light in light mode */
 

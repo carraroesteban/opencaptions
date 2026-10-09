@@ -52,6 +52,8 @@ else answers `403` with `{ "role": "crew" }`. Unauthenticated calls answer `401`
 | Everything else: rooms, agenda, glossary, setup, Event mode, undo, AI key, public address, every transcript in one `.zip`, `/api/auth/sessions`, `/api/auth/passwords`, `/api/auth/2fa/*` | Admin |
 | `POST /api/ingest/ticket` | Ingest, crew or admin password (in a header), or a session. Returns `{ ticket, expiresIn: 60 }`: a single-use ticket for `WS /ws/ingest?ticket=…`, so browsers on room computers never put the password in a URL. |
 | `WS /ws/ingest` | A ticket (`?ticket=`), a password in the `Authorization` header (the agent), or a session. A password in the URL (`?token=`) is refused on sockets. |
+| `POST /api/ingest/link` | Admin. Body `{ "stage": id }`. Returns `{ url, expiresIn: 1800 }`: a room link, `<public address>/ingest.html?stage=<id>&link=<code>`, for a computer next to the stage. The code works once, for 30 minutes; only its hash is kept, in memory. Recorded in the History (`auth.link`). |
+| `POST /api/ingest/link/use` | Public, same origin only. Body `{ "link": code }`. Signs this browser in with an **ingest** session (cookie as for sign-in, device "Room computer · <room>", `via: "link"`): it can get tickets and send audio, nothing else, and is listed in `/api/auth/sessions`. `{ ok: true, stage }`; `{ ok: true, already: true }` without using the code when the browser can already send audio (the server computer, a signed-in dashboard); `401` for a used, unknown or expired code (counted as a failed sign-in). |
 | `WS /ws/view` | Public — no auth |
 
 ```bash
@@ -180,8 +182,8 @@ required and immutable on create):
 | `source` | string | `"auto"` (default) or a BCP-47-ish code (`^[a-z]{2,3}(-[A-Za-z0-9]{2,8})?$`) — the language the room is spoken in. |
 | `targets` | string[] | 1–8 language codes to translate into. Defaults to the event's `defaultTargets`. |
 | `translation` | string | `"text"` \| `"live"` \| `"hybrid"`, or omit to use the server default (`TRANSLATION_MODE`). |
-| `pull` | string | Audio source URL/path the server pulls with ffmpeg (`srt://`, `rtmp://`, `https://…`, or a file under `samples/`/`MEDIA_DIR`). Empty string stops an active pull. Validated with the same SSRF checks as the YouTube endpoint (see [Security](../security-guide.md)). |
-| `loop` | boolean | Loop a file-based `pull`. |
+| `pull` | string | Audio source URL/path the server pulls with ffmpeg (`srt://`, `rtmp://`, `https://…`, or a file under `samples/`/`MEDIA_DIR`). Empty string stops an active pull. A live stream is reconnected whenever it drops or ends; a file (a local path, or an `http(s)` URL ending in a media extension such as `.mp3` or `.wav`) plays once unless `loop` is on: at its end the room log says `pull finished`, the room has no audio source, and `pull` goes back to `""` (saved), so a restart doesn't play it again. Validated with the same SSRF checks as the YouTube endpoint (see [Security](../security-guide.md)). |
+| `loop` | boolean | Loop a file-based `pull`. Without it, the file plays once. |
 | `roomSound` | boolean | `true`: phones can play the room's own sound (assistive listening, `/ws/view?audio=orig`). Default off. **Anyone with the room's address can then listen**, from anywhere. |
 | `roomSoundMax` | integer | 1–5000. How many phones may play the room's sound at once. Default `ROOM_SOUND_MAX` (100). |
 | `vocabulary` | string[] | ≤ 500 terms, biases speech recognition for this room (merged with the global glossary). |
@@ -403,6 +405,20 @@ reading straight from each track's buffer). `talks/:talk`, `summary` and `ask` s
 current talk (`talkInfo` finds no metadata for it), but `export.:fmt` has no such check — asking it for a
 `talk=` id that isn't the current one returns an **empty** file (`200`) rather than `404`.
 
+### Caption a recording
+
+An audio or video file becomes a transcript of a room, much faster than real time (see [Caption a recording](../recording.md)). Admin only. Refusals carry a `code` besides `error`: `too-big` (413), `not-media` and `no-audio` (415), `no-ffmpeg` (503), `busy` (429, four uploads or jobs already open), `offset` (409, with the `size` received so far), `no-speech`, `asr-down` and `quota` (in a failed job).
+
+| Method & path | Auth | Notes |
+|---|---|---|
+| `POST /api/recordings` | Admin | `{ name, size }` → a new upload: `{ id, state: "uploading", chunkBytes, … }`. |
+| `PUT /api/recordings/:id/data?offset=N` | Admin | The next piece of the file as the request body (`application/octet-stream`, at most `chunkBytes`, 16 MB), at byte `offset`. After the last one ffmpeg checks the file, and the answer is the job in state `ready` with `durationMs`, `estimate` (`seconds`, `usd` with Gemini) and `rates` (to redo the estimate for other languages). |
+| `POST /api/recordings/:id/start` | Admin | `{ room, source: "auto" \| code, targets: [codes], title }`. `room` may be empty (API only): the captions are then kept only in memory for two hours, for `export` below. One job runs at a time; the next ones are `queued`. |
+| `GET /api/recordings/:id` | Admin | `state` (`ready`, `queued`, `running`, `done`, `failed`, `canceled`), `phase` (`decode`, `transcribe`, `translate`, `save`), `progress` (0–1), `etaMs`, `lang` (heard), `captions`, `costUsd`, `elapsedMs`, `error`/`code`, and `talk: { stage, id }` once saved. |
+| `GET /api/recordings` | Admin | `{ engine, maxMb, chunkBytes, rates, jobs }`: uploads and jobs of the last two hours. |
+| `DELETE /api/recordings/:id` | Admin | Cancel it, or throw away an upload; its temporary files are deleted. |
+| `GET /api/recordings/:id/export.:fmt?lang=` | Admin | `srt`, `vtt`, `txt` or `json` of a finished job, with or without a room. Saved transcripts also export as usual with `export.:fmt` above. |
+
 ### Audience AI (summaries & ask)
 
 "What did I miss?" and "ask the talk" (`src/assist.js`) — grounded in the transcript only, answered in the
@@ -501,7 +517,7 @@ curl -X POST http://localhost:8080/api/stages/main/ask \
 | Method | Path | Auth | Description |
 |---|---|---|---|
 | `GET` | `/api/instance` | none | `{ "id" }`: names this server's data folder (`data/instance.json`). Pages compare it with the one the browser remembered its choices for, and forget them when it changed (a fresh start, or a deleted `data/`). |
-| `GET` | `/api/setup` | crew | First-run state for the welcome wizard: `done`, `locked`, event `name` and `named` (`false` until someone names the event), `languages` (event.json's, minus the ones removed and plus the ones added from the dashboard), `addedLanguages`, `builtInLanguages` (event.json's codes), `removedLanguages`, `mode` (`event` or `personal`: Just for me), `eventDone` (`true` once the wizard was finished for an event), `publicTranscripts` and `publicTranscriptsFixed` (`true` when `PUBLIC_TRANSCRIPTS` is set in the environment), `defaultTargets`, `stages` (`id`, `name`, `source`, `targets`), `engine`, `primaryEngine`, `failover`, `ai` (see below), `tunnel` (see below), `tunnelTokenSaved`, `tunnelMoved` (`true` when the free address differs from the one used before the last restart, so printed QR codes are out of date), `publicUrl` (the address QR codes use for this request), `publicUrlSource` (`config` = `PUBLIC_URL` / `publicUrl`, `tunnel`, or `auto` = the address the page was opened with, or this computer's Wi-Fi address instead of `localhost`), `lanUrl` and `port`. |
+| `GET` | `/api/setup` | crew | First-run state for the welcome wizard: `done`, `locked`, event `name` and `named` (`false` until someone names the event), `languages` (event.json's, minus the ones removed and plus the ones added from the dashboard), `addedLanguages`, `builtInLanguages` (event.json's codes), `removedLanguages`, `mode` (`event` or `personal`: Just for me), `eventDone` (`true` once the wizard was finished for an event), `publicTranscripts` and `publicTranscriptsFixed` (`true` when `PUBLIC_TRANSCRIPTS` is set in the environment), `defaultTargets`, `stages` (`id`, `name`, `source`, `targets`, `pull`: the room's stream or file, redacted for the crew), `ffmpeg` (`true` when ffmpeg is available, so OBS or vMix can stream a room's sound in), `engine`, `primaryEngine`, `failover`, `ai` (see below), `tunnel` (see below), `tunnelTokenSaved`, `tunnelMoved` (`true` when the free address differs from the one used before the last restart, so printed QR codes are out of date), `publicUrl` (the address QR codes use for this request), `publicUrlSource` (`config` = `PUBLIC_URL` / `publicUrl`, `tunnel`, or `auto` = the address the page was opened with, or this computer's Wi-Fi address instead of `localhost`), `lanUrl` and `port`. |
 | `PUT` | `/api/setup` | admin | Body `{ "name"?: string, "done"?: boolean, "mode"?: "event" \| "personal", "timezone"?: string, "languages"?: { code: name }, "removedLanguages"?: [code], "publicTranscripts"?: "current" \| "all" \| "none" }`. Renames the event (1–80 characters), marks the wizard as finished, switches between an event and Just for me, sets the agenda's time zone, replaces the languages added from the dashboard (up to 40) and the ones of `config/event.json` that aren't offered (`400` for other codes, or when no language would be left), and sets who can read transcripts (`409` when `PUBLIC_TRANSCRIPTS` fixes it). A language a room still uses can't go: `409` with `{ "code": "language-in-use", "rooms": [names], "languages": [names] }`. Everything is validated before anything changes. Saved in `data/setup.json`; the name overrides `eventName` from `config/event.json`. All but `done` and `mode: "event"` answer `423` in Event mode (switching to Just for me would take the event offline). |
 | `POST` | `/api/lock` | admin | Event mode. Body `{ "locked": true \| false }`. While locked, the setup endpoints below answer `423 Locked` with `{ "locked": true }`: creating, changing (except the current talk's `title`) and deleting rooms, `PUT /api/schedule`, `PUT /api/glossary`, renaming the event and undoing changes. Live operations keep working: `POST /api/stages/:id/talk`, `/restart`, `/youtube`, the pull controls and `POST /api/engine`. Recorded in the history. |
 | `GET` | `/api/history` | crew | `{ "locked", "changes": [...], "trash": [...] }`. `changes` are the latest setup changes, newest first: `{ id, at, kind, target, summary, before, after, undoes?, undone }` (`kind`: `room.create`, `room.update`, `room.delete`, `agenda.set`, `glossary.set`, `event.rename`, `engine.mode`, `event.lock`, `ai.key`, `tunnel`, `auth.signin`, `auth.signout`, `auth.password`, `auth.2fa`; `by` is who made it: the signed-in device's name, the work account, `this computer` or `admin password (script)`; agenda and glossary snapshots are summarized as counts). `trash` lists deleted rooms that haven't been restored: `{ id, at, room }`. |
@@ -669,8 +685,10 @@ On replacement, just before closing:
 { "type": "replaced", "why": "replaced by a new ingest" }
 ```
 
-**Close codes**: `4004` unknown stage · `4001` bad token · `4000` replaced by a newer ingest connection ·
-`1011` unexpected server error while attaching.
+**Close codes**: `4004` unknown stage · `4001` bad token · `4000` replaced by a newer ingest connection (only
+then: stop, don't fight for the room) · `1012` the server is restarting (reason `server restarting`) or the room was
+removed (reason `room removed`): reconnect with backoff, as after a dropped connection; after a restart the room is
+back, after a removal reconnecting gets `4004` · `1011` unexpected server error while attaching.
 
 Minimal Node.js ingest client (`ws` package):
 
@@ -912,7 +930,7 @@ No `HELP`/`TYPE` metadata lines are emitted — just metric samples, one per lin
 
 All served from `public/` at the root path (e.g. `public/watch.html` → `/watch` or `/watch.html`). Every
 page also accepts a global `?ui=es|en|pt` to force the UI language (persisted in `localStorage`), and
-`admin.html`/`welcome.html` accept a one-time `?token=`, exchanged for a session and stripped from the URL; `ingest.html` accepts one that is kept on that room computer (and sent in a header for a ticket, never in the socket URL).
+`admin.html`/`welcome.html` accept a one-time `?token=`, exchanged for a session and stripped from the URL; `ingest.html` accepts one that is kept on that room computer (and sent in a header for a ticket, never in the socket URL), or a room link's `?link=` (see `POST /api/ingest/link/use`), used once and stripped from the URL.
 
 | Page | Purpose | Query parameters |
 |---|---|---|
@@ -920,7 +938,7 @@ page also accepts a global `?ui=es|en|pt` to force the UI language (persisted in
 | `/watch.html` | Audience caption view (phone-optimized), the `/s/:id` short-link target. A *What did I miss?* sheet answers that and questions about the talk ([Audience AI](#audience-ai-summaries--ask)); an Aa sheet holds text size/font/line-spacing/theme; the transcript button opens the full transcript on `/talk.html`; the floating-captions button keeps them in an always-on-top window (desktop). Lines show the speaker's name when it changes. No download control here — that lives on `/talk.html`. | `stage` (required), `lang` |
 | `/talk.html` | Full transcript reader for one talk: search, per-paragraph timestamps (click to jump), a download menu (TXT/SRT/VTT), live-follows the talk in progress, names speakers, and the same summary/ask panel as `/watch.html`. | `stage` (required), `talk` (a saved talk id, or omit/`current` for the room's current talk), `lang` |
 | `/talks.html` | Public library of talks across every room ([`GET /api/talks`](#transcripts--exports)), searchable/filterable by room, links into `/talk.html`. | — |
-| `/ingest.html` | Browser-based audio ingest for a stage PC (mic / tab-share / file / bundled sample). | `stage`, `mode` (`mic`\|`tab`\|`file`\|`sample`), `autostart=1` |
+| `/ingest.html` | The room's sound page: sends a room's sound from a computer next to the stage (microphone or sound card / another tab / a recording / a sample talk). | `stage`, `mode` (`mic`\|`tab`\|`file`\|`sample`), `autostart=1`, `link` (a room link) |
 | `/admin.html` | Production dashboard: live rooms, rooms, agenda, glossary, screens and QR, transcripts, History, Settings (Event mode, access, alerts, Gemini, public address). The crew sees the live controls only. | `dashboard` (skip the first-run redirect to the wizard). Other devices sign in. |
 | `/welcome.html` | The welcome wizard: event name, rooms, languages, the API key, the public address; a review lists every change before applying it. Admins only. | — |
 | `/report.html` | The event report ([`GET /api/report`](#event-report)), printable, with a CSV download. Crew or admin. | `day` (`YYYY-MM-DD`) |
