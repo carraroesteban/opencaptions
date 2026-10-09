@@ -184,6 +184,21 @@ test('who can read transcripts is set from the dashboard', async () => {
   assert.equal((await put('current')).status, 200);
 });
 
+test('the speech model is chosen from the dashboard, saved, and can be undone', async (t) => {
+  const put = (v) => fetch(`${base}/api/setup`, { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ speechModel: v }) });
+  const setup = async () => (await fetch(`${base}/api/setup`)).json();
+  if ((await setup()).speechModelFixed) return t.skip('TRANSCRIBE_MODEL is set in .env');
+  assert.equal((await setup()).speechModel, 'transcribe', 'Transcribe Live by default');
+  assert.equal((await put('cheap')).status, 400);
+  const r = await (await put('translate')).json();
+  assert.equal((await setup()).speechModel, 'translate');
+  assert.equal(JSON.parse(fs.readFileSync(path.join(dataDir, 'setup.json'), 'utf8')).transcribeModel, '');
+  assert.ok(r.change, 'recorded in the change log');
+  assert.equal((await fetch(`${base}/api/history/${r.change}/undo`, { method: 'POST' })).status, 200);
+  assert.equal((await setup()).speechModel, 'transcribe');
+  assert.equal(JSON.parse(fs.readFileSync(path.join(dataDir, 'setup.json'), 'utf8')).transcribeModel, 'gemini-3.5-transcribe-live');
+});
+
 test('“ask the talk” is limited per browser, not per venue IP', async () => {
   const ask = (client) => fetch(`${base}/api/stages/main/ask`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ question: 'what was said?', lang: 'en', client }) });
   for (let i = 0; i < 6; i++) await ask('phone-one-1234');

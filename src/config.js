@@ -80,6 +80,9 @@ export const config = {
   // Delete stored transcripts older than N days (0 = keep forever).
   retentionDays: Number(env.RETENTION_DAYS || 0),
   model: env.GEMINI_MODEL || event.model || 'gemini-3.5-live-translate-preview',
+  // Text-mode rooms transcribe with Transcribe Live: about $0.54 per room-hour, no translated voice 🎧.
+  // 'off' (or empty) uses GEMINI_MODEL (Live Translate) instead: about $2.21, with the translated voice.
+  transcribeModel: String(env.TRANSCRIBE_MODEL ?? event.transcribeModel ?? 'gemini-3.5-transcribe-live').replace(/^off$/i, ''),
   ingestToken: env.INGEST_TOKEN || '',
   adminToken: env.ADMIN_TOKEN || '',
   // The crew's password: the dashboard's live controls only (next talk, restart a room…), never the setup.

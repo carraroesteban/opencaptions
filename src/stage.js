@@ -14,8 +14,9 @@ import { VoiceDetector } from './voice.js';
 const PREROLL_CHUNKS = 6; // 600 ms kept while gated, so the first words aren't clipped
 const PREROLL_MUSIC = 40; // after music: telling a voice from music takes a few seconds, so keep 4 s and send them
 const EMA = (prev, v, a = 0.3) => (prev == null ? v : prev * (1 - a) + v * a);
-// Gemini 3.5 Live Translate paid tier: $0.0053/min input + $0.0315/min output audio (Sept 2026 pricing page).
-const USD_PER_SESSION_MIN = 0.0368;
+// Gemini paid tier per minute of streamed audio (pricing page, 2026-10-09). Live Translate: $0.0053 input +
+// $0.0315 output audio. Transcribe Live (TRANSCRIBE_MODEL): $0.005 input + $0.004 output text.
+const USD_PER_SESSION_MIN = { translate: 0.0368, transcribe: 0.009 };
 
 /** "Ana Pérez, Ben Cho y Eva" → ['Ana Pérez', 'Ben Cho', 'Eva'] (agenda speaker fields list several people). */
 export const speakersOf = (s) => String(s || '').split(/\s*(?:[,;&/]|\s+(?:y|and|e)\s+)\s*/).map((n) => n.trim()).filter((n) => n.length > 1 && n.length <= 60);
@@ -84,7 +85,9 @@ export class Stage extends EventEmitter {
     this.transTargets = src ? [src, ...foreign] : foreign;
     const liveTargets = foreign.length ? foreign : [src || 'es'];
     this.sessionTargets = this.mode === 'text' ? liveTargets.slice(0, 1) : liveTargets;
-    this.audioLangs = config.engine === 'local' ? [] : this.sessionTargets.filter((t) => this.transTargets.includes(t)); // 🎧 needs Live Translate's voice
+    // Text mode can transcribe with Transcribe Live instead (cheaper): no translated voice, no Live caption fallback.
+    this.transcribeOnly = this.mode === 'text' && config.engine === 'gemini' && !!config.transcribeModel;
+    this.audioLangs = config.engine === 'local' || this.transcribeOnly ? [] : this.sessionTargets.filter((t) => this.transTargets.includes(t)); // 🎧 needs Live Translate's voice
     // Languages a viewer can pick. 'orig' = whatever is being spoken.
     this.aliases = {};
     this.languages = ['orig', ...this.transTargets];
@@ -308,6 +311,7 @@ export class Stage extends EventEmitter {
         vocabulary: glossaryVocab,
         languageHints: this.source ? [this.source] : [],
         mode: config.transcriptionMode,
+        transcribeOnly: this.transcribeOnly,
       };
       const e = config.engine === 'gemini' ? new GeminiEngine(opts)
         : config.engine === 'local' ? new LocalEngine({ ...opts, languages: [...new Set([...this.transTargets, this.source, ...Object.keys(config.event.languages)])] })
@@ -454,7 +458,7 @@ export class Stage extends EventEmitter {
         },
         onError: (m) => this.log('warn', `translate → ${t}: ${m}`),
         // The primary Live session already translates into this language: use it while text MT is throttled.
-        canFallback: () => config.engine !== 'local' && t === this.sessionTargets[0] && this.engines.get(t)?.state === 'live',
+        canFallback: () => config.engine !== 'local' && !this.transcribeOnly && t === this.sessionTargets[0] && this.engines.get(t)?.state === 'live',
         onDegraded: (on) => {
           tracks[t]?.flush(); // don't mix a half MT sentence with Live output
           this.log(on ? 'warn' : 'info', on ? `${t}: text translation throttled → Live Translate captions` : `${t}: back to text translation`);
@@ -695,7 +699,7 @@ export class Stage extends EventEmitter {
     if (this.ticks++ % 15 === 0) this.#applySchedule(now);
     this.#countTalk(now);
     // Cost: every open session is billed for streamed audio (input + generated output).
-    if (this.engines.size && !this.gated && config.engine !== 'local') this.costUsd += (USD_PER_SESSION_MIN / 60) * this.engines.size;
+    if (this.engines.size && !this.gated && config.engine !== 'local') this.costUsd += (USD_PER_SESSION_MIN[this.transcribeOnly ? 'transcribe' : 'translate'] / 60) * this.engines.size;
 
     // Stall watchdog: people are talking but a session produced nothing for a while → reconnect it.
     const primary = this.engines.get(this.sessionTargets[0]);

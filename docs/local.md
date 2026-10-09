@@ -11,7 +11,7 @@ Everything else stays the same: the audience page, the projector, the overlay, t
 | Speech recognition | Gemini 3.5 Live Translate | Whisper, on this computer |
 | Translation, summaries, questions | Gemini Flash-Lite | An open model through Ollama (Gemma 3 by default) |
 | Needs | An API key and internet | A capable computer; internet only to download the models once |
-| Cost | About US$ 2.2 per room-hour | Nothing per hour |
+| Cost | About US$ 0.54 per room-hour (US$ 2.2 with a translated voice) | Nothing per hour |
 | Caption delay | About 2–3 s behind the speaker | About 4–5 s on a laptop CPU (see [Measured results](#measured-results)) |
 | Rooms per server | 30 tested on one laptop | About one per computer today (see [Limits](#limits)) |
 | Translated voice 🎧 | Gemini's natural voice | The phone reads the translated captions with its own voice |
@@ -73,7 +73,7 @@ This prepares the speech server and the text model exactly as `npm run local` do
 
 - **Internet goes down:** after about 15 seconds without a connection, every room switches to the local engine. Captions pause for a few seconds while the rooms restart, then continue. The dashboard shows a *No internet* banner.
 - **Internet comes back:** after a minute of stable connection, the rooms switch back to Gemini on their own.
-- **Manual control:** the AI selector in the dashboard header switches between *Automatic*, *Always Gemini* and *Always this computer*. `POST /api/engine` with `{"mode": "auto" | "cloud" | "local"}` does the same.
+- **Manual control:** the AI selector in the dashboard's **Settings → AI and offline backup** switches between *Automatic*, *Always in the cloud* and *Always this computer*. `POST /api/engine` with `{"mode": "auto" | "cloud" | "local"}` does the same. *Always this computer* can only be picked while the Whisper speech server and Ollama are running; a server started without `--fallback` says so there, with the command. The dashboard never starts them itself.
 
 To set it up without the launcher, run Ollama and a speech server yourself (see [Use your own servers](#use-your-own-servers)) and set `FALLBACK=local` in `.env`, or `"fallback": "local"` in `config/event.json`.
 

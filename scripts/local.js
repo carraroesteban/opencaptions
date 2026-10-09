@@ -314,7 +314,11 @@ async function pull(origin, model) {
 // ---------- go ----------
 // --fallback: Gemini stays the main engine; the local servers wait on standby for an internet outage.
 const fallback = flag('fallback') && !flag('check');
-if (fallback && !env.GEMINI_API_KEY && !/^(1|true)$/i.test(env.GOOGLE_GENAI_USE_VERTEXAI || '')) die('--fallback keeps Gemini as the main engine: set GEMINI_API_KEY in .env first (npm run setup)');
+// The server's own config decides, so a key pasted in the dashboard (data/secrets.json, DATA_DIR) counts as well as .env's.
+if (fallback) {
+  const { config } = await import('../src/config.js');
+  if (!config.geminiApiKey && !config.vertex) die('--fallback keeps Gemini as the main engine: paste a Gemini key in the dashboard (Settings) or set GEMINI_API_KEY in .env first (npm run setup)');
+}
 console.log(fallback
   ? `\n${tty.title('Gemini + offline backup')} ${tty.c.gray('· if the internet goes down, captions keep running on this computer')}\n`
   : `\n${tty.title('local mode')} ${tty.c.gray('· speech recognition and translation on this computer')}\n`);

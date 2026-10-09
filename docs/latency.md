@@ -88,6 +88,42 @@ With [local mode](local.md), the speech model runs on your machine, so its speed
 
 To lower it: a GPU or Apple's Neural Engine (whisper.cpp or WhisperKit), a smaller model, or fewer rooms per speech server. `LOCAL_STEP_MS` trades provisional-word freshness for load. Full numbers and settings: [Local mode](local.md#measured-results).
 
+## Which speech model
+
+In `text` mode (the default) each room keeps one Gemini Live session open, and the app only uses what it hears in the original language: captions in other languages come from a separate text translation. Two models can do that job:
+
+| | **Transcribe Live** (default since 0.6) | **Live Translate** |
+|---|---|---|
+| Model | `gemini-3.5-transcribe-live` | `gemini-3.5-live-translate-preview` (`GEMINI_MODEL`) |
+| Cost per room-hour of speech | about **US$ 0.54** (US$ 0.005 per minute of audio in, about US$ 0.004 of text out) | about US$ 2.21 (it also speaks a translation) |
+| Translated voice in headphones (🎧) | no | yes, in the first caption language |
+| A speaker who switches language mid-talk | captions keep working; the switched-to language's track shows a "translation" into the same language | shown as spoken |
+| Captions while text translation is rate-limited | that language waits | Live Translate's own translation fills in for the first language |
+
+Prices from Google's pricing page of 9 October 2026. Both take the same glossary and language hint. Transcribe Live connections last about 10 minutes; the app opens a fresh one each time and holds the audio meanwhile. `live` and `hybrid` rooms always use Live Translate: they need its voice.
+
+To choose, open the dashboard's **Settings → Speech model**: **Captions only** (Transcribe Live) or **Captions + translated voice** (Live Translate). Running rooms reconnect with it at once (captions pause a few seconds; the dashboard asks first while a room is live), the choice is kept in `data/setup.json` and **History** can undo it. Or fix it in `.env`, and the dashboard then shows it without letting anyone change it:
+
+```bash
+TRANSCRIBE_MODEL=off
+```
+
+`off` means Live Translate; a model name means that transcription model.
+
+**Measured** (`npm run compare-transcribe`, the three bundled talks, 9 October 2026), Transcribe Live next to Live Translate:
+
+| | Live Translate | Transcribe Live |
+|---|---|---|
+| Words wrong (English / Spanish sample) | 0–1.1 % / 0 % | 0.6–2.2 % / 0 %: one real slip ("listen" for "listened"), the rest were missing spaces, now fixed |
+| Speech → first provisional words | 2.8–3.3 s | **1.2–1.3 s** |
+| Speech → finished text (median) | 3.2–3.3 s | 2.9–3.3 s (p90 9.5 s on the talk with long sentences) |
+| Language of each piece of speech | yes | **no** |
+| Usage reported in the session | yes, but it doesn't add up to the bill | none: check Google's billing page |
+
+On its own, Transcribe Live waits for a long silence before finishing text (23 s and 48 s on the samples, whose pauses are 0.3–0.6 s), and it ignores `VAD_SILENCE_MS`. So the app tells it when the speaker stops, after 0.3 s of quiet (`VAD_SILENCE_MS` if set), which is how Google says to make it finish text at once ("hybrid VAD"). That brought finished text down to Live Translate's delay.
+
+**When to pick Live Translate:** someone needs the translated voice in headphones, or speakers often switch language mid-talk.
+
 ## Tuning
 
 Try one change at a time and compare the dashboard latency over a few minutes of real speech.
@@ -113,6 +149,7 @@ Try one change at a time and compare the dashboard latency over a few minutes of
 ## Measure it yourself
 
 - **One room:** `npm run check` prints time-to-first-text for a 25-second sample. In local mode, `npm run local -- --check` prints word error rate and how far the captions trail the speaker.
+- **Live Translate vs Transcribe Live:** `npm run compare-transcribe` plays the bundled talks (English, Spanish, and `samples/tor-talk.wav` if it's there) through both models at once in real time. For each, it prints the words right against the talk's script, the delay from speech to first caption, the language reported per piece, and the cost per hour from the usage Google reports. It takes about 5 minutes and costs about US$ 0.25. The report goes to `data/transcribe-compare-*.json`.
 - **Live:** open `/demo.html?mode=mic`, speak and read the delay shown on screen.
 - **Many rooms at once, with real talks:**
 
@@ -120,7 +157,7 @@ Try one change at a time and compare the dashboard latency over a few minutes of
   npm run multi -- --rooms 10 --minutes 5 --playlist "https://www.youtube.com/playlist?list=…"
   ```
 
-  This opens 10 rooms, feeds each a different video from the playlist (or `--channel @handle`, `--query "search terms"`, `--file urls.txt`) in real time and prints p50/p90 latency per room. A JSON report is written to `data/latency-*.json`. This is also the best way to find your account's concurrent-session limit. It needs `yt-dlp`. Cost is about US$ 0.45/min for 10 rooms.
+  This opens 10 rooms, feeds each a different video from the playlist (or `--channel @handle`, `--query "search terms"`, `--file urls.txt`) in real time and prints p50/p90 latency per room. A JSON report is written to `data/latency-*.json`. This is also the best way to find your account's concurrent-session limit. It needs `yt-dlp`. Cost is about US$ 0.2/min for 10 rooms (US$ 0.45 with `TRANSCRIBE_MODEL=off`).
 
 ### How the dashboard measures latency
 

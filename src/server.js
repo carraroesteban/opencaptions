@@ -120,15 +120,22 @@ if (!process.env.STAGES && fs.existsSync(STAGES_FILE) && fs.statSync(STAGES_FILE
   try { initial = JSON.parse(fs.readFileSync(STAGES_FILE, 'utf8')); } catch { /* use config */ }
 }
 fs.mkdirSync(config.dataDir, { recursive: true });
+// First-run setup (the dashboard's welcome wizard): what the organizer chose is kept in data/setup.json.
+const SETUP_FILE = path.join(config.dataDir, 'setup.json');
+const setup = (() => { try { return JSON.parse(fs.readFileSync(SETUP_FILE, 'utf8')); } catch { return { done: false }; } })();
+// The speech model for Gemini rooms, chosen in Settings (TRANSCRIBE_MODEL in .env fixes it, even empty or off):
+// Transcribe Live for text-mode rooms (the default, cheaper, no translated voice), or Live Translate. Read before the
+// rooms are made.
+const TRANSCRIBE_LIVE = config.transcribeModel || 'gemini-3.5-transcribe-live';
+const transcribeFixed = process.env.TRANSCRIBE_MODEL !== undefined;
+if (!transcribeFixed && typeof setup.transcribeModel === 'string') config.transcribeModel = setup.transcribeModel;
+const speechModel = () => (config.transcribeModel ? 'transcribe' : 'translate');
 let integrations = null; // created once the rooms exist (below)
 let switchers = null; // vMix / OBS break scenes (src/switcher.js)
 for (const def of initial) addStage(def);
 switchers = new Switchers({ stages });
 integrations = new Integrations({ stages, talkUrl: (stage, talk) => `${config.publicUrl || lanUrl() || `http://localhost:${config.port}`}/talk.html?stage=${encodeURIComponent(stage)}&talk=${encodeURIComponent(talk)}` });
 
-// First-run setup (the dashboard's welcome wizard): what the organizer chose is kept in data/setup.json.
-const SETUP_FILE = path.join(config.dataDir, 'setup.json');
-const setup = (() => { try { return JSON.parse(fs.readFileSync(SETUP_FILE, 'utf8')); } catch { return { done: false }; } })();
 if (setup.name) Object.assign(config.event, { name: setup.name, named: true });
 // The languages rooms can choose: event.json's, minus the ones removed from the dashboard, plus the ones added there
 // (so French doesn't mean editing JSON, and an event without Portuguese doesn't offer it).
@@ -850,12 +857,14 @@ app.get('/api/setup', crew, (req, res) => {
     removedLanguages: setup.removedLanguages || [],
     publicTranscripts: PUBLIC_TRANSCRIPTS,
     publicTranscriptsFixed: transcriptsFixed,
+    speechModel: speechModel(),
+    speechModelFixed: transcribeFixed,
     defaultTargets: config.event.defaultTargets.filter((c) => c in config.event.languages),
     stages: [...stages.values()].map((s) => ({ id: s.id, name: s.def.name, source: s.def.source, targets: s.def.targets, pull: allows(req.who, 'admin') ? s.def.pull || '' : redactUrl(s.def.pull || '') })),
     ffmpeg: !!ffmpegBin(), // OBS / vMix can stream a room's sound in only through ffmpeg
     engine: config.engine,
     primaryEngine: config.primaryEngine,
-    failover: failover?.status() || null,
+    failover: failoverStatus(),
     ai: keyInfo(),
     tunnel: tunnel.status(),
     tunnelTokenSaved: !!readSecret('tunnelToken'),
@@ -875,6 +884,8 @@ app.put('/api/setup', admin, (req, res) => {
   if ('timezone' in b && !zoneOk(String(b.timezone || ''))) return res.status(400).json({ error: 'unknown time zone' });
   if ('publicTranscripts' in b && !TRANSCRIPT_MODES.includes(b.publicTranscripts)) return res.status(400).json({ error: 'publicTranscripts: current, all or none' });
   if ('publicTranscripts' in b && transcriptsFixed) return res.status(409).json({ error: 'PUBLIC_TRANSCRIPTS is set in .env: change it there and restart' });
+  if ('speechModel' in b && !['translate', 'transcribe'].includes(b.speechModel)) return res.status(400).json({ error: 'speechModel: translate or transcribe' });
+  if ('speechModel' in b && transcribeFixed) return res.status(409).json({ error: 'TRANSCRIBE_MODEL is set in .env: change it there and restart' });
   let added = null;
   if ('languages' in b) {
     const l = b.languages && typeof b.languages === 'object' ? Object.entries(b.languages) : null;
@@ -901,7 +912,7 @@ app.put('/api/setup', admin, (req, res) => {
     }
   }
   // Event mode protects the event: no setup changes, and no switching to Just for me (it takes the event offline).
-  if (setup.locked && ('name' in b || 'timezone' in b || 'languages' in b || 'removedLanguages' in b || 'publicTranscripts' in b || b.mode === 'personal')) return res.status(423).json(LOCKED);
+  if (setup.locked && ('name' in b || 'timezone' in b || 'languages' in b || 'removedLanguages' in b || 'publicTranscripts' in b || 'speechModel' in b || b.mode === 'personal')) return res.status(423).json(LOCKED);
   if ('name' in b) {
     if (name !== config.event.name) patch.change = recordChange({ kind: 'event.rename', summary: `Event renamed to "${name}"`, before: config.event.name, after: name }).id;
     patch.name = config.event.name = name;
@@ -921,6 +932,11 @@ app.put('/api/setup', admin, (req, res) => {
   if ('publicTranscripts' in b && b.publicTranscripts !== PUBLIC_TRANSCRIPTS) {
     patch.change = recordChange({ kind: 'transcripts.access', summary: `Transcripts: ${b.publicTranscripts}`, before: PUBLIC_TRANSCRIPTS, after: b.publicTranscripts }).id;
     PUBLIC_TRANSCRIPTS = patch.publicTranscripts = b.publicTranscripts;
+  }
+  if ('speechModel' in b && b.speechModel !== speechModel()) {
+    const before = speechModel();
+    useSpeechModel(b.speechModel);
+    patch.change = recordChange({ kind: 'ai.speech', summary: speechSummary(b.speechModel), before, after: b.speechModel }).id;
   }
   const change = patch.change ?? null;
   delete patch.change;
@@ -990,6 +1006,11 @@ app.post('/api/history/:id/undo', admin, unlocked, async (req, res) => {
       const before = config.event.name;
       saveSetup({ name: (config.event.name = c.before) });
       recordChange({ kind: 'event.rename', summary: `Event renamed back to "${c.before}"`, before, after: c.before, ...undo });
+    } else if (c.kind === 'ai.speech') {
+      if (transcribeFixed) throw new Error('TRANSCRIBE_MODEL is set in .env: change it there and restart');
+      const before = speechModel();
+      useSpeechModel(c.before);
+      recordChange({ kind: 'ai.speech', summary: `Undo: ${speechSummary(c.before)}`, before, after: c.before, ...undo });
     } else if (c.kind === 'engine.mode') {
       if (!failover) throw new Error('the offline backup is not available');
       failover.setMode(c.before);
@@ -1034,6 +1055,18 @@ app.delete('/api/ai/key', admin, unlocked, (req, res) => {
   useKeyChange(envKey ? 'Saved Gemini API key removed: using the one in .env' : 'Gemini API key removed: simulated captions');
   res.json({ ok: true, engine: config.engine, key: keyInfo() });
 });
+const speechSummary = (m) => (m === 'transcribe' ? 'Speech model: captions only (Transcribe Live)' : 'Speech model: captions + translated voice (Live Translate)');
+/** Switch the speech model (Settings): saved, and text-mode Gemini rooms reconnect with it like useKeyChange does. */
+function useSpeechModel(m) {
+  config.transcribeModel = m === 'transcribe' ? TRANSCRIBE_LIVE : '';
+  saveSetup({ transcribeModel: config.transcribeModel });
+  if (config.engine !== 'gemini') return; // simulated or local captions: used once Gemini is
+  for (const st of stages.values()) {
+    if (st.mode !== 'text') continue; // live / hybrid rooms always use Live Translate
+    st.log('info', speechSummary(m));
+    st.reconfigure(st.def);
+  }
+}
 /** Apply a new (or no) key: fresh client, and rooms move between simulated captions and Gemini. */
 function useKeyChange(summary) {
   resetClient();
@@ -1205,7 +1238,7 @@ app.use((err, req, res, next) => { // eslint-disable-line no-unused-vars
 // Local engine: keep an eye on the speech server and the text model (shown on the dashboard).
 const localHealth = { asr: null, llm: null, modelInstalled: null, missing: [], checkedAt: 0 };
 const localModels = () => [...new Set([llmInfo().model, config.localMtModel].filter(Boolean))].join(' + ');
-const engineLabel = () => (config.engine === 'gemini' ? config.model : config.engine === 'local' ? (config.localLlmOff ? asrInfo().label : `${asrInfo().label} + ${localModels()}`) : 'mock');
+const engineLabel = () => (config.engine === 'gemini' ? config.model + (config.transcribeModel ? ` · ${config.transcribeModel} (text mode)` : '') : config.engine === 'local' ? (config.localLlmOff ? asrInfo().label : `${asrInfo().label} + ${localModels()}`) : 'mock');
 async function checkLocal() {
   const [asr, llm] = /** @type {[boolean, any]} */ (await Promise.all([asrReachable(), config.localLlmOff ? { ok: false, hasModel: false, models: [], off: true } : llmHealth()]));
   Object.assign(localHealth, { asr, llm: llm.ok, modelInstalled: llm.hasModel, missing: llm.missing || [], checkedAt: Date.now() });
@@ -1230,8 +1263,10 @@ const failover = config.primaryEngine === 'gemini' ? new Failover({
     console.log(`  ${engine === 'local' ? '⚠' : '✓'} ${reason} → engine: ${engine}`);
   },
 }) : null;
+// backup: started with the offline backup (npm run local -- --fallback), so "this computer" can be picked
+function failoverStatus() { return failover ? { ...failover.status(), backup: config.fallback === 'local' } : null; }
 if (failover) {
-  failover.on('change', (st) => broadcastAdmin({ type: 'failover', ...st }));
+  failover.on('change', () => broadcastAdmin({ type: 'failover', ...failoverStatus() }));
   failover.start().catch(() => {});
 }
 
@@ -1251,7 +1286,8 @@ function snapshot() {
   return {
     engine: config.engine,
     model: engineLabel(),
-    failover: failover?.status() || null,
+    speechModel: speechModel(),
+    failover: failoverStatus(),
     tunnel: tunnel.status(),
     ai: keyInfo(),
     publicUrl: config.publicUrl, // '' = none: QR codes use the address the page was opened with
@@ -1527,7 +1563,7 @@ server.listen(config.port, config.host, () => {
   console.log(`\n${tty.title(config.event.named ? config.event.name : '')} ${tty.c.gray(`v${version}`)}\n`);
   tty.ok(`Ready on ${tty.c.bold(local)}`);
   console.log('');
-  const ai = config.engine === 'gemini' ? `Gemini ${tty.c.gray(`· ${config.model}`)}`
+  const ai = config.engine === 'gemini' ? `Gemini ${tty.c.gray(`· ${config.model}${config.transcribeModel ? ` · ${config.transcribeModel} (text mode)` : ''}`)}`
     : config.engine === 'local' ? `This computer ${tty.c.gray(`· ${engineLabel()} · nothing leaves it`)}`
     : `${tty.c.yellow('Simulated captions')} ${tty.c.gray('· paste a Gemini API key in Dashboard → Settings')}`;
   tty.table([
