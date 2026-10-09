@@ -13,6 +13,7 @@ services:
       args:
         WITH_YTDLP: "${WITH_YTDLP:-0}"
     image: opencaptions:latest
+    pull_policy: build # `docker compose up` always builds from this folder: never an old local image
     restart: unless-stopped
     init: true
     env_file: .env

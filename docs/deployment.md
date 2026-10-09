@@ -124,18 +124,17 @@ Settings, passwords and transcripts are kept outside the app, so a new version k
 Every push to `main` publishes `ghcr.io/carraroesteban/opencaptions` (amd64 and arm64; tags `latest`, `sha-…` and a version for each `v*` tag). Nothing to clone or build:
 
 ```bash
-docker run -d --name opencaptions --restart unless-stopped -p 127.0.0.1:8080:8080 -v opencaptions-data:/app/data -v opencaptions-config:/app/config ghcr.io/carraroesteban/opencaptions
+docker run -d --pull always --name opencaptions --restart unless-stopped -p 127.0.0.1:8080:8080 -v opencaptions-data:/app/data -v opencaptions-config:/app/config ghcr.io/carraroesteban/opencaptions
 docker logs opencaptions | grep "Open the dashboard"
 ```
 
 The named volumes keep transcripts, settings and secrets (`opencaptions-data`) and the event, glossary and agenda files (`opencaptions-config`, filled from the image the first time) across upgrades. Pass settings with `-e`, e.g. `-e GEMINI_API_KEY=…`, or set the key in the dashboard. Containers run in UTC: the welcome wizard offers to use your time zone for the agenda, or pass `-e TZ=Europe/Madrid`. Upgrade:
 
 ```bash
-docker pull ghcr.io/carraroesteban/opencaptions
 docker rm -f opencaptions
 ```
 
-…then the same `docker run` again.
+…then the same `docker run` again: `--pull always` fetches the newest image first. (Without it, Docker reuses the copy it downloaded the first time, however old.)
 
 ### Docker Compose
 
