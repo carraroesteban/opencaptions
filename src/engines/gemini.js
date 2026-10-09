@@ -108,9 +108,14 @@ export class GeminiEngine extends EventEmitter {
   /**
    * Transcribe Live finishes text only after a long silence (measured: 25-48 s on talks with 0.3-0.6 s pauses).
    * Google's "hybrid VAD": tell it the speaker stopped at a short pause, and it finishes the text at once.
+   * A pause is quiet next to the speaker's own level: a loud stream's pauses (room tone, reverb) stay above speechRms.
    */
   #endAtPause(chunk) {
-    if (rms(chunk) >= config.speechRms) { this.quietMs = 0; this.spoke = true; return; }
+    const lvl = rms(chunk);
+    if (lvl >= Math.max(config.speechRms, 0.3 * (this.speechLvl || 0))) {
+      this.speechLvl = this.speechLvl ? this.speechLvl * 0.98 + lvl * 0.02 : lvl;
+      this.quietMs = 0; this.spoke = true; return;
+    }
     this.quietMs = (this.quietMs || 0) + chunk.length / 32; // 16 kHz 16-bit: 32 bytes per ms
     if (this.spoke && this.quietMs >= (config.vadSilenceMs || 300)) {
       this.spoke = false;
