@@ -22,13 +22,18 @@ const kids = [];
 async function startServer() {
   srv = spawn(process.execPath, ['src/server.js'], {
     env: { ...process.env, PORT: String(PORT), HOST: '127.0.0.1', ENGINE: 'mock', DATA_DIR: dataDir, EVENT_CONFIG: 'test/fixtures/event.json', GLOSSARY: path.join(dataDir, 'glossary.json'), ADMIN_TOKEN: 't', INGEST_TOKEN: 't', PUBLIC_URL: '', GEMINI_API_KEY: '', TUNNEL: '', FALLBACK: '' },
-    stdio: 'ignore',
+    stdio: ['ignore', 'ignore', 'ignore', 'ipc'],
   });
   if (!(await until(async () => (await fetch(`${base}/healthz`)).ok, 10000))) throw new Error('server did not start');
 }
 const running = () => srv.exitCode === null && srv.signalCode === null;
-/** Ctrl+C, and wait until the process is gone. */
-const stopServer = () => new Promise((r) => { if (!running()) return r(); srv.once('exit', r); srv.kill('SIGINT'); });
+/** Ctrl+C, and wait until the process is gone. On Windows a signal to a child ends it at once (no handler runs), so the
+ * test asks over IPC, which runs the same shutdown; elsewhere it's the real SIGINT. */
+const stopServer = () => new Promise((r) => {
+  if (!running()) return r();
+  srv.once('exit', r);
+  if (process.platform === 'win32') srv.send('shutdown'); else srv.kill('SIGINT');
+});
 
 /** A bare ingest socket: what it was told, and how it was closed. */
 async function ingest(stage) {

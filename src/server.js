@@ -1584,19 +1584,21 @@ process.on('uncaughtException', (e) => console.error('✗ uncaught exception (se
 // Every socket hears 1012 "server restarting", never 4000 ("another source took your room"), so room computers and
 // phones reconnect by themselves once the server is back. The close frames get up to a second to go out; a second
 // Ctrl+C quits at once.
-for (const sig of ['SIGINT', 'SIGTERM', 'SIGHUP']) {
-  process.on(sig, () => {
-    if (stopping) process.exit(0);
-    stopping = true;
-    tunnel.stop();
-    switchers?.stop();
-    for (const id of [...stages.keys()]) removeStage(id, 'server restarting');
-    let open = wss.clients.size;
-    if (!open) process.exit(0);
-    for (const ws of wss.clients) {
-      ws.once('close', () => { if (--open === 0) process.exit(0); });
-      ws.close(1012, 'server restarting'); // the dashboards (the rooms' sockets are closing already)
-    }
-    setTimeout(() => process.exit(0), 1000);
-  });
+function shutdown() {
+  if (stopping) process.exit(0);
+  stopping = true;
+  tunnel.stop();
+  switchers?.stop();
+  for (const id of [...stages.keys()]) removeStage(id, 'server restarting');
+  let open = wss.clients.size;
+  if (!open) process.exit(0);
+  for (const ws of wss.clients) {
+    ws.once('close', () => { if (--open === 0) process.exit(0); });
+    ws.close(1012, 'server restarting'); // the dashboards (the rooms' sockets are closing already)
+  }
+  setTimeout(() => process.exit(0), 1000);
 }
+for (const sig of ['SIGINT', 'SIGTERM', 'SIGHUP']) process.on(sig, shutdown);
+// A program that started the server with an IPC channel can stop it the same way with child.send('shutdown'). On
+// Windows that's the only way: child.kill() there ends the process at once, whatever the signal, and nothing above runs.
+if (process.send) process.on('message', (m) => { if (m === 'shutdown') shutdown(); });

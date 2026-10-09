@@ -841,7 +841,18 @@ export class Recordings {
 
   // ---- internals
 
-  #rmDir(job) { if (job.dir) { try { fs.rmSync(job.dir, { recursive: true, force: true }); } catch { /* gone */ } job.dir = null; } }
+  /**
+   * Delete the job's temporary folder. On Windows a file still open can't be deleted (ffmpeg reading the recording when
+   * a job is cancelled mid-decode): the folder stays on the job, and the job's own cleanup, once the decoder has
+   * stopped, tries again with a few short retries (Windows frees the file a moment after the process exits).
+   */
+  #rmDir(job, { retry = false } = {}) {
+    if (!job.dir) return;
+    try {
+      fs.rmSync(job.dir, { recursive: true, force: true, ...(retry ? { maxRetries: 5, retryDelay: 100 } : {}) });
+      job.dir = null;
+    } catch (e) { if (retry) this.log(`${job.name}: temporary folder not deleted (${e.code || e.message}): ${job.dir}`); }
+  }
   #drop(job) { this.#rmDir(job); this.jobs.delete(job.id); }
 
   #expire() {
@@ -1006,7 +1017,7 @@ export class Recordings {
         this.log(`${job.name}: failed: ${job.error}`);
       }
     } finally {
-      this.#rmDir(job);
+      this.#rmDir(job, { retry: true });
     }
   }
 
