@@ -1,6 +1,6 @@
 {
   "name": "opencaptions",
-  "version": "0.4.1",
+  "version": "0.5.0",
   "description": "Open-source live captions and translation for every event: on phones, on the stage screen and in the livestream. Gemini in the cloud, or Whisper and open models on your own computer.",
   "homepage": "https://opencaptions.kvza.ar",
   "repository": {

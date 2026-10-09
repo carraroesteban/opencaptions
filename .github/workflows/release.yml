@@ -29,7 +29,7 @@ jobs:
 
           **Download:** [OpenCaptions for Mac](https://github.com/$GITHUB_REPOSITORY/releases/download/$GITHUB_REF_NAME/OpenCaptions-mac.zip) · [OpenCaptions for Windows](https://github.com/$GITHUB_REPOSITORY/releases/download/$GITHUB_REF_NAME/OpenCaptions-windows.zip). Install [Node.js](https://nodejs.org) first, then open OpenCaptions; the "Read me" inside explains the first launch.
 
-          **Docker:** \`docker run -d --name opencaptions -p 127.0.0.1:8080:8080 -v opencaptions-data:/app/data -v opencaptions-config:/app/config ghcr.io/$GITHUB_REPOSITORY:$v\`
+          **Docker:** \`docker run -d --pull always --name opencaptions -p 127.0.0.1:8080:8080 -v opencaptions-data:/app/data -v opencaptions-config:/app/config ghcr.io/$GITHUB_REPOSITORY:$v\`
           EOF
       - name: Create the release
         env:

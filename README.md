@@ -146,7 +146,7 @@ A public server with HTTPS and a disk for your data, nothing to install. Fly.io 
 ### With Docker, without downloading the code
 
 ```bash
-docker run -d --name opencaptions --restart unless-stopped -p 127.0.0.1:8080:8080 -v opencaptions-data:/app/data -v opencaptions-config:/app/config ghcr.io/carraroesteban/opencaptions
+docker run -d --pull always --name opencaptions --restart unless-stopped -p 127.0.0.1:8080:8080 -v opencaptions-data:/app/data -v opencaptions-config:/app/config ghcr.io/carraroesteban/opencaptions
 ```
 ```bash
 docker logs opencaptions | grep "Open the dashboard"
