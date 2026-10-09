@@ -1,6 +1,6 @@
 # OpenCaptions
 
-> Free, open-source software for live captions and real-time translation at events: conferences, classrooms, public meetings, festivals and places of worship. Attendees scan a QR code and read the captions on their own phone, in their own language, with no app. Captions also appear on a screen beside the stage and in the livestream (OBS, vMix). Self-hosted; the AI is Google's Gemini (about US$2.2 per room-hour of speech) or a local model on a laptop at the venue (free, works offline). MIT license.
+> Free, open-source software for live captions and real-time translation at events: conferences, classrooms, public meetings, festivals and places of worship. Attendees scan a QR code and read the captions on their own phone, in their own language, with no app. Captions also appear on a screen beside the stage and in the livestream (OBS, vMix). Self-hosted; the AI is Google's Gemini (about US$0.54 per room-hour of speech) or a local model on a laptop at the venue (free, works offline). MIT license.
 
 Key facts:
 - Captions appear about 2–3 seconds after the words are spoken; translations 3–5 seconds after (measured in a three-room rehearsal with 150 phones).
