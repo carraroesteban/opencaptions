@@ -74,6 +74,16 @@ test('Transcribe Live is told the speaker stopped at each short pause (hybrid VA
   for (const c of [speech, quiet, quiet, quiet, quiet, quiet, speech, speech, quiet, quiet, quiet]) e.sendAudio(c);
   e.stop();
   assert.equal(sent.filter((x) => x.audioStreamEnd).length, 2, 'once per 300 ms pause after speech');
+  sent.length = 0;
+  const hum = Buffer.alloc(3200); // a loud stream's pause: room tone well above SPEECH_RMS, well below the voice
+  for (let i = 0; i < 1600; i++) hum.writeInt16LE(Math.round(1500 * Math.sin(i / 5)), i * 2);
+  const loud = new GeminiEngine({ label: 't', target: 'es', transcribeOnly: true });
+  loud.on('error', () => {});
+  loud.start();
+  await sleep(30);
+  for (const c of [speech, speech, hum, hum, hum, speech, hum, hum, hum]) loud.sendAudio(c);
+  loud.stop();
+  assert.equal(sent.filter((x) => x.audioStreamEnd).length, 2, 'pauses are judged against the speaker’s own level');
   const live = new GeminiEngine({ label: 't', target: 'es' }); // Live Translate keeps its own turn detection
   live.on('error', () => {});
   sent.length = 0;
