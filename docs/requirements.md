@@ -96,4 +96,4 @@ Everything uses outbound HTTPS/WSS on port 443, so a venue PC never needs to acc
 
 ## Cost
 
-See the cost table in the [README](../README.md#what-it-costs). The rule of thumb is about US$ 2.2 per room-hour of speech, plus US$ 0.4–0.6 per extra caption language. The silence gate means breaks and silent periods aren't billed.
+See the cost table in the [README](../README.md#what-it-costs). The rule of thumb is about US$ 0.54 per room-hour of speech (US$ 2.2 with a translated voice in headphones), plus US$ 0.4–0.6 per extra caption language. The silence gate means breaks and silent periods aren't billed.

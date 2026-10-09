@@ -52,6 +52,12 @@ const DICTS = {
     'Ninguna (solo el equipo)': 'None (team only)',
     'Lo fija PUBLIC_TRANSCRIPTS en el archivo .env.': 'Set by PUBLIC_TRANSCRIPTS in the .env file.',
     'Guardado': 'Saved',
+    'Modelo de voz': 'Speech model',
+    'Con qué modelo de Gemini se escucha al orador en las salas que traducen los subtítulos como texto (el modo normal).': 'Which Gemini model listens to the speaker in rooms that translate captions as text (the usual mode).',
+    'Subtítulos + voz traducida (Live Translate, unos US$ 2,2 por hora de sala)': 'Captions + translated voice (Live Translate, about US$ 2.2 per room-hour)',
+    'Solo subtítulos (Transcribe Live, unos US$ 0,54 por hora de sala; recomendado)': 'Captions only (Transcribe Live, about US$ 0.54 per room-hour; recommended)',
+    'Lo fija TRANSCRIBE_MODEL en el archivo .env.': 'Set by TRANSCRIBE_MODEL in the .env file.',
+    'Subtítulos + voz traducida': 'Captions + translated voice', 'Solo subtítulos': 'Captions only',
     // breaks and music
     'PAUSA': 'BREAK', 'agenda': 'agenda', 'desde la sala': 'from the room', 'MÚSICA · en pausa': 'MUSIC · paused', 'Pausa': 'Break', 'Reanudar subtítulos': 'Resume captions',
     'Termina la pausa: los subtítulos vuelven cuando alguien habla.': 'Ends the break: captions come back when someone speaks.',

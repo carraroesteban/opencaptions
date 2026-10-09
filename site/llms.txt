@@ -8,6 +8,7 @@ Key facts:
 - Downloads for macOS and Windows, a Docker image, or Node.js from source. A setup wizard asks for the event, rooms and languages.
 - Also for one person: "Just for me" captions and translates whatever a computer plays (a video call, a class, a video; the whole computer on Windows, a browser tab on Mac) or what its microphone hears, in big text or a floating window. Private: nothing is shared.
 - Sends captions into Zoom, Microsoft Teams (CART) and YouTube Live, and to webhooks; imports the agenda from Sessionize or a calendar link. 82 caption languages. Words appear at the speaker's pace in TV-style lines; breaks (agenda, vMix/OBS scene, one key) and music between talks pause captions; a backup audio source per room takes over by itself; the crew can fix a caption live.
+- Also: captions a recorded video or audio file in minutes (not in real time); lets people with hearing aids or earbuds hear the room's own sound on their phone; downloads every transcript in one .zip.
 - Not a replacement for professional human captioning where every word must be exact, or for sign language interpretation.
 
 ## Guides

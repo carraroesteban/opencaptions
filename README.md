@@ -64,8 +64,9 @@ Conferences and summits · universities and schools · places of worship · town
 - **What did I miss?** A summary of the last five minutes, or the whole session, in the reader's language.
 - **Ask the talk.** Questions answered only from what was said, with quotes and timestamps.
 - **Transcripts** to read, search, print and download (TXT, SRT, VTT).
+- **Hear the room:** with hearing aids, a cochlear implant or earbuds, pick **Original → 🎧 Listen** to hear the room's own sound on your phone, when the organizer turns it on. [Accessibility](docs/accessibility.md)
 - **Who's speaking:** the crew taps the speaker's name (from the agenda, the host or Q&A) and captions, transcripts and exports say who said what.
-- **Accessibility settings:** text size, high-legibility fonts, line spacing, light and dark themes, floating captions and translated audio in headphones.
+- **Accessibility settings:** text size, high-legibility fonts, line spacing, light and dark themes, floating captions, and a translated voice in headphones when the organizer turns it on.
 
 </td>
 <td width="33%" valign="top">
@@ -101,6 +102,9 @@ Conferences and summits · universities and schools · places of worship · town
 - **Agenda from Sessionize or a calendar link** (Google, Outlook): talks get their titles and speakers by themselves.
 - **Alerts on your phone** through ntfy, Telegram, Slack, Discord or a webhook, when a room loses its sound, the AI keeps failing, a talk runs over or the internet drops.
 - **Event report:** every talk with its length, words, audience and AI cost, printable or as a spreadsheet.
+- **Pick the speech model in Settings:** *Captions only* (about US$ 0.54 per room-hour, the default) or *Captions + translated voice* (about US$ 2.2). [Which one](docs/latency.md#which-speech-model)
+- **Caption a recording:** drop a video or audio file in **Transcripts**. Its transcript and subtitles are ready in minutes, much faster than playing it. [How](docs/recording.md)
+- **Every transcript in one .zip,** a folder per room and per talk, for the archive or the sponsors.
 - **Secure by default:** signed-in sessions, a crew role for volunteers, optional two-factor or company sign-in, and no inbound ports needed.
 
 </td>
@@ -295,11 +299,11 @@ Captions typically appear a few seconds after the words are spoken ([where the t
 
 | | Gemini (cloud) | Local mode |
 |---|---|---|
-| Price | About **US$ 2.2 per room-hour of speech**, plus US$ 0.4–0.6 per extra language | **Free.** Runs on your own hardware |
+| Price | About **US$ 0.54 per room-hour of speech**, plus US$ 0.4–0.6 per extra language. With a translated voice in headphones (🎧), about US$ 2.2. | **Free.** Runs on your own hardware |
 | Silence | Never billed | — |
 | Best for | Highest accuracy and lowest delay, many rooms | Privacy, no internet, no budget |
 
-For example, a 40-minute talk captioned from English into Spanish costs about **US$ 1.80** with Gemini. A human live captioner typically costs US$ 90–300 per room-hour, for a single language. The dashboard shows a running cost estimate for every room.
+For example, a 40-minute talk captioned from English into Spanish costs about **US$ 0.70** with Gemini. A human live captioner typically costs US$ 90–300 per room-hour, for a single language. The dashboard shows a running cost estimate for every room.
 
 ## Privacy and security
 
@@ -337,10 +341,10 @@ For example, a 40-minute talk captioned from English into Spanish costs about **
 
 **OpenCaptions** lleva subtítulos y traducción en vivo a cualquier evento: congresos, universidades, iglesias, sesiones públicas, eventos corporativos y festivales. Es gratis, open source (MIT) y corre en tu propio servidor.
 
-- **El público** escanea el QR, elige su idioma y sigue la charla en el celular. Si llegó tarde, toca **¿Qué me perdí?**. Al final, la transcripción queda para leer, buscar y descargar.
+- **El público** escanea el QR, elige su idioma y sigue la charla en el celular. Si llegó tarde, toca **¿Qué me perdí?**. Quien usa audífonos o un implante puede escuchar el sonido de la sala en su celular. Al final, la transcripción queda para leer, buscar y descargar.
 - **En el escenario**, una pantalla con subtítulos grandes junto al orador y un overlay para OBS o vMix, en uno o dos idiomas.
-- **Para la organización**, un panel con el estado, la demora, el público y el costo de cada sala. Las salas funcionan solas y toman los títulos de la agenda.
-- **Costo:** el software es gratis. Con Gemini, unos US$ 2,2 por hora de charla por sala (el silencio no se cobra). En modo local, nada: corre en tu propia compu y el audio no sale del edificio.
+- **Para la organización**, un panel con el estado, la demora, el público y el costo de cada sala. Las salas funcionan solas y toman los títulos de la agenda. Una grabación se subtitula en minutos, y todas las transcripciones se descargan juntas en un .zip.
+- **Costo:** el software es gratis. Con Gemini, unos US$ 0,54 por hora de charla por sala (US$ 2,2 con voz traducida en auriculares; el silencio no se cobra). En modo local, nada: corre en tu propia compu y el audio no sale del edificio.
 
 Para empezar sin terminal: instalá [Node.js](https://nodejs.org/es/download) y descargá [OpenCaptions para Mac](https://github.com/carraroesteban/opencaptions/releases/latest/download/OpenCaptions-mac.zip) o [para Windows](https://github.com/carraroesteban/opencaptions/releases/latest/download/OpenCaptions-windows.zip). En Mac, arrastrá OpenCaptions a Aplicaciones y abrilo; en Windows, descomprimí el ZIP y hacé doble clic en **Start OpenCaptions**. El asistente pregunta el nombre del evento, las salas y los idiomas, conecta Gemini con tu API key y crea una dirección pública con HTTPS en un clic. Con Docker: `docker run -d -p 127.0.0.1:8080:8080 -v opencaptions-data:/app/data -v opencaptions-config:/app/config ghcr.io/carraroesteban/opencaptions`. Guía para el día del evento: [event-day.es.md](docs/operations/event-day.es.md).
 

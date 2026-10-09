@@ -1,4 +1,5 @@
-// One Gemini Live Translate session = one (stage, target language) pair.
+// One Gemini Live Translate session = one (stage, target language) pair. With transcribeOnly it's a
+// Transcribe Live session instead (config.transcribeModel): the original speech as text, no translated voice.
 // Handles: setup-config fallback, session resumption across the ~10 min connection
 // lifetime (GoAway), reconnect with backoff, and audio buffering while reconnecting
 // so no speech is lost.
@@ -6,6 +7,7 @@ import { EventEmitter } from 'node:events';
 import { Modality } from '@google/genai';
 import { getClient } from '../genai.js';
 import { config } from '../config.js';
+import { rms } from '../audio.js';
 
 let ai = null;
 const client = () => ai ?? getClient(); // tests can inject their own (_setClient)
@@ -21,8 +23,9 @@ const DRAIN_MS = 4000; // after a reconnect, keep accepting the old session's tr
 const CONFIG_REJECTED = /invalid|unknown (name|field)|argument|unsupported|not supported|1007|1008/i;
 
 export class GeminiEngine extends EventEmitter {
-  constructor({ label, target, echo = false, vocabulary = [], languageHints = [], mode = '' }) {
+  constructor({ label, target, echo = false, vocabulary = [], languageHints = [], mode = '', transcribeOnly = false }) {
     super();
+    this.transcribeOnly = transcribeOnly;
     this.label = label;
     this.target = target;
     this.echo = echo;
@@ -95,9 +98,23 @@ export class GeminiEngine extends EventEmitter {
     try {
       this.session.sendRealtimeInput({ audio: { data: chunk.toString('base64'), mimeType: 'audio/pcm;rate=16000' } });
       this.stats.audioMs += (chunk.length / 32000) * 1000;
+      if (this.transcribeOnly) this.#endAtPause(chunk);
     } catch (e) {
       this.buffer.push(chunk);
       this.#fail(e);
+    }
+  }
+
+  /**
+   * Transcribe Live finishes text only after a long silence (measured: 25-48 s on talks with 0.3-0.6 s pauses).
+   * Google's "hybrid VAD": tell it the speaker stopped at a short pause, and it finishes the text at once.
+   */
+  #endAtPause(chunk) {
+    if (rms(chunk) >= config.speechRms) { this.quietMs = 0; this.spoke = true; return; }
+    this.quietMs = (this.quietMs || 0) + chunk.length / 32; // 16 kHz 16-bit: 32 bytes per ms
+    if (this.spoke && this.quietMs >= (config.vadSilenceMs || 300)) {
+      this.spoke = false;
+      this.session.sendRealtimeInput({ audioStreamEnd: true });
     }
   }
 
@@ -109,14 +126,16 @@ export class GeminiEngine extends EventEmitter {
       if (this.languageHints.length) inputTx.languageCodes = this.languageHints;
       if (this.mode) inputTx.mode = this.mode;
     }
-    const cfg = {
+    // Transcribe Live: text only. Transcription carries no conversation to resume or compress, so a fresh
+    // session after each ~10 min connection is enough.
+    const cfg = this.transcribeOnly ? { responseModalities: [Modality.TEXT], inputAudioTranscription: inputTx } : {
       responseModalities: [Modality.AUDIO],
       inputAudioTranscription: inputTx,
       outputAudioTranscription: {},
       translationConfig: { targetLanguageCode: this.target, echoTargetLanguage: this.echo },
     };
-    if (level !== 'bare') cfg.sessionResumption = this.handle ? { handle: this.handle } : {};
-    if (level === 'full') cfg.contextWindowCompression = { slidingWindow: {} };
+    if (!this.transcribeOnly && level !== 'bare') cfg.sessionResumption = this.handle ? { handle: this.handle } : {};
+    if (!this.transcribeOnly && level === 'full') cfg.contextWindowCompression = { slidingWindow: {} };
     if (level === 'full' && config.vadSilenceMs > 0) {
       cfg.realtimeInputConfig = { automaticActivityDetection: { silenceDurationMs: config.vadSilenceMs, endOfSpeechSensitivity: 'END_SENSITIVITY_HIGH' } };
     }
@@ -139,7 +158,7 @@ export class GeminiEngine extends EventEmitter {
     }, CONNECT_TIMEOUT_MS);
     try {
       const session = await client().live.connect({
-        model: config.model,
+        model: this.transcribeOnly ? config.transcribeModel : config.model,
         config: this.#buildConfig(),
         callbacks: {
           onopen: () => {},
@@ -189,6 +208,7 @@ export class GeminiEngine extends EventEmitter {
       this.#reconnect('goaway', 0);
       return;
     }
+    if (m.usageMetadata) this.emit('usage', m.usageMetadata);
     if (m.usageMetadata?.totalTokenCount) this.stats.tokens = Math.max(this.stats.tokens, m.usageMetadata.totalTokenCount);
     const sc = m.serverContent;
     if (!sc) return;
@@ -201,7 +221,7 @@ export class GeminiEngine extends EventEmitter {
     if (sc.inputTranscription) {
       this.stats.lastInputAt = Date.now();
       const t = sc.inputTranscription;
-      this.emit('input', { text: t.text || '', finished: !!t.finished, lang: normLang(t.languageCode) });
+      this.emit('input', { text: this.#spaced(t.text), finished: !!t.finished, lang: normLang(t.languageCode) });
     }
     if (sc.outputTranscription) {
       this.stats.lastOutputAt = Date.now();
@@ -223,11 +243,16 @@ export class GeminiEngine extends EventEmitter {
   #onDrain(m) {
     const sc = m.serverContent;
     if (!sc) return;
-    if (sc.inputTranscription) this.emit('input', { text: sc.inputTranscription.text || '', finished: !!sc.inputTranscription.finished, lang: normLang(sc.inputTranscription.languageCode) });
+    if (sc.inputTranscription) this.emit('input', { text: this.#spaced(sc.inputTranscription.text), finished: !!sc.inputTranscription.finished, lang: normLang(sc.inputTranscription.languageCode) });
     if (sc.outputTranscription) this.emit('output', { text: sc.outputTranscription.text || '', finished: !!sc.outputTranscription.finished, lang: this.target });
     for (const p of sc.modelTurn?.parts || []) {
       if (p.inlineData?.data && (p.inlineData.mimeType || '').startsWith('audio')) this.emit('audio', Buffer.from(p.inlineData.data, 'base64'));
     }
+  }
+
+  /** Transcribe Live sends each finished sentence without a leading space ("Summit.My name…"): add one. */
+  #spaced(text = '') {
+    return this.transcribeOnly && text && !/^\s/.test(text) ? ` ${text}` : text;
   }
 
   #onClose(e, wasResuming) {

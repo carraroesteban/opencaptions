@@ -171,7 +171,7 @@ console.log(`Using ${videos.length} video(s):`);
 videos.forEach((v, i) => console.log(`  ${String(i + 1).padStart(2)}. ${v.title}${v.duration ? c.dim(` (${Math.round(v.duration / 60)} min)`) : ''}  ${c.dim(v.id)}`));
 if (a.list) process.exit(0);
 
-const perMin = videos.length * 0.0368;
+const perMin = videos.length * 0.009; // Transcribe Live; 0.0368 with TRANSCRIBE_MODEL=off (Live Translate)
 console.log(c.yellow(`\n≈ $${perMin.toFixed(2)}/min in Gemini Live + ~$0.01/min per room in text translation${MINUTES ? ` → ≈ $${(perMin * MINUTES * 1.25).toFixed(2)} for ${MINUTES} min` : ''}. Starting in 5 s (Ctrl+C to abort)…`));
 await new Promise((r) => setTimeout(r, 5000));
 

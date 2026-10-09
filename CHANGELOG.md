@@ -4,8 +4,24 @@ All notable changes to this project are documented in this file. The format foll
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-10-09
+
+Captions for about a quarter of the cost: rooms transcribe with Gemini's new Transcribe Live by default, and the speech model can be picked in Settings.
+
+### Added
+
+- **Choose the speech model from the dashboard** (**Settings → Speech model**): *Captions only* (Transcribe Live, about US$ 0.54 per room-hour; the default, recommended when nobody needs the translated voice 🎧, but speakers who switch language mid-talk get less clever captions) or *Captions + translated voice* (Live Translate, about US$ 2.2 per room-hour). No `.env` edit or restart needed. Running `text`-mode rooms reconnect with the new model at once (captions pause a few seconds, and the dashboard asks first while a room is live); the choice is kept in `data/setup.json`, recorded in **History** and can be undone. `TRANSCRIBE_MODEL` in `.env` still wins, and the dashboard then shows it without letting anyone change it. The engine chip at the top says which one is in use in plain words (*Gemini · Captions only*), with the exact model names on hover. API: `speechModel` in `GET`/`PUT /api/setup` and in the dashboard feed.
+
+- **`npm run compare-transcribe`** plays the bundled talks through Live Translate and Transcribe Live at once, in real time, and reports words right against each talk's script, the delay from speech to first caption, whether each piece of speech comes with its language, and the cost per hour (from the usage Google reports, when it adds up). The report goes to `data/transcribe-compare-*.json`. Results: [Latency](docs/latency.md#which-speech-model).
+
+### Changed
+
+- **Breaking: Captions only is the default speech model, about US$ 0.54 per room-hour instead of US$ 2.2.** `text`-mode rooms (the default mode) now transcribe the speaker with Gemini 3.5 Transcribe Live (`gemini-3.5-transcribe-live`) instead of Live Translate, which the app only used for its transcription in that mode. Measured on the three bundled talks with a real key: as accurate (0.6–2.2 % of words wrong in English, 0 % in Spanish, against 0–1.1 % and 0 %), first provisional words in 1.2 s instead of about 3 s, and finished text as fast (about 3 s). What changes: no translated voice in headphones (🎧); a speaker who switches language mid-talk still gets captions, but the track of the language they switched to shows a "translation" into that same language instead of their words; and while text translation is rate-limited, that language waits instead of showing Live Translate's captions. To keep the translated voice, pick **Captions + translated voice** in **Settings → Speech model**, or set `TRANSCRIBE_MODEL=off`. `live` and `hybrid` rooms keep Live Translate. Transcribe Live waits for a long silence before finishing a sentence (23–48 s on the samples), so the app tells it when the speaker pauses for 0.3 s (`VAD_SILENCE_MS` if set), as Google recommends; it also adds the space Transcribe Live leaves out between sentences. The dashboard's cost estimate uses each model's price. The website, README and docs show the new price.
+- **Settings explains why "This computer" can't be picked.** When the server wasn't started with local mode or the offline backup, **Settings → AI and offline backup** now says it needs the Whisper speech server and Ollama running on this computer, and gives the command to start them (`npm run local -- --fallback`, or `npm run local` for this computer only). Before, the option was just greyed out (or the section was hidden without a Gemini key at startup). The dashboard feed's `failover` gains `backup`.
+
 ### Fixed
 
+- **`npm run local -- --fallback` now accepts a Gemini key pasted in the dashboard.** Before, it stopped with "set GEMINI_API_KEY in .env first" unless the key was in `.env`, even though Settings tells people to run that command. It now asks the server's own settings, so a key saved from the dashboard (in `data/secrets.json`, or `DATA_DIR`) counts too; the message still appears when there's no key anywhere.
 - **Windows:** cancelling a recording while it was being read left its temporary folder behind (Windows can't delete a file ffmpeg still has open); the job now deletes it once the decoder has stopped. The server can also be stopped by the program that started it with `child.send('shutdown')`, the same clean stop as Ctrl+C (on Windows, `child.kill()` ends a process at once), which the restart test uses there.
 
 ## [0.5.0] - 2026-10-09

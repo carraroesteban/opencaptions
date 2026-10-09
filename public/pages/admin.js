@@ -48,7 +48,11 @@ const L = {
     renameTitle: (n) => `Renombrar la charla en «${n}»`, renameNote: 'Cambia el título de la charla actual en las pantallas, la transcripción y las descargas.', renameOk: 'Guardar',
     over: (m, t) => `Va ${m} min pasada · le toca a «${t}»`, startDue: (t) => `Empezar «${t}»`, next: (t, h) => `Siguiente: ${t} · ${h}`, noTalk: 'Sin charla anunciada',
     aiAsk: '¿Cambiar la IA de los subtítulos?', aiAskBody: (l) => `Todas las salas pasan a: ${l}. Los subtítulos se pausan unos segundos en cada sala mientras se reconectan.`, aiOk: 'Cambiar la IA',
-    aiDesc: (f) => (f.mode === 'auto' ? 'Gemini en la nube, y esta computadora toma el control si se corta internet.' : f.mode === 'local' ? 'Siempre esta computadora: Whisper y un modelo local.' : 'Siempre Gemini en la nube.') + (f.localReady ? ' El respaldo local está listo.' : ' El respaldo local no está corriendo (npm run local -- --fallback).'),
+    aiDesc: (f) => (f.mode === 'auto' ? 'Gemini en la nube, y esta computadora toma el control si se corta internet.' : f.mode === 'local' ? 'Siempre esta computadora: Whisper y un modelo local.' : 'Siempre Gemini en la nube.') + (f.localReady ? ' El respaldo local está listo.' : f.backup ? ' El respaldo local no responde: revisá que el servidor de voz Whisper y Ollama sigan abiertos.' : ''),
+    localWhy: '«Esta computadora» necesita el servidor de voz Whisper y Ollama abiertos acá, y este servidor se inició sin ellos. Para tenerla, cerrá el servidor y abrilo de nuevo con: npm run local -- --fallback (Gemini, con esta computadora de respaldo) o npm run local (solo esta computadora).',
+    speech: { translate: 'Subtítulos + voz traducida', transcribe: 'Solo subtítulos' },
+    speechHint: { translate: 'Cada sala también puede ofrecer la voz traducida, y cuesta unas cuatro veces más. Elegilo solo si alguien la necesita.', transcribe: 'Recomendado si nadie necesita la voz traducida. Si el orador cambia de idioma en medio de la charla, los subtítulos lo manejan peor.' },
+    speechAsk: '¿Cambiar el modelo de voz?', speechAskBody: (n) => `Hay ${n} ${n === 1 ? 'sala' : 'salas'} en vivo: los subtítulos se pausan unos segundos mientras se reconectan.`, speechOk: 'Cambiar el modelo',
     agendaNone: 'Todavía no hay agenda. Pegala abajo.', agendaPreview: (a, r, k) => `${a} ${a === 1 ? 'charla nueva' : 'charlas nuevas'} · ${r} ${r === 1 ? 'se quita' : 'se quitan'} · ${k} ${k === 1 ? 'sigue igual' : 'siguen igual'}`, agendaUnknown: (l) => `Salas que no existen: ${l}`, agendaSkipped: (n, l) => `${n} ${n === 1 ? 'fila' : 'filas'} de otras salas ${n === 1 ? 'se ignora' : 'se ignoran'} (${l})`,
     agendaSave: 'Reemplazar la agenda', agendaSame: 'Es igual a la agenda actual: no hay nada que cambiar.', agendaSaved: (n) => `Agenda guardada: ${n} charlas.`, more: (n) => `y ${n} más`,
     glossSaved: (t, c) => `Glosario guardado: ${t} términos, ${c} correcciones.`, unsaved: 'Cambios sin guardar', anyLang: 'Todos',
@@ -80,6 +84,7 @@ const L = {
       'glossary.set': (c) => (c.undoes ? 'Glosario vuelto a como estaba' : `Glosario guardado (${c.after?.terms ?? 0} términos, ${c.after?.corrections ?? 0} correcciones)`),
       'event.rename': (c) => `Evento renombrado a «${c.after}»`,
       'engine.mode': (c) => `IA: ${aiLabel(c.after)}`,
+      'ai.speech': (c) => `Modelo de voz: ${t.speech[c.after] || c.after}`,
       'event.lock': (c) => (c.after ? 'Modo evento activado' : 'Modo evento desactivado'),
       'auth.link': (c) => `Enlace creado para la computadora de una sala (${c.after})`,
     },
@@ -105,7 +110,11 @@ const L = {
     renameTitle: (n) => `Rename the talk in “${n}”`, renameNote: 'Changes the current talk’s title on screens, in the transcript and in downloads.', renameOk: 'Save',
     over: (m, t) => `${m} min over · “${t}” is due`, startDue: (t) => `Start “${t}”`, next: (t, h) => `Next: ${t} · ${h}`, noTalk: 'No talk announced',
     aiAsk: 'Switch the captions AI?', aiAskBody: (l) => `Every room switches to: ${l}. Captions pause for a few seconds in each room while they reconnect.`, aiOk: 'Switch the AI',
-    aiDesc: (f) => (f.mode === 'auto' ? 'Gemini in the cloud, and this computer takes over if the internet goes down.' : f.mode === 'local' ? 'Always this computer: Whisper and a local model.' : 'Always Gemini in the cloud.') + (f.localReady ? ' The local backup is ready.' : ' The local backup isn’t running (npm run local -- --fallback).'),
+    aiDesc: (f) => (f.mode === 'auto' ? 'Gemini in the cloud, and this computer takes over if the internet goes down.' : f.mode === 'local' ? 'Always this computer: Whisper and a local model.' : 'Always Gemini in the cloud.') + (f.localReady ? ' The local backup is ready.' : f.backup ? ' The local backup isn’t answering: check that the Whisper speech server and Ollama are still open.' : ''),
+    localWhy: '“This computer” needs the Whisper speech server and Ollama open here, and this server was started without them. To have it, stop the server and start it again with: npm run local -- --fallback (Gemini, with this computer as the backup) or npm run local (only this computer).',
+    speech: { translate: 'Captions + translated voice', transcribe: 'Captions only' },
+    speechHint: { translate: 'Each room can also offer the translated voice, and it costs about four times more. Pick it only if someone needs it.', transcribe: 'Recommended when nobody needs the translated voice. Speakers who switch language mid-talk get less clever captions.' },
+    speechAsk: 'Change the speech model?', speechAskBody: (n) => `${n} ${n === 1 ? 'room is' : 'rooms are'} live: captions pause for a few seconds while they reconnect.`, speechOk: 'Change the model',
     agendaNone: 'No agenda yet. Paste it below.', agendaPreview: (a, r, k) => `${a} new ${a === 1 ? 'talk' : 'talks'} · ${r} removed · ${k} unchanged`, agendaUnknown: (l) => `Rooms that don’t exist: ${l}`, agendaSkipped: (n, l) => `${n} ${n === 1 ? 'row' : 'rows'} for other rooms ${n === 1 ? 'is' : 'are'} ignored (${l})`,
     agendaSave: 'Replace the agenda', agendaSame: 'It’s the same as the current agenda: nothing to change.', agendaSaved: (n) => `Agenda saved: ${n} talks.`, more: (n) => `and ${n} more`,
     glossSaved: (t, c) => `Glossary saved: ${t} terms, ${c} corrections.`, unsaved: 'Unsaved changes', anyLang: 'All',
@@ -137,6 +146,7 @@ const L = {
       'glossary.set': (c) => (c.undoes ? 'Glossary put back' : `Glossary saved (${c.after?.terms ?? 0} terms, ${c.after?.corrections ?? 0} corrections)`),
       'event.rename': (c) => `Event renamed to “${c.after}”`,
       'engine.mode': (c) => `AI: ${aiLabel(c.after)}`,
+      'ai.speech': (c) => `Speech model: ${t.speech[c.after] || c.after}`,
       'event.lock': (c) => (c.after ? 'Event mode turned on' : 'Event mode turned off'),
       'auth.link': (c) => `Link made for a room computer (${c.after})`,
     },
@@ -361,12 +371,16 @@ $('ob-steps').onclick = (e) => {
 $('ob-hide').onclick = () => { store.set('admin.obHidden', true); $('onboard').classList.add('hidden'); };
 
 // ---------- offline backup banner ----------
-function renderNet(f) {
-  $('ai-setting').classList.toggle('hidden', !f);
-  if (!f) return $('netbar').classList.add('hidden');
+// Commands in <code> so they read and copy right; rewritten only when they change (renderNet runs on every update).
+const aiDesc = (text) => { const el = $('ai-desc'), h = esc(text).replace(/npm run local( -- --fallback)?/g, '<code>$&</code>'); if (el.dataset.html !== h) { el.innerHTML = h; el.dataset.html = h; } };
+function renderNet(f, engine) {
+  // Started without the backup: no selector, just how to get "this computer" (npm run local starts it, not the dashboard)
+  $('ai-setting').classList.toggle('hidden', !f && engine === 'local');
+  $('ai-mode').classList.toggle('hidden', !f);
+  if (!f) { aiDesc(t.localWhy); return $('netbar').classList.add('hidden'); }
   if (document.activeElement !== $('ai-mode')) $('ai-mode').value = f.mode;
   $('ai-mode').querySelector('[value=local]').disabled = !f.localReady;
-  $('ai-desc').textContent = t.aiDesc(f);
+  aiDesc(t.aiDesc(f) + (f.localReady || f.backup ? '' : ` ${t.localWhy}`));
   let html = '';
   let bad = false;
   if (f.active === 'local') {
@@ -393,11 +407,11 @@ function render(s) {
   $('event').textContent = s.event;
   document.title = t.title(s.event);
   renderOnboard(s);
-  $('engine').textContent = s.engine === 'gemini' ? `Gemini · ${s.model}` : s.engine === 'local' ? `Local · ${s.model}` : tr('Modo simulado (sin API key)');
+  $('engine').textContent = s.engine === 'gemini' ? `Gemini · ${t.speech[s.speechModel]}` : s.engine === 'local' ? `Local · ${s.model}` : tr('Modo simulado (sin API key)');
   $('engine').className = 'chip ' + (s.engine === 'mock' ? 'warn' : s.engine === 'local' && !localOk(s.local) ? 'bad' : 'ok');
-  $('engine').title = s.engine === 'mock' ? tr('Conectar la IA en la nube en Ajustes') : '';
+  $('engine').title = s.engine === 'mock' ? tr('Conectar la IA en la nube en Ajustes') : s.model; // the exact model names
   $('engine').style.cursor = s.engine === 'mock' ? 'pointer' : '';
-  renderNet(s.failover);
+  renderNet(s.failover, s.engine);
   $('k-live').textContent = `${s.totals.live}/${s.totals.stages}`;
   $('k-sessions').textContent = s.totals.sessions;
   $('k-viewers').textContent = s.totals.viewers;
@@ -1360,8 +1374,8 @@ addEventListener('hashchange', recFromHash);
 recFromHash();
 
 // ---------- History ----------
-const KIND_ICON = { 'room.create': 'plus', 'room.update': 'gear', 'room.delete': 'x', 'agenda.set': 'calendar', 'glossary.set': 'book', 'event.rename': 'doc', 'engine.mode': 'cloud', 'event.lock': 'lock' };
-const UNDOABLE = new Set(['room.create', 'room.update', 'room.delete', 'agenda.set', 'glossary.set', 'event.rename', 'engine.mode']);
+const KIND_ICON = { 'room.create': 'plus', 'room.update': 'gear', 'room.delete': 'x', 'agenda.set': 'calendar', 'glossary.set': 'book', 'event.rename': 'doc', 'engine.mode': 'cloud', 'ai.speech': 'cloud', 'event.lock': 'lock' };
+const UNDOABLE = new Set(['room.create', 'room.update', 'room.delete', 'agenda.set', 'glossary.set', 'event.rename', 'engine.mode', 'ai.speech']);
 async function loadHistory() {
   hist = await api('GET', '/api/history');
   $('history-list').innerHTML = hist.changes.length ? hist.changes.map((c) => {
@@ -1405,7 +1419,20 @@ async function loadSettings() {
   if (last?.system) $('sys').textContent = t.sys(last.system, fmtDur(last.uptimeSec));
   setLocked(!!s.locked);
   if (s.publicTranscriptsFixed) $('tx-access').disabled = true;
+  renderSpeech(s);
 }
+// Speech model: Live Translate (captions + translated voice) or Transcribe Live (captions only, cheaper).
+function renderSpeech(s) {
+  $('speech-model').value = s.speechModel;
+  $('speech-note').textContent = `${tr('Con qué modelo de Gemini se escucha al orador en las salas que traducen los subtítulos como texto (el modo normal).')} ${s.speechModelFixed ? tr('Lo fija TRANSCRIBE_MODEL en el archivo .env.') : t.speechHint[s.speechModel]}`;
+  if (s.speechModelFixed) $('speech-model').disabled = true;
+}
+$('speech-model').onchange = async (e) => {
+  const live = last?.totals?.live || 0;
+  if (live && !(await confirmDialog({ title: t.speechAsk, body: t.speechAskBody(live), ok: t.speechOk }))) { e.target.value = settingsSetup.speechModel; return; }
+  try { const r = await api('PUT', '/api/setup', { speechModel: e.target.value }); if (r.change) toast(t.saved, { undo: r.change }); } catch { /* toast shown */ }
+  await loadSettings();
+};
 $('name-form').onsubmit = async (e) => {
   e.preventDefault();
   const name = $('name-in').value.trim();

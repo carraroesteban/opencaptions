@@ -48,7 +48,7 @@ const evOld = fs.existsSync(EVENT) ? JSON.parse(fs.readFileSync(EVENT, 'utf8')) 
 console.log(`\n${badge('O━ OpenCaptions')} ${b('setup')} — live captions & translation for your event.\n${dim('Press Enter to keep the value in parentheses.')}\n`);
 
 const eventName = await ask(n('Event name'), evOld.eventName || 'My Conference');
-console.log(dim('\nWhere the AI runs:\n  gemini — Google\'s cloud: best quality, ~US$ 2.2 per room-hour, needs internet and an API key\n  local  — this computer: free and private (audio never leaves it), needs a recent computer (docs/local.md)\n  demo   — simulated captions, to try the interface'));
+console.log(dim('\nWhere the AI runs:\n  gemini — Google\'s cloud: best quality, ~US$ 0.54 per room-hour (2.2 with a translated voice), needs internet and an API key\n  local  — this computer: free and private (audio never leaves it), needs a recent computer (docs/local.md)\n  demo   — simulated captions, to try the interface'));
 const engineDefault = envOld.ENGINE === 'local' ? 'local' : envOld.ENGINE === 'mock' ? 'demo' : 'gemini';
 let engine = (await ask(n('AI engine (gemini / local / demo)'), engineDefault)).toLowerCase();
 if (!['gemini', 'local', 'demo'].includes(engine)) engine = 'gemini';
