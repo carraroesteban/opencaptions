@@ -4,6 +4,8 @@ All notable changes to this project are documented in this file. The format foll
 
 ## [Unreleased]
 
+## [0.6.1] - 2026-10-09
+
 ### Fixed
 
 - Captions no longer arrive 15–30 seconds late with Transcribe Live when the sound is loud, for example a talk played from a browser tab. A pause between sentences now counts as quiet compared with the speaker's own voice, not compared with a fixed level, so the captions come every few seconds at any volume.
