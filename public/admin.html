@@ -76,6 +76,10 @@
     .stage .meter { height: 6px; border-radius: 6px; background: var(--bg3); position: relative; overflow: hidden; }
     .stage .meter i { position: absolute; inset: 0 auto 0 0; background: var(--fg); border-radius: 6px; transition: width .2s; }
     .stage .meter b { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--fg2); }
+    /* No sound yet: what to do, right on the card */
+    .stage .nosound { display: grid; gap: 10px; padding: 12px 14px; border-radius: 12px; background: var(--bg3); font-size: 14px; line-height: 1.45; }
+    .stage .nosound b::after { content: ' · '; font-weight: 400; }
+    .stage .nosound .row { gap: 8px; flex-wrap: wrap; }
     .stage .stats { display: flex; gap: 6px 16px; flex-wrap: wrap; font-size: 13px; color: var(--fg2); }
     .stage .stats span { display: inline-flex; align-items: center; gap: 6px; }
     .stage .stats b { color: var(--fg); font-variant-numeric: tabular-nums; }
@@ -189,6 +193,19 @@
     dialog .dlg-actions { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; margin-top: 18px; }
     dialog p { line-height: 1.5; }
     .langs-check { display: flex; gap: 10px; flex-wrap: wrap; }
+    /* caption a recording */
+    .recdrop { display: grid; justify-items: center; gap: 8px; text-align: center; padding: 22px 16px; border: 1.5px dashed var(--line-strong); border-radius: 14px; background: var(--bg); color: var(--fg2); font-size: 14px; transition: border-color var(--dur) var(--ease), background var(--dur) var(--ease); }
+    .recdrop.over { border-color: var(--fg); background: var(--bg3); }
+    .recdrop b { color: var(--fg); overflow-wrap: anywhere; }
+    .recprog { display: grid; gap: 8px; }
+    .recbar { height: 8px; border-radius: 8px; background: var(--bg3); overflow: hidden; }
+    .recbar i { display: block; height: 100%; width: 0; background: var(--fg); border-radius: 8px; transition: width .4s var(--ease); }
+    .recline { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; font-size: 13px; color: var(--fg2); }
+    .recline .spacer { flex: 1; }
+    .recjob { display: grid; gap: 8px; padding: 14px 18px; border-bottom: 1px solid var(--line); }
+    .recjob:last-child { border-bottom: 0; }
+    .recjob .recline b { color: var(--fg); font-size: 14px; }
+    .recjob button, .recline button { padding: 4px 10px; font-size: 13px; }
     .notes { position: fixed; left: 50%; bottom: 22px; translate: -50% 0; display: grid; gap: 8px; z-index: 50; width: min(520px, calc(100vw - 32px)); }
     .note { display: flex; gap: 12px; align-items: center; padding: 12px 14px 12px 16px; border-radius: 14px; background: var(--ink); color: var(--paper); box-shadow: var(--shadow-lg); font-size: 14px; animation: oc-note .25s var(--ease); }
     .note span { flex: 1; }
@@ -352,7 +369,8 @@
 
       <section class="view" data-view="transcripts">
         <p class="lede">Todo lo que se dijo en cada charla, para leer, buscar y descargar en cada idioma.</p>
-        <div class="rowbar"><label class="row">Sala <select id="tx-room"></select></label><button type="button" id="tx-zip" data-admin data-icon="download" title="Todas las charlas de esta sala, en cada idioma: SRT, VTT y TXT">Descargar todo (.zip)</button><span class="spacer"></span><a href="/report.html" target="_blank"><button data-icon="dashboard" tabindex="-1">Informe del evento</button></a><a href="/talks.html" target="_blank"><button data-icon="doc" tabindex="-1">Abrir la biblioteca pública</button></a></div>
+        <div class="rowbar"><label class="row">Sala <select id="tx-room"></select></label><button type="button" id="tx-zip" data-admin data-icon="download" title="Todas las charlas de esta sala, en cada idioma: SRT, VTT y TXT">Descargar todo (.zip)</button><button type="button" id="tx-rec" class="primary" data-admin data-icon="film" title="Un archivo de audio o video de tu computadora, mucho más rápido que el tiempo real">Subtitular una grabación</button><span class="spacer"></span><a href="/report.html" target="_blank"><button data-icon="dashboard" tabindex="-1">Informe del evento</button></a><a href="/talks.html" target="_blank"><button data-icon="doc" tabindex="-1">Abrir la biblioteca pública</button></a></div>
+        <div class="card flush hidden" id="tx-jobs" data-admin></div>
         <div class="card flush" id="tx-list"></div>
       </section>
 
@@ -468,7 +486,10 @@
       <option value="live">Live (speech-to-speech de Gemini · 1 sesión por idioma)</option>
       <option value="hybrid">Híbrido (subtítulos por texto + voz traducida en todos los idiomas)</option>
     </select></label>
-    <label class="field">Pull de audio (opcional): SRT/RTMP/HLS/HTTP o archivo — el server lo toma con ffmpeg<input name="pull" placeholder="rtmp://0.0.0.0:1935/live/sala1 (OBS/vMix → Custom)  ·  srt://0.0.0.0:9001?mode=listener  ·  https://…/stream.m3u8" /></label>
+    <div class="u-stack8">
+      <label class="field">Sonido desde un stream o un archivo (opcional)<input name="pull" aria-describedby="pull-hint" placeholder="rtmp://0.0.0.0:1935/live/sala1  ·  srt://0.0.0.0:9001?mode=listener  ·  https://…/stream.m3u8  ·  samples/charla.mp3" /></label>
+      <p class="muted-note u-m0" id="pull-hint">Dejalo vacío si el sonido llega desde la página de sonido de la sala. Para OBS o vMix, el asistente crea la dirección (Ajustes → Abrir el asistente, paso 7). También acepta el enlace de un stream (SRT, RTMP, HLS) o un archivo de la carpeta samples de OpenCaptions.</p>
+    </div>
     <label class="row muted"><input type="checkbox" name="musicGuard" checked /> Pausar los subtítulos cuando suena música (entre charlas, videos)</label>
     <div class="u-stack8">
       <label class="row muted"><input type="checkbox" name="roomSound" /> El sonido de la sala en los celulares (escucha asistida)</label>
@@ -508,6 +529,30 @@
   </form></dialog>
 
   <dialog id="dlg-export"><div id="export-body"></div><form method="dialog" class="u-right u-mt12"><button>Cerrar</button></form></dialog>
+
+  <dialog id="dlg-rec" aria-labelledby="rec-title"><form method="dialog" id="f-rec" class="u-stack12">
+    <h3 class="u-m0" id="rec-title">Subtitular una grabación</h3>
+    <p class="muted-note u-m0">Un archivo de audio o video de tu computadora queda como una transcripción más de la sala, con sus subtítulos en cada idioma. Mucho más rápido que el tiempo real, y sin pasar por la sala en vivo.</p>
+    <div class="recdrop" id="rec-drop">
+      <span id="rec-file-label">Arrastrá el archivo acá</span>
+      <b id="rec-file-name" class="hidden" data-no-i18n></b>
+      <input type="file" id="rec-file" accept="audio/*,video/*" class="sr-only" aria-labelledby="rec-pick" />
+      <button type="button" id="rec-pick" data-icon="film">Elegir un archivo</button>
+    </div>
+    <div class="row u-stretch">
+      <label class="field u-grow">Sala<select name="room" required></select></label>
+      <label class="field u-grow">Idioma que se habla<select name="source"><option value="auto">Detectar automáticamente</option></select></label>
+    </div>
+    <label class="field">Título<input name="title" maxlength="200" autocomplete="off" /></label>
+    <div class="field">Subtítulos en<div class="langs-check" id="rec-targets"></div></div>
+    <p class="muted-note u-m0" id="rec-estimate" data-no-i18n></p>
+    <div class="recprog hidden" id="rec-prog">
+      <div class="recbar" id="rec-bar" role="progressbar" aria-labelledby="rec-phase" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><i></i></div>
+      <div class="recline"><span id="rec-phase" role="status" data-no-i18n></span><span class="spacer"></span><span id="rec-eta" data-no-i18n></span><button type="button" id="rec-stop" class="hidden">Detener</button></div>
+    </div>
+    <p class="muted-note u-m0 u-bad" id="rec-err" role="alert" data-no-i18n></p>
+    <div class="dlg-actions"><button type="button" id="rec-close">Cancelar</button><a id="rec-open" class="hidden" target="_blank"><button type="button" tabindex="-1" data-icon="doc">Abrir la transcripción</button></a><button type="button" class="primary" id="rec-start" data-icon="play" disabled>Subtitular</button></div>
+  </form></dialog>
   <div class="notes" id="toasts" aria-live="polite"></div>
 
   <script type="module" src="/pages/admin.js"></script>

@@ -80,6 +80,61 @@ test('local: a speaker who never pauses is cut, without losing or repeating word
   assert.equal(got.text(), SCRIPT.slice(0, 38).join(' '));
 });
 
+// Seen in a live run of the Spanish sample: a provisional pass heard 22 words, the next passes and the final one came
+// back as "la", and ten seconds of speech never reached the audience. `recover` = the prompt-less retry works.
+function collapsingWhisper({ after, recover = false, calls = [] }) {
+  const whisper = fakeWhisper({ unstable: false, calls });
+  let partials = 0;
+  return async (pcm, o) => {
+    const r = await whisper(pcm, o);
+    if (!o.final && ++partials <= after) return r;
+    if (o.final && recover && o.prompt === '') return r;
+    return { ...r, text: 'la' };
+  };
+}
+
+test('local: a provisional pass that collapses doesn\'t replace the words on screen', async () => {
+  const e = new LocalEngine({ label: 't', target: 'es', transcriber: collapsingWhisper({ after: 3 }), ping: async () => true });
+  const got = collect(e);
+  const logs = [];
+  e.on('log', (m) => logs.push(m));
+  await started(e);
+  await feed(e, [...Array(12 * 4).keys()].map(speech)); // 12 words, no pause
+  await feed(e, Array(9).fill(0).map(silence));
+  await idle(e);
+  e.stop();
+  assert.ok(!got.interims.some((i) => i.text === 'la'), 'the collapsed "la" is never shown');
+  assert.ok(e.stats.collapses > 0 && logs.some((m) => /earlier pass heard/.test(m)), 'it is counted and logged');
+});
+
+test('local: a final pass that collapses is retried without the prompt, then falls back to the provisional words', async () => {
+  // The retry works: the full sentence, from the prompt-less final pass.
+  const calls = [];
+  let e = new LocalEngine({ label: 't', target: 'es', transcriber: collapsingWhisper({ after: 99, recover: true, calls }), ping: async () => true });
+  e.context = 'the previous sentence';
+  let got = collect(e);
+  await started(e);
+  await feed(e, [...Array(12 * 4).keys()].map(speech));
+  await feed(e, Array(9).fill(0).map(silence));
+  await idle(e);
+  e.stop();
+  assert.equal(got.text(), SCRIPT.slice(0, 12).join(' '));
+  assert.equal(calls.filter((c) => c.final).length, 2, 'one retry');
+
+  // The retry collapses too: the words the provisional passes heard are kept, never "la".
+  e = new LocalEngine({ label: 't', target: 'es', transcriber: collapsingWhisper({ after: 99 }), ping: async () => true });
+  e.context = 'the previous sentence';
+  got = collect(e);
+  await started(e);
+  await feed(e, [...Array(12 * 4).keys()].map(speech));
+  await feed(e, Array(9).fill(0).map(silence));
+  await idle(e);
+  e.stop();
+  assert.ok(got.text().split(' ').length >= 10, `most of the sentence survives: "${got.text()}"`);
+  assert.ok(!/\bla\b/.test(got.text()));
+  assert.equal(got.inputs.at(-1).finished, true, 'the caption is closed');
+});
+
 test('local: a language the room does not use is re-transcribed in the room\'s language', async () => {
   const calls = [];
   // Whisper "hears" Galician unless told the language.

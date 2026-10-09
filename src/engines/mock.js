@@ -3,7 +3,7 @@
 import { EventEmitter } from 'node:events';
 import { rms } from '../audio.js';
 
-const CORPUS = [
+export const CORPUS = [
   {
     en: 'Good morning everyone, and thank you for joining us today.',
     es: 'Buenos días a todos, y gracias por acompañarnos hoy.',

@@ -9,7 +9,7 @@
   <link rel="icon" href="/brand/icon.svg" type="image/svg+xml" />
   <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
   <link rel="manifest" href="/manifest.webmanifest" />
-  <title>Ingesta de audio · OpenCaptions</title>
+  <title>Sonido de la sala · OpenCaptions</title>
   <link rel="stylesheet" href="/style.css" />
   <style>
     main { max-width: 980px; margin: 0 auto; padding: 22px 20px 64px; display: grid; gap: 18px; }
@@ -29,34 +29,38 @@
 <body>
   <main>
     <div class="row u-between">
-      <div><a class="brand u-fs16" href="/admin.html" title="Panel de producción">OpenCaptions</a><h1>Ingesta de audio del escenario</h1></div>
+      <div><a class="brand u-fs16" href="/admin.html" title="Panel de producción">OpenCaptions</a><h1>Enviar el sonido de esta sala</h1><p class="muted u-m0">Abrí esta página en la computadora que recibe el sonido del escenario: un micrófono, o una salida de la consola.</p></div>
       <span class="chip" id="conn">desconectado</span>
     </div>
 
     <div id="securewarn" class="card hidden u-danger-outline">⚠ Esta página no está en un contexto seguro: el navegador <b>no va a dejar usar el micrófono</b>. Abrila por <b>HTTPS</b> o en <b>localhost</b> (ver docs/deployment.md → HTTPS).</div>
+    <section id="f-token" class="card hidden u-danger-outline"><div class="u-stack8">
+      <b id="token-title">Esta computadora todavía no puede enviar sonido</b>
+      <p class="muted hint u-m0" id="token-hint">Abrí el enlace de esta sala que te pasó quien organiza (está en el panel: Pantallas y QR → Computadora junto al escenario). Sin enlace, escribí la contraseña de las computadoras de sala: el servidor la muestra al iniciar, y en Ajustes → Acceso se puede crear una nueva. En la computadora del servidor no hace falta nada de esto.</p>
+      <label class="field">Contraseña de las computadoras de sala<input id="token" type="password" autocomplete="off" aria-describedby="token-hint" /></label>
+    </div></section>
     <section class="card u-stack14">
       <div class="grid">
-        <label class="field">Escenario<select id="stage"></select></label>
-        <label class="field">Fuente
+        <label class="field">Sala<select id="stage"></select></label>
+        <label class="field">¿De dónde viene el sonido?
           <select id="mode">
-            <option value="mic">Micrófono / placa de audio</option>
-            <option value="tab">Pestaña o pantalla (audio de un stream, YouTube…)</option>
-            <option value="file">Archivo de audio/video</option>
-            <option value="sample">Audio de prueba incluido</option>
+            <option value="mic">Un micrófono o una placa de sonido</option>
+            <option value="tab">Otra pestaña o ventana (un stream, YouTube…)</option>
+            <option value="file">Una grabación (archivo de audio o video)</option>
+            <option value="sample">Una charla de prueba</option>
           </select>
         </label>
-        <label class="field" id="f-device">Entrada<select id="device"><option value="">(default)</option></select></label>
+        <label class="field" id="f-device">Entrada<select id="device"><option value="">(predeterminado)</option></select></label>
         <label class="field" id="f-channel">Canal<select id="channel"><option value="mix">Mono (mezcla L+R)</option><option value="left">Solo izquierdo</option><option value="right">Solo derecho</option></select></label>
-        <label class="field hidden" id="f-file">Archivo<input type="file" id="file" accept="audio/*,video/*" /></label>
-        <label class="field hidden" id="f-sample">Audio de prueba<select id="sample"><option value="/samples/talk-en.wav">Charla en inglés (EN → ES)</option><option value="/samples/talk-es.wav">Charla en español (ES → EN)</option></select></label>
-        <label class="field">Ganancia <input type="range" id="gain" min="0.5" max="4" step="0.1" value="1" /></label>
-        <label class="field" id="f-token">Token de ingesta (si el server lo pide)<input id="token" type="password" autocomplete="off" /></label>
+        <label class="field hidden" id="f-file">Grabación<input type="file" id="file" accept="audio/*,video/*" /></label>
+        <label class="field hidden" id="f-sample">Charla de prueba<select id="sample"><option value="/samples/talk-en.wav">Charla en inglés (EN → ES)</option><option value="/samples/talk-es.wav">Charla en español (ES → EN)</option></select></label>
+        <label class="field">Volumen <input type="range" id="gain" min="0.5" max="4" step="0.1" value="1" /></label>
       </div>
       <div class="row">
         <button id="go" class="primary">Empezar a transcribir</button>
         <button id="brk" class="hidden" title="Pausa (intervalo, publicidad): los subtítulos se detienen y las pantallas muestran la pausa. Tecla B.">Pausa (B)</button>
-        <label class="row muted hint"><input type="checkbox" id="monitor" /> Escuchar localmente (archivo/prueba)</label>
-        <label class="row muted hint"><input type="checkbox" id="auto" /> Auto-iniciar al abrir (mini PC)</label>
+        <label class="row muted hint"><input type="checkbox" id="monitor" /> Escucharla también en esta computadora (grabación o prueba)</label>
+        <label class="row muted hint"><input type="checkbox" id="auto" /> Empezar solo al abrir esta página</label>
         <label class="row muted hint" title="Otra computadora (u otra salida de la consola) para la misma sala: queda en espera y entra sola si la principal se corta o se queda muda."><input type="checkbox" id="backup" /> Es el respaldo de la sala</label>
       </div>
       <div>
@@ -64,7 +68,7 @@
         <div class="meter big-meter"><i id="lvl"></i><b id="pk" class="u-left0"></b></div>
       </div>
       <div class="row" id="engines"></div>
-      <p class="muted hint u-m0">Una vez iniciado no requiere operador: si hay silencio por un rato se pausa el envío (sin costo) y retoma solo cuando alguien habla. Si se corta la red, reconecta y reenvía lo que quedó en buffer.</p>
+      <p class="muted hint u-m0">Una vez que empieza, no necesita a nadie: si hay silencio un rato deja de enviar (sin costo) y sigue solo cuando alguien habla. Si se corta la red, se vuelve a conectar y manda lo que quedó pendiente.</p>
     </section>
 
     <section class="card preview" id="preview" data-no-i18n></section>

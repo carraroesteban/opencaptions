@@ -136,6 +136,7 @@ You ran the server, fed it audio from a file and a microphone, and watched capti
 ## Next steps
 
 - [Requirements](requirements.md): check what an event needs.
+- [Caption a recording](recording.md): turn a recorded talk or video into captions in a few seconds (try it now: **Transcripts → Caption a recording** with `samples/talk-en.wav`).
 - [Local mode](local.md): run the models on your own computer, without the cloud.
 - [Deployment](deployment.md): choose where the server runs.
 - [Security](security-guide.md): read this before exposing the server to a network.

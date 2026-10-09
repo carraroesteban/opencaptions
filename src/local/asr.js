@@ -109,6 +109,9 @@ function parseResult(j) {
     // Every segment says "probably not speech" → treat as silence (whisper.cpp and OpenAI-style servers report it).
     noSpeech: probs.length ? Math.min(...probs) : 0,
     duration: Number(j.duration) || 0,
+    // Seconds from the start of the audio sent: whisper.cpp splits long audio into phrases (a recording's captions
+    // use them, src/recording.js); the bundled server returns one segment for the whole clip.
+    segments: segments.map((s) => ({ start: Number(s.start) || 0, end: Number(s.end) || 0, text: cleanTranscript(s.text) })).filter((s) => s.text),
   };
 }
 
@@ -177,17 +180,21 @@ export async function asrReachable(timeoutMs = 3000) {
 
 // ---------- scheduling across rooms ----------
 // One speech server usually works on one request at a time (whisper.cpp holds a lock), so we queue here:
-// final passes (they commit words) in arrival order; provisional passes only when the server is idle.
-const slots = { active: 0, waiters: [] };
-export async function withAsrSlot(fn, { final = true } = {}) {
+// final passes (they commit words) in arrival order; provisional passes only when the server is idle. Background
+// work (captioning a recording) waits until no live room is waiting, so it never delays live captions by more than
+// the one piece it's working on.
+const slots = { active: 0, waiters: [], background: [] };
+export async function withAsrSlot(fn, { final = true, background = false } = {}) {
   const max = Math.max(1, config.localAsrConcurrency);
   if (!final && (slots.active >= max || slots.waiters.length)) return undefined; // busy: skip this provisional pass
-  if (slots.active >= max) await new Promise((r) => slots.waiters.push(r));
+  if (background) {
+    if (slots.active >= max || slots.waiters.length || slots.background.length) await new Promise((r) => slots.background.push(r));
+  } else if (slots.active >= max) await new Promise((r) => slots.waiters.push(r));
   slots.active++;
   try {
     return await fn();
   } finally {
     slots.active--;
-    slots.waiters.shift()?.();
+    (slots.waiters.shift() || slots.background.shift())?.();
   }
 }

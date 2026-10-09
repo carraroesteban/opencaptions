@@ -81,11 +81,14 @@ const L = {
       'event.rename': (c) => `Evento renombrado a «${c.after}»`,
       'engine.mode': (c) => `IA: ${aiLabel(c.after)}`,
       'event.lock': (c) => (c.after ? 'Modo evento activado' : 'Modo evento desactivado'),
+      'auth.link': (c) => `Enlace creado para la computadora de una sala (${c.after})`,
     },
     fields: { name: 'nombre', source: 'idioma de la charla', targets: 'idiomas', translation: 'modo de traducción', pull: 'fuente de audio', loop: 'loop', musicGuard: 'pausa con música', roomSound: 'sonido de la sala', roomSoundMax: 'máximo de oyentes' },
     ai: { auto: 'Automática (nube + respaldo)', cloud: 'Siempre en la nube', local: 'Siempre esta computadora' },
     sys: (y, up) => `Encendido hace ${up} · CPU ${y.cpuPct} % · memoria ${y.rssMB} MB · event loop ${y.loopLagMs.p99} ms (p99)`,
-    audioNone: 'Sin audio', copied: 'Copiado',
+    audioNone: 'Sin sonido', copied: 'Copiado',
+    kinds: { browser: 'página de sonido', agent: 'agente de la sala', pull: 'stream o archivo', personal: 'esta computadora' }, audioStream: 'stream o archivo',
+    linkMade: (hm) => `Sirve una vez, hasta las ${hm}. Solo deja enviar el sonido de esta sala: no hace falta contraseña.`, linkQr: 'QR del enlace para la computadora junto al escenario',
   },
   en: {
     title: (v) => `${v} · Production`,
@@ -135,11 +138,14 @@ const L = {
       'event.rename': (c) => `Event renamed to “${c.after}”`,
       'engine.mode': (c) => `AI: ${aiLabel(c.after)}`,
       'event.lock': (c) => (c.after ? 'Event mode turned on' : 'Event mode turned off'),
+      'auth.link': (c) => `Link made for a room computer (${c.after})`,
     },
     fields: { name: 'name', source: 'talk language', targets: 'languages', translation: 'translation mode', pull: 'audio source', loop: 'loop', musicGuard: 'pause for music', roomSound: 'room sound', roomSoundMax: 'most listeners' },
     ai: { auto: 'Automatic (cloud + backup)', cloud: 'Always in the cloud', local: 'Always this computer' },
     sys: (y, up) => `Up for ${up} · CPU ${y.cpuPct}% · memory ${y.rssMB} MB · event loop ${y.loopLagMs.p99} ms (p99)`,
-    audioNone: 'No audio', copied: 'Copied',
+    audioNone: 'No sound', copied: 'Copied',
+    kinds: { browser: 'sound page', agent: 'room agent', pull: 'stream or file', personal: 'this computer' }, audioStream: 'stream or file',
+    linkMade: (hm) => `Works once, until ${hm}. It only lets that computer send this room’s sound: no password needed.`, linkQr: 'QR code of the link for the computer next to the stage',
   },
 };
 const t = L[LANG] || L.en;
@@ -272,7 +278,7 @@ const langsOf = (st) => `${st.source === 'auto' || !st.source ? 'auto' : st.sour
 const stateChip = (s) => {
   if (s.brk) return `<span class="chip warn">${icon('pause')} ${esc(tr('PAUSA'))}${s.brk.by === 'agenda' ? ` · ${esc(tr('agenda'))}` : s.brk.by === 'switcher' ? ' · vMix/OBS' : s.brk.by === 'room' ? ` · ${esc(tr('desde la sala'))}` : ''}</span>`;
   if (s.music) return `<span class="chip warn">${icon('music')} ${esc(tr('MÚSICA · en pausa'))}</span>`;
-  if (!s.ingest) return `<span class="chip">${esc(tr('SIN INGESTA'))}</span>`;
+  if (!s.ingest) return `<span class="chip">${esc(tr(s.pull ? 'ESPERANDO EL STREAM' : 'SIN SONIDO'))}</span>`;
   if (s.engines.length && !s.gated) return `<span class="chip bad"><span class="dot live"></span> ${esc(tr('EN VIVO'))}</span>`;
   if (s.engines.length) return `<span class="chip warn">${esc(tr('EN PAUSA · silencio'))}</span>`;
   return `<span class="chip">${esc(tr('ESPERANDO VOZ'))}</span>`;
@@ -299,7 +305,7 @@ const OB = {
     noKey: '<a href="#settings">pegá tu API key en Ajustes</a> (unos dos minutos), o corré la IA en esta computadora con <code>npm run local</code>. Mientras tanto, los subtítulos son simulados.',
     address: 'Dirección pública para los celulares', addressD: (u) => (u ? esc(u) : '<a href="#settings">creala en Ajustes</a> para que los celulares abran los subtítulos desde cualquier red (opcional si comparten el Wi-Fi)'),
     rooms: 'Crear las salas', roomsD: (n) => `${n} ${n === 1 ? 'sala' : 'salas'} · <a href="#rooms">ver salas</a>`,
-    audio: 'Conectar el audio de cada sala', audioD: (a, n) => `${a} de ${n} con audio · agente, navegador o stream (<a href="https://github.com/carraroesteban/opencaptions/blob/main/docs/operations/runbook.md" target="_blank">cómo</a>)`,
+    audio: 'Conectar el sonido de cada sala', audioD: (a, n) => `${a} de ${n} con sonido · <a href="/welcome.html#audio">cómo conectarlo</a>`,
     agenda: 'Cargar la agenda', agendaD: (n) => (n ? `${n} ${n === 1 ? 'charla cargada' : 'charlas cargadas'}` : '<a href="#agenda">pegar la agenda</a> para que las charlas tomen su título (opcional)'),
     kit: 'Imprimir los QR de cada sala', kitD: '<a href="/kit.html" target="_blank" data-ob="kit">abrir el kit de QR</a>',
     sound: 'Prueba de sonido en cada sala', soundD: '<a href="/demo.html?mode=mic" target="_blank" data-ob="sound">abrir la prueba de sonido</a>',
@@ -315,7 +321,7 @@ const OB = {
     noKey: '<a href="#settings">paste your API key in Settings</a> (about two minutes), or run the AI on this computer with <code>npm run local</code>. Until then, captions are simulated.',
     address: 'A public address for phones', addressD: (u) => (u ? esc(u) : '<a href="#settings">create one in Settings</a> so phones can open the captions from any network (optional on a shared Wi-Fi)'),
     rooms: 'Create your rooms', roomsD: (n) => `${n} ${n === 1 ? 'room' : 'rooms'} · <a href="#rooms">see rooms</a>`,
-    audio: 'Connect each room’s audio', audioD: (a, n) => `${a} of ${n} with audio · agent, browser or stream (<a href="https://github.com/carraroesteban/opencaptions/blob/main/docs/operations/runbook.md" target="_blank">how</a>)`,
+    audio: 'Connect each room’s sound', audioD: (a, n) => `${a} of ${n} with sound · <a href="/welcome.html#audio">how to connect it</a>`,
     agenda: 'Load the agenda', agendaD: (n) => (n ? `${n} ${n === 1 ? 'talk' : 'talks'} loaded` : '<a href="#agenda">paste your agenda</a> so talks get their titles (optional)'),
     kit: 'Print each room’s QR code', kitD: '<a href="/kit.html" target="_blank" data-ob="kit">open the QR kit</a>',
     sound: 'Sound check in every room', soundD: '<a href="/demo.html?mode=mic" target="_blank" data-ob="sound">open the sound check</a>',
@@ -423,6 +429,15 @@ function renderGrid(s) {
         <div class="talkline" data-f="talkline" data-no-i18n></div>
         <div class="next" data-f="next" data-no-i18n></div>
         <div class="meter"><i data-f="lvl"></i><b data-f="pk"></b></div>
+        <div class="nosound hidden" data-f="nosound">
+          <p class="u-m0" data-f="nosound-none"><b>Todavía no llega sonido</b><span>Abrí la página de sonido de esta sala en la computadora junto al escenario.</span></p>
+          <p class="u-m0" data-f="nosound-pull"><b>Esperando el stream</b><span>Empezá a transmitir desde OBS o vMix a la dirección de esta sala.</span></p>
+          <div class="row">
+            <a href="/ingest.html?stage=${encodeURIComponent(st.id)}" target="_blank" data-f="nosound-open"><button type="button" class="primary" tabindex="-1">${icon('mic')}Abrir la página de sonido</button></a>
+            <button type="button" data-a="screens" data-f="nosound-link">${icon('link')}Enlace para otra computadora</button>
+            <a href="/welcome.html?room=${encodeURIComponent(st.id)}#audio" data-f="nosound-addr" data-setup><button type="button" tabindex="-1">${icon('link')}Ver la dirección</button></a>
+          </div>
+        </div>
         <div class="said" data-f="said" data-no-i18n></div>
         <div class="speakers" data-f="speakers" data-no-i18n></div>
         <div class="stats" data-f="stats"></div>
@@ -478,7 +493,9 @@ function renderGrid(s) {
     const pk = Math.max(0, Math.min(100, ((20 * Math.log10(st.peak || 1e-6) + 60) / 60) * 100));
     f('lvl').style.width = pct + '%';
     f('pk').style.left = pk + '%';
-    f('ingest').textContent = (st.ingest ? `${st.ingest.kind}${st.ingest.label ? ` · ${st.ingest.label}` : ''} · ${tr('hace')} ${ago(st.ingest.since)}` : st.pull ? `pull: ${st.pull}` : tr('Sin fuente de audio. Abrí /ingest.html en la PC del escenario.'))
+    f('nosound').classList.toggle('hidden', !!st.ingest);
+    for (const [k, on] of [['none', !st.pull], ['open', !st.pull], ['link', !st.pull], ['pull', !!st.pull], ['addr', !!st.pull]]) f(`nosound-${k}`).classList.toggle('hidden', !on);
+    f('ingest').textContent = (st.ingest ? `${t.kinds[st.ingest.kind] || st.ingest.kind}${st.ingest.label ? ` · ${st.ingest.label}` : ''} · ${tr('hace')} ${ago(st.ingest.since)}` : st.pull ? `${tr('sonido desde')} ${st.pull}` : tr('Todavía no llega sonido.'))
       + (st.backup ? ` · ${tr(st.backup.active ? 'RESPALDO AL AIRE' : 'respaldo en espera')}: ${st.backup.kind}${st.backup.label ? ` · ${st.backup.label}` : ''}` : '');
     f('engines').innerHTML = st.engines.length ? st.engines.map(engChip).join('') : `<span class="chip">${esc(tr('sesiones cerradas (0 costo)'))}</span>`;
     const trs = Object.entries(st.latency.tr).map(([k, v]) => `${k} ${sec(v)}`).join(' · ');
@@ -656,7 +673,7 @@ function renderMini(s) {
     const alerts = st.alerts.filter((a) => a !== 'no-ingest');
     const dot = alerts.length || st.dueTalk ? 'bad' : !st.ingest ? '' : st.engines.length && !st.gated ? 'live' : 'pause';
     const said = st.preview.orig ?? Object.values(st.preview)[0] ?? '';
-    const txt = st.dueTalk ? t.over(Math.max(1, Math.round((Date.now() - st.dueTalk.start) / 60000)), st.dueTalk.title) : alerts.length ? alerts.map(alertText).join(' · ') : !st.ingest ? tr('SIN INGESTA') : said || '…';
+    const txt = st.dueTalk ? t.over(Math.max(1, Math.round((Date.now() - st.dueTalk.start) / 60000)), st.dueTalk.title) : alerts.length ? alerts.map(alertText).join(' · ') : !st.ingest ? tr(st.pull ? 'ESPERANDO EL STREAM' : 'SIN SONIDO') : said || '…';
     return `<div class="r${alerts.length ? ' bad' : ''}" data-id="${esc(st.id)}"><span class="d ${dot}"></span><span class="n">${esc(st.name)}</span><span class="v">${icon('eye')} ${st.viewers}</span><span class="t">${esc(txt.length > 90 ? '…' + txt.slice(-90) : txt)}</span></div>`;
   }).join('');
 }
@@ -669,7 +686,7 @@ async function loadRooms() {
   const byId = Object.fromEntries(status.stages.map((x) => [x.id, x]));
   $('rooms-body').innerHTML = ev.stages.map((st) => {
     const s = byId[st.id] || {};
-    const audio = s.ingest ? `${s.ingest.kind}${s.ingest.label ? ` · ${s.ingest.label}` : ''}` : s.pull ? 'pull' : t.audioNone;
+    const audio = s.ingest ? `${t.kinds[s.ingest.kind] || s.ingest.kind}${s.ingest.label ? ` · ${s.ingest.label}` : ''}` : s.pull ? t.audioStream : t.audioNone;
     return `<tr data-id="${esc(st.id)}"><td><b>${esc(st.name)}</b><div class="muted-note"><code>${esc(st.id)}</code>${st.title ? ` · ${esc(st.title)}` : ''}</div></td>
       <td class="hide-sm">${esc(langsOf({ source: st.source, targets: st.languages.filter((l) => l !== 'orig') }))}</td>
       <td class="hide-sm">${esc(audio)}</td>
@@ -962,10 +979,22 @@ function renderScreens() {
     ${others.map((l) => copyRow(`${tr('Overlay vMix/OBS')} — ${langLabel(l, ev.languages)}`, `${o}/overlay.html?stage=${st.id}&lang=${l}`)).join('')}
     ${copyRow(tr('Overlay con fondo verde (chroma key)'), `${o}/overlay.html?stage=${st.id}&lang=${others[0] || 'orig'}&bg=%2300ff00&style=outline`)}
     ${copyRow(tr('Transcripción en vivo (leer, buscar, resumen IA)'), `${o}/talk.html?stage=${st.id}`)}
-    ${copyRow(tr('Ingesta (abrir en la PC del escenario)'), `${o}/ingest.html?stage=${st.id}`)}`;
+    <div class="field u-stack8"><b>${esc(tr('Computadora junto al escenario'))}</b>
+      <p class="muted-note u-m0">${esc(tr('La computadora que recibe el sonido de la sala (un micrófono o una salida de la consola) abre la página de sonido. Desde otra computadora, usá un enlace: sirve una vez y no pide contraseña.'))}</p>
+      <div class="row">${isCrew ? '' : `<button type="button" class="primary" data-ingest-link>${icon('link')}${esc(tr('Crear un enlace para esa computadora'))}</button>`}<a href="/ingest.html?stage=${encodeURIComponent(st.id)}" target="_blank"><button type="button" tabindex="-1">${icon('mic')}${esc(tr('Abrir la página de sonido acá'))}</button></a></div>
+      <div id="ingest-link"></div>
+    </div>`;
+}
+// The stage computer's link: single use, 30 minutes, sound only (POST /api/ingest/link). It replaces typing the
+// room-computer password on a second computer; this page never sees that password.
+async function makeIngestLink(st) {
+  const r = await api('POST', '/api/ingest/link', { stage: st.id });
+  const until = hm(Date.now() + r.expiresIn * 1000);
+  $('ingest-link').innerHTML = `<div class="qrrow"><img src="/api/qr.svg?text=${encodeURIComponent(r.url)}" alt="${esc(t.linkQr)}" /><div class="u-stack8 u-minw0">${copyRow(tr('Enlace para la computadora junto al escenario'), r.url)}<p class="muted-note u-m0">${esc(t.linkMade(until))}</p>${r.url.startsWith('http:') ? `<p class="muted-note u-m0 u-danger-outline">${esc(tr('Esta dirección no es segura (http), así que el navegador de la otra computadora no le va a dejar usar un micrófono. Creá primero una dirección pública (Ajustes → Dirección pública) y volvé a crear el enlace.'))}</p>` : ''}</div></div>`;
 }
 $('screens-room').onchange = renderScreens;
 $('screens-links').addEventListener('click', (e) => {
+  if (e.target.closest('[data-ingest-link]')) return makeIngestLink(ev.stages.find((s) => s.id === $('screens-room').value)).catch(() => {});
   const b = e.target.closest('[data-copy]');
   if (b) navigator.clipboard.writeText(b.dataset.copy).then(() => toast(t.copied, { ms: 1500 }), () => {});
 });
@@ -978,6 +1007,7 @@ async function loadTranscripts() {
   sel.innerHTML = ev.stages.map((s) => `<option value="${esc(s.id)}">${esc(s.name)}</option>`).join('');
   if (cur && ev.stages.some((s) => s.id === cur)) sel.value = cur;
   renderTranscripts();
+  if (!isCrew) pollRec();
 }
 async function renderTranscripts() {
   const st = ev.stages.find((s) => s.id === $('tx-room').value);
@@ -985,8 +1015,8 @@ async function renderTranscripts() {
   if (!st) { $('tx-list').innerHTML = ''; return; }
   const talks = await api('GET', `/api/stages/${encodeURIComponent(st.id)}/talks`);
   $('tx-zip').disabled = !talks.length;
-  $('tx-list').innerHTML = talks.length ? `<table class="table">${talks.map((x) => `<tr><td><b>${esc(x.title || tr('Sin título'))}</b><div class="muted-note">${esc(when(x.startedAt))} · ${esc(t.segs(x.segments))}</div></td>
-    <td class="hide-sm">${st.languages.map((l) => `<div class="muted-note"><b>${esc(langLabel(l, ev.languages))}</b>: ${['srt', 'vtt', 'txt'].map((f) => `<a href="/api/stages/${st.id}/export.${f}?lang=${l}&talk=${encodeURIComponent(x.id)}">${f}</a>`).join(' · ')}</div>`).join('')}</td>
+  $('tx-list').innerHTML = talks.length ? `<table class="table">${talks.map((x) => `<tr><td><b>${esc(x.title || tr('Sin título'))}</b>${x.source === 'recording' ? ` <span class="chip">${esc(tr('Grabación'))}</span>` : ''}<div class="muted-note">${esc(when(x.startedAt))} · ${esc(t.segs(x.segments))}</div></td>
+    <td class="hide-sm">${(x.languages || st.languages).map((l) => `<div class="muted-note"><b>${esc(langLabel(l, ev.languages))}</b>: ${['srt', 'vtt', 'txt'].map((f) => `<a href="/api/stages/${st.id}/export.${f}?lang=${l}&talk=${encodeURIComponent(x.id)}">${f}</a>`).join(' · ')}</div>`).join('')}</td>
     <td class="r"><a href="/talk.html?stage=${encodeURIComponent(st.id)}&talk=${encodeURIComponent(x.id)}" target="_blank"><button tabindex="-1">${icon('doc')} ${esc(t.read)}</button></a>${isCrew ? '' : ` <button class="danger" data-tx-del="${esc(x.id)}" data-tx-title="${esc(x.title || '')}">${esc(tr('Eliminar'))}</button>`}</td></tr>`).join('')}</table>` : `<p class="empty">${esc(t.noTalks)}</p>`;
 }
 $('tx-list').onclick = async (e) => {
@@ -1024,6 +1054,310 @@ function openExport(st) {
   txRoom = st.id;
   location.hash = '#transcripts';
 }
+
+// ---------- Caption a recording (src/recording.js) ----------
+// A file from this computer is uploaded in pieces (while the person picks the languages), checked on the server, and
+// captioned there much faster than real time into a transcript of the room. The job goes on if the dialog is closed:
+// the recordings in progress show above the list. Sentences with numbers in them, per language:
+const RL = {
+  es: {
+    dur: (ms) => { const s = Math.round(ms / 1000), h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60); return h ? `${h} h ${String(m).padStart(2, '0')} min` : m ? `${m} min ${String(s % 60).padStart(2, '0')} s` : `${s} s`; },
+    est: (d, t, how) => `${d ? `Dura ${d}. ` : ''}Listo en unos ${t}, ${how}.`,
+    gemini: (usd) => `con Gemini en la nube: cerca de US$ ${usd}`, local: 'en esta computadora, sin costo', mock: 'con la IA simulada (de prueba)',
+    noLength: 'La duración aparece cuando termine de subir.',
+    uploading: (p) => `Subiendo el archivo… ${p} %`, checking: 'Revisando el archivo…',
+    phase: { queued: 'Esperando a que termine otra grabación…', decode: 'Leyendo el audio…', transcribe: 'Transcribiendo…', translate: 'Traduciendo…', save: 'Guardando…' },
+    eta: (t) => `quedan ~${t}`,
+    done: (n, t) => `Listo en ${t}: ${n} frases. Está en Transcripciones, con sus descargas.`,
+    doneToast: (n) => `«${n}» ya está subtitulada.`,
+    hide: 'Seguir en segundo plano', stop: 'Detener', stopAsk: (n) => `¿Detener el subtitulado de «${n}»? Se descarta lo hecho hasta ahora.`,
+    jobs: (n, p) => `${n} · ${p} %`,
+    err: {
+      'not-media': 'Ese archivo no es de audio ni de video.', 'no-audio': 'Ese archivo no tiene sonido.', 'too-big': (mb) => `El archivo pasa el máximo de ${mb} MB (RECORDING_MAX_MB).`,
+      'no-ffmpeg': 'Para leer este tipo de archivo, el servidor necesita ffmpeg (brew install ffmpeg). Los WAV de 16 kHz mono funcionan sin él.',
+      busy: 'Ya hay varias grabaciones en curso: esperá a que terminen o cancelá alguna.', 'no-speech': 'No se encontró a nadie hablando en la grabación.',
+      'asr-down': 'El servidor de voz local no responde: arrancalo con npm run local.', quota: 'Gemini limitó las consultas (cuota). Probá de nuevo en un rato.',
+      'no-store': 'Este servidor no guarda transcripciones (STORE_TRANSCRIPTS=false).', upload: 'Se cortó la subida. Elegí el archivo de nuevo.',
+    },
+  },
+  en: {
+    dur: (ms) => { const s = Math.round(ms / 1000), h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60); return h ? `${h} h ${String(m).padStart(2, '0')} min` : m ? `${m} min ${String(s % 60).padStart(2, '0')} s` : `${s} s`; },
+    est: (d, t, how) => `${d ? `It lasts ${d}. ` : ''}Ready in about ${t}, ${how}.`,
+    gemini: (usd) => `with Gemini in the cloud: about US$ ${usd}`, local: 'on this computer, at no cost', mock: 'with the simulated AI (for testing)',
+    noLength: 'Its length shows once it’s uploaded.',
+    uploading: (p) => `Uploading the file… ${p}%`, checking: 'Checking the file…',
+    phase: { queued: 'Waiting for another recording to finish…', decode: 'Reading the audio…', transcribe: 'Transcribing…', translate: 'Translating…', save: 'Saving…' },
+    eta: (t) => `~${t} left`,
+    done: (n, t) => `Done in ${t}: ${n} lines. It’s in Transcripts, with its downloads.`,
+    doneToast: (n) => `“${n}” is captioned.`,
+    hide: 'Keep going in the background', stop: 'Stop', stopAsk: (n) => `Stop captioning “${n}”? What’s done so far is thrown away.`,
+    jobs: (n, p) => `${n} · ${p}%`,
+    err: {
+      'not-media': 'That file isn’t audio or video.', 'no-audio': 'That file has no sound.', 'too-big': (mb) => `The file is over the ${mb} MB limit (RECORDING_MAX_MB).`,
+      'no-ffmpeg': 'To read this kind of file the server needs ffmpeg (brew install ffmpeg). 16 kHz mono WAV files work without it.',
+      busy: 'Several recordings are already in progress: wait for them to finish or cancel one.', 'no-speech': 'Nobody was found speaking in the recording.',
+      'asr-down': 'The local speech server isn’t answering: start it with npm run local.', quota: 'Gemini limited the requests (quota). Try again in a while.',
+      'no-store': 'This server doesn’t keep transcripts (STORE_TRANSCRIPTS=false).', upload: 'The upload broke off. Choose the file again.',
+    },
+  },
+};
+const rt = RL[LANG] || RL.en;
+const fr = $('f-rec');
+const ACTIVE = ['queued', 'running'];
+const MEDIA_EXT = /\.(mp3|m4a|m4b|aac|wav|flac|ogg|oga|opus|wma|aiff?|caf|amr|mp4|m4v|mov|mkv|webm|avi|wmv|flv|ts|mts|m2ts|mpe?g|3gp)$/i;
+let recInfo = null; // GET /api/recordings: engine, rates, size limit, jobs
+let rec = null; // what the dialog shows: { file, ctl, job, durationMs, step: 'pick' | 'upload' | 'ready' | 'run' | 'end' }
+let recTimer;
+const seenActive = new Set();
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const recError = (code, fallback) => { const m = rt.err[code]; return typeof m === 'function' ? m(recInfo?.maxMb ?? 2048) : m || fallback || tr('Algo salió mal.'); };
+
+/** The length the browser reads from the file itself, for an estimate before the upload ends (null if it can't). */
+function mediaDuration(file) {
+  return new Promise((resolve) => {
+    const el = document.createElement(file.type.startsWith('video') ? 'video' : 'audio');
+    const url = URL.createObjectURL(file);
+    const done = (v) => { URL.revokeObjectURL(url); el.removeAttribute('src'); resolve(Number.isFinite(v) && v > 0 ? v * 1000 : null); };
+    el.preload = 'metadata';
+    el.onloadedmetadata = () => done(el.duration);
+    el.onerror = () => done(null);
+    setTimeout(() => done(null), 5000);
+    el.src = url;
+  });
+}
+
+function recTargets(st) {
+  const on = (st?.languages || ['orig', ...(ev.defaultTargets || ['es', 'en'])]).filter((l) => l !== 'orig');
+  $('rec-targets').innerHTML = Object.entries(ev.languages).map(([c, n]) => `<label class="row"><input type="checkbox" value="${esc(c)}" ${on.includes(c) ? 'checked' : ''}/> ${esc(n)}</label>`).join('');
+}
+const recChosen = () => [...$('rec-targets').querySelectorAll('input:checked')].map((i) => i.value);
+
+/** "Ready in about 20 s, with Gemini in the cloud: about US$ 0.02": the server's rates, redone as languages change. */
+function recEstimate() {
+  const r = rec?.job?.rates || recInfo?.rates;
+  if (!r || !rec?.file) { $('rec-estimate').textContent = ''; return; }
+  const ms = rec.job?.durationMs ?? rec.durationMs;
+  if (!ms) { $('rec-estimate').textContent = rt.noLength; return; }
+  const min = ms / 60000, n = recChosen().filter((l) => l !== fr.source.value).length;
+  const secs = Math.max(1, Math.round(r.fixedSec + min * (r.secPerMin + n * r.secPerMinPerLang)));
+  const how = r.engine === 'gemini' ? rt.gemini(Math.max(0.01, min * (r.usdPerMin + n * r.usdPerMinPerLang)).toFixed(2)) : rt[r.engine] || rt.local;
+  $('rec-estimate').textContent = rt.est(rt.dur(ms), rt.dur(secs * 1000), how);
+}
+
+function recBar(p, text, eta = '') {
+  $('rec-prog').classList.remove('hidden');
+  const pct = Math.round(Math.max(0, Math.min(1, p)) * 100);
+  $('rec-bar').firstElementChild.style.width = `${pct}%`;
+  $('rec-bar').setAttribute('aria-valuenow', String(pct));
+  $('rec-phase').textContent = text;
+  $('rec-eta').textContent = eta;
+}
+
+/** Buttons and fields for where the dialog is: choosing, uploading, ready, running, finished. */
+function recStep(step) {
+  rec.step = step;
+  const busy = step === 'run' || step === 'end';
+  for (const el of [fr.room, fr.source, fr.title, $('rec-pick'), ...$('rec-targets').querySelectorAll('input')]) el.disabled = busy;
+  $('rec-file').disabled = busy;
+  $('rec-drop').classList.toggle('hidden', busy);
+  $('rec-start').classList.toggle('hidden', busy);
+  $('rec-start').disabled = step !== 'ready';
+  $('rec-open').classList.add('hidden');
+  $('rec-close').textContent = step === 'run' ? rt.hide : step === 'end' ? tr('Cerrar') : tr('Cancelar');
+  if (step === 'pick') { $('rec-prog').classList.add('hidden'); $('rec-err').textContent = ''; }
+}
+
+async function openRec(file = null) {
+  if (rec && ['run', 'end'].includes(rec.step) && !file) return $('dlg-rec').showModal(); // a job in progress: show it
+  if (rec?.step === 'run') rec = null; // it goes on in the background, listed above the transcripts
+  try { recInfo = await api('GET', '/api/recordings', null, { quiet: true }); } catch { recInfo = null; }
+  rec = { file: null, ctl: null, job: null, durationMs: null, step: 'pick' };
+  fr.room.innerHTML = ev.stages.map((s) => `<option value="${esc(s.id)}">${esc(s.name)}</option>`).join('');
+  fr.room.value = $('tx-room').value || txRoom || ev.stages[0]?.id || '';
+  fr.source.innerHTML = `<option value="auto">${esc(tr('Detectar automáticamente'))}</option>${Object.entries(ev.languages).map(([c, n]) => `<option value="${esc(c)}">${esc(n)} (${esc(c)})</option>`).join('')}`;
+  fr.title.value = '';
+  recTargets(ev.stages.find((s) => s.id === fr.room.value));
+  $('rec-file-label').classList.remove('hidden');
+  $('rec-file-name').classList.add('hidden');
+  $('rec-file').value = '';
+  $('rec-estimate').textContent = '';
+  recStep('pick');
+  $('dlg-rec').showModal();
+  if (file) recFile(file);
+}
+
+/** Send the file in pieces; a piece that fails is sent again, and the server says where to carry on. */
+async function recUpload(file, signal) {
+  let j = await api('POST', '/api/recordings', { name: file.name, size: file.size }, { quiet: true });
+  rec.job = j;
+  let at = 0, fails = 0;
+  while (j.state === 'uploading') {
+    let r, body;
+    try {
+      r = await fetch(`/api/recordings/${encodeURIComponent(j.id)}/data?offset=${at}`, { method: 'PUT', headers: { 'content-type': 'application/octet-stream' }, body: file.slice(at, at + j.chunkBytes), signal });
+      body = await r.json().catch(() => ({}));
+    } catch (e) {
+      if (signal.aborted || ++fails > 4) throw Object.assign(e, { body: { code: 'upload' } });
+      await sleep(1000 * fails);
+      continue;
+    }
+    if (r.status === 401) { askToken(); throw new Error('signed out'); }
+    if (r.status === 409 && body.code === 'offset') { at = body.size; continue; }
+    if (!r.ok) throw Object.assign(new Error(body.error || r.statusText), { body });
+    fails = 0;
+    j = { ...j, ...body };
+    at = j.size;
+    if (rec?.file === file) recBar(at / file.size, at < file.size ? rt.uploading(Math.floor((at / file.size) * 100)) : rt.checking);
+  }
+  return j;
+}
+
+async function recFile(file) {
+  if (!file || !rec || ['run', 'end'].includes(rec.step)) return;
+  rec.ctl?.abort();
+  if (rec.job?.id) api('DELETE', `/api/recordings/${encodeURIComponent(rec.job.id)}`, null, { quiet: true }).catch(() => {});
+  const prevName = rec.file?.name.replace(/\.[^.]+$/, '');
+  Object.assign(rec, { file, ctl: new AbortController(), job: null, durationMs: null });
+  $('rec-file-label').classList.add('hidden');
+  $('rec-file-name').classList.remove('hidden');
+  $('rec-file-name').textContent = `${file.name} · ${(file.size / 1e6).toFixed(file.size < 1e7 ? 1 : 0)} MB`;
+  if (!fr.title.value || fr.title.value === prevName) fr.title.value = file.name.replace(/\.[^.]+$/, '').slice(0, 200);
+  recStep('upload');
+  $('rec-err').textContent = '';
+  if ((file.type && !/^(audio|video)\//.test(file.type) && !MEDIA_EXT.test(file.name)) || (!file.type && !MEDIA_EXT.test(file.name))) {
+    $('rec-err').textContent = recError('not-media');
+    return recStep('pick');
+  }
+  if (recInfo && file.size > recInfo.maxMb * 1024 * 1024) { $('rec-err').textContent = recError('too-big'); return recStep('pick'); }
+  mediaDuration(file).then((ms) => { if (rec?.file === file && ms && !rec.job?.durationMs) { rec.durationMs = ms; recEstimate(); } });
+  recBar(0, rt.uploading(0));
+  recEstimate();
+  try {
+    const j = await recUpload(file, rec.ctl.signal);
+    if (rec?.file !== file) return;
+    rec.job = j;
+    $('rec-prog').classList.add('hidden');
+    recStep('ready');
+    recEstimate();
+  } catch (e) {
+    if (rec?.file !== file || rec.ctl.signal.aborted) return;
+    rec.job = null;
+    $('rec-prog').classList.add('hidden');
+    $('rec-err').textContent = recError(e.body?.code, e.message);
+    recStep('pick');
+  }
+}
+
+/** A job's state in the dialog: its progress, what it's doing, and the result at the end. */
+function recShow(j) {
+  rec.job = j;
+  if (ACTIVE.includes(j.state)) {
+    if (rec.step !== 'run') recStep('run');
+    const eta = j.state === 'running' && j.etaMs != null && j.progress > 0.02 ? rt.eta(rt.dur(Math.max(1000, j.etaMs))) : '';
+    recBar(j.progress, rt.phase[j.phase] || rt.phase.decode, eta);
+    $('rec-stop').classList.remove('hidden');
+    return;
+  }
+  $('rec-stop').classList.add('hidden');
+  recStep('end');
+  if (j.state === 'done') {
+    recBar(1, rt.done(j.captions ?? 0, rt.dur(Math.max(1000, j.elapsedMs || 0))));
+    if (j.talk) {
+      $('rec-open').href = `/talk.html?stage=${encodeURIComponent(j.talk.stage)}&talk=${encodeURIComponent(j.talk.id)}`;
+      $('rec-open').classList.remove('hidden');
+    }
+  } else {
+    $('rec-prog').classList.add('hidden');
+    $('rec-err').textContent = j.state === 'canceled' ? '' : recError(j.code, j.error);
+  }
+}
+
+/** The recordings in progress, above the list (and in the dialog, if it shows one), every second while any runs. */
+async function pollRec() {
+  clearTimeout(recTimer);
+  let list;
+  try { list = await api('GET', '/api/recordings', null, { quiet: true }); } catch { return; }
+  recInfo = list;
+  const active = list.jobs.filter((j) => ACTIVE.includes(j.state));
+  const mine = rec?.job && list.jobs.find((j) => j.id === rec.job.id);
+  if (mine && rec.step === 'run') recShow(mine);
+  const others = active.filter((j) => j.id !== (rec?.step === 'run' && $('dlg-rec').open ? rec.job.id : null));
+  $('tx-jobs').classList.toggle('hidden', !others.length);
+  $('tx-jobs').innerHTML = others.map((j) => `<div class="recjob"><div class="recline"><b>${esc(j.title || j.name)}</b><span>${esc(rt.phase[j.phase] || '')}</span><span class="spacer"></span>
+    <span>${esc(rt.jobs(ev.stages.find((s) => s.id === j.room)?.name || j.room || '', Math.round(j.progress * 100)))}</span><button type="button" data-rec-stop="${esc(j.id)}" data-rec-name="${esc(j.title || j.name)}">${esc(rt.stop)}</button></div>
+    <div class="recbar" role="progressbar" aria-label="${esc(j.title || j.name)}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.round(j.progress * 100)}"><i></i></div></div>`).join('');
+  // Widths set from here: the Content-Security-Policy refuses inline style attributes.
+  $('tx-jobs').querySelectorAll('.recbar').forEach((bar) => { bar.firstElementChild.style.width = `${bar.getAttribute('aria-valuenow')}%`; });
+  for (const j of list.jobs) {
+    if (!seenActive.has(j.id) || ACTIVE.includes(j.state)) continue;
+    seenActive.delete(j.id);
+    if (j.state === 'done') {
+      if (!(rec?.job?.id === j.id && $('dlg-rec').open)) toast(rt.doneToast(j.title || j.name));
+      if (view === 'transcripts') { if (j.room) { txRoom = j.room; $('tx-room').value = j.room; } renderTranscripts(); }
+    } else if (j.state === 'failed' && !(rec?.job?.id === j.id && $('dlg-rec').open)) toast(recError(j.code, j.error), { error: true });
+  }
+  for (const j of active) seenActive.add(j.id);
+  if (active.length && (view === 'transcripts' || $('dlg-rec').open)) recTimer = setTimeout(pollRec, 1000);
+}
+
+async function recStop(id, name) {
+  if (!await confirmDialog({ title: rt.stop, body: rt.stopAsk(name), ok: rt.stop, danger: true })) return;
+  await api('DELETE', `/api/recordings/${encodeURIComponent(id)}`, null, { quiet: true }).catch(() => {});
+  pollRec();
+}
+
+$('tx-rec').onclick = () => openRec();
+$('rec-pick').onclick = () => $('rec-file').click();
+$('rec-file').onchange = () => recFile($('rec-file').files[0]);
+const drop = $('rec-drop');
+drop.addEventListener('dragover', (e) => { e.preventDefault(); drop.classList.add('over'); });
+drop.addEventListener('dragleave', () => drop.classList.remove('over'));
+drop.addEventListener('drop', (e) => { e.preventDefault(); drop.classList.remove('over'); recFile(e.dataTransfer.files[0]); });
+// A file dropped anywhere on the Transcripts view opens the dialog with it.
+const txView = document.querySelector('.view[data-view="transcripts"]');
+txView.addEventListener('dragover', (e) => { if (!isCrew && e.dataTransfer?.types.includes('Files')) e.preventDefault(); });
+txView.addEventListener('drop', (e) => { if (isCrew || !e.dataTransfer?.files.length) return; e.preventDefault(); openRec(e.dataTransfer.files[0]); });
+fr.room.onchange = () => { recTargets(ev.stages.find((s) => s.id === fr.room.value)); recEstimate(); };
+fr.source.onchange = recEstimate;
+$('rec-targets').onchange = recEstimate;
+fr.onsubmit = (e) => e.preventDefault();
+$('rec-start').onclick = async () => {
+  if (rec?.step !== 'ready') return;
+  $('rec-start').disabled = true;
+  $('rec-err').textContent = '';
+  try {
+    const j = await api('POST', `/api/recordings/${encodeURIComponent(rec.job.id)}/start`, { room: fr.room.value, source: fr.source.value, targets: recChosen(), title: fr.title.value.trim() }, { quiet: true });
+    seenActive.add(j.id);
+    recShow(j);
+    pollRec();
+  } catch (e) {
+    $('rec-err').textContent = recError(e.body?.code, e.message);
+    $('rec-start').disabled = false;
+  }
+};
+$('rec-stop').onclick = () => rec?.job && recStop(rec.job.id, rec.job.title || rec.job.name);
+$('tx-jobs').onclick = (e) => { const b = e.target.closest('[data-rec-stop]'); if (b) recStop(b.dataset.recStop, b.dataset.recName); };
+// Closing: an upload or a file not started yet is thrown away; a job in progress goes on in the background.
+const recClose = () => {
+  if (rec && ['pick', 'upload', 'ready'].includes(rec.step)) {
+    rec.ctl?.abort();
+    if (rec.job?.id) api('DELETE', `/api/recordings/${encodeURIComponent(rec.job.id)}`, null, { quiet: true }).catch(() => {});
+    rec = null;
+  }
+  pollRec();
+};
+$('rec-close').onclick = () => $('dlg-rec').close();
+$('dlg-rec').addEventListener('close', recClose);
+// #transcripts?record=<room> opens the dialog (the setup wizard's "I have a recording" links here).
+const recFromHash = () => {
+  const m = /^#transcripts\?record(?:=([\w-]*))?/.exec(location.hash);
+  if (!m || isCrew) return;
+  if (m[1] && ev.stages.some((s) => s.id === m[1])) { txRoom = m[1]; $('tx-room').value = m[1]; }
+  history.replaceState(null, '', `${location.pathname}${location.search}#transcripts`);
+  openRec();
+};
+addEventListener('hashchange', recFromHash);
+recFromHash();
 
 // ---------- History ----------
 const KIND_ICON = { 'room.create': 'plus', 'room.update': 'gear', 'room.delete': 'x', 'agenda.set': 'calendar', 'glossary.set': 'book', 'event.rename': 'doc', 'engine.mode': 'cloud', 'event.lock': 'lock' };

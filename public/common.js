@@ -173,7 +173,8 @@ export class Socket {
     ws.onmessage = (e) => (typeof e.data === 'string' ? this.h.message?.(JSON.parse(e.data)) : this.h.binary?.(e.data));
     ws.onclose = (e) => {
       this.h.close?.(e);
-      // 4000 = replaced by another ingest, 4001 = bad token, 4004 = unknown room: don't fight it.
+      // 4000 = replaced by another ingest, 4001 = bad token, 4004 = unknown room: don't fight it. Anything else is
+      // reconnected with backoff, 1012 included (the server restarting, or the room removed: then 4004 follows).
       if (this.closed || e.code === 4000 || e.code === 4004 || e.code === 4001) return;
       this.retry();
     };

@@ -142,7 +142,7 @@ async function micStart() {
       open() { while (pending.length && sock.ready) sock.send(pending.shift()); },
       close(e) {
         if (e.code === 4001) { alert('El server pide INGEST_TOKEN: cargalo en /ingest.html una vez.'); micStop(); }
-        if (e.code === 4000) { setState('reemplazado por otra ingesta', 'warn'); micStop(false); }
+        if (e.code === 4000) { setState('otra computadora tomó esta sala', 'warn'); micStop(false); }
       },
     });
     node.port.onmessage = (ev2) => {

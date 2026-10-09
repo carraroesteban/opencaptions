@@ -21,10 +21,15 @@ const MIN_VOICED_MS = 300; // shorter blips (a cough, a door) are not sent to th
 const MIN_PARTIAL_MS = 1000; // first provisional pass after 1 s of speech
 const MAX_BACKLOG = 40; // utterances kept while the speech server is unreachable (≈ a few minutes of speech)
 const IDLE_END_MS = 1500; // audio stopped arriving mid-utterance (ingest hiccup): finish what we have
+const COLLAPSE_MIN_WORDS = 6; // a pass with under a third of the words an earlier pass heard in the same audio…
+const COLLAPSE_RATIO = 1 / 3; // …is a failed decode (seen live: 22 provisional words, then "la"), not a correction
 
 /** Lowercase, no accents, no punctuation: for comparing words across passes. */
 export const normWord = (w) => w.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^\p{L}\p{N}]/gu, '');
 const words = (s) => String(s || '').split(/\s+/).filter(Boolean);
+
+/** Did a pass lose most of what an earlier pass of the same (shorter) audio heard? */
+export const collapsed = (hyp, best) => !!best && best.length >= COLLAPSE_MIN_WORDS && hyp.length < best.length * COLLAPSE_RATIO;
 
 /**
  * Where does `hyp` continue after the words already committed? Whisper re-transcribes the whole utterance on
@@ -94,7 +99,7 @@ export class LocalEngine extends EventEmitter {
     this.seq = 0;
     this.stats = {
       reconnects: 0, resumes: 0, errors: 0, lastError: '', connectedAt: 0, audioMs: 0, lastInputAt: 0, lastOutputAt: 0, tokens: 0,
-      requests: 0, partials: 0, finals: 0, skipped: 0, dropped: 0, avgMs: null,
+      requests: 0, partials: 0, finals: 0, skipped: 0, dropped: 0, collapses: 0, avgMs: null,
     };
   }
 
@@ -192,7 +197,8 @@ export class LocalEngine extends EventEmitter {
   }
 
   #newUtterance(chunks = [], levels = [], cont = false) {
-    return { id: ++this.seq, chunks, levels, voicedMs: 0, silentMs: 0, sinceStep: 0, committed: [], prevHyp: null, lang: null, cont, carry: null, final: false };
+    // best: the longest provisional hypothesis, the fallback if Whisper's later passes collapse.
+    return { id: ++this.seq, chunks, levels, voicedMs: 0, silentMs: 0, sinceStep: 0, committed: [], prevHyp: null, best: null, lang: null, cont, carry: null, final: false };
   }
 
   #endUtterance() {
@@ -257,7 +263,7 @@ export class LocalEngine extends EventEmitter {
     try {
       const r = await withAsrSlot(() => this.transcribe(Buffer.concat(u.chunks), {
         language: u.forceLang || this.source || null,
-        prompt: this.#prompt(),
+        prompt: u.noPrompt ? '' : this.#prompt(),
         final,
         signal: ctrl.signal,
       }), { final });
@@ -320,6 +326,9 @@ export class LocalEngine extends EventEmitter {
     if (!r.text || r.noSpeech > 0.8 || !this.#langOk(r.lang)) return;
     if (r.lang) u.lang = r.lang;
     const hyp = this.#hypothesis(u, r.text);
+    // A collapsed pass must not replace the words viewers are reading: skip it, the next pass or the final decides.
+    if (collapsed(hyp, u.best)) { this.#noteCollapse(u, hyp, 'provisional'); return; }
+    if (!u.best || hyp.length >= u.best.length) u.best = hyp;
     const tail = hyp.slice(continuation(hyp, u.committed));
     let agreed = 0;
     if (u.prevHyp) {
@@ -339,11 +348,25 @@ export class LocalEngine extends EventEmitter {
       this.finals.unshift(u);
       return;
     }
-    const silent = !r.text || (r.noSpeech > 0.8 && !u.committed.length);
+    let silent = !r.text || (r.noSpeech > 0.8 && !u.committed.length);
     const lang = (this.#langOk(r.lang) && r.lang) || u.forceLang || u.lang || this.lastLang;
-    const hyp = silent ? [] : this.#hypothesis(u, r.text);
+    let hyp = silent ? [] : this.#hypothesis(u, r.text);
+    if (collapsed(hyp, u.best)) {
+      // Once more without the prompt (previous sentences can make Whisper stop early); then keep what it heard before.
+      if (!u.noPrompt) { u.noPrompt = true; this.#noteCollapse(u, hyp, 'final'); this.finals.unshift(u); return; }
+      this.emit('log', `final pass still lost the words (${hyp.length} of ${u.best.length}): keeping the provisional ones`);
+      hyp = u.best;
+      silent = false;
+    }
     this.#commit(u, hyp.slice(continuation(hyp, u.committed)), true, lang);
     if (lang && !silent) this.lastLang = lang;
+  }
+
+  #noteCollapse(u, hyp, pass) {
+    this.stats.collapses++;
+    if (u.collapseLogged) return;
+    u.collapseLogged = true;
+    this.emit('log', `${pass} pass returned ${hyp.length} word(s) ("${hyp.join(' ').slice(0, 40)}") for audio an earlier pass heard as ${u.best.length}; ignoring it`);
   }
 
   #commit(u, ws, finished, lang) {

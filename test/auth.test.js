@@ -242,6 +242,37 @@ test('room computers: a password in the socket URL is refused; a one-minute tick
   assert.equal((await fetch(`${base}/api/ingest/ticket`, { method: 'POST' })).status, 401);
 });
 
+test('a room link signs one browser in to send audio only, works once, and never carries a password', async () => {
+  const admin = browser(), stagePc = browser(), late = browser(), other = browser();
+  await admin.call('POST', '/api/auth/login', { password: ADMIN, device: 'Organizer' });
+  assert.equal((await stagePc.call('POST', '/api/ingest/link', { stage: 'main' })).status, 401, 'only admins make links');
+  const r = await admin.call('POST', '/api/ingest/link', { stage: 'main' }, { origin: base });
+  assert.equal(r.status, 200);
+  assert.equal(r.body.expiresIn, 1800);
+  const link = new URL(r.body.url).searchParams.get('link');
+  assert.match(r.body.url, /\/ingest\.html\?stage=main&link=/);
+  assert.ok(![ADMIN, 'ingest-password-for-tests', crewPassword].some((p) => r.body.url.includes(p)), 'no password in the link');
+  // A browser that can already send audio (here: the signed-in organizer) leaves the link for the stage computer.
+  assert.deepEqual((await admin.call('POST', '/api/ingest/link/use', { link }, { origin: base })).body, { ok: true, already: true });
+  assert.equal((await stagePc.call('POST', '/api/ingest/link/use', { link }, { origin: 'https://evil.example' })).status, 403);
+  const used = await stagePc.call('POST', '/api/ingest/link/use', { link }, { origin: base });
+  assert.deepEqual(used.body, { ok: true, stage: 'main' });
+  assert.match(used.cookies.find((c) => c.startsWith('oc_session=')), /HttpOnly; SameSite=Strict/);
+  assert.equal((await late.call('POST', '/api/ingest/link/use', { link }, { origin: base })).status, 401, 'single use');
+  assert.equal((await other.call('POST', '/api/ingest/link/use', { link: 'made-up' }, { origin: base })).status, 401);
+  // Sound only: a ticket for the audio socket, but not the dashboard, the status or the setup.
+  assert.equal((await stagePc.call('POST', '/api/ingest/ticket', null, { origin: base })).status, 200);
+  assert.equal((await stagePc.call('GET', '/api/status')).status, 403);
+  assert.equal((await stagePc.call('GET', '/api/setup')).status, 403);
+  assert.equal((await stagePc.call('GET', '/api/auth/me')).body.role, null);
+  // Listed in Settings → Access as a room computer, and can be signed out there.
+  const row = (await admin.call('GET', '/api/auth/sessions')).body.find((s) => s.role === 'ingest');
+  assert.match(row.device, /^Room computer · Main stage$/i);
+  assert.equal(row.via, 'link');
+  assert.equal((await admin.call('DELETE', `/api/auth/sessions/${row.id}`, null, { origin: base })).status, 200);
+  assert.equal((await stagePc.call('POST', '/api/ingest/ticket', null, { origin: base })).status, 401);
+});
+
 // Last: turning two-factor on changes how the admin password works for the rest of this server's life.
 function totp(secret, step) {
   const A = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
