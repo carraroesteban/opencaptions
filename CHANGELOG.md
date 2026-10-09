@@ -4,6 +4,10 @@ All notable changes to this project are documented in this file. The format foll
 
 ## [Unreleased]
 
+### Fixed
+
+- **Windows:** cancelling a recording while it was being read left its temporary folder behind (Windows can't delete a file ffmpeg still has open); the job now deletes it once the decoder has stopped. The server can also be stopped by the program that started it with `child.send('shutdown')`, the same clean stop as Ctrl+C (on Windows, `child.kill()` ends a process at once), which the restart test uses there.
+
 ## [0.5.0] - 2026-10-09
 
 Getting audio in, made solid after a hands-on review: recordings captioned in minutes, room audio that survives a restart, setup in plain words, and the room's sound on phones.
