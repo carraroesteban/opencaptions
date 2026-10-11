@@ -4,13 +4,28 @@ OpenCaptions isn't only for events. In **personal mode** it captions, and transl
 
 It's the same download as the event version (the [Mac app or Windows launcher](../README.md#without-the-terminal)). The first time you open it, the welcome screen asks what you want captions for: choose **Just for me**. OpenCaptions remembers it (in its settings, which survive updates): from then on it opens straight to your captions, and never shows the event side unless you ask for it. There's no event name to fill in, and no rooms, QR codes or dashboard: any of those pages leads back to your captions.
 
+## The first time: three short steps
+
+One thing per screen, with **Back** and **Next**. Steps that are already done are skipped (a Gemini key you saved before, for example).
+
+1. **Your AI:** paste a Gemini key (*How to get one (free)* opens Google AI Studio), and it's checked right away. No key? **Run it on this computer (free)** opens the dashboard's AI settings. You can also go on without one: the captions are simulated until you connect an AI.
+2. **Your language:** the language to translate into, or *Don't translate*. It starts on the computer's language.
+3. **The sound:** **Microphone** (you, or a conversation around you), **Computer sound** (what the computer plays), or **Both** (both sides of a call: what you say and what you hear). With **Both**, use headphones: otherwise the microphone also hears the speakers, and everything is captioned twice. **Test the sound** shows a bar that moves when there's sound; the captions then use that same sound, so the browser doesn't ask twice.
+
+**Start captions** ends the guide. From then on, OpenCaptions opens straight to your captions.
+
 ## Use it
 
-1. **Listen to:** **Microphone** (you, or a conversation around you), **Computer sound** (what the computer plays), or **Both** (both sides of a call: what you say and what you hear). With **Both**, use headphones: otherwise the microphone also hears the speakers, and everything is captioned twice.
-2. **Translate to:** a language, or *Don't translate*. The first time, it's the computer's language.
-3. **Start captions.** Captions appear in big text; when translating, the original runs underneath.
-4. **Floating captions** opens a small always-on-top window, to keep the captions over a video call or a movie (Chrome and Edge; other browsers get a picture-in-picture window).
-5. **A− / A+** change the text size. **Transcript** opens what's being said now, to read, search, summarize or ask about; **Download** saves it as text. **My transcripts** (top right) lists all your past ones.
+The captions fill the window, in big text; when translating, the original runs underneath. A slim bar at the bottom has what you use while captioning:
+
+- **Start captions / Stop**, and how it's going (listening, paused for silence, the delay).
+- **The language** to translate into.
+- **A− / A+** change the text size.
+- **Floating captions** opens a small always-on-top window, to keep the captions over a video call or a movie (Chrome and Edge; other browsers get a picture-in-picture window).
+- **Download** saves what was said as text.
+- **Settings** reopens one step of the guide (your AI, the language or the sound), and has **Transcript** (what's being said now, to read, search, summarize or ask about) and **Use it for events**.
+
+**My transcripts** (top right) lists all your past ones. On a phone the bar shows icons only.
 
 ### Computer sound
 
@@ -25,7 +40,7 @@ The picture you share is never used, only its sound.
 
 ## The AI
 
-- **Gemini** (Google): the best quality and the shortest delay. Paste a key on the page the first time; it's free to create at [Google AI Studio](https://aistudio.google.com/apikey). The free tier has usage limits, and Google may use its audio to improve its products; a paid key costs about US$ 2 per hour of speech (silence isn't billed).
+- **Gemini** (Google): the best quality and the shortest delay. Paste a key in the first step (or later in **Settings → Your AI**); it's free to create at [Google AI Studio](https://aistudio.google.com/apikey). The free tier has usage limits, and Google may use its audio to improve its products; a paid key costs about US$ 2 per hour of speech (silence isn't billed).
 - **On your computer** ([local mode](local.md)): nothing leaves the computer and there's no cost per hour, but it needs a recent computer and a one-time install.
 
 Until one is connected, the captions are simulated, so you can see how it works.
@@ -36,5 +51,5 @@ In personal mode nothing is public, not even on your Wi-Fi: the captions, the tr
 
 ## Switch between modes
 
-- **Use it for events** (top right) switches OpenCaptions to events: rooms, QR codes, the dashboard. First it shows, on the page, what stays (your transcripts, still private; your AI; this page, at `/me.html`) and what changes: OpenCaptions opens on the dashboard, the audience pages can be read by anyone who reaches this computer, and what the AI costs or how many rooms this computer keeps up with. The first time, the event's setup wizard comes next.
+- **Use it for events** (in **Settings**) switches OpenCaptions to events: rooms, QR codes, the dashboard. First it shows, on the page, what stays (your transcripts, still private; your AI; this page, at `/me.html`) and what changes: OpenCaptions opens on the dashboard, the audience pages can be read by anyone who reaches this computer, and what the AI costs or how many rooms this computer keeps up with. The first time, the event's setup wizard comes next.
 - To come back, open **Settings → General → Just for me** in the dashboard. It says so if rooms are live (their audience stops seeing captions), and it's blocked while Event mode is on. Nothing is deleted either way.

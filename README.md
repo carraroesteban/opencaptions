@@ -40,7 +40,7 @@ OpenCaptions is the complete toolkit for doing that at a real event. It is free,
 
 ## Also just for you
 
-Not running an event? Choose **Just for me** the first time you open the app, and OpenCaptions captions whatever you're listening to on your own computer: a video call in another language, a class, a video, or the conversation around you. Translated into your language if you like, in big text and in a small window that floats over everything. Nothing is shared with anyone. [How it works](docs/personal.md).
+Not running an event? Choose **Just for me** the first time you open the app, and OpenCaptions captions whatever you're listening to on your own computer: a video call in another language, a class, a video, or the conversation around you. Translated into your language if you like, in big text and in a small window that floats over everything. Three short steps the first time (your AI, your language, the sound), then just your captions. Nothing is shared with anyone. [How it works](docs/personal.md).
 
 ## Made for every kind of event
 

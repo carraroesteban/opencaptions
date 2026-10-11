@@ -15,9 +15,11 @@ All notable changes to this project are documented in this file. The format foll
 
 - **Settings is a window over the dashboard**, like a desktop app's: sections on the left (General, AI, Public address, Security, Alerts), the options on the right, a search box that finds any option, and × or Esc to close. Each section has its own link (`#settings/security`). On a phone the sections are a list that opens each one. Nothing moved out: the same options, now grouped. **Settings → Access** is now **Settings → Security**.
 - **A room's settings open in a panel at the side** (Rooms → Edit, or **See the address** on a room's card), not in the first-day wizard. Besides the name, languages and sound, it makes the address for OBS or vMix (RTMP or SRT) and shows the server and stream key to paste. The welcome wizard is only for the first start; its Settings entry is gone.
+- **Just for me starts with three short steps, then it's just your captions.** The first time: your AI (paste a free Gemini key, checked right away, or run it on this computer), your language, and the sound, with **Test the sound** and a bar that moves when it hears something. Steps already done are skipped. After that the captions fill the page, with a slim bar at the bottom (start/stop, language, text size, floating captions, download) and **Settings**, which reopens one step and holds **Transcript** and **Use it for events**. Nothing was removed. [Just for me](docs/personal.md).
 
 ### Fixed
 
+- **Just for me's captions no longer show a grey box around each sentence** (they picked up the style of a button group).
 - **Macs with Apple chips no longer ask to install Rosetta** to open the Mac app. Its program was a script, which macOS treats as an Intel app; it's now a small program for both Apple and Intel chips that starts the same script.
 - **A damaged `data/secrets.json` stops the server with a clear message.** Before, it started over silently: new passwords, no Gemini key (simulated captions) and two-factor sign-in off, and the next save wiped the rest.
 - **The dashboard and the organizers' phones warn when transcripts can't be saved** (a full disk, a removed folder): a "transcripts not being saved" alert, until saving works again. Before, captions kept showing but were lost without a word.
