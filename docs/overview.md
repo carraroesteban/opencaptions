@@ -72,7 +72,7 @@ The design details are in [Architecture](architecture.md), and the reasons behin
 - **Built for operations.** Silence gating, automatic reconnection with no lost audio, watchdogs, an offline backup, alerts on the organizers' phones, and a runbook for the crew.
 - **Secure by default.** Sign-in for everything except the public caption pages (admin and crew roles, two-factor codes, company sign-in), a strict Content-Security-Policy, SSRF-safe stream pulls, and no audio stored. An enterprise path runs through Google Cloud Vertex AI.
 - **Open and forkable.** MIT license, plain JavaScript, documented APIs, and a pluggable engine interface.
-- **Cloud or local.** Gemini for the best quality at scale, or [local mode](local.md), where Whisper and an open model run on your own computer, with no account, no cost per hour and no audio leaving the building.
+- **Cloud or local.** Gemini for the best quality at scale, or [local mode](local.md), where Whisper and an open model run on your own computer, with no account, no cost per hour and no audio leaving the building. Without a key, or when a free key runs out, one button in the app sets it up: no terminal.
 
 ## Status and maturity
 
@@ -87,8 +87,8 @@ The design details are in [Architecture](architecture.md), and the reasons behin
 | AI assistants (MCP) | Implemented and tested with the official MCP client: read-only tools for rooms, talks, transcripts, search and the report ([Integrations](integrations.md#use-it-from-an-ai-assistant-mcp)) |
 | Vertex AI backend | Implemented, not yet tested end to end |
 | Caption a recording | Implemented; a 58-second talk takes about 20 seconds in local mode on a MacBook Pro (M3 Pro); not yet measured with Gemini ([Caption a recording](recording.md)) |
-| Local mode (Whisper + Ollama) | Implemented; measured on CPUs with the bundled speech server (one room). GPU and Neural Engine backends, and several rooms per machine, not measured yet ([Local mode](local.md#measured-results)) |
-| Automated tests | 225 tests on Linux, macOS and Windows: captions, exports, live corrections, breaks, recordings, restarts, sign-in and roles, security rules, alerts, reconnection edge cases, the assistant, the agenda, AI assistants over MCP, local mode, and an end-to-end test that replays a recorded Gemini session. Every page is checked against WCAG 2.2 AA (`npm run a11y`). `npm run local -- --check` tests local models end to end. |
+| Local mode (Whisper + Ollama) | Implemented, also from a button in the app (captions about a minute after the click on a MacBook Pro M3 Pro; translations about 5½ more minutes the first time, while the 3.1 GB model downloads); measured on CPUs with the bundled speech server (one room). GPU and Neural Engine backends, and several rooms per machine, not measured yet ([Local mode](local.md#measured-results)) |
+| Automated tests | 228 tests on Linux, macOS and Windows: captions, exports, live corrections, breaks, recordings, restarts, sign-in and roles, security rules, alerts, reconnection edge cases, the assistant, the agenda, AI assistants over MCP, local mode, and an end-to-end test that replays a recorded Gemini session. Every page is checked against WCAG 2.2 AA (`npm run a11y`). `npm run local -- --check` tests local models end to end. |
 | Version | 0.x (pre-release). Breaking changes are listed in the [changelog](../CHANGELOG.md). |
 
 ## Roadmap

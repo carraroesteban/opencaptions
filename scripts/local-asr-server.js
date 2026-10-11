@@ -25,10 +25,11 @@ const port = Number(arg('port', process.env.LOCAL_ASR_PORT || 8178));
 const host = arg('host', '127.0.0.1');
 const threads = Number(arg('threads', Math.max(1, Math.min(4, os.availableParallelism?.() || os.cpus().length))));
 
-// sherpa-onnx is installed on demand by `npm run local` into local/runtime (kept out of the main dependencies).
+// sherpa-onnx is installed on demand by `npm run local` into local/runtime (kept out of the main dependencies;
+// LOCAL_DIR moves the local/ folder, see src/local/setup.js).
 function loadSherpa() {
   let err = null;
-  for (const base of [path.join(ROOT, 'local', 'runtime', 'package.json'), path.join(ROOT, 'package.json')]) {
+  for (const base of [path.join(path.resolve(ROOT, process.env.LOCAL_DIR || 'local'), 'runtime', 'package.json'), path.join(ROOT, 'package.json')]) {
     try {
       const m = createRequire(base)('sherpa-onnx-node');
       if (m?.OfflineRecognizer) return m;

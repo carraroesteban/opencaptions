@@ -11,6 +11,7 @@ import { ensureSignedIn, signInScreen, signOut } from '/signin.js';
 import { accessPanel } from '/access.js';
 import { alertsPanel } from '/alerts-ui.js';
 import { keyPanel, tunnelPanel } from '/connect.js';
+import { localPanel } from '/local-mode.js';
 import { LANGUAGE_CATALOG } from '/languages.js';
 
 const $ = (id) => document.getElementById(id);
@@ -297,7 +298,7 @@ const engChip = (e) => {
   const cls = e.state === 'live' ? 'ok' : e.state === 'reconnecting' || e.state === 'resuming' || e.state === 'connecting' ? 'warn' : e.state === 'idle' ? '' : 'bad';
   return `<span class="chip ${cls}" title="${esc(e.lastError || '')}">${esc(e.target)} · ${esc(e.state)}${e.reconnects ? ` · ${e.reconnects}×` : ''}</span>`;
 };
-const alertText = (a) => tr(({ 'no-audio': 'no llega audio', 'muted?': '¿mic muteado? (60s sin señal)', reconnecting: 'reconectando IA', 'high-latency': 'latencia alta', 'mt-throttled': 'traducción limitada por cuota → usando Live', 'voice-in-break': 'hay alguien hablando durante la pausa', 'on-backup': 'usando el audio de respaldo', 'not-saving': 'no se guardan las transcripciones (¿disco lleno?)' })[a] || a);
+const alertText = (a) => tr(({ 'no-audio': 'no llega audio', 'muted?': '¿mic muteado? (60s sin señal)', reconnecting: 'reconectando IA', 'high-latency': 'latencia alta', 'mt-throttled': 'traducción limitada por cuota → usando Live', 'ai-quota': 'la key de Gemini llegó a su límite', 'voice-in-break': 'hay alguien hablando durante la pausa', 'on-backup': 'usando el audio de respaldo', 'not-saving': 'no se guardan las transcripciones (¿disco lleno?)' })[a] || a);
 
 // ---------- first-run guide (Live view, until everything is done) ----------
 let scheduleCount = null;
@@ -412,6 +413,10 @@ function render(s) {
   $('engine').title = s.engine === 'mock' ? tr('Conectar la IA en la nube en Ajustes') : s.model; // the exact model names
   $('engine').style.cursor = s.engine === 'mock' ? 'pointer' : '';
   renderNet(s.failover, s.engine);
+  // A free Gemini key out of quota: offer this computer (public/local-mode.js), and keep it in view while it gets ready.
+  const lm = localP?.status();
+  const quota = s.engine === 'gemini' && s.stages.some((x) => x.alerts?.includes('ai-quota') || x.alerts?.includes('mt-throttled'));
+  $('local-offer').classList.toggle('hidden', isCrew || !(quota || (lm && lm.state !== 'idle' && lm.text !== 'ready')));
   $('k-live').textContent = `${s.totals.live}/${s.totals.stages}`;
   $('k-sessions').textContent = s.totals.sessions;
   $('k-viewers').textContent = s.totals.viewers;
@@ -1401,6 +1406,7 @@ const quietApi = (m, u, b) => api(m, u, b, { quiet: true });
 const askFirst = (msg) => { const i = msg.indexOf('?') + 1; return confirmDialog({ title: msg.slice(0, i) || msg, body: msg.slice(i).trim(), ok: LANG === 'es' ? 'Continuar' : 'Continue', danger: true }); };
 const keyP = keyPanel($('key-panel'), { api: quietApi, confirm: askFirst });
 const tunnelP = tunnelPanel($('tunnel-panel'), { api: quietApi, confirm: askFirst });
+const localP = isCrew ? null : localPanel($('local-offer'), { api: quietApi, quota: true });
 const accessP = isCrew ? null : accessPanel($('access-panel'), { api: quietApi, confirm: askFirst, toast, me });
 const alertsP = isCrew ? null : alertsPanel($('alerts-panel'), { api: quietApi, toast });
 let settingsSetup = null;

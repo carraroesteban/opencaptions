@@ -4,6 +4,7 @@ import { prefsControls, LANG } from '/i18n.js';
 import { icon } from '/illustrations.js';
 import { ensureSignedIn, signInScreen } from '/signin.js';
 import { keyPanel, tunnelPanel } from '/connect.js';
+import { localPanel } from '/local-mode.js';
 import { LANGUAGE_CATALOG } from '/languages.js';
 const $ = (id) => document.getElementById(id);
 $('prefs-slot').append(prefsControls());
@@ -24,7 +25,6 @@ const T = {
     aiLedeForced: 'OpenCaptions was started in demo mode, so captions are simulated even though a key is saved. Start it normally to use Gemini.',
     k4: 'Step 5 of 7 · The AI', aiLedeMock: 'Right now captions are simulated. To caption real talks, connect Google’s Gemini with an API key: it takes about two minutes.', aiLedeOn: 'Captions come from Google’s Gemini, in the cloud.',
     kS: 'Step 6 of 7 · Phones', shareH: 'How will phones reach the captions?', sAddr: 'Address',
-    altLocal: 'Or run the AI on this computer', altLocalD: 'No account and no cost per hour, but it needs a recent computer and a one-time install from the terminal:',
     kR: 'Step 4 of 7 · Review', reviewH: 'Check before anything changes', reviewP: 'Nothing has changed yet. Untick anything you don’t want.', apply: 'Apply changes', skipReview: 'Skip, change nothing',
     noChanges: 'Nothing to change: your event already looks like this.',
     lockedMsg: 'Event mode is on, so the setup is locked. Turn it off in the dashboard’s Settings to apply changes.',
@@ -82,7 +82,6 @@ const T = {
     aiLedeForced: 'OpenCaptions se inició en modo demo, así que los subtítulos son simulados aunque haya una key guardada. Inicialo normalmente para usar Gemini.',
     k4: 'Paso 5 de 7 · La IA', aiLedeMock: 'Por ahora los subtítulos son simulados. Para subtitular charlas reales, conectá Gemini de Google con una API key: son unos dos minutos.', aiLedeOn: 'Los subtítulos vienen de Gemini de Google, en la nube.',
     kS: 'Paso 6 de 7 · Celulares', shareH: '¿Cómo llegan los celulares a los subtítulos?', sAddr: 'Dirección',
-    altLocal: 'O usar la IA de esta computadora', altLocalD: 'Sin cuenta ni costo por hora, pero necesita una computadora reciente y una instalación desde la terminal (una sola vez):',
     kR: 'Paso 4 de 7 · Revisión', reviewH: 'Revisá antes de cambiar nada', reviewP: 'Todavía no cambió nada. Destildá lo que no quieras.', apply: 'Aplicar cambios', skipReview: 'Saltar, no cambiar nada',
     noChanges: 'No hay nada que cambiar: tu evento ya está así.',
     lockedMsg: 'El modo evento está activado, así que la configuración está bloqueada. Desactivalo en Ajustes del panel para aplicar cambios.',
@@ -348,11 +347,12 @@ function renderAi() {
       : opt('shield', t.backupOff, t.backupOffD, cmd('npm run local -- --fallback'));
   } else if (S.primaryEngine === 'local') {
     html += opt('shield', t.local, t.localD, '', 'good');
-  } else {
-    html += opt('shield', t.altLocal, t.altLocalD, cmd('npm run local'));
   }
   $('ai').innerHTML = html;
+  // No key: "Run it on this computer" (public/local-mode.js); it stays while it gets ready.
+  $('local-offer').classList.toggle('hidden', S.primaryEngine !== 'mock' && (localP.status()?.state || 'idle') === 'idle');
 }
+const localP = localPanel($('local-offer'), { api, onChange: (s) => { if (s.engine === 'local') S = { ...S, engine: 'local', primaryEngine: 'local' }; renderAi(); } });
 renderAi();
 
 // ---------- public address ----------

@@ -2,7 +2,8 @@
 # OpenCaptions.app (macOS). The app files travel inside the bundle (Contents/Resources/app). The first time each
 # version runs, they're copied to ~/Library/Application Support/OpenCaptions/app-<version>: macOS may run a
 # downloaded app from a read-only place ("App Translocation"), and the app needs to install its libraries. Settings,
-# passwords and transcripts live in .../OpenCaptions/data, so they survive updates. Then a Terminal window runs
+# passwords and transcripts live in .../OpenCaptions/data, and the free local AI's downloads in .../OpenCaptions/local,
+# so they survive updates. Then a Terminal window runs
 # OpenCaptions (scripts/start.js), which opens the dashboard; closing the window stops it. No Node.js on this Mac
 # (or older than 20): the official one is downloaded once into .../OpenCaptions/node.
 # Run by the app's program (launcher.c); both are put in the app by scripts/package-desktop.js.
@@ -65,7 +66,7 @@ on run argv
   set appDir to item 1 of argv
   set dataDir to item 2 of argv
   set nodeBin to item 3 of argv
-  set cmd to "export PATH=" & quoted form of nodeBin & ":\"$PATH\"; cd " & quoted form of appDir & " && clear && DATA_DIR=" & quoted form of dataDir & " GLOSSARY=" & quoted form of (dataDir & "/glossary.json") & " SCHEDULE=" & quoted form of (dataDir & "/schedule.json") & " node scripts/start.js; exit"
+  set cmd to "export PATH=" & quoted form of nodeBin & ":\"$PATH\"; cd " & quoted form of appDir & " && clear && DATA_DIR=" & quoted form of dataDir & " LOCAL_DIR=" & quoted form of (dataDir & "/../local") & " GLOSSARY=" & quoted form of (dataDir & "/glossary.json") & " SCHEDULE=" & quoted form of (dataDir & "/schedule.json") & " node scripts/start.js; exit"
   tell application "Terminal"
     activate
     do script cmd

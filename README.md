@@ -131,6 +131,8 @@ Conferences and summits · universities and schools · places of worship · town
 
 The first time, it installs what it needs (about a minute, and Node.js too if this computer doesn't have it), then opens the dashboard in your browser. The welcome wizard asks for the event name, rooms and languages, connects Gemini with your API key, and can create a public HTTPS address for the QR codes with one click. A window shows OpenCaptions running: keep it open during the event, and close it to stop. Your settings and transcripts are kept outside the app, so they survive updates.
 
+No Gemini key, or your free key ran out mid-event? Click **Run it on this computer (free, slower)** in the wizard, on the **Just for me** page or on the dashboard's banner. It downloads a free speech model once (about 670 MB, about a minute) and captions start; translations also need the free [Ollama](https://ollama.com/download) app, and the page shows how to add it. No terminal. Details in [Local mode](docs/local.md#without-a-terminal-one-button).
+
 <details>
 <summary>The computer warns about the app the first time</summary>
 
@@ -183,7 +185,7 @@ npm run check   # a 25-second end-to-end test with a sample talk
 npm start       # http://localhost:8080
 ```
 
-Prefer to keep everything on your own machine? [Local mode](docs/local.md) runs speech recognition and translation offline:
+Prefer to keep everything on your own machine? [Local mode](docs/local.md) runs speech recognition and translation offline. From the app it's one button (above); from a terminal:
 
 ```bash
 brew install ollama        # Linux: curl -fsSL https://ollama.com/install.sh | sh · Windows: ollama.com/download
@@ -346,7 +348,7 @@ For example, a 40-minute talk captioned from English into Spanish costs about **
 - **Para la organización**, un panel con el estado, la demora, el público y el costo de cada sala. Las salas funcionan solas y toman los títulos de la agenda. Una grabación se subtitula en minutos, y todas las transcripciones se descargan juntas en un .zip.
 - **Costo:** el software es gratis. Con Gemini, unos US$ 0,54 por hora de charla por sala (US$ 2,2 con voz traducida en auriculares; el silencio no se cobra). En modo local, nada: corre en tu propia compu y el audio no sale del edificio.
 
-Para empezar sin terminal: descargá [OpenCaptions para Mac](https://github.com/carraroesteban/opencaptions/releases/latest/download/OpenCaptions-mac.zip) o [para Windows](https://github.com/carraroesteban/opencaptions/releases/latest/download/OpenCaptions-windows.zip). En Mac, arrastrá OpenCaptions a Aplicaciones y abrilo; en Windows, descomprimí el ZIP y hacé doble clic en **Start OpenCaptions**. El asistente pregunta el nombre del evento, las salas y los idiomas, conecta Gemini con tu API key y crea una dirección pública con HTTPS en un clic. Con Docker: `docker run -d -p 127.0.0.1:8080:8080 -v opencaptions-data:/app/data -v opencaptions-config:/app/config ghcr.io/carraroesteban/opencaptions`. Guía para el día del evento: [event-day.es.md](docs/operations/event-day.es.md).
+Para empezar sin terminal: descargá [OpenCaptions para Mac](https://github.com/carraroesteban/opencaptions/releases/latest/download/OpenCaptions-mac.zip) o [para Windows](https://github.com/carraroesteban/opencaptions/releases/latest/download/OpenCaptions-windows.zip). En Mac, arrastrá OpenCaptions a Aplicaciones y abrilo; en Windows, descomprimí el ZIP y hacé doble clic en **Start OpenCaptions**. El asistente pregunta el nombre del evento, las salas y los idiomas, conecta Gemini con tu API key y crea una dirección pública con HTTPS en un clic. ¿Sin key, o tu key gratis se quedó sin cuota en pleno evento? Hacé clic en **Usar esta computadora (gratis, más lento)**: descarga una vez un modelo de voz gratis (unos 670 MB, cerca de un minuto) y arrancan los subtítulos; para traducir hace falta además la app gratis [Ollama](https://ollama.com/download), y la página explica cómo. Sin terminal. Con Docker: `docker run -d -p 127.0.0.1:8080:8080 -v opencaptions-data:/app/data -v opencaptions-config:/app/config ghcr.io/carraroesteban/opencaptions`. Guía para el día del evento: [event-day.es.md](docs/operations/event-day.es.md).
 
 ## Contributing
 
