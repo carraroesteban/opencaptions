@@ -128,14 +128,15 @@ class Sender {
 }
 
 /**
- * All connectors. `stages` is the server's Map of rooms; `talkUrl(stage, talk)` builds the transcript link for
- * webhooks. Re-attaches whenever rooms are added or connectors change.
+ * All connectors. `stages` is the server's Map of rooms; `talkUrl(stage, talk)` builds the transcript link and
+ * `exportUrl(stage, talk, lang, fmt)` the download links for webhooks. Re-attaches whenever rooms are added or connectors change.
  */
 export class Integrations {
-  /** @param {{ stages: Map<string, any>, talkUrl?: (stage: string, talk: string) => string, fetchImpl?: typeof fetch }} o */
-  constructor({ stages, talkUrl = () => '', fetchImpl }) {
+  /** @param {{ stages: Map<string, any>, talkUrl?: (stage: string, talk: string) => string, exportUrl?: (stage: string, talk: string, lang: string, fmt: string) => string, fetchImpl?: typeof fetch }} o */
+  constructor({ stages, talkUrl = () => '', exportUrl = () => '', fetchImpl }) {
     this.stages = stages;
     this.talkUrl = talkUrl;
+    this.exportUrl = exportUrl;
     this.fetchImpl = fetchImpl;
     this.senders = new Map(); // id → Sender
     this.hooked = new Map(); // stage id → detach()
@@ -199,10 +200,11 @@ export class Integrations {
     for (const st of this.stages.values()) {
       const mine = this.defs.filter((d) => d.stage === st.id);
       if (!mine.length) continue;
-      let talk = { id: st.talk.id, title: st.talk.title, startedAt: st.talk.startedAt, captions: 0 };
+      let talk = { id: st.talk.id, title: st.talk.title, startedAt: st.talk.startedAt, captions: 0, channels: new Set(['orig']) };
       const onCaption = (seg) => {
         if (!seg.final || !seg.text || seg.edited) return; // a correction: Zoom, YouTube and Teams already showed it
         talk.captions++;
+        talk.channels.add(seg.channel);
         for (const d of mine) {
           if (!d.events.includes('caption') || st.channelFor(d.lang) !== seg.channel) continue;
           const lang = seg.channel === 'orig' ? (seg.lang || st.source) : seg.channel;
@@ -219,10 +221,11 @@ export class Integrations {
       };
       const onTalk = () => {
         const ended = talk;
-        talk = { id: st.talk.id, title: st.talk.title, startedAt: st.talk.startedAt, captions: 0 };
+        talk = { id: st.talk.id, title: st.talk.title, startedAt: st.talk.startedAt, captions: 0, channels: new Set(['orig']) };
         if (!ended.captions) return;
+        const files = Object.fromEntries([...ended.channels].map((ch) => [ch, Object.fromEntries(['srt', 'vtt', 'txt'].map((f) => [f, this.exportUrl(st.id, ended.id, ch, f)]))]));
         for (const d of mine.filter((x) => x.type === 'webhook' && x.events.includes('talk.ended'))) {
-          this.#sender(d).push({ event: 'talk.ended', room: st.id, roomName: st.def.name, talk: ended.id, title: ended.title || '', startedAt: ended.startedAt, captions: ended.captions, transcript: this.talkUrl(st.id, ended.id), at: new Date().toISOString() });
+          this.#sender(d).push({ event: 'talk.ended', room: st.id, roomName: st.def.name, talk: ended.id, title: ended.title || '', startedAt: ended.startedAt, captions: ended.captions, transcript: this.talkUrl(st.id, ended.id), files, at: new Date().toISOString() });
         }
       };
       st.on('caption', onCaption);

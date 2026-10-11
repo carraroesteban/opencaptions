@@ -3,13 +3,11 @@
 // GEMINI_API_KEY; removing it goes back to .env's key, or to simulated captions if there is none.
 import fs from 'node:fs';
 import path from 'node:path';
-import { config } from './config.js';
+import { config, readSecretsFile, writeFileAtomic } from './config.js';
 
 const file = () => path.join(config.dataDir, 'secrets.json');
 
-function readSecrets() {
-  try { return JSON.parse(fs.readFileSync(file(), 'utf8')); } catch { return {}; }
-}
+const readSecrets = () => readSecretsFile(config.dataDir);
 
 /** @param {string} name */
 export const readSecret = (name) => String(readSecrets()[name] || '');
@@ -19,7 +17,7 @@ export function saveSecret(name, value) {
   const s = readSecrets();
   if (value) s[name] = value; else delete s[name];
   fs.mkdirSync(config.dataDir, { recursive: true });
-  fs.writeFileSync(file(), JSON.stringify(s, null, 2), { mode: 0o600 });
+  writeFileAtomic(file(), JSON.stringify(s, null, 2), { mode: 0o600 });
 }
 
 /** @param {string | null} key  null removes the saved key */

@@ -20,6 +20,26 @@ function readJson(p, fallback) {
   }
 }
 
+/** Write via a temp file and rename, so a crash or full disk mid-write never leaves a half-written file. */
+export function writeFileAtomic(file, text, opts) {
+  const tmp = `${file}.${process.pid}.tmp`;
+  fs.writeFileSync(tmp, text, opts);
+  fs.renameSync(tmp, file);
+}
+
+/**
+ * data/secrets.json: missing is a first run, but damaged must stop everything. Carrying on would mean new
+ * passwords, no Gemini key (fake captions) and two-factor off, and the next save would wipe the rest.
+ */
+export function readSecretsFile(dir) {
+  const file = path.join(dir, 'secrets.json');
+  let text;
+  try { text = fs.readFileSync(file, 'utf8'); } catch (e) { if (e.code === 'ENOENT') return {}; throw e; }
+  try { return JSON.parse(text); } catch {
+    throw new Error(`${file} is damaged. Restore it from a backup, or delete it to start over with new passwords (the Gemini key, two-factor and alerts must then be set again).`);
+  }
+}
+
 const eventPath = process.env.EVENT_CONFIG || 'config/event.json';
 const event = readJson(eventPath);
 
@@ -44,7 +64,7 @@ function freshDir() {
 }
 // A Gemini key typed in the dashboard (welcome wizard or Settings) is kept in data/secrets.json and wins over
 // GEMINI_API_KEY, so nobody has to edit .env. See src/aikey.js.
-const savedKey = String(readJson(path.join(dataDir, 'secrets.json'), {}).geminiApiKey || '');
+const savedKey = String(readSecretsFile(dataDir).geminiApiKey || '');
 const geminiApiKey = savedKey || env.GEMINI_API_KEY || '';
 // gemini (cloud) | local (Whisper + a local text model, see docs/local.md) | mock (simulated, no AI at all)
 const engine = flag('mock') ? 'mock' : flag('local') ? 'local' : (env.ENGINE || (geminiApiKey || vertex ? 'gemini' : 'mock'));

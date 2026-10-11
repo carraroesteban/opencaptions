@@ -157,3 +157,15 @@ test('saved talks: a caption saved again with its id is a correction (newest tex
     assert.equal(store.correct('main', 't1', 'zz', 'x'), null);
   } finally { fs.rmSync(dir, { recursive: true, force: true }); }
 });
+
+test('a caption that can\'t be saved is reported until saving works again', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'oc-store-'));
+  try {
+    const store = new Store(dir, { enabled: true });
+    store.append('main', 'gone', { channel: 'orig', text: 'Lost?', start: 0, end: 1000 }); // its folder doesn't exist
+    assert.match(store.saveError, /ENOENT/);
+    store.openTalk('main', { id: 'gone', title: 'Back', startedAt: 1 }, ['orig']);
+    store.append('main', 'gone', { channel: 'orig', text: 'Saved.', start: 0, end: 1000 });
+    assert.equal(store.saveError, '');
+  } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+});

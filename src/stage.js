@@ -744,6 +744,7 @@ export class Stage extends EventEmitter {
       if (e.state === 'reconnecting' || ((e.state === 'connecting' || e.state === 'resuming') && now - (e.stateSince || now) > 10000)) alerts.add('reconnecting');
     }
     if (this.lat.asr > 6000) alerts.add('high-latency');
+    if (this.store.saveError) alerts.add('not-saving');
     if (Object.values(this.mtQ || {}).some((q) => q.degraded() || q.stats.quotaErrors > (q._qe ?? 0))) alerts.add('mt-throttled');
     for (const q of Object.values(this.mtQ || {})) q._qe = q.stats.quotaErrors;
     this.alerts = alerts;

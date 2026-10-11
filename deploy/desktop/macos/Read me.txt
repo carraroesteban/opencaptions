@@ -1,13 +1,14 @@
 OpenCaptions for Mac
 ====================
 
-1. Install Node.js, a free program (the LTS version): https://nodejs.org
-2. Drag OpenCaptions to your Applications folder, then double-click it.
+1. Drag OpenCaptions to your Applications folder, then double-click it.
    The first time, macOS says it can't verify the app. Click Done, open
    System Settings > Privacy & Security, scroll down and click "Open Anyway"
    next to OpenCaptions. Then allow it to control Terminal.
-3. A Terminal window shows OpenCaptions starting, and your browser opens the
+2. A Terminal window shows OpenCaptions starting, and your browser opens the
    dashboard. Keep the window open during the event; close it to stop.
+   The first time it downloads what it needs (Node.js too, if this computer
+   doesn't have it): it takes a minute and needs internet.
 
 Your settings, passwords and transcripts are kept in
 ~/Library/Application Support/OpenCaptions, so they survive updates.
@@ -17,14 +18,15 @@ Help: https://github.com/carraroesteban/opencaptions
 OpenCaptions para Mac
 =====================
 
-1. Instalá Node.js, un programa gratuito (la versión LTS): https://nodejs.org
-2. Arrastrá OpenCaptions a la carpeta Aplicaciones y abrilo con doble clic.
+1. Arrastrá OpenCaptions a la carpeta Aplicaciones y abrilo con doble clic.
    La primera vez, macOS dice que no puede verificar la app. Cerrá ese aviso,
    abrí Configuración del Sistema > Privacidad y seguridad, bajá hasta el aviso
    sobre OpenCaptions y tocá el botón para abrirla de todos modos. Después
    permitile controlar Terminal.
-3. Una ventana de Terminal muestra cómo arranca OpenCaptions, y el navegador
+2. Una ventana de Terminal muestra cómo arranca OpenCaptions, y el navegador
    abre el panel. Dejá la ventana abierta durante el evento; cerrala para detenerlo.
+   La primera vez descarga lo que necesita (también Node.js, si la
+   computadora no lo tiene): tarda un minuto y necesita internet.
 
 La configuración, las contraseñas y las transcripciones se guardan en
 ~/Library/Application Support/OpenCaptions, así que se conservan al actualizar.

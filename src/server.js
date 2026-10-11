@@ -11,7 +11,7 @@ import express from 'express';
 import { WebSocketServer } from 'ws';
 import QRCode from 'qrcode';
 import './preflight.js'; // first: a data folder it can't write to ends here, with the fix
-import { config, normalizeStage, ROOT, langName, setEngine } from './config.js';
+import { config, normalizeStage, ROOT, langName, setEngine, writeFileAtomic } from './config.js';
 import { Failover } from './failover.js';
 import { checkKey, saveKey, keyInfo, looksLikeKey, readSecret, saveSecret } from './aikey.js';
 import { Tunnel, tunnelOrigin } from './tunnel.js';
@@ -36,7 +36,7 @@ import { Schedule, parseSchedule } from './schedule.js';
 import { History } from './history.js';
 import { asrInfo, asrReachable } from './local/asr.js';
 import { llmInfo, llmHealth, chat as localChat } from './local/llm.js';
-import { authMode, tokens, noteAuthFailure, securityHeaders, apiRateLimit, originAllowed, wsAllowed, checkPullUrl, clientIp } from './security.js';
+import { authMode, tokens, noteAuthFailure, securityHeaders, apiRateLimit, originAllowed, wsAllowed, checkPullUrl, clientIp, setTrustProxy } from './security.js';
 
 const MAX_STAGES = Number(process.env.MAX_STAGES || 60);
 const MAX_VIEWERS = Number(process.env.MAX_VIEWERS || 5000);
@@ -53,7 +53,7 @@ const STAGES_FILE = path.join(config.dataDir, 'stages.json');
 // ---------------- stages ----------------
 function persistStages() {
   const defs = [...stages.values()].map((s) => s.def);
-  fs.writeFileSync(STAGES_FILE, JSON.stringify(defs, null, 2));
+  writeFileAtomic(STAGES_FILE, JSON.stringify(defs, null, 2));
 }
 
 /** Reject malformed room definitions coming from the API (ids end up in URLs, file names and metrics). */
@@ -134,7 +134,12 @@ let integrations = null; // created once the rooms exist (below)
 let switchers = null; // vMix / OBS break scenes (src/switcher.js)
 for (const def of initial) addStage(def);
 switchers = new Switchers({ stages });
-integrations = new Integrations({ stages, talkUrl: (stage, talk) => `${config.publicUrl || lanUrl() || `http://localhost:${config.port}`}/talk.html?stage=${encodeURIComponent(stage)}&talk=${encodeURIComponent(talk)}` });
+const linkBase = () => config.publicUrl || lanUrl() || `http://localhost:${config.port}`;
+integrations = new Integrations({
+  stages,
+  talkUrl: (stage, talk) => `${linkBase()}/talk.html?stage=${encodeURIComponent(stage)}&talk=${encodeURIComponent(talk)}`,
+  exportUrl: (stage, talk, lang, fmt) => `${linkBase()}/api/stages/${encodeURIComponent(stage)}/export.${fmt}?talk=${encodeURIComponent(talk)}&lang=${encodeURIComponent(lang)}`,
+});
 
 if (setup.name) Object.assign(config.event, { name: setup.name, named: true });
 // The languages rooms can choose: event.json's, minus the ones removed from the dashboard, plus the ones added there
@@ -148,7 +153,7 @@ if (setup.timezone && !tzFixed) process.env.TZ = setup.timezone;
 const zoneOk = (z) => { try { return !!z && new Intl.DateTimeFormat('en', { timeZone: z }).resolvedOptions().timeZone === z; } catch { return false; } };
 function saveSetup(patch) {
   Object.assign(setup, patch, { updatedAt: new Date().toISOString() });
-  fs.writeFileSync(SETUP_FILE, JSON.stringify(setup, null, 2));
+  writeFileAtomic(SETUP_FILE, JSON.stringify(setup, null, 2));
 }
 
 // Every setup change is recorded with what it replaced, so it can be undone (src/history.js).
@@ -162,6 +167,7 @@ const app = express();
 app.disable('x-powered-by');
 // Behind a tunnel / reverse proxy on this machine, trust its X-Forwarded-* headers (for req.secure / req.ip).
 app.set('trust proxy', process.env.TRUST_PROXY || 'loopback');
+setTrustProxy(app.get('trust proxy fn')); // the WebSocket and rate limits judge addresses the same way
 app.use(securityHeaders);
 // Which data folder this server runs on (a fresh start, FRESH=1, makes a new one every time). Pages compare it with
 // the one this browser remembered things for, and forget them when it changed (public/common.js). Asked for with
@@ -176,6 +182,7 @@ const DATA_ID = (() => {
 app.use('/api', apiRateLimit);
 app.use(express.json({ limit: '256kb' }));
 
+const VERSION = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8')).version;
 const reqUrl = (req) => new URL(req.originalUrl, 'http://x');
 // Who may do what (src/auth.js): `crew` = the live controls and reading; `admin` = everything, including the setup.
 const need = (role) => (req, res, next) => {
@@ -219,6 +226,19 @@ app.get('/healthz', (req, res) => {
   res.json({ ok: true, stages: stages.size, engine: config.engine, cpuPct: sys.cpuPct, rssMB: sys.rssMB, loopLagP99Ms: sys.loopLagMs.p99 });
 });
 
+/** A room and what it captions now: for the audience homepage and AI assistants (MCP). */
+const roomSummary = (s) => ({
+  id: s.id,
+  name: s.def.name,
+  title: s.talk.title,
+  speaker: s.talk.speaker || '',
+  next: s.nextTalk || null,
+  talk: s.talk.id,
+  source: s.source || 'auto',
+  detectedLang: s.detectedLang || null,
+  languages: s.languages,
+  live: s.engines.size > 0 && !s.gated,
+});
 app.get('/api/instance', (req, res) => res.set('Cache-Control', 'no-store').json({ id: DATA_ID }));
 app.get('/api/event', (req, res) => {
   res.json({
@@ -230,18 +250,7 @@ app.get('/api/event', (req, res) => {
     audienceAi: audienceAiEnabled,
     timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
     publicTranscripts: PUBLIC_TRANSCRIPTS,
-    stages: visibleStages().map((s) => ({
-      id: s.id,
-      name: s.def.name,
-      title: s.talk.title,
-      speaker: s.talk.speaker || '',
-      next: s.nextTalk || null,
-      talk: s.talk.id,
-      source: s.source || 'auto',
-      detectedLang: s.detectedLang || null,
-      languages: s.languages,
-      live: s.engines.size > 0 && !s.gated,
-    })),
+    stages: visibleStages().map(roomSummary),
   });
 });
 
@@ -419,16 +428,19 @@ app.get('/api/talks', (req, res) => {
   const signedIn = allows(identify(req, reqUrl(req)), 'crew');
   const all = (PUBLIC_TRANSCRIPTS === 'all' && !personal()) || signedIn;
   if ((PUBLIC_TRANSCRIPTS === 'none' || personal()) && !signedIn) return res.status(401).json({ error: 'admin token required' });
+  res.json({ publicTranscripts: PUBLIC_TRANSCRIPTS, talks: talkList(visibleStages(), all) });
+});
+/** The talks with captions in these rooms, newest first: the one in progress, and the saved ones when `all`. */
+function talkList(rooms, all) {
   const out = [];
-  for (const st of visibleStages()) {
+  for (const st of rooms) {
     const saved = all ? store.listTalks(st.id) : [];
     for (const info of [talkInfo(st, st.talk.id), ...saved.filter((t) => t.id !== st.talk.id).map((t) => talkInfo(st, t.id, t))]) {
       if (info && info.segments > 0) out.push(info);
     }
   }
-  out.sort((a, b) => b.startedAt - a.startedAt);
-  res.json({ publicTranscripts: PUBLIC_TRANSCRIPTS, talks: out });
-});
+  return out.sort((a, b) => b.startedAt - a.startedAt);
+}
 
 // Delete a transcript for good (someone's private call in personal mode, a talk that mustn't be kept). The talk in
 // progress is closed first, so its next words start a new one.
@@ -486,8 +498,7 @@ app.get('/api/stages/:id/export.:fmt', getStage, talkAccess, (req, res) => {
   const talkId = req.query.talk || st.talk.id;
   if (!isCurrent(st, talkId) && !talkInfo(st, talkId)) return res.status(404).json({ error: 'unknown talk' });
   const all = talkSegs(st, talkId);
-  // A language the talk has, even one the room doesn't caption (now): a recording's own languages, a removed one.
-  const channel = all.some((s) => s.channel === req.query.lang) ? String(req.query.lang) : st.channelFor(req.query.lang);
+  const channel = channelIn(st, all, req.query.lang);
   const segs = all.filter((s) => s.channel === channel);
   const fmt = req.params.fmt;
   const name = `${st.id}-${talkId}-${req.query.lang || 'orig'}.${fmt}`.replace(/[^\w.-]/g, '_'); // query values: never raw in a header
@@ -498,6 +509,9 @@ app.get('/api/stages/:id/export.:fmt', getStage, talkAccess, (req, res) => {
   if (fmt === 'json') return res.json(all);
   res.status(400).json({ error: 'fmt must be srt|vtt|txt|json' });
 });
+
+// A language the talk has, even one the room doesn't caption (now): a recording's own languages, a removed one.
+const channelIn = (st, segs, lang) => (segs.some((s) => s.channel === lang) ? String(lang) : st.channelFor(lang));
 
 // ---- event report: every talk with its length, words, audience and cost, for sponsors or the boss ----
 const dayOf = (ms) => { const d = new Date(ms); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
@@ -555,6 +569,77 @@ app.get('/api/report.csv', crew, (req, res) => {
   res.set('Content-Disposition', `attachment; filename="opencaptions-report${r.day ? `-${r.day}` : ''}.csv"`);
   res.type('text/csv').send('\ufeff' + rows.map((x) => x.map(cell).join(',')).join('\r\n') + '\r\n'); // BOM: Excel reads the accents
 });
+
+// ---- MCP (Model Context Protocol): AI assistants (Claude, ChatGPT, Cursor) read the rooms, talks, transcripts and the
+// report with the crew password, like the REST calls above. Read-only: no tool changes anything yet.
+// shortcut: plain JSON-RPC on POST (Streamable HTTP with JSON replies, no sessions or server streams); move to
+// @modelcontextprotocol/sdk when a tool needs progress updates or to message the assistant first.
+const mcpRoom = (id) => {
+  const st = visibleStages().find((s) => s.id === id);
+  if (!st) throw new Error(`unknown room "${id}"; list_rooms has the ids`);
+  return st;
+};
+const roomsArg = (room) => (room ? [mcpRoom(room)] : visibleStages());
+const clock = (ms) => new Date(ms).toISOString().slice(11, 19); // a moment in the talk, 00:12:05
+/** @type {{ name: string, description: string, inputSchema: object, run: (args: any) => any }[]} */
+const MCP_TOOLS = [
+  { name: 'list_rooms', description: 'The event\'s rooms: what each captions now, its languages, and whether it is live.',
+    inputSchema: { type: 'object', properties: {} },
+    run: () => ({ event: eventName(), rooms: visibleStages().map(roomSummary) }) },
+  { name: 'list_talks', description: 'Talks with captions, newest first, optionally for one day (YYYY-MM-DD) or room.',
+    inputSchema: { type: 'object', properties: { day: { type: 'string', description: 'YYYY-MM-DD' }, room: { type: 'string', description: 'room id' } } },
+    run: ({ day, room }) => talkList(roomsArg(room), true).filter((t) => !day || dayOf(t.startedAt) === day) },
+  { name: 'get_transcript', description: 'A talk\'s transcript as text, in the language spoken ("orig") or a translation. Without a talk id, the talk in progress.',
+    inputSchema: { type: 'object', properties: { room: { type: 'string' }, talk: { type: 'string', description: 'talk id from list_talks' }, lang: { type: 'string', description: 'orig, en, es…' } }, required: ['room'] },
+    run: ({ room, talk, lang }) => {
+      const st = mcpRoom(room);
+      if (!isCurrent(st, talk) && !talkInfo(st, talk)) throw new Error('unknown talk; list_talks has the ids');
+      const all = talkSegs(st, talk);
+      const channel = channelIn(st, all, lang);
+      return toTXT(all.filter((s) => s.channel === channel)) || '(no captions in this language yet)';
+    } },
+  { name: 'search_transcripts', description: 'Find a word or phrase in every transcript of the event (any language). Returns the room, talk, time and quote.',
+    inputSchema: { type: 'object', properties: { phrase: { type: 'string' }, room: { type: 'string' }, day: { type: 'string', description: 'YYYY-MM-DD' } }, required: ['phrase'] },
+    run: ({ phrase, room, day }) => {
+      const q = String(phrase || '').trim().toLowerCase();
+      if (!q) throw new Error('phrase required');
+      const hits = [];
+      for (const st of roomsArg(room)) for (const m of roomTalks(st)) {
+        if (day && dayOf(m.startedAt) !== day) continue;
+        for (const x of talkSegs(st, m.id)) {
+          if (hits.length >= 50) return { phrase, hits, more: true };
+          if (String(x.text).toLowerCase().includes(q)) {
+            hits.push({ room: st.def.name, roomId: st.id, talk: m.title || '', talkId: m.id, lang: x.channel, at: clock(x.start || 0), time: m.startedAt ? new Date(m.startedAt + (x.start || 0)).toISOString() : '', speaker: x.spk || '', quote: x.text });
+          }
+        }
+      }
+      return { phrase, hits };
+    } },
+  { name: 'event_report', description: 'The event report: every talk with its length, words, languages, audience and cost; optionally one day (YYYY-MM-DD).',
+    inputSchema: { type: 'object', properties: { day: { type: 'string', description: 'YYYY-MM-DD' } } },
+    run: ({ day }) => eventReport(dayParam(day)) },
+];
+const MCP_VERSIONS = ['2025-06-18', '2025-03-26', '2024-11-05'];
+app.post('/mcp', apiRateLimit, crew, (req, res) => {
+  const msg = req.body || {};
+  const reply = (body) => res.json({ jsonrpc: '2.0', id: msg.id ?? null, ...body });
+  if (Array.isArray(msg)) return reply({ error: { code: -32600, message: 'one message per request' } });
+  if (msg.id === undefined) return res.status(202).end(); // a notification (initialized, cancelled): nothing to answer
+  const p = msg.params || {};
+  if (msg.method === 'initialize') {
+    return reply({ result: { protocolVersion: MCP_VERSIONS.includes(p.protocolVersion) ? p.protocolVersion : MCP_VERSIONS[0], capabilities: { tools: {} }, serverInfo: { name: 'opencaptions', version: VERSION } } });
+  }
+  if (msg.method === 'ping') return reply({ result: {} });
+  if (msg.method === 'tools/list') return reply({ result: { tools: MCP_TOOLS.map(({ run, ...t }) => t) } }); // eslint-disable-line no-unused-vars
+  if (msg.method !== 'tools/call') return reply({ error: { code: -32601, message: `unknown method ${msg.method}` } });
+  const tool = MCP_TOOLS.find((t) => t.name === p.name);
+  if (!tool) return reply({ error: { code: -32602, message: `unknown tool ${p.name}` } });
+  try {
+    const out = tool.run(p.arguments || {});
+    reply({ result: { content: [{ type: 'text', text: typeof out === 'string' ? out : JSON.stringify(out, null, 2) }] } });
+  } catch (e) { reply({ result: { content: [{ type: 'text', text: e.message }], isError: true } }); }
+});
+app.all('/mcp', (req, res) => res.set('Allow', 'POST').status(405).json({ error: 'POST only: this server sends no streams' }));
 
 // ---- every transcript in one .zip, for the organizers' archive: a folder per room, one per talk ("2026-10-08 10.30
 // Opening keynote"), and SRT, VTT and TXT in each of its languages (original.* is what was spoken). The same talks
@@ -1559,8 +1644,7 @@ server.listen(config.port, config.host, () => {
   if (savedTunnel && ['quick', 'token'].includes(savedTunnel.mode)) startTunnel(savedTunnel.mode, savedTunnel.host || '');
   const local = `${tls ? 'https' : 'http'}://localhost:${config.port}`;
   const shared = config.publicUrl || lanUrl() || local;
-  const version = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8')).version;
-  console.log(`\n${tty.title(config.event.named ? config.event.name : '')} ${tty.c.gray(`v${version}`)}\n`);
+  console.log(`\n${tty.title(config.event.named ? config.event.name : '')} ${tty.c.gray(`v${VERSION}`)}\n`);
   tty.ok(`Ready on ${tty.c.bold(local)}`);
   console.log('');
   const ai = config.engine === 'gemini' ? `Gemini ${tty.c.gray(`· ${config.model}${config.transcribeModel ? ` · ${config.transcribeModel} (text mode)` : ''}`)}`

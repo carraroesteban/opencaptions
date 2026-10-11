@@ -2,4 +2,4 @@
 # scripts need LF.
 *.bat text eol=crlf
 *.sh text eol=lf
-deploy/desktop/macos/OpenCaptions text eol=lf
+deploy/desktop/macos/launch.sh text eol=lf

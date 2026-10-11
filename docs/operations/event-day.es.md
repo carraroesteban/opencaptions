@@ -25,7 +25,7 @@ Objetivo: **cero operadores dedicados durante las charlas**. Una persona de prod
 ## T‑1 día: preparar el server
 
 1. **Server**: una notebook en el lugar o una VM chica (2 vCPU / 2 GB alcanzan para 10+ salas).
-   - **Sin terminal:** instalá [Node.js](https://nodejs.org/es/download) (LTS) y descargá [OpenCaptions para Mac](https://github.com/carraroesteban/opencaptions/releases/latest/download/OpenCaptions-mac.zip) o [para Windows](https://github.com/carraroesteban/opencaptions/releases/latest/download/OpenCaptions-windows.zip). En Mac, arrastrala a Aplicaciones y abrila; en Windows, descomprimí el ZIP y abrí **Start OpenCaptions**.
+   - **Sin terminal:** descargá [OpenCaptions para Mac](https://github.com/carraroesteban/opencaptions/releases/latest/download/OpenCaptions-mac.zip) o [para Windows](https://github.com/carraroesteban/opencaptions/releases/latest/download/OpenCaptions-windows.zip). En Mac, arrastrala a Aplicaciones y abrila; en Windows, descomprimí el ZIP y abrí **Start OpenCaptions**.
    - **Con terminal o Docker:** `npm install && npm start`, o `docker compose up -d` (ver [Deployment](../deployment.md)).
 
    Se abre el panel y el asistente pregunta el nombre del evento, las salas y los idiomas, conecta Gemini con tu API key, crea la dirección pública y usa tu zona horaria para la agenda.

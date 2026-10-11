@@ -69,3 +69,23 @@ test('safeEqual', () => {
   assert.equal(sec.safeEqual('abc', 'abcd'), false);
   assert.equal(sec.safeEqual('', ''), false);
 });
+
+test('the guess limit counts the real visitor: proxy headers count only from a trusted proxy', () => {
+  const ip = (addr, headers) => sec.clientIp({ ...req({ addr, headers }), connection: { remoteAddress: addr } });
+  assert.equal(ip('192.168.1.50', { 'x-forwarded-for': '6.6.6.6' }), '192.168.1.50', 'a phone on the venue Wi-Fi faking the header');
+  assert.equal(ip('192.168.1.50', { 'cf-connecting-ip': '6.6.6.6' }), '192.168.1.50');
+  assert.equal(ip('127.0.0.1', { 'x-forwarded-for': '203.0.113.9' }), '203.0.113.9', 'a proxy on this computer');
+  assert.equal(ip('127.0.0.1', { 'cf-connecting-ip': '203.0.113.9' }), '203.0.113.9', 'the Cloudflare tunnel');
+});
+
+test('a damaged secrets.json stops with a clear message; a missing one is a first run', async () => {
+  const fs = await import('node:fs');
+  const path = await import('node:path');
+  const os = await import('node:os');
+  const { readSecretsFile } = await import('../src/config.js');
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'oc-secrets-'));
+  assert.deepEqual(readSecretsFile(dir), {});
+  fs.writeFileSync(path.join(dir, 'secrets.json'), '{"adminToken": "abc", "gemin');
+  assert.throws(() => readSecretsFile(dir), /secrets\.json is damaged/);
+  fs.rmSync(dir, { recursive: true, force: true });
+});

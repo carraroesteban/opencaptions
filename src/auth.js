@@ -19,7 +19,7 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { AsyncLocalStorage } from 'node:async_hooks';
-import { config } from './config.js';
+import { config, writeFileAtomic } from './config.js';
 import { authMode, tokens, safeEqual, isLocalRequest, presentedToken, originAllowed } from './security.js';
 import { readSecret, saveSecret } from './aikey.js';
 
@@ -45,7 +45,7 @@ function save(now = false) {
   clearTimeout(saveTimer);
   const write = () => {
     fs.mkdirSync(config.dataDir, { recursive: true });
-    fs.writeFileSync(file(), JSON.stringify([...sessions.values()], null, 1), { mode: 0o600 });
+    writeFileAtomic(file(), JSON.stringify([...sessions.values()], null, 1), { mode: 0o600 });
   };
   if (now) write(); else { saveTimer = setTimeout(write, 30_000); saveTimer.unref?.(); }
 }

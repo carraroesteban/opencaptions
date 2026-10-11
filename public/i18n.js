@@ -80,7 +80,7 @@ const DICTS = {
     'Conectado. Al pasar a una escena de pausa, los subtítulos de la sala se pausan.': 'Connected. When it switches to a break scene, the room’s captions pause.',
     'respaldo · al aire': 'backup · on air', 'respaldo · en espera': 'backup · standby', 'Es el respaldo de la sala': 'This is the room’s backup',
     'Otra computadora (u otra salida de la consola) para la misma sala: queda en espera y entra sola si la principal se corta o se queda muda.': 'Another computer (or another output of the sound desk) for the same room: it waits on standby and takes over by itself if the main one stops or goes silent.',
-    'RESPALDO AL AIRE': 'BACKUP ON AIR', 'respaldo en espera': 'backup on standby', 'usando el audio de respaldo': 'using the backup audio',
+    'RESPALDO AL AIRE': 'BACKUP ON AIR', 'respaldo en espera': 'backup on standby', 'usando el audio de respaldo': 'using the backup audio', 'no se guardan las transcripciones (¿disco lleno?)': 'transcripts not being saved (disk full?)',
     'Corregir subtítulos': 'Fix captions', 'Guardar correcciones': 'Save corrections',
     'Corregí una frase (un nombre mal escuchado, un número): las pantallas, los celulares y la transcripción la reemplazan al instante.': 'Fix a sentence (a misheard name, a number): screens, phones and the transcript replace it at once.',
     'Todavía no hay frases en esta charla.': 'No sentences in this talk yet.',

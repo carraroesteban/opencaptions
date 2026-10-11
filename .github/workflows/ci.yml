@@ -55,10 +55,22 @@ jobs:
         shell: pwsh
         run: |
           $csc = Join-Path $env:WINDIR 'Microsoft.NET\Framework64\v4.0.30319\csc.exe'
-          & $csc /nologo /target:winexe /optimize+ /win32icon:deploy\desktop\OpenCaptions.ico /out:"Start OpenCaptions.exe" /r:System.Windows.Forms.dll deploy\desktop\windows\Launcher.cs
+          & $csc /nologo /target:winexe /optimize+ /win32icon:deploy\desktop\OpenCaptions.ico /out:"Start OpenCaptions.exe" /r:System.Windows.Forms.dll /r:System.IO.Compression.dll /r:System.IO.Compression.FileSystem.dll deploy\desktop\windows\Launcher.cs
           if ($LASTEXITCODE -ne 0) { exit 1 }
       # The packaging uses zip/ditto; on Windows it falls back to tar, which also writes .zip files.
       - run: node scripts/package-desktop.js --exe "Start OpenCaptions.exe"
+
+  desktop-mac:
+    name: desktop download (Mac app)
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: 22
+      - run: node scripts/package-desktop.js
+      - name: The app's program runs on Apple and Intel chips
+        run: lipo -archs dist/mac/OpenCaptions/OpenCaptions.app/Contents/MacOS/OpenCaptions | grep -q 'x86_64 arm64'
 
   a11y:
     name: accessibility (axe-core, WCAG 2.2 AA)

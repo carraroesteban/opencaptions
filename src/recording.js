@@ -847,11 +847,13 @@ export class Recordings {
    * stopped, tries again with a few short retries (Windows frees the file a moment after the process exits).
    */
   #rmDir(job, { retry = false } = {}) {
-    if (!job.dir) return;
-    try {
-      fs.rmSync(job.dir, { recursive: true, force: true, ...(retry ? { maxRetries: 5, retryDelay: 100 } : {}) });
-      job.dir = null;
-    } catch (e) { if (retry) this.log(`${job.name}: temporary folder not deleted (${e.code || e.message}): ${job.dir}`); }
+    const dir = job.dir;
+    if (!dir) return;
+    const done = () => { if (job.dir === dir) job.dir = null; };
+    try { fs.rmSync(dir, { recursive: true, force: true }); done(); return; } catch { if (!retry) return; /* the job's own cleanup retries */ }
+    // The retries wait up to half a second: in the background, so captions of live rooms never stall meanwhile.
+    return fs.promises.rm(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 })
+      .then(done, (e) => this.log(`${job.name}: temporary folder not deleted (${e.code || e.message}): ${dir}`));
   }
   #drop(job) { this.#rmDir(job); this.jobs.delete(job.id); }
 
@@ -1017,7 +1019,7 @@ export class Recordings {
         this.log(`${job.name}: failed: ${job.error}`);
       }
     } finally {
-      this.#rmDir(job, { retry: true });
+      await this.#rmDir(job, { retry: true });
     }
   }
 
