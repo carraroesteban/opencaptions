@@ -162,6 +162,7 @@ button, .btn-i { vertical-align: middle; }
 .connect .cx-link:hover { background: none; color: var(--fg); }
 .connect .cx-url { font-size: 17px; font-weight: 700; overflow-wrap: anywhere; padding: 12px 14px; border-radius: 12px; border: 1px solid var(--line); background: var(--bg2); }
 .connect .cx-url a { color: inherit; }
+.connect .cx-progress { width: 100%; accent-color: var(--accent); } /* public/local-mode.js downloads */
 .connect .cx-own summary { cursor: pointer; font-size: 14px; color: var(--fg2); }
 .connect .cx-own[open] summary { margin-bottom: 10px; }
 .connect .cx-grid { display: grid; gap: 10px; }

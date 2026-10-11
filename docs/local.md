@@ -18,6 +18,26 @@ Everything else stays the same: the audience page, the projector, the overlay, t
 
 Local mode is new. Use it for small events, rooms without internet, sensitive talks, or to try OpenCaptions without an account. For a multi-room conference, Gemini is still the tested option.
 
+## Without a terminal: one button
+
+In the desktop app (or any OpenCaptions started with `npm start`), you don't need `npm run local`. Three places offer the same button:
+
+- the welcome wizard's AI step, and the **Just for me** page, when there's no Gemini key: **No key? Run it on this computer (free, slower)**;
+- the dashboard, when a free Gemini key reaches its limit: a banner, **Your free Gemini key reached its limit. Continue for free on this computer?**
+
+One click, and the server prepares everything while it keeps running, with a progress bar on the page:
+
+1. **Captions first.** It installs the speech engine and downloads Whisper `small` (about 670 MB together, once), then switches every room to this computer. Captions are in the spoken language for now.
+2. **Translations next, if Ollama is installed.** Ollama is a separate free app, and OpenCaptions never installs system software by itself. If it's missing, the page says so with a link to [ollama.com/download](https://ollama.com/download) and three steps: download it, install it, open it once. OpenCaptions checks every few seconds, notices it by itself, downloads the translation model (`gemma3:4b`, about 3.1 GB, once) with a progress bar, and turns translations on.
+
+The choice is remembered: the next time OpenCaptions starts, it uses this computer again (in a few seconds, nothing to download). Saving a Gemini key, or **Back to Gemini** on the same panel, goes back to the cloud.
+
+Measured on a MacBook Pro (Apple M3 Pro) from a fresh install, on a home connection: captions were ready **61 s** after the click (672 MB: the download took 27 s, unpacking about 30 s); the translation model took **5 min 31 s** more (3.1 GB). Feeding the English sample talk, the first words showed **1.4 s** after they were spoken, and the Spanish translation **4.0 s** after.
+
+The desktop apps keep these downloads outside the app's folder (`LOCAL_DIR`: `~/Library/Application Support/OpenCaptions/local` on a Mac, `%LOCALAPPDATA%\OpenCaptions\local` on Windows), so an update doesn't download them again. Without `LOCAL_DIR`, they go in the repository's `local/` folder, like `npm run local`'s.
+
+The button always uses the bundled speech server unless whisper.cpp or WhisperKit is installed, and the default models; for other choices (`--asr-model`, `--mt-model`…), use `npm run local` from a terminal.
+
 ## Quick start
 
 You need Node.js 20+, the repository with `npm install` done, and about 5 GB of free disk space.
@@ -94,6 +114,8 @@ If OpenCaptions itself runs in the cloud (Cloud Run, a VPS), there's nothing to 
 
 ## What `npm run local` does
 
+The dashboard's button (above) does steps 1 and 2 the same way: the code is shared (`src/local/setup.js`).
+
 1. **Speech server.** It uses the first of these that's available:
    1. the server in `LOCAL_ASR_URL`, if you set one;
    2. a speech server already listening on port 8178;
@@ -103,7 +125,7 @@ If OpenCaptions itself runs in the cloud (Cloud Run, a VPS), there's nothing to 
 2. **Text model.** It connects to Ollama, or starts `ollama serve` if Ollama is installed but not running. It downloads the model if needed, and loads it so the first caption doesn't wait.
 3. **OpenCaptions** itself, with `ENGINE=local` and the addresses of both servers. With `--check`, it runs the end-to-end test instead.
 
-Models go in `local/models` and the servers' logs in `local/logs`. Both folders are ignored by git.
+Models go in `local/models` and the servers' logs in `local/logs` (or in `LOCAL_DIR`, if set). Both folders are ignored by git.
 
 | Option | Effect |
 |---|---|

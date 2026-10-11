@@ -60,6 +60,7 @@ static class Launcher
         };
         if (node != null) psi.EnvironmentVariables["PATH"] = node + ";" + psi.EnvironmentVariables["PATH"];
         psi.EnvironmentVariables["DATA_DIR"] = data;
+        psi.EnvironmentVariables["LOCAL_DIR"] = Path.Combine(home, "local"); // the free local AI's downloads survive updates
         psi.EnvironmentVariables["GLOSSARY"] = Path.Combine(data, "glossary.json");
         psi.EnvironmentVariables["SCHEDULE"] = Path.Combine(data, "schedule.json");
         Process.Start(psi);

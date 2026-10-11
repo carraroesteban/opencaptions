@@ -187,7 +187,7 @@ const DICTS = {
     'Público': 'Audience', 'Min · US$': 'Min · US$',
     'Todavía no llega sonido.': 'No sound yet.', 'sonido desde': 'sound from',
     'no llega audio': 'no audio arriving', '¿mic muteado? (60s sin señal)': 'mic muted? (60 s without signal)', 'reconectando IA': 'AI reconnecting',
-    'latencia alta': 'high latency', 'traducción limitada por cuota → usando Live': 'translation rate-limited → using Live',
+    'latencia alta': 'high latency', 'traducción limitada por cuota → usando Live': 'translation rate-limited → using Live', 'la key de Gemini llegó a su límite': 'the Gemini key reached its limit',
     'Idioma de la charla': 'Talk language', 'Detectar automáticamente': 'Detect automatically', 'Traducir a': 'Translate to',
     'Modo de traducción de subtítulos': 'Caption translation mode', 'Por defecto del servidor': 'Server default',
     'Live (speech-to-speech de Gemini · 1 sesión por idioma)': 'Live (Gemini speech-to-speech · 1 session per language)',

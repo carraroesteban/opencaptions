@@ -13,6 +13,7 @@ import QRCode from 'qrcode';
 import './preflight.js'; // first: a data folder it can't write to ends here, with the fix
 import { config, normalizeStage, ROOT, langName, setEngine, writeFileAtomic } from './config.js';
 import { Failover } from './failover.js';
+import { LocalMode } from './local/mode.js';
 import { checkKey, saveKey, keyInfo, looksLikeKey, readSecret, saveSecret } from './aikey.js';
 import { Tunnel, tunnelOrigin } from './tunnel.js';
 import * as tty from './tty.js';
@@ -1107,6 +1108,40 @@ app.post('/api/history/:id/undo', admin, unlocked, async (req, res) => {
   res.json({ ok: true });
 });
 
+// "Run it on this computer" (src/local/mode.js): no key, or a free key out of quota → Whisper and Ollama on this
+// machine, prepared while the server runs. Captions only at first; translations once Ollama has its model.
+const localMode = new LocalMode({
+  apply: ({ speech, text }) => {
+    if (speech) {
+      Object.assign(config, { localAsrUrl: speech.url, localAsrApi: speech.api || '', localAsrLabel: speech.label, localAsrModel: speech.model || '', localLlmOff: true });
+      setEngine('local');
+      if (!setup.localMode) saveSetup({ localMode: true }); // and again after a restart
+    } else Object.assign(config, { localLlmOff: false, localLlmUrl: text.url, localLlmModel: text.model, localMtModel: text.mtModel || '' });
+    checkLocal().catch(() => {});
+    for (const st of stages.values()) {
+      st.log('info', speech ? 'captions now run on this computer (no translations yet)' : 'translations now run on this computer');
+      st.reconfigure(st.def);
+    }
+    recordChange({ kind: 'ai.local', summary: speech ? 'AI: this computer (captions)' : 'AI: this computer (captions + translations)' });
+  },
+});
+/** Back from "this computer" to Gemini (or simulated captions without a key). The local servers keep running. */
+function leaveLocal() {
+  localMode.reset();
+  saveSetup({ localMode: false });
+  setEngine(config.geminiApiKey || config.vertex ? 'gemini' : 'mock');
+  for (const st of stages.values()) { st.log('info', `captions now come from ${config.engine === 'gemini' ? 'Gemini' : 'nowhere: simulated'}`); st.reconfigure(st.def); }
+}
+const localStatus = () => ({ ...localMode.status(), engine: config.engine, hasKey: !!(config.geminiApiKey || config.vertex) });
+app.get('/api/local', admin, (req, res) => res.json(localStatus()));
+app.post('/api/local/start', admin, (req, res) => { localMode.start(); res.json(localStatus()); });
+app.post('/api/local/retry', admin, (req, res) => { localMode.retryText(); res.json(localStatus()); });
+app.post('/api/local/stop', admin, (req, res) => {
+  if (localMode.status().state === 'ready') { leaveLocal(); recordChange({ kind: 'ai.local', summary: `AI: ${config.engine}` }); }
+  res.json(localStatus());
+});
+if (setup.localMode && config.engine !== 'local') localMode.start();
+
 // Offline backup: which engine the rooms use (auto | cloud | local). Only with Gemini as the main engine.
 app.post('/api/engine', crew, (req, res) => {
   if (!failover) return res.status(400).json({ error: 'the offline backup needs Gemini as the main engine (see docs/local.md)' });
@@ -1157,6 +1192,8 @@ function useKeyChange(summary) {
   resetClient();
   const want = config.geminiApiKey || config.vertex ? 'gemini' : 'mock';
   // A local engine (npm run local, or the offline backup right now) keeps running; the key is used when Gemini is.
+  // Running on this computer from the dashboard's button: a new key means Gemini again.
+  if (want === 'gemini' && localMode.status().state === 'ready') leaveLocal();
   const switching = config.engine !== 'local' && config.engine !== want;
   if (switching) { setEngine(want); config.primaryEngine = want; }
   for (const st of stages.values()) {
@@ -1329,7 +1366,8 @@ async function checkLocal() {
   Object.assign(localHealth, { asr, llm: llm.ok, modelInstalled: llm.hasModel, missing: llm.missing || [], checkedAt: Date.now() });
   return { asr, llm };
 }
-if (config.engine === 'local') setInterval(() => checkLocal().catch(() => {}), 15_000).unref();
+setInterval(() => { if (config.engine === 'local') checkLocal().catch(() => {}); }, 15_000).unref();
+
 
 // Offline backup (FALLBACK=local, or a manual switch from the dashboard): Gemini normally, the local engine
 // when the internet goes down. Switching restarts each room's AI session; captions resume in a few seconds.

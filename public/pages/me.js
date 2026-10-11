@@ -6,6 +6,7 @@ import { prefsControls, LANG } from '/i18n.js';
 import { mountIcons } from '/illustrations.js';
 import { ensureSignedIn } from '/signin.js';
 import { keyPanel } from '/connect.js';
+import { localPanel } from '/local-mode.js';
 import { capture } from '/capture.js';
 import { floatingCaptions } from '/floating.js';
 import { Pacer } from '/smooth.js';
@@ -208,11 +209,15 @@ const engineName = (e) => t.ai[e] || e;
 const keyP = keyPanel($('ai-key'), { api, onChange: async (s) => { S = { ...S, ...s }; renderAi(); } });
 function renderAi() {
   const mock = (S.engine || S.primaryEngine) === 'mock';
-  $('ai-box').classList.toggle('hidden', !mock);
-  $('ai-note').textContent = S.ai?.set ? t.aiForced : t.aiMock;
-  $('ai-key').classList.toggle('hidden', !!S.ai?.set);
+  // "Run it on this computer" (public/local-mode.js) stays in view until translations work too (or Ollama is missing).
+  const lm = localP?.status();
+  $('ai-box').classList.toggle('hidden', !mock && !(lm && lm.state !== 'idle' && lm.text !== 'ready'));
+  $('ai-note').textContent = !mock ? '' : S.ai?.set ? t.aiForced : t.aiMock;
+  $('ai-key').classList.toggle('hidden', !!S.ai?.set || !mock);
   keyP.update(S);
 }
+let localP = null;
+localP = localPanel($('local-offer'), { api, onChange: (s) => { if (s.engine === 'local') S = { ...S, engine: 'local' }; renderAi(); } });
 renderAi();
 
 // ---------- captions in ----------

@@ -742,6 +742,8 @@ export class Stage extends EventEmitter {
     else if (this.lowLevelSince && now - this.lowLevelSince > 60000) alerts.add('muted?');
     for (const e of this.engines.values()) {
       if (e.state === 'reconnecting' || ((e.state === 'connecting' || e.state === 'resuming') && now - (e.stateSince || now) > 10000)) alerts.add('reconnecting');
+      // Gemini refuses the key's requests (a free key's daily limit): the dashboard offers this computer instead.
+      if (e.state !== 'live' && /429|quota|RESOURCE_EXHAUSTED/i.test(e.stats?.lastError || '')) alerts.add('ai-quota');
     }
     if (this.lat.asr > 6000) alerts.add('high-latency');
     if (this.store.saveError) alerts.add('not-saving');
