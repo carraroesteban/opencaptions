@@ -1,10 +1,11 @@
 // admin.html: the production dashboard (kept out of the HTML so the Content-Security-Policy can forbid inline scripts).
 //
-// Views (sidebar): Live, Rooms, Agenda, Glossary, Screens and QR, Transcripts, History, Settings.
+// Views (sidebar): Live, Rooms, Agenda, Glossary, Screens and QR, Transcripts, History. Settings is a window over
+// them (#settings/<section>), and a room's settings a side panel (#rooms/<room>).
 // Safety model: every setup change is recorded on the server and can be undone (History, and an Undo button
 // right after each change); deleted rooms go to a trash; Event mode locks the setup on the server, so nothing
 // here can delete or change the event's configuration by accident while it's live.
-import { qs, esc, store, wsUrl, Socket, langLabel, setAccent } from '/common.js';
+import { qs, esc, store, wsUrl, Socket, langLabel, setAccent, LISTEN, listenPort, freeListenPort, serverHost } from '/common.js';
 import { localize, prefsControls, tr, LANG } from '/i18n.js';
 import { icon, mountIcons } from '/illustrations.js';
 import { ensureSignedIn, signInScreen, signOut } from '/signin.js';
@@ -27,7 +28,7 @@ setAccent(ev.accent);
 let last = null;
 let locked = false;
 const logs = [];
-const VIEWS = isCrew ? ['live', 'screens', 'transcripts', 'history'] : ['live', 'rooms', 'agenda', 'glossary', 'screens', 'integrations', 'transcripts', 'history', 'settings'];
+const VIEWS = isCrew ? ['live', 'screens', 'transcripts', 'history'] : ['live', 'rooms', 'agenda', 'glossary', 'screens', 'integrations', 'transcripts', 'history'];
 let view = 'live';
 let screensRoom = null;
 let txRoom = null;
@@ -73,7 +74,11 @@ const L = {
       connected: (n) => `${n} conectado.`, secret: (k) => `Guardá esta clave para verificar los envíos (no se vuelve a mostrar):\n\n${k}`,
     },
     txDelete: (n) => `¿Eliminar para siempre la transcripción «${n}»? No se puede deshacer.`,
-    wizardLocked: 'Desactivá el modo evento para usar el asistente: puede cambiar salas e idiomas.',
+    addrRtmp: 'En OBS: Ajustes → Emisión → Servicio: Personalizado. En vMix: Settings → Outputs / Streaming → Destination: Custom RTMP Server. Pegá el servidor y la clave, guardá la sala y empezá a transmitir.',
+    addrSrt: 'En OBS: Ajustes → Emisión → Servicio: Personalizado. En vMix: Settings → Outputs / Streaming → Destination: SRT, tipo Caller. Pegá la dirección (en vMix, el host y el puerto), guardá la sala y empezá a transmitir.',
+    addrServer: 'Servidor', addrKey: 'Clave de retransmisión', addrAddress: 'Dirección', addrId: 'Primero escribí el ID de la sala.',
+    addrNet: (p) => `La computadora que transmite tiene que llegar a esta por la red. Si no conecta, el firewall de acá tiene que dejar entrar el puerto ${p}. ¿Transmitís desde esta misma computadora? Usá 127.0.0.1.`,
+    addrNoFfmpeg: 'Para esto hace falta ffmpeg, que no se instaló con OpenCaptions en esta computadora. Usá la página de sonido con un micrófono, o instalá ffmpeg y reiniciá.',
     toMe: 'Pasar a Solo para mí', toMeBody: (n) => `${n ? `${n === 1 ? 'Hay una sala en vivo' : `Hay ${n} salas en vivo`}: su público deja de ver los subtítulos. ` : ''}Las páginas del público, la pantalla del escenario y el overlay dejan de mostrar el evento hasta que vuelvas a eventos (desde Solo para mí, «Usarlo para eventos»). No se borra nada: salas, agenda y transcripciones quedan como están.`,
     langInUse: (rooms, langs) => `${rooms.join(', ')} ${rooms.length > 1 ? 'usan' : 'usa'} ${langs.join(', ')}: quitalo de ${rooms.length > 1 ? 'esas salas' : 'esa sala'} primero (Salas → Editar).`,
     noTalks: 'Todavía no hay transcripciones en esta sala.', read: 'Leer', segs: (n) => `${n} frases`,
@@ -135,7 +140,11 @@ const L = {
       connected: (n) => `${n} connected.`, secret: (k) => `Keep this secret to verify the requests (it isn't shown again):\n\n${k}`,
     },
     txDelete: (n) => `Delete the transcript “${n}” for good? This can’t be undone.`,
-    wizardLocked: 'Turn off Event mode to use the setup wizard: it can change rooms and languages.',
+    addrRtmp: 'In OBS: Settings → Stream → Service: Custom. In vMix: Settings → Outputs / Streaming → Destination: Custom RTMP Server. Paste the server and the key, save the room and start streaming.',
+    addrSrt: 'In OBS: Settings → Stream → Service: Custom. In vMix: Settings → Outputs / Streaming → Destination: SRT, type Caller. Paste the address (in vMix, its host and port), save the room and start streaming.',
+    addrServer: 'Server', addrKey: 'Stream key', addrAddress: 'Address', addrId: 'Type the room’s ID first.',
+    addrNet: (p) => `The computer that streams must reach this one on the network. If it doesn’t connect, the firewall here must let port ${p} in. Streaming from this same computer? Use 127.0.0.1 instead.`,
+    addrNoFfmpeg: 'This needs ffmpeg, which didn’t install with OpenCaptions on this computer. Use the sound page with a microphone instead, or install ffmpeg and restart.',
     toMe: 'Switch to Just for me', toMeBody: (n) => `${n ? `${n === 1 ? 'A room is live' : `${n} rooms are live`}: its audience stops seeing captions. ` : ''}The audience pages, the stage screen and the overlay stop showing the event until you switch back (from Just for me, “Use it for events”). Nothing is deleted: rooms, the agenda and transcripts stay as they are.`,
     langInUse: (rooms, langs) => `${rooms.join(', ')} ${rooms.length > 1 ? 'use' : 'uses'} ${langs.join(', ')}: remove it from ${rooms.length > 1 ? 'those rooms' : 'that room'} first (Rooms → Edit).`,
     noTalks: 'No transcripts in this room yet.', read: 'Read', segs: (n) => `${n} lines`,
@@ -239,7 +248,7 @@ function setLocked(on) {
   $('lockbtn').innerHTML = `${icon('lock')}<span><b>${esc(on ? t.lockOn : t.lockOff)}</b><small>${esc(on ? t.lockOnSub : t.lockOffSub)}</small></span>`;
   $('lock2').innerHTML = `${icon('lock')} ${esc(on ? t.unlock : t.lockAskOk)}`;
   $('lock2').className = on ? '' : 'primary';
-  const showBar = on && ['rooms', 'agenda', 'glossary', 'settings', 'history'].includes(view);
+  const showBar = on && ['rooms', 'agenda', 'glossary', 'history'].includes(view);
   $('lockedbar').classList.toggle('hidden', !showBar);
   $('lockedbar').innerHTML = `${icon('lock')}<span>${esc(t.lockedBar)}</span><button type="button" id="unlock-now">${esc(t.unlock)}</button>`;
   $('unlock-now').onclick = toggleLock;
@@ -258,7 +267,12 @@ $('lock2').onclick = toggleLock;
 
 // ---------- views ----------
 function go() {
-  const h = location.hash.slice(1).split('?')[0];
+  const [h, sub] = location.hash.slice(1).split('?')[0].split('/');
+  if (h === 'settings' && !isCrew) {
+    openSettings(sub);
+    if (document.querySelector('.view.on')) return; // the view behind it stays as it was
+  } else if ($('dlg-settings').open) $('dlg-settings').close();
+  if (h === 'rooms' && sub && !isCrew) openEdit(sub === 'new' ? null : decodeURIComponent(sub)); // #rooms/<room>: its panel
   view = VIEWS.includes(h) ? h : 'live';
   for (const s of document.querySelectorAll('.view')) s.classList.toggle('on', s.dataset.view === view);
   for (const a of document.querySelectorAll('#nav a')) a.classList.toggle('on', a.dataset.view === view);
@@ -276,7 +290,6 @@ function refreshView() {
   else if (view === 'integrations') { loadIntegrations(); loadSwitchers(); }
   else if (view === 'transcripts') loadTranscripts();
   else if (view === 'history') loadHistory();
-  else if (view === 'settings') loadSettings();
 }
 addEventListener('hashchange', go);
 
@@ -313,14 +326,14 @@ const OB = {
     localMissing: (m) => `falta el modelo <code>${m}</code>: <code>ollama pull ${m}</code>`,
     localReady: (m) => `listo · ${m} · el audio no sale de esta computadora`,
     engineLocal: 'Motor de IA local', engineGemini: 'Conectar la IA en la nube', ready: (m) => `listo · ${m}`,
-    noKey: '<a href="#settings">pegá tu API key en Ajustes</a> (unos dos minutos), o corré la IA en esta computadora con <code>npm run local</code>. Mientras tanto, los subtítulos son simulados.',
-    address: 'Dirección pública para los celulares', addressD: (u) => (u ? esc(u) : '<a href="#settings">creala en Ajustes</a> para que los celulares abran los subtítulos desde cualquier red (opcional si comparten el Wi-Fi)'),
+    noKey: '<a href="#settings/ai">pegá tu API key en Ajustes</a> (unos dos minutos), o corré la IA en esta computadora con <code>npm run local</code>. Mientras tanto, los subtítulos son simulados.',
+    address: 'Dirección pública para los celulares', addressD: (u) => (u ? esc(u) : '<a href="#settings/address">creala en Ajustes</a> para que los celulares abran los subtítulos desde cualquier red (opcional si comparten el Wi-Fi)'),
     rooms: 'Crear las salas', roomsD: (n) => `${n} ${n === 1 ? 'sala' : 'salas'} · <a href="#rooms">ver salas</a>`,
-    audio: 'Conectar el sonido de cada sala', audioD: (a, n) => `${a} de ${n} con sonido · <a href="/welcome.html#audio">cómo conectarlo</a>`,
+    audio: 'Conectar el sonido de cada sala', audioD: (a, n, room) => `${a} de ${n} con sonido · <a href="#rooms/${room}">cómo conectarlo</a>`,
     agenda: 'Cargar la agenda', agendaD: (n) => (n ? `${n} ${n === 1 ? 'charla cargada' : 'charlas cargadas'}` : '<a href="#agenda">pegar la agenda</a> para que las charlas tomen su título (opcional)'),
     kit: 'Imprimir los QR de cada sala', kitD: '<a href="/kit.html" target="_blank" data-ob="kit">abrir el kit de QR</a>',
     sound: 'Prueba de sonido en cada sala', soundD: '<a href="/demo.html?mode=mic" target="_blank" data-ob="sound">abrir la prueba de sonido</a>',
-    lock: 'Activar el modo evento al abrir las puertas', lockD: '<a href="#settings">en Ajustes</a>: bloquea la configuración durante el evento',
+    lock: 'Activar el modo evento al abrir las puertas', lockD: '<a href="#settings/general">en Ajustes</a>: bloquea la configuración durante el evento',
   },
   en: {
     localNoAsr: (u) => `the speech server isn't responding (<code>${u}</code>): run <code>npm run local</code>`,
@@ -329,14 +342,14 @@ const OB = {
     localMissing: (m) => `model <code>${m}</code> is missing: <code>ollama pull ${m}</code>`,
     localReady: (m) => `ready · ${m} · audio never leaves this computer`,
     engineLocal: 'Local AI engine', engineGemini: 'Connect the cloud AI', ready: (m) => `ready · ${m}`,
-    noKey: '<a href="#settings">paste your API key in Settings</a> (about two minutes), or run the AI on this computer with <code>npm run local</code>. Until then, captions are simulated.',
-    address: 'A public address for phones', addressD: (u) => (u ? esc(u) : '<a href="#settings">create one in Settings</a> so phones can open the captions from any network (optional on a shared Wi-Fi)'),
+    noKey: '<a href="#settings/ai">paste your API key in Settings</a> (about two minutes), or run the AI on this computer with <code>npm run local</code>. Until then, captions are simulated.',
+    address: 'A public address for phones', addressD: (u) => (u ? esc(u) : '<a href="#settings/address">create one in Settings</a> so phones can open the captions from any network (optional on a shared Wi-Fi)'),
     rooms: 'Create your rooms', roomsD: (n) => `${n} ${n === 1 ? 'room' : 'rooms'} · <a href="#rooms">see rooms</a>`,
-    audio: 'Connect each room’s sound', audioD: (a, n) => `${a} of ${n} with sound · <a href="/welcome.html#audio">how to connect it</a>`,
+    audio: 'Connect each room’s sound', audioD: (a, n, room) => `${a} of ${n} with sound · <a href="#rooms/${room}">how to connect it</a>`,
     agenda: 'Load the agenda', agendaD: (n) => (n ? `${n} ${n === 1 ? 'talk' : 'talks'} loaded` : '<a href="#agenda">paste your agenda</a> so talks get their titles (optional)'),
     kit: 'Print each room’s QR code', kitD: '<a href="/kit.html" target="_blank" data-ob="kit">open the QR kit</a>',
     sound: 'Sound check in every room', soundD: '<a href="/demo.html?mode=mic" target="_blank" data-ob="sound">open the sound check</a>',
-    lock: 'Turn on Event mode when doors open', lockD: '<a href="#settings">in Settings</a>: locks the setup during the event',
+    lock: 'Turn on Event mode when doors open', lockD: '<a href="#settings/general">in Settings</a>: locks the setup during the event',
   },
 };
 const ob = OB[LANG] || OB.en;
@@ -355,7 +368,7 @@ function renderOnboard(s) {
     s.engine === 'local' ? [localOk(s.local), ob.engineLocal, localDetail(s)] : [s.engine === 'gemini', ob.engineGemini, s.engine === 'gemini' ? ob.ready(esc(s.model)) : ob.noKey],
     [s.stages.length > 0, ob.rooms, ob.roomsD(s.stages.length)],
     [!!s.publicUrl, ob.address, ob.addressD(s.publicUrl)],
-    [withAudio === s.stages.length && s.stages.length > 0, ob.audio, ob.audioD(withAudio, s.stages.length)],
+    [withAudio === s.stages.length && s.stages.length > 0, ob.audio, ob.audioD(withAudio, s.stages.length, encodeURIComponent((s.stages.find((x) => !x.ingest) || s.stages[0])?.id || ''))],
     [scheduleCount > 0, ob.agenda, ob.agendaD(scheduleCount)],
     [store.get('admin.kitDone', false), ob.kit, ob.kitD],
     [store.get('admin.soundDone', false), ob.sound, ob.soundD],
@@ -421,8 +434,8 @@ function render(s) {
   $('k-sessions').textContent = s.totals.sessions;
   $('k-viewers').textContent = s.totals.viewers;
   $('k-cost').textContent = `US$ ${s.totals.costUsd.toFixed(2)}`;
-  if (s.system && view === 'settings') $('sys').textContent = t.sys(s.system, fmtDur(s.uptimeSec));
-  if (view === 'settings' && settingsSetup) { settingsSetup = { ...settingsSetup, tunnel: s.tunnel, ai: s.ai, engine: s.engine }; keyP.update(settingsSetup); tunnelP.update(settingsSetup); }
+  if (s.system && $('dlg-settings').open) $('sys').textContent = t.sys(s.system, fmtDur(s.uptimeSec));
+  if ($('dlg-settings').open && settingsSetup) { settingsSetup = { ...settingsSetup, tunnel: s.tunnel, ai: s.ai, engine: s.engine }; keyP.update(settingsSetup); tunnelP.update(settingsSetup); }
   const alerts = s.stages.filter((x) => x.alerts.some((a) => a !== 'no-ingest') || x.dueTalk).length;
   const navLive = document.querySelector('#nav a[data-view="live"]');
   navLive.querySelector('.n')?.remove();
@@ -454,7 +467,7 @@ function renderGrid(s) {
           <div class="row">
             <a href="/ingest.html?stage=${encodeURIComponent(st.id)}" target="_blank" data-f="nosound-open"><button type="button" class="primary" tabindex="-1">${icon('mic')}Abrir la página de sonido</button></a>
             <button type="button" data-a="screens" data-f="nosound-link">${icon('link')}Enlace para otra computadora</button>
-            <a href="/welcome.html?room=${encodeURIComponent(st.id)}#audio" data-f="nosound-addr" data-setup><button type="button" tabindex="-1">${icon('link')}Ver la dirección</button></a>
+            <a href="#rooms/${encodeURIComponent(st.id)}" data-f="nosound-addr" data-setup><button type="button" tabindex="-1">${icon('link')}Ver la dirección</button></a>
           </div>
         </div>
         <div class="said" data-f="said" data-no-i18n></div>
@@ -734,11 +747,16 @@ $('trash-list').onclick = async (e) => {
 };
 
 let editing = null;
+let editStages = [], editSetup = {}; // for the stream address: the ports other rooms use, and this computer's address
 const fe = $('f-edit');
 for (const [code, name] of Object.entries(ev.languages)) fe.source.append(new Option(`${name} (${code})`, code));
 async function openEdit(id) {
-  const st = id ? (await api('GET', '/api/status')).stages.find((x) => x.id === id) : null;
+  [editStages, editSetup] = await Promise.all([api('GET', '/api/status').then((s) => s.stages), api('GET', '/api/setup', null, { quiet: true }).catch(() => ({}))]);
+  const st = id ? editStages.find((x) => x.id === id) : null;
+  if (id && !st) return toast(tr('Esa sala no existe.'), { error: true });
   editing = st;
+  $('edit-ingest').href = st ? `/ingest.html?stage=${encodeURIComponent(st.id)}` : '';
+  $('edit-ingest').classList.toggle('hidden', !st);
   $('edit-title').textContent = st ? `${tr('Editar')} · ${st.name}` : tr('Nueva sala');
   fe.id.value = st?.id || '';
   fe.id.disabled = !!st;
@@ -752,11 +770,34 @@ async function openEdit(id) {
   fe.roomSoundMax.disabled = !fe.roomSound.checked;
   fe.translation.value = st?.translationDef || '';
   $('edit-targets').innerHTML = Object.entries(ev.languages).map(([c, n]) => `<label class="row"><input type="checkbox" value="${c}" ${(st?.targets || ['es', 'en']).includes(c) ? 'checked' : ''}/> ${esc(n)}</label>`).join('');
-  $('dlg-edit').showModal();
+  renderAddr();
+  if (!$('dlg-edit').open) { $('dlg-edit').returnValue = ''; $('dlg-edit').showModal(); }
 }
+// What to type in OBS or vMix, when the room listens for a stream (its pull address is an RTMP or SRT listener).
+function renderAddr(note = '') {
+  const host = serverHost(editSetup);
+  const rtmp = listenPort(fe.pull.value, 'rtmp'), srt = listenPort(fe.pull.value, 'srt');
+  $('edit-addr').innerHTML = note ? `<p class="muted-note u-m0">${esc(note)}</p>`
+    : rtmp ? `<p class="muted-note u-m0">${esc(t.addrRtmp)}</p>${copyRow(t.addrServer, `rtmp://${host}:${rtmp}/live`, false)}${copyRow(t.addrKey, fe.pull.value.match(LISTEN.rtmp.re)[2], false)}<p class="muted-note u-m0">${esc(t.addrNet(rtmp))}</p>`
+      : srt ? `<p class="muted-note u-m0">${esc(t.addrSrt)}</p>${copyRow(t.addrAddress, `srt://${host}:${srt}`, false)}<p class="muted-note u-m0">${esc(t.addrNet(`${srt}/udp`))}</p>` : '';
+}
+fe.pull.oninput = () => renderAddr();
+$('dlg-edit').addEventListener('click', (e) => {
+  const c = e.target.closest('[data-copy]');
+  if (c) return navigator.clipboard.writeText(c.dataset.copy).then(() => toast(t.copied, { ms: 1500 }), () => {});
+  const p = e.target.closest('[data-addr]')?.dataset.addr;
+  if (!p) return;
+  if (!editSetup.ffmpeg) return renderAddr(t.addrNoFfmpeg);
+  const room = editing?.id || fe.id.value;
+  if (!room || !fe.id.checkValidity()) return renderAddr(t.addrId);
+  fe.pull.value = LISTEN[p].pull(freeListenPort(editStages, room, p), room); // saved with the room
+  renderAddr();
+});
+fe.id.oninput = () => renderAddr();
 $('add').onclick = () => openEdit(null);
 fe.roomSound.onchange = () => { fe.roomSoundMax.disabled = !fe.roomSound.checked; };
 $('dlg-edit').addEventListener('close', async () => {
+  if (/^#rooms\//.test(location.hash)) history.replaceState(null, '', '#rooms');
   if ($('dlg-edit').returnValue !== 'ok') return;
   const body = {
     name: fe.name.value, source: fe.source.value, translation: fe.translation.value || '', pull: fe.pull.value.trim(), loop: fe.loop.checked, musicGuard: fe.musicGuard.checked,
@@ -976,8 +1017,8 @@ $('name-form').querySelector('button').dataset.setup = '';
 
 // ---------- Screens and QR ----------
 const origin = () => ev.publicUrl || location.origin;
-function copyRow(label, url) {
-  return `<label class="field">${esc(label)}<div class="copy"><input readonly value="${esc(url)}" /><button type="button" data-copy="${esc(url)}">${esc(tr('Copiar'))}</button><a href="${esc(url)}" target="_blank"><button type="button" tabindex="-1">${esc(tr('Abrir'))}</button></a></div></label>`;
+function copyRow(label, url, open = true) {
+  return `<label class="field">${esc(label)}<div class="copy"><input readonly value="${esc(url)}" /><button type="button" data-copy="${esc(url)}">${esc(tr('Copiar'))}</button>${open ? `<a href="${esc(url)}" target="_blank"><button type="button" tabindex="-1">${esc(tr('Abrir'))}</button></a>` : ''}</div></label>`;
 }
 async function loadScreens() {
   ev = await (await fetch('/api/event')).json();
@@ -1401,7 +1442,7 @@ $('history-list').onclick = async (e) => {
 // Who is signed in, in the sidebar, with Sign out (not on the server computer itself: it needs no sign-in).
 $('me').innerHTML = `${icon(isCrew ? 'headphones' : 'shield')}<span><b>${esc(me.label)}</b><small>${esc(isCrew ? (LANG === 'es' ? 'Equipo · controles en vivo' : 'Crew · live controls') : (LANG === 'es' ? 'Administración' : 'Admin'))}</small></span>${me.via === 'session' ? `<button type="button" id="signout">${esc(LANG === 'es' ? 'Salir' : 'Sign out')}</button>` : ''}`;
 $('signout')?.addEventListener('click', signOut);
-$('engine').onclick = () => { if (last?.engine === 'mock') location.hash = '#settings'; };
+$('engine').onclick = () => { if (last?.engine === 'mock') location.hash = '#settings/ai'; };
 const quietApi = (m, u, b) => api(m, u, b, { quiet: true });
 const askFirst = (msg) => { const i = msg.indexOf('?') + 1; return confirmDialog({ title: msg.slice(0, i) || msg, body: msg.slice(i).trim(), ok: LANG === 'es' ? 'Continuar' : 'Continue', danger: true }); };
 const keyP = keyPanel($('key-panel'), { api: quietApi, confirm: askFirst });
@@ -1409,6 +1450,62 @@ const tunnelP = tunnelPanel($('tunnel-panel'), { api: quietApi, confirm: askFirs
 const localP = isCrew ? null : localPanel($('local-offer'), { api: quietApi, quota: true });
 const accessP = isCrew ? null : accessPanel($('access-panel'), { api: quietApi, confirm: askFirst, toast, me });
 const alertsP = isCrew ? null : alertsPanel($('alerts-panel'), { api: quietApi, toast });
+// The Settings window: sections on the left, one at a time on the right (on a phone, the list first), and a search
+// box that shows every option that matches. A native modal <dialog>: it keeps focus inside, and Esc closes it.
+const SET = $('dlg-settings');
+const PANES = [...SET.querySelectorAll('.set-pane')].map((p) => p.dataset.pane);
+function openSettings(sub) {
+  const pane = PANES.includes(sub) ? sub : null;
+  SET.classList.toggle('picked', !!pane); // phone width: the section itself, not the list
+  for (const p of SET.querySelectorAll('.set-pane')) p.classList.toggle('on', p.dataset.pane === (pane || 'general'));
+  for (const a of SET.querySelectorAll('.set-nav a')) a.toggleAttribute('aria-current', a.dataset.pane === (pane || 'general'));
+  for (const a of SET.querySelectorAll('.set-nav a[aria-current]')) a.setAttribute('aria-current', 'page');
+  if (SET.open) return;
+  $('set-q').value = '';
+  filterSettings();
+  SET.showModal();
+  loadSettings();
+}
+const fold = (x) => x.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase(); // "dirección" matches "direccion"
+function filterSettings() {
+  const q = fold($('set-q').value.trim());
+  SET.classList.toggle('searching', !!q);
+  let any = false;
+  for (const p of SET.querySelectorAll('.set-pane')) {
+    const inTitle = fold(p.querySelector('.set-h').textContent).includes(q);
+    let hit = false;
+    for (const c of p.querySelectorAll(':scope > .card')) {
+      const m = !q || inTitle || fold(c.textContent).includes(q);
+      c.classList.toggle('set-miss', !m);
+      hit ||= m && !c.classList.contains('hidden');
+    }
+    p.classList.toggle('set-hit', !!q && hit);
+    SET.querySelector(`.set-nav a[data-pane="${p.dataset.pane}"]`).classList.toggle('set-miss', !!q && !hit);
+    any ||= hit;
+  }
+  $('set-none').classList.toggle('hidden', !q || any);
+}
+$('set-q').oninput = filterSettings;
+// Sections replace the address instead of adding to the history: Back leaves Settings, not each section.
+SET.querySelector('.set-nav').onclick = (e) => {
+  const a = e.target.closest('a[data-pane]');
+  if (!a) return;
+  e.preventDefault();
+  history.replaceState(null, '', a.getAttribute('href'));
+  $('set-q').value = '';
+  filterSettings();
+  openSettings(a.dataset.pane);
+  if (!a.offsetParent) $('set-back').focus(); // phone width: the list is gone, so focus goes to the way back
+};
+$('set-back').onclick = () => {
+  const cur = SET.querySelector('.set-nav a[aria-current]');
+  history.replaceState(null, '', '#settings');
+  openSettings(null);
+  cur?.focus();
+};
+$('set-close').onclick = () => SET.close();
+SET.addEventListener('close', () => { if (location.hash.startsWith('#settings')) history.replaceState(null, '', `#${view}`); });
+
 let settingsSetup = null;
 async function loadSettings() {
   accessP?.load();
@@ -1490,7 +1587,6 @@ $('to-me').onclick = async () => {
   await api('PUT', '/api/setup', { mode: 'personal' });
   location.href = '/me.html';
 };
-$('wizard-link').onclick = (e) => { if (locked) { e.preventDefault(); toast(t.wizardLocked, { error: true }); } };
 
 localize();
 go();

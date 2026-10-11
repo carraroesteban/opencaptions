@@ -93,7 +93,7 @@ This prepares the speech server and the text model exactly as `npm run local` do
 
 - **Internet goes down:** after about 15 seconds without a connection, every room switches to the local engine. Captions pause for a few seconds while the rooms restart, then continue. The dashboard shows a *No internet* banner.
 - **Internet comes back:** after a minute of stable connection, the rooms switch back to Gemini on their own.
-- **Manual control:** the AI selector in the dashboard's **Settings → AI and offline backup** switches between *Automatic*, *Always in the cloud* and *Always this computer*. `POST /api/engine` with `{"mode": "auto" | "cloud" | "local"}` does the same. *Always this computer* can only be picked while the Whisper speech server and Ollama are running; a server started without `--fallback` says so there, with the command. The dashboard never starts them itself.
+- **Manual control:** the AI selector in the dashboard's **Settings → AI → AI and offline backup** switches between *Automatic*, *Always in the cloud* and *Always this computer*. `POST /api/engine` with `{"mode": "auto" | "cloud" | "local"}` does the same. *Always this computer* can only be picked while the Whisper speech server and Ollama are running; a server started without `--fallback` says so there, with the command. The dashboard never starts them itself.
 
 To set it up without the launcher, run Ollama and a speech server yourself (see [Use your own servers](#use-your-own-servers)) and set `FALLBACK=local` in `.env`, or `"fallback": "local"` in `config/event.json`.
 

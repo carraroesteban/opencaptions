@@ -39,7 +39,7 @@ const T = {
       local: 'On this computer, captions keep up with about one room at a time. For more rooms, use Gemini or more computers.',
       mock: 'Captions stay simulated until you connect an AI.',
       wizard: 'Next, a short wizard asks for the event’s name, rooms and languages. It shows what will change before applying it.',
-      back: 'To come back: Dashboard → Settings → Just for me. Nothing is deleted either way.', ok: 'Switch to events', cancel: 'Stay here',
+      back: 'To come back: Dashboard → Settings → General → Just for me. Nothing is deleted either way.', ok: 'Switch to events', cancel: 'Stay here',
     },
   },
   es: {
@@ -67,7 +67,7 @@ const T = {
       local: 'En esta compu, los subtítulos dan abasto para una sala a la vez, más o menos. Para más salas, usá Gemini o más computadoras.',
       mock: 'Los subtítulos siguen simulados hasta que conectes una IA.',
       wizard: 'Después, un asistente corto te pide el nombre del evento, las salas y los idiomas. Antes de aplicar, muestra qué va a cambiar.',
-      back: 'Para volver: Panel → Ajustes → Solo para mí. En ningún caso se borra nada.', ok: 'Pasar a eventos', cancel: 'Quedarme acá',
+      back: 'Para volver: Panel → Ajustes → General → Solo para mí. En ningún caso se borra nada.', ok: 'Pasar a eventos', cancel: 'Quedarme acá',
     },
   },
 };

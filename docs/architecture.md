@@ -98,11 +98,11 @@ Every page, who opens it and where it goes next. In Just for me, the event's pag
 | `/overlay.html` † | vMix or OBS | **Screens and QR** | | Transparent with no captions; hidden during a break |
 | `/ingest.html` † | Room computers | **Screens and QR**, or `npm run agent` instead | | A wrong ingest password: it says so and stops. The main source drops: the backup takes over. |
 | `/admin.html` | Organizers, crew | `http://localhost:8080/admin.html` on the server; other devices sign in | Everything below | Setup not finished: `/welcome.html`. Just for me: `/me.html`. |
-| `/welcome.html` | Organizers | The first start, or **Settings → Setup wizard** | The dashboard, or Just for me | Crew: back to the dashboard |
+| `/welcome.html` | Organizers | The first start | The dashboard, or Just for me | Crew: back to the dashboard |
 | `/kit.html` † | Organizers | **Screens and QR** | Printing | |
 | `/report.html` † | Organizers | The dashboard | A CSV download | |
 | `/demo.html` †, `/style.html` | Organizers | The dashboard | | |
-| `/me.html` | One person | The first start in Just for me, or **Settings → Just for me** | My transcripts; events (after a dialog) | No AI connected: simulated captions and a place to paste the key |
+| `/me.html` | One person | The first start in Just for me, or **Settings → General → Just for me** | My transcripts; events (after a dialog) | No AI connected: simulated captions and a place to paste the key |
 
 ## Data flow for one sentence
 

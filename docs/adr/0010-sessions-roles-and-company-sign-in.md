@@ -20,7 +20,7 @@ Option 3, without new dependencies. A password (admin or crew) is exchanged once
 
 ## Consequences
 
-- Good: a leaked link or a lost tablet is fixed from **Settings → Access** without restarting; volunteers can't break the setup; the History says who changed what.
+- Good: a leaked link or a lost tablet is fixed from **Settings → Security** without restarting; volunteers can't break the setup; the History says who changed what.
 - Good: organizations get per-person accounts and their own MFA through any OpenID Connect provider, while a laptop at a venue with no identity provider still works with passwords.
 - Bad: password sign-in shares one password per role, so the History knows the device's name, not a verified person. Company sign-in is the answer where that matters.
 - Bad: scripts that use the admin password must run on the server computer once two-factor is on.

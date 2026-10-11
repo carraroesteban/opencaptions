@@ -1,5 +1,5 @@
 // welcome.html: page script (kept out of the HTML so the Content-Security-Policy can forbid inline scripts).
-import { esc, store } from '/common.js';
+import { esc, store, LISTEN, listenPort, freeListenPort, serverHost } from '/common.js';
 import { prefsControls, LANG } from '/i18n.js';
 import { icon } from '/illustrations.js';
 import { ensureSignedIn, signInScreen } from '/signin.js';
@@ -277,7 +277,7 @@ document.addEventListener('click', async (e) => {
   }
   if (b.hasAttribute('data-finish')) {
     try { await api('PUT', '/api/setup', { done: true, mode: 'event' }); } catch (err) { return fail(err); }
-    store.set('welcome.at', null); // done: next time (Settings → the wizard) starts from the beginning
+    store.set('welcome.at', null); // done: if it opens again (Just for me → events), it starts from the beginning
     location.href = '/admin.html';
   }
 });
@@ -373,28 +373,9 @@ const RUNBOOK = 'https://github.com/carraroesteban/opencaptions/blob/main/docs/o
 let soundRoom = new URLSearchParams(location.search).get('room') || S.stages[0]?.id || ''; // ?room= from a room's card
 let proto = 'rtmp';
 const roomLinks = {}; // room → { url, until } from POST /api/ingest/link
-// OBS and vMix stream to this computer (ffmpeg listens): RTMP on 1935 and up, SRT on 9001 and up, one port per room.
-const LISTEN = {
-  rtmp: { re: /^rtmps?:\/\/(?:0\.0\.0\.0|\[::\])(?::(\d+))?\/live\/(.+)$/i, base: 1935, pull: (port, room) => `rtmp://0.0.0.0:${port}/live/${room}` },
-  srt: { re: /^srt:\/\/(?:0\.0\.0\.0|\[::\])?:(\d+)\?mode=listener$/i, base: 9001, pull: (port) => `srt://0.0.0.0:${port}?mode=listener` },
-};
-const listening = (room, p) => { const m = (S.stages.find((x) => x.id === room)?.pull || '').match(LISTEN[p].re); return m ? Number(m[1] || 1935) : 0; };
+const listening = (room, p) => listenPort(S.stages.find((x) => x.id === room)?.pull, p);
 const pickProto = () => { proto = listening(soundRoom, 'srt') ? 'srt' : 'rtmp'; }; // show the address the room already has
 pickProto();
-function freePort(room, p) {
-  const used = new Set(S.stages.filter((x) => x.id !== room).map((x) => listening(x.id, p)).filter(Boolean));
-  let port = LISTEN[p].base;
-  while (used.has(port)) port++;
-  return port;
-}
-// The address OBS or vMix types in: this computer on the venue network, not "localhost" (unless that's all there is).
-function serverHost() {
-  const loop = /^(localhost|127\.0\.0\.1|\[::1\])$/i;
-  for (const u of [S.lanUrl, location.origin, S.tunnel?.state === 'on' ? '' : S.publicUrl]) {
-    try { const h = new URL(u).hostname; if (h && !loop.test(h)) return h; } catch { /* not set */ }
-  }
-  return '127.0.0.1';
-}
 const copyRow = (label, value) => `<label class="field">${esc(label)}<div class="copy"><input readonly value="${esc(value)}" /><button type="button" data-copy="${esc(value)}">${esc(t.copy)}</button></div></label>`;
 const steps3 = (list) => `<ol class="steps">${list.map((x) => `<li>${esc(x)}</li>`).join('')}</ol>`;
 function micBody() {
@@ -405,7 +386,7 @@ function micBody() {
 }
 function streamBody() {
   if (!S.ffmpeg) return `<p class="hint u-m0">${esc(t.noFfmpeg)}</p>`;
-  const port = listening(soundRoom, proto), host = serverHost();
+  const port = listening(soundRoom, proto), host = serverHost(S);
   const cur = S.stages.find((x) => x.id === soundRoom)?.pull || '';
   return `<div class="pills" role="radiogroup" aria-label="${esc(t.protoQ)}">${['rtmp', 'srt'].map((p) => `<button type="button" class="pill" role="radio" aria-checked="${proto === p}" aria-pressed="${proto === p}" data-proto="${p}">${esc(t[p])}</button>`).join('')}</div>
     ${port ? `${steps3(proto === 'rtmp' ? t.rtmpSteps : t.srtSteps)}
@@ -441,7 +422,7 @@ $('audio').addEventListener('click', async (e) => {
       const r = await api('POST', '/api/ingest/link', { stage: soundRoom });
       roomLinks[soundRoom] = { url: r.url, until: new Date(Date.now() + r.expiresIn * 1000).toLocaleTimeString(LANG, { hour: '2-digit', minute: '2-digit' }) };
     } else if (b.dataset.sound === 'address') {
-      await api('PATCH', `/api/stages/${encodeURIComponent(soundRoom)}`, { pull: LISTEN[proto].pull(freePort(soundRoom, proto), soundRoom) });
+      await api('PATCH', `/api/stages/${encodeURIComponent(soundRoom)}`, { pull: LISTEN[proto].pull(freeListenPort(S.stages, soundRoom, proto), soundRoom) });
       S = await api('GET', '/api/setup');
     }
     renderSound();

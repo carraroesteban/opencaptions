@@ -10,13 +10,13 @@ Find the symptom, then follow the steps in order. Server logs are printed in the
 |---|---|---|
 | `EADDRINUSE` | Another process uses the port | Stop the other process, or set `PORT=8081` |
 | "can't write to its data folder" | The user running OpenCaptions can't write the data folder | It prints the fix. In Docker on Linux: `sudo chown -R 1000:1000 ./data`, or use a named volume. For a service: `chown` the folder to the service user. |
-| Starts with simulated captions | No API key | Paste one in **Settings → Gemini**, or set `GEMINI_API_KEY` in `.env` (in the folder you start from) |
+| Starts with simulated captions | No API key | Paste one in **Settings → AI**, or set `GEMINI_API_KEY` in `.env` (in the folder you start from) |
 
 ## Gemini connection
 
 | Symptom | Cause | Fix |
 |---|---|---|
-| **Settings → Gemini** says the key isn't valid, or `npm run check` shows 401 | The key was copied incompletely, or was deleted | Copy the whole key again from AI Studio. Keys made since May 2026 start with `AQ.` (about 53 characters), older ones with `AIza` (39) |
+| **Settings → AI** says the key isn't valid, or `npm run check` shows 401 | The key was copied incompletely, or was deleted | Copy the whole key again from AI Studio. Keys made since May 2026 start with `AQ.` (about 53 characters), older ones with `AIza` (39) |
 | "The key exists but can't use Gemini" (403) | The key's project can't use the Gemini API, or the key is restricted | In AI Studio, create the key in a new project. Check API restrictions on the key. |
 | 429 errors in the log | Free tier or per-minute quota reached | Enable billing. Set `MT_RPM` to your limit or raise `MT_PARTIAL_MS`. |
 | Some rooms never go live when many run at once | Concurrent Live session limit | Check your tier's limit. Reduce rooms or shard across projects. |
@@ -32,13 +32,13 @@ See [Local mode → Troubleshooting](../local.md#troubleshooting) for the speech
 | Symptom | Cause | Fix |
 |---|---|---|
 | The dashboard asks to sign in | You're not on the server machine, or you're going through a tunnel, a proxy or Docker | Sign in with the admin or crew password: the startup window shows both (`Admin token`, `Crew token`). In Docker: `docker compose logs opencaptions \| grep token`. |
-| Signed out in the middle of the day | The session expired (`SESSION_HOURS`, 24 by default), someone signed this device out, or its password was changed | Sign in again. **Settings → Access** shows who is signed in. |
+| Signed out in the middle of the day | The session expired (`SESSION_HOURS`, 24 by default), someone signed this device out, or its password was changed | Sign in again. **Settings → Security** shows who is signed in. |
 | "This needs the admin password" | Signed in with the crew password, which only runs the live controls | Sign out and sign in with the admin password |
-| The two-factor code is always wrong | The phone's or the server's clock is off, or the code was already used | Set both clocks to automatic time, and use the next code. Lost the phone? On the server computer, open the dashboard (no sign-in there) and turn it off in **Settings → Access**, or delete `totpSecret` from `data/secrets.json` and restart. |
+| The two-factor code is always wrong | The phone's or the server's clock is off, or the code was already used | Set both clocks to automatic time, and use the next code. Lost the phone? On the server computer, open the dashboard (no sign-in there) and turn it off in **Settings → Security**, or delete `totpSecret` from `data/secrets.json` and restart. |
 | Company sign-in: "isn't allowed to open this dashboard" | The account isn't in `OIDC_ADMINS` or `OIDC_CREW` | Add the email or its `@domain` and restart |
 | Company sign-in: "started in another browser" or "expired" | The sign-in was finished in a different browser, or took over 10 minutes | Start again from the same browser |
 | Company sign-in: the provider says the redirect address doesn't match | The callback registered with the provider differs from the server's public address | Register `https://<public address>/auth/oidc/callback`, or set `OIDC_REDIRECT_URI` |
-| Agent or ingest page: `bad ingest token` | Wrong or old room password | Use the current ingest password (the admin and crew ones also work). Changed it in Settings → Access? Update every room computer. |
+| Agent or ingest page: `bad ingest token` | Wrong or old room password | Use the current ingest password (the admin and crew ones also work). Changed it in Settings → Security? Update every room computer. |
 | Sound page: "This computer can’t send sound yet" or "needs the room link or the password" | A computer other than the server, not signed in | Open a room link from **Screens and QR → Computer next to the stage** (works once, 30 minutes), or type the room computer password |
 | Sound page: "This link was already used or is more than 30 minutes old" | Room links work once | Make a new one in **Screens and QR**. A browser that is already signed in (or the server computer) doesn't use a link up. |
 | `HTTP 403` when opening the dashboard or ingest socket | The page's origin doesn't match the server host (a custom domain or embed) | Set `PUBLIC_URL`, or add the origin to `ALLOWED_ORIGINS` |
@@ -76,7 +76,7 @@ See [Local mode → Troubleshooting](../local.md#troubleshooting) for the speech
 | Summary says there isn't enough yet | Fewer than a few sentences transcribed | Wait a minute |
 | Agenda titles never appear, or appear hours off | Times read in the wrong time zone (Docker runs in UTC), or room names in the CSV don't match | Reopen the welcome wizard (**Settings**): its review offers your browser's time zone. Or set `TZ`. The agenda preview lists rooms it doesn't recognize. |
 | The next talk's title doesn't switch | The room hasn't been quiet yet (the previous speaker is still talking) | The room card turns orange and offers **Start "…"**; or it switches at the next 30 s pause |
-| Transcript library is empty for the audience | Only the talk in progress is public (the default) | **Settings → Transcripts for the audience → Every talk**, once the speakers agree (or `PUBLIC_TRANSCRIPTS=all`) |
+| Transcript library is empty for the audience | Only the talk in progress is public (the default) | **Settings → General → Transcripts for the audience → Every talk**, once the speakers agree (or `PUBLIC_TRANSCRIPTS=all`) |
 
 ## Desktop apps
 

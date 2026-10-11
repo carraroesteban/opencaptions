@@ -442,3 +442,27 @@ export function previewStream(onText, lang = 'es') {
     if (w >= words.length) { done = cur; w = 0; s++; }
   }, 380);
 }
+
+// ---------- a room's stream address (the welcome wizard's sound step and the dashboard's room panel) ----------
+// OBS and vMix stream to this computer (ffmpeg listens): RTMP on 1935 and up, SRT on 9001 and up, one port per room.
+export const LISTEN = {
+  rtmp: { re: /^rtmps?:\/\/(?:0\.0\.0\.0|\[::\])(?::(\d+))?\/live\/(.+)$/i, base: 1935, pull: (port, room) => `rtmp://0.0.0.0:${port}/live/${room}` },
+  srt: { re: /^srt:\/\/(?:0\.0\.0\.0|\[::\])?:(\d+)\?mode=listener$/i, base: 9001, pull: (port) => `srt://0.0.0.0:${port}?mode=listener` },
+};
+/** The port a room's pull address listens on for this protocol, or 0. */
+export const listenPort = (pull, p) => { const m = (pull || '').match(LISTEN[p].re); return m ? Number(m[1] || 1935) : 0; };
+/** The first port no other room listens on. */
+export function freeListenPort(stages, room, p) {
+  const used = new Set(stages.filter((x) => x.id !== room).map((x) => listenPort(x.pull, p)).filter(Boolean));
+  let port = LISTEN[p].base;
+  while (used.has(port)) port++;
+  return port;
+}
+/** The address OBS or vMix types in: this computer on the venue network, not "localhost" (unless that's all there is). */
+export function serverHost(setup) {
+  const loop = /^(localhost|127\.0\.0\.1|\[::1\])$/i;
+  for (const u of [setup.lanUrl, location.origin, setup.tunnel?.state === 'on' ? '' : setup.publicUrl]) {
+    try { const h = new URL(u).hostname; if (h && !loop.test(h)) return h; } catch { /* not set */ }
+  }
+  return '127.0.0.1';
+}

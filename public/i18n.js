@@ -116,7 +116,6 @@ const DICTS = {
     'Overlay vMix / OBS': 'vMix / OBS overlay', 'Pantalla / proyector': 'Screen / projector', 'Siguiente': 'Next',
     'Híbrido (subtítulos por texto + voz traducida en todos los idiomas)': 'Hybrid (text captions + translated voice in every language)',
     'Sistema': 'System', 'Monoespaciada': 'Monospace', 'Atkinson Hyperlegible (máxima legibilidad)': 'Atkinson Hyperlegible (most legible)',
-    "Abrir el asistente": "Open the wizard",
     "Abrir la biblioteca pública": "Open the public library",
     "Agregar": "Add",
     "Agregar corrección": "Add a correction",
@@ -164,10 +163,9 @@ const DICTS = {
     "Título": "Title",
     "Un cartel A4 por sala, para imprimir.": "One A4 poster per room, ready to print.",
     "Ver qué cambia": "See what changes",
-    "Volvé a responder las preguntas del primer día: nombre, salas e idiomas. Antes de aplicar, muestra exactamente qué va a cambiar.": "Answer the first-day questions again: name, rooms and languages. Before applying, it shows exactly what will change.",
     "hace": "",
     'Todas las salas': 'All rooms', 'Modo simulado (sin API key)': 'Simulated mode (no API key)',
-    'Asistente de configuración': 'Setup wizard', 'Motor de IA': 'AI engine',
+    'Motor de IA': 'AI engine',
     'Alertas en tu celular': 'Alerts on your phone', 'Para cuando nadie está mirando el panel.': 'For when nobody is looking at the dashboard.',
     'Informe del evento': 'Event report', 'URL de YouTube': 'YouTube URL',
     'Acceso': 'Access', 'Quién puede entrar a este panel, y desde qué dispositivos.': 'Who can open this dashboard, and from which devices.',
@@ -192,8 +190,13 @@ const DICTS = {
     'Modo de traducción de subtítulos': 'Caption translation mode', 'Por defecto del servidor': 'Server default',
     'Live (speech-to-speech de Gemini · 1 sesión por idioma)': 'Live (Gemini speech-to-speech · 1 session per language)',
     'Sonido desde un stream o un archivo (opcional)': 'Sound from a stream or a file (optional)',
-    'Dejalo vacío si el sonido llega desde la página de sonido de la sala. Para OBS o vMix, el asistente crea la dirección (Ajustes → Abrir el asistente, paso 7). También acepta el enlace de un stream (SRT, RTMP, HLS) o un archivo de la carpeta samples de OpenCaptions.':
-    'Leave it empty when the sound comes from the room’s sound page. For OBS or vMix, the setup wizard makes the address (Settings → Open the wizard, step 7). It also takes a stream link (SRT, RTMP, HLS) or a file in OpenCaptions’ samples folder.',
+    'Dejalo vacío si el sonido llega desde la página de sonido de la sala. También acepta el enlace de un stream (SRT, RTMP, HLS) o un archivo de la carpeta samples de OpenCaptions.':
+    'Leave it empty when the sound comes from the room’s sound page. It also takes a stream link (SRT, RTMP, HLS) or a file in OpenCaptions’ samples folder.',
+    'Sonido': 'Sound', 'Con un micrófono en la computadora junto al escenario, abrí ahí la página de sonido de la sala. Desde OBS o vMix, creá una dirección y pegala en el programa de streaming.':
+    'With a microphone on the computer next to the stage, open the room’s sound page there. From OBS or vMix, make an address and paste it into the streaming app.',
+    'Dirección RTMP (OBS, vMix)': 'RTMP address (OBS, vMix)', 'Dirección SRT': 'SRT address', 'Esa sala no existe.': 'That room doesn’t exist.', 'Cerrar sin guardar': 'Close without saving',
+    'Buscar en los ajustes': 'Search settings', 'Buscar': 'Search', 'Cerrar los ajustes': 'Close settings', 'Secciones de los ajustes': 'Settings sections',
+    'General': 'General', 'IA': 'AI', 'Seguridad': 'Security', 'Alertas': 'Alerts', 'Secciones': 'Sections', 'Ningún ajuste coincide.': 'No setting matches.',
     'Repetir en loop (archivos de prueba)': 'Loop (test files)', 'Eliminar sala': 'Delete room',
     'Público (celular, QR)': 'Audience (phone, QR)', 'Descargar QR (SVG para imprimir)': 'Download QR (SVG for printing)',
     'Pantalla del escenario / proyector': 'Stage screen / projector', 'Overlay con fondo verde (chroma key)': 'Overlay with green background (chroma key)',
@@ -217,8 +220,8 @@ const DICTS = {
     'Mono (mezcla L+R)': 'Mono (L+R mix)', 'Solo izquierdo': 'Left only', 'Solo derecho': 'Right only', 'Archivo': 'File', 'Audio de prueba': 'Test audio', 'Grabación': 'Recording', 'Charla de prueba': 'Sample talk',
     'Charla en inglés (EN → ES)': 'English talk (EN → ES)', 'Charla en español (ES → EN)': 'Spanish talk (ES → EN)', 'Ganancia': 'Gain', 'Volumen': 'Volume',
     'Esta computadora todavía no puede enviar sonido': 'This computer can’t send sound yet', 'Contraseña de las computadoras de sala': 'Room computer password',
-    'Abrí el enlace de esta sala que te pasó quien organiza (está en el panel: Pantallas y QR → Computadora junto al escenario). Sin enlace, escribí la contraseña de las computadoras de sala: el servidor la muestra al iniciar, y en Ajustes → Acceso se puede crear una nueva. En la computadora del servidor no hace falta nada de esto.':
-    'Open the link for this room that the organizer gave you (it’s in the dashboard: Screens and QR → Computer next to the stage). No link? Type the room computer password: the server shows it when it starts, and Settings → Access can make a new one. The server’s own computer needs none of this.',
+    'Abrí el enlace de esta sala que te pasó quien organiza (está en el panel: Pantallas y QR → Computadora junto al escenario). Sin enlace, escribí la contraseña de las computadoras de sala: el servidor la muestra al iniciar, y en Ajustes → Seguridad se puede crear una nueva. En la computadora del servidor no hace falta nada de esto.':
+    'Open the link for this room that the organizer gave you (it’s in the dashboard: Screens and QR → Computer next to the stage). No link? Type the room computer password: the server shows it when it starts, and Settings → Security can make a new one. The server’s own computer needs none of this.',
     'Este enlace ya se usó o tiene más de 30 minutos. Pedí uno nuevo a quien organiza: en el panel, Pantallas y QR → Computadora junto al escenario.': 'This link was already used or is more than 30 minutes old. Ask the organizer for a new one: in the dashboard, Screens and QR → Computer next to the stage.',
     'No se pudo abrir el enlace de la sala. Revisá la conexión y abrilo de nuevo.': 'The room link couldn’t be opened. Check the connection and open it again.',
     'Escucharla también en esta computadora (grabación o prueba)': 'Also play it on this computer (recording or sample)', 'Empezar solo al abrir esta página': 'Start by itself when this page opens', 'Nivel de entrada': 'Input level',

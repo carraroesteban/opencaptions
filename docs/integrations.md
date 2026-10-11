@@ -107,7 +107,7 @@ A scene or input whose name contains one of the **break words** (default: break,
 
 AI assistants such as Claude, ChatGPT and Cursor can read your event through MCP (Model Context Protocol): which rooms are live, the talks of a day, any transcript in any of its languages, a search across every talk, and the event report. Ask *"what did the keynote say about bike lanes?"* or *"summarize yesterday's talks in Room B"*, and the assistant looks it up, with the room, talk and minute of each quote.
 
-The address is your server's public address plus `/mcp` (for example `https://subs.example.com/mcp`), and the password is the **crew password** (**Settings → Passwords**), sent as `Authorization: Bearer <password>`. On the server computer itself no password is needed (unless `AUTH=token`). The admin password works too, but not while two-factor sign-in is on.
+The address is your server's public address plus `/mcp` (for example `https://subs.example.com/mcp`), and the password is the **crew password** (**Settings → Security → Passwords**), sent as `Authorization: Bearer <password>`. On the server computer itself no password is needed (unless `AUTH=token`). The admin password works too, but not while two-factor sign-in is on.
 
 **Claude Code** (one command):
 
@@ -135,7 +135,7 @@ The tools only read: no assistant can change rooms, talks or settings through MC
 
 ## Already built in
 
-- **Alerts** to the ntfy app, Telegram, Slack, Discord or a webhook: **Settings → Alerts on your phone**. Pick a destination, follow its steps and press **Save and send a test**.
+- **Alerts** to the ntfy app, Telegram, Slack, Discord or a webhook: **Settings → Alerts**. Pick a destination, follow its steps and press **Save and send a test**.
 - **OBS and vMix**: the transparent overlay (**Screens and QR**), and room audio over RTMP or SRT ([Deployment](deployment.md)).
 - **Company sign-in** with Google, Microsoft or any OpenID Connect provider ([Security](security-guide.md#company-sign-in)).
 

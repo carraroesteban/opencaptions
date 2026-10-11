@@ -7,7 +7,7 @@
 //   • this computer (AUTH=auto, see isLocalRequest in security.js) → admin, no password;
 //   • a session: signing in with a password (POST /api/auth/login) or with a company account (src/oidc.js) gives
 //     the browser an HttpOnly, SameSite=Strict cookie. The password itself is never kept in the browser or put in
-//     a link. Sessions expire (SESSION_HOURS, default 24), are listed in Settings → Access, and each one can be
+//     a link. Sessions expire (SESSION_HOURS, default 24), are listed in Settings → Security, and each one can be
 //     signed out;
 //   • a room link (Screens and QR, the setup wizard): a single-use code that signs one browser in to send a room's
 //     audio and nothing else (a session with the 'ingest' role), so the room-computer password never has to travel;

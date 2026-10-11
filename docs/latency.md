@@ -102,7 +102,7 @@ In `text` mode (the default) each room keeps one Gemini Live session open, and t
 
 Prices from Google's pricing page of 9 October 2026. Both take the same glossary and language hint. Transcribe Live connections last about 10 minutes; the app opens a fresh one each time and holds the audio meanwhile. `live` and `hybrid` rooms always use Live Translate: they need its voice.
 
-To choose, open the dashboard's **Settings → Speech model**: **Captions only** (Transcribe Live) or **Captions + translated voice** (Live Translate). Running rooms reconnect with it at once (captions pause a few seconds; the dashboard asks first while a room is live), the choice is kept in `data/setup.json` and **History** can undo it. Or fix it in `.env`, and the dashboard then shows it without letting anyone change it:
+To choose, open the dashboard's **Settings → AI → Speech model**: **Captions only** (Transcribe Live) or **Captions + translated voice** (Live Translate). Running rooms reconnect with it at once (captions pause a few seconds; the dashboard asks first while a room is live), the choice is kept in `data/setup.json` and **History** can undo it. Or fix it in `.env`, and the dashboard then shows it without letting anyone change it:
 
 ```bash
 TRANSCRIBE_MODEL=off

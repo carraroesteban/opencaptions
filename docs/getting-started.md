@@ -36,7 +36,7 @@ Open these pages in your browser:
 | http://localhost:8080/ | The audience page. Pick a room and a language. |
 | http://localhost:8080/admin.html | The production dashboard with every room's status. |
 
-The first time you open the dashboard, a short welcome wizard asks for your event's name, its rooms and languages, connects the AI, offers a public address for phones and shows how to connect the sound. Every question can be skipped, and you can reopen it from **Settings → Setup wizard**. A new install has one room, `main`; that's all this guide needs until step 5.
+The first time you open the dashboard, a short welcome wizard asks for your event's name, its rooms and languages, connects the AI, offers a public address for phones and shows how to connect the sound. Every question can be skipped. Later, each room is changed from **Rooms → Edit** (a panel at the side), and everything else in **Settings**. A new install has one room, `main`; that's all this guide needs until step 5.
 
 Nothing is captioned yet, because no room is receiving audio.
 
@@ -56,7 +56,7 @@ Stop the feed with Ctrl+C. Stop the server with Ctrl+C in the first terminal.
 
 ## 4. Connect Gemini
 
-The quickest way is the dashboard: open **Settings → Gemini** (or the wizard's AI step), click **Open AI Studio**, create a key, paste it and click **Check and connect**. OpenCaptions checks the key with Google and switches every room to Gemini straight away, with no restart. Skip to step 5.
+The quickest way is the dashboard: open **Settings → AI** (or the wizard's AI step), click **Open AI Studio**, create a key, paste it and click **Check and connect**. OpenCaptions checks the key with Google and switches every room to Gemini straight away, with no restart. Skip to step 5.
 
 From the terminal, the setup script also names your event and rooms and generates the passwords:
 

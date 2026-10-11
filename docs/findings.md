@@ -49,7 +49,7 @@ Done after "do all", each verified (tests, browser, or a real run):
 
 | Item | What changed |
 |---|---|
-| Past transcripts public by default | `config/event.json` now says `"current"`, matching the docs and the legal page. New **Settings → Transcripts for the audience** to choose *every talk* or *none* without editing files. |
+| Past transcripts public by default | `config/event.json` now says `"current"`, matching the docs and the legal page. New **Settings → General → Transcripts for the audience** to choose *every talk* or *none* without editing files. |
 | Only 3 languages | **Settings → Languages** and the wizard's *Another language* add any of 40 languages (`public/languages.js`), saved in `data/setup.json`. A language a room uses can't be removed. Tested in the browser end to end. |
 | Your `.env` readable by others | `chmod 600` done. |
 | Address changed after a restart | The last free address is saved; the dashboard warns (with a link to the QR kit) and the phone alert works across restarts. |

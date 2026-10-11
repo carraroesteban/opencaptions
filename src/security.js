@@ -34,7 +34,7 @@ function loadSecrets() {
 }
 
 const generated = authMode === 'off' || (config.adminToken && config.ingestToken && config.crewToken) ? {} : loadSecrets();
-/** The three passwords. Mutable: Settings → Access can change the generated ones (src/auth.js). */
+/** The three passwords. Mutable: Settings → Security can change the generated ones (src/auth.js). */
 export const tokens = {
   admin: authMode === 'off' ? '' : config.adminToken || generated.adminToken,
   ingest: authMode === 'off' ? '' : config.ingestToken || generated.ingestToken,
