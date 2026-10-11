@@ -184,7 +184,7 @@ document.addEventListener('keydown', (e) => {
 
 // The AI's state and the room's alerts, in words (Spanish source, translated by tr like the rest of the page).
 const STATE = { live: 'en vivo', idle: 'en espera', connecting: 'conectando…', reconnecting: 'reconectando…', resuming: 'retomando…', error: 'error' };
-const ALERT = { 'no-audio': 'no llega audio', 'muted?': '¿mic muteado? (60s sin señal)', reconnecting: 'reconectando IA', 'high-latency': 'latencia alta', 'mt-throttled': 'traducción limitada por cuota → usando Live', 'voice-in-break': 'hay alguien hablando durante la pausa', 'on-backup': 'usando el audio de respaldo' };
+const ALERT = { 'no-audio': 'no llega audio', 'muted?': '¿mic muteado? (60s sin señal)', reconnecting: 'reconectando IA', 'high-latency': 'latencia alta', 'mt-throttled': 'traducción limitada por cuota → usando Live', 'voice-in-break': 'hay alguien hablando durante la pausa', 'on-backup': 'usando el audio de respaldo', 'not-saving': 'no se guardan las transcripciones (¿disco lleno?)' };
 function onStatus(m) {
   if (m.type !== 'status') return;
   onBreak = !!m.brk;

@@ -84,7 +84,8 @@ See [Local mode → Troubleshooting](../local.md#troubleshooting) for the speech
 |---|---|---|
 | Mac: "Apple could not verify…" | The app isn't signed yet | **System Settings → Privacy & Security** → **Open Anyway** next to OpenCaptions (once) |
 | Mac: nothing happens after opening it | Permission to control Terminal was denied | **System Settings → Privacy & Security → Automation** → allow OpenCaptions to control Terminal, then open it again |
-| Mac or Windows: "OpenCaptions needs Node.js" | Node.js isn't installed | Install the LTS version from nodejs.org, then open OpenCaptions again |
+| Mac or Windows: "OpenCaptions couldn't download Node.js" | No internet on the first start (it downloads Node.js when the computer doesn't have it) | Connect and open OpenCaptions again, or install the LTS version from nodejs.org |
+| Mac: "To open OpenCaptions you need to install Rosetta" | A version older than 0.7 on a Mac with an Apple chip | Download the latest version; or click Install, which also works |
 | Windows: "Extract the ZIP first" | The launcher was opened from inside the ZIP | Right-click the ZIP → **Extract All**, and open it from the extracted folder |
 | Windows: "Windows protected your PC" | The launcher isn't signed yet | **More info → Run anyway**. If an antivirus blocks it, open `app\Start OpenCaptions.bat`. |
 | "The installation didn't finish" on the first start | No internet, or a proxy blocks `registry.npmjs.org` | Connect to the internet once and start again; the libraries are installed only the first time |

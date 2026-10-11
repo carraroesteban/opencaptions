@@ -10,7 +10,7 @@
 // so a speaker running late is never cut in half. See Stage#applySchedule.
 import fs from 'node:fs';
 import path from 'node:path';
-import { ROOT } from './config.js';
+import { ROOT, writeFileAtomic } from './config.js';
 
 const FILE = path.resolve(ROOT, process.env.SCHEDULE || 'config/schedule.json');
 
@@ -183,7 +183,7 @@ export class Schedule {
   set(input, opts = {}) {
     const entries = parseSchedule(input, new Date(), opts);
     fs.mkdirSync(path.dirname(this.file), { recursive: true });
-    fs.writeFileSync(this.file, JSON.stringify(entries.map((e) => ({ ...e, start: new Date(e.start).toISOString() })), null, 2));
+    writeFileAtomic(this.file, JSON.stringify(entries.map((e) => ({ ...e, start: new Date(e.start).toISOString() })), null, 2));
     this.entries = entries;
     return entries;
   }

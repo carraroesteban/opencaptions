@@ -110,16 +110,20 @@ test('a wrong or expired link stops retrying and shows why', async () => {
 test('webhooks: signed JSON for each caption and for each finished talk', async () => {
   const st = room();
   const p = platform();
-  const ints = new Integrations({ stages: new Map([['main', st]]), fetchImpl: p.fetchImpl, talkUrl: (s, t) => `https://captions.example/talk.html?stage=${s}&talk=${t}` });
+  const ints = new Integrations({ stages: new Map([['main', st]]), fetchImpl: p.fetchImpl, talkUrl: (s, t) => `https://captions.example/talk.html?stage=${s}&talk=${t}`, exportUrl: (s, t, l, f) => `https://captions.example/api/stages/${s}/export.${f}?talk=${t}&lang=${l}` });
   const c = await ints.add({ type: 'webhook', stage: 'main', url: 'https://93.184.215.14/hook' });
   assert.ok(c.secret, 'the secret is shown when it’s created');
   assert.ok(!JSON.stringify(ints.list()).includes(c.secret), '… and never again');
   caption(st, 'Hello.');
+  caption(st, 'Hola.', 'es');
   st.talk = { id: 't2', title: 'Next', startedAt: 2 };
   st.emit('talk');
   await settle();
   const bodies = p.calls.map((x) => JSON.parse(x.init.body));
   assert.deepEqual(bodies.map((b) => b.event), ['caption', 'talk.ended']);
+  assert.deepEqual(Object.keys(bodies[1].files), ['orig', 'es'], 'a download link per language the talk had');
+  assert.equal(bodies[1].files.es.srt, 'https://captions.example/api/stages/main/export.srt?talk=t1&lang=es');
+  assert.deepEqual(Object.keys(bodies[1].files.orig), ['srt', 'vtt', 'txt']);
   assert.equal(bodies[0].text, 'Hello.');
   assert.equal(bodies[1].transcript, 'https://captions.example/talk.html?stage=main&talk=t1');
   const sig = crypto.createHmac('sha256', c.secret).update(p.calls[0].init.body).digest('hex');

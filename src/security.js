@@ -6,7 +6,8 @@ import dns from 'node:dns/promises';
 import fs from 'node:fs';
 import net from 'node:net';
 import path from 'node:path';
-import { config, ROOT } from './config.js';
+import proxyaddr from 'proxy-addr';
+import { config, ROOT, readSecretsFile, writeFileAtomic } from './config.js';
 
 const env = process.env;
 
@@ -20,15 +21,14 @@ export const authMode = (env.AUTH || 'auto').toLowerCase();
 
 function loadSecrets() {
   const file = path.join(config.dataDir, 'secrets.json');
-  let s = {};
-  try { s = JSON.parse(fs.readFileSync(file, 'utf8')); } catch { /* first run */ }
+  const s = readSecretsFile(config.dataDir);
   let dirty = false;
   for (const k of ['adminToken', 'ingestToken', 'crewToken']) {
     if (!s[k]) { s[k] = crypto.randomBytes(18).toString('base64url'); dirty = true; }
   }
   if (dirty) {
     fs.mkdirSync(config.dataDir, { recursive: true });
-    fs.writeFileSync(file, JSON.stringify(s, null, 2), { mode: 0o600 });
+    writeFileAtomic(file, JSON.stringify(s, null, 2), { mode: 0o600 });
   }
   return s;
 }
@@ -89,18 +89,14 @@ export function rateLimiter({ windowMs, max }) {
 }
 
 /**
- * Client address for rate limiting. Proxy headers are only believed when the connection comes from a
- * loopback/private address (a tunnel or reverse proxy in front of us), never from the open internet.
+ * Client address for rate limiting, with the same proxy trust as Express (TRUST_PROXY, default loopback): a
+ * device on the venue Wi-Fi can't fake X-Forwarded-For to get a fresh guess allowance for every password try.
  */
+let trustProxy = proxyaddr.compile('loopback');
+export const setTrustProxy = (fn) => { trustProxy = fn; };
 export function clientIp(req) {
-  const addr = req.socket?.remoteAddress || '?';
-  const h = req.headers || {};
-  const fromProxy = /^(::1|127\.|::ffff:127\.|10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.|::ffff:(10|192\.168|172)\.)/.test(addr);
-  if (fromProxy) {
-    const fwd = h['cf-connecting-ip'] || String(h['x-forwarded-for'] || '').split(',')[0].trim() || h['x-real-ip'];
-    if (fwd) return String(fwd);
-  }
-  return addr;
+  const cf = req.headers?.['cf-connecting-ip']; // a Cloudflare tunnel names the visitor here
+  return cf && trustProxy(req.socket?.remoteAddress || '', 0) ? String(cf) : proxyaddr(req, trustProxy);
 }
 // Venue Wi-Fi puts hundreds of phones behind ONE public IP, so public viewer traffic is not limited per IP;
 // only state-changing API calls, failed logins and WebSocket connection floods are.

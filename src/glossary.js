@@ -1,6 +1,6 @@
 // Glossary (names and specialist terms): biases recognition (vocabulary) and fixes captions deterministically (replacements).
 import fs from 'node:fs';
-import { config, loadGlossary } from './config.js';
+import { config, loadGlossary, writeFileAtomic } from './config.js';
 
 const esc = (s) => s.replace(/[.*+?^${}()[\]\\]/g, '\\$&');
 /** "tele health | telehealth" → the spellings to look for (empty ones dropped). */
@@ -46,7 +46,7 @@ export class Glossary {
     const empty = reps.find((r) => !alternatives(r.from).length);
     if (empty) throw new Error(`replacements: "${empty.from}" has no words to look for`);
     data = { vocabulary: data.vocabulary, replacements: reps.map(({ from, to, lang }) => (lang ? { from, to, lang } : { from, to })) };
-    fs.writeFileSync(config.glossaryPath, JSON.stringify(data, null, 2));
+    writeFileAtomic(config.glossaryPath, JSON.stringify(data, null, 2));
     this.load(data);
   }
 

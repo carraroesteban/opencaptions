@@ -5,7 +5,7 @@
 // Only what runs the event goes in: no tests, docs, website or developer tools. The libraries are installed on the
 // first start (they include a platform-specific ffmpeg).
 //
-//   node scripts/package-desktop.js [--exe "path/to/Start OpenCaptions.exe"]   (Windows only with --exe)
+//   node scripts/package-desktop.js [--exe "path/to/Start OpenCaptions.exe"]   (Mac only on a Mac; Windows only with --exe)
 import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -44,19 +44,24 @@ const zip = (cwd, name, out) => {
 
 fs.rmSync(DIST, { recursive: true, force: true });
 
-// macOS: one app, with the app files inside.
-const mac = path.join(DIST, 'mac', 'OpenCaptions');
-const contents = path.join(mac, 'OpenCaptions.app', 'Contents');
-fs.mkdirSync(path.join(contents, 'MacOS'), { recursive: true });
-fs.mkdirSync(path.join(contents, 'Resources'), { recursive: true });
-fs.writeFileSync(path.join(contents, 'Info.plist'), fs.readFileSync(path.join(DESK, 'macos', 'Info.plist'), 'utf8').replaceAll('%VERSION%', version));
-fs.copyFileSync(path.join(DESK, 'macos', 'OpenCaptions'), path.join(contents, 'MacOS', 'OpenCaptions'));
-fs.chmodSync(path.join(contents, 'MacOS', 'OpenCaptions'), 0o755);
-fs.copyFileSync(path.join(DESK, 'OpenCaptions.icns'), path.join(contents, 'Resources', 'OpenCaptions.icns'));
-copyApp(path.join(contents, 'Resources', 'app'));
-fs.copyFileSync(path.join(DESK, 'macos', 'Read me.txt'), path.join(mac, 'Read me.txt'));
-zip(path.join(DIST, 'mac'), 'OpenCaptions', path.join(DIST, 'OpenCaptions-mac.zip'));
-console.log(`✓ dist/OpenCaptions-mac.zip (${version}, ${appFiles.length} app files)`);
+// macOS: one app, with the app files inside. Its program is compiled here (clang ships with every Mac's developer tools).
+if (process.platform === 'darwin') {
+  const mac = path.join(DIST, 'mac', 'OpenCaptions');
+  const contents = path.join(mac, 'OpenCaptions.app', 'Contents');
+  fs.mkdirSync(path.join(contents, 'MacOS'), { recursive: true });
+  fs.mkdirSync(path.join(contents, 'Resources'), { recursive: true });
+  fs.writeFileSync(path.join(contents, 'Info.plist'), fs.readFileSync(path.join(DESK, 'macos', 'Info.plist'), 'utf8').replaceAll('%VERSION%', version));
+  execFileSync('clang', ['-arch', 'arm64', '-arch', 'x86_64', '-mmacosx-version-min=11.0', '-O2', '-o', path.join(contents, 'MacOS', 'OpenCaptions'), path.join(DESK, 'macos', 'launcher.c')]);
+  fs.copyFileSync(path.join(DESK, 'macos', 'launch.sh'), path.join(contents, 'Resources', 'launch.sh'));
+  fs.chmodSync(path.join(contents, 'Resources', 'launch.sh'), 0o755);
+  fs.copyFileSync(path.join(DESK, 'OpenCaptions.icns'), path.join(contents, 'Resources', 'OpenCaptions.icns'));
+  copyApp(path.join(contents, 'Resources', 'app'));
+  fs.copyFileSync(path.join(DESK, 'macos', 'Read me.txt'), path.join(mac, 'Read me.txt'));
+  zip(path.join(DIST, 'mac'), 'OpenCaptions', path.join(DIST, 'OpenCaptions-mac.zip'));
+  console.log(`✓ dist/OpenCaptions-mac.zip (${version}, ${appFiles.length} app files)`);
+} else {
+  console.log('· Mac skipped: its program is compiled on a Mac (the release workflow packages on one)');
+}
 
 // Windows: the launcher next to an app folder.
 if (exe) {

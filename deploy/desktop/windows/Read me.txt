@@ -1,14 +1,15 @@
 OpenCaptions for Windows
 ========================
 
-1. Install Node.js, a free program (the LTS version): https://nodejs.org
-2. Extract this ZIP (right-click > Extract All), open the extracted folder and
+1. Extract this ZIP (right-click > Extract All), open the extracted folder and
    double-click "Start OpenCaptions".
    If Windows says it protected your PC: click "More info", then "Run anyway".
    (If an antivirus blocks it, open the "app" folder and double-click
    "Start OpenCaptions.bat" instead.)
-3. A window shows OpenCaptions starting, and your browser opens the dashboard.
+2. A window shows OpenCaptions starting, and your browser opens the dashboard.
    Keep the window open during the event; close it to stop.
+   The first time it downloads what it needs (Node.js too, if this computer
+   doesn't have it): it takes a minute and needs internet.
 
 Your settings, passwords and transcripts are kept in
 %LOCALAPPDATA%\OpenCaptions, so they survive updates.
@@ -18,14 +19,15 @@ Help: https://github.com/carraroesteban/opencaptions
 OpenCaptions para Windows
 =========================
 
-1. Instalá Node.js, un programa gratuito (la versión LTS): https://nodejs.org
-2. Descomprimí este ZIP (clic derecho > Extraer todo), abrí la carpeta extraída
+1. Descomprimí este ZIP (clic derecho > Extraer todo), abrí la carpeta extraída
    y hacé doble clic en "Start OpenCaptions".
    Si Windows dice que protegió el equipo: tocá "Más información" y después
    "Ejecutar de todas formas". (Si un antivirus lo bloquea, abrí la carpeta
    "app" y hacé doble clic en "Start OpenCaptions.bat".)
-3. Una ventana muestra cómo arranca OpenCaptions, y el navegador abre el panel.
+2. Una ventana muestra cómo arranca OpenCaptions, y el navegador abre el panel.
    Dejá la ventana abierta durante el evento; cerrala para detenerlo.
+   La primera vez descarga lo que necesita (también Node.js, si la
+   computadora no lo tiene): tarda un minuto y necesita internet.
 
 La configuración, las contraseñas y las transcripciones se guardan en
 %LOCALAPPDATA%\OpenCaptions, así que se conservan al actualizar.

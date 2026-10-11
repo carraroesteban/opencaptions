@@ -254,6 +254,12 @@ curl -X DELETE http://localhost:8080/api/stages/main/pull -H "Authorization: Bea
 | `GET /api/report?day=YYYY-MM-DD` | Crew or admin | Every talk with captions, per room (the event's rooms; in Just for me, only the personal room): `{ event, generatedAt, day, days, languages, totals, rooms: [{ id, name, totals, talks: [{ id, title, speaker, speakers, startedAt, durationMs, words, languages, peakViewers, viewerMinutes, costUsd, current }] }] }`. `day` (optional) keeps one day; `days` lists the days with talks. `peakViewers` = most people with the captions open at once; `viewerMinutes` = all of them added up; `costUsd` = this talk's AI spend (estimate). Shown at `/report.html`. |
 | `GET /api/report.csv?day=` | Crew or admin | The same as a spreadsheet (UTF-8 with BOM, so Excel shows accents): `room, talk, speaker, date, start, minutes, words, caption_languages, peak_viewers, viewer_minutes, cost_usd`. Cells that start with `=`, `+`, `-` or `@` are quoted so spreadsheets never run them as formulas. |
 
+### AI assistants (MCP)
+
+| Method & path | Auth | Notes |
+|---|---|---|
+| `POST /mcp` | Crew or admin | [MCP](https://modelcontextprotocol.io) over Streamable HTTP (JSON replies, no sessions; `GET` answers `405`), with the same sign-in, failed-attempt limit and rate limit as the API. Read-only tools: `list_rooms`, `list_talks` (`day`, `room`), `get_transcript` (`room`, `talk`, `lang`; plain text), `search_transcripts` (`phrase`, `room`, `day`; up to 50 hits with `room`, `talk`, `at` in the talk, `time`, `speaker`, `quote`) and `event_report` (`day`), the same data as the endpoints above. No tool changes anything yet. Setup: [Integrations](../integrations.md#use-it-from-an-ai-assistant-mcp). |
+
 ### Alerts
 
 | Method & path | Auth | Notes |

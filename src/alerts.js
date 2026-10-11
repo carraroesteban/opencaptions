@@ -25,6 +25,8 @@ const M = {
     aiOk: (r) => [`${r}: captions are back`, `The AI connection for ${r} is working again.`],
     mt: (r) => [`${r}: translations throttled`, `Translations for ${r} are being slowed down by the AI's quota. Check the plan or billing in AI Studio.`],
     mtOk: (r) => [`${r}: translations are back`, `Translations for ${r} are running normally again.`],
+    saving: (r) => [`${r}: transcripts not being saved`, `Captions in ${r} are still shown but can't be saved (is the disk full?). Free some space now, or the transcript will have gaps.`],
+    savingOk: (r) => [`${r}: transcripts saved again`, `Captions in ${r} are being saved again.`],
     late: (r) => [`${r}: captions running late`, `Captions in ${r} have been more than 6 seconds behind for a few minutes.`],
     lateOk: (r) => [`${r}: captions on time again`, `Captions in ${r} are back to their usual delay.`],
     over: (r, m, t) => [`${r}: ${m} min over`, `${r} is ${m} min past the agenda: "${t}" is due. Start it from the dashboard when the speaker finishes.`],
@@ -49,6 +51,8 @@ const M = {
     aiOk: (r) => [`${r}: volvieron los subtítulos`, `La conexión con la IA de ${r} funciona de nuevo.`],
     mt: (r) => [`${r}: traducciones limitadas`, `Las traducciones de ${r} se están frenando por la cuota de la IA. Revisá el plan o la facturación en AI Studio.`],
     mtOk: (r) => [`${r}: volvieron las traducciones`, `Las traducciones de ${r} funcionan normalmente.`],
+    saving: (r) => [`${r}: no se guardan las transcripciones`, `Los subtítulos de ${r} se siguen viendo pero no se pueden guardar (¿disco lleno?). Liberá espacio ya o la transcripción va a tener huecos.`],
+    savingOk: (r) => [`${r}: se guardan otra vez`, `Los subtítulos de ${r} se vuelven a guardar.`],
     late: (r) => [`${r}: subtítulos atrasados`, `Los subtítulos de ${r} llevan unos minutos más de 6 segundos atrás.`],
     lateOk: (r) => [`${r}: subtítulos a tiempo`, `Los subtítulos de ${r} volvieron a su demora habitual.`],
     over: (r, m, t) => [`${r}: ${m} min pasados`, `${r} va ${m} min atrasada respecto de la agenda: toca "${t}". Iniciala desde el panel cuando termine quien habla.`],
@@ -65,7 +69,7 @@ const M = {
 };
 
 // How long a problem must last before it's worth a message (most fix themselves in seconds).
-const AFTER = { lost: 60_000, silent: 60_000, muted: 120_000, ai: 60_000, mt: 120_000, late: 180_000, offline: 30_000, tunnel: 30_000 };
+const AFTER = { lost: 60_000, silent: 60_000, muted: 120_000, ai: 60_000, mt: 120_000, late: 180_000, saving: 0, offline: 30_000, tunnel: 30_000 };
 
 export function loadConfig() {
   try { return { lang: 'en', channels: [], snoozeUntil: 0, ...JSON.parse(readSecret('alerts') || '{}') }; } catch { return { lang: 'en', channels: [], snoozeUntil: 0 }; }
@@ -174,6 +178,7 @@ export class Alerts {
       on(st.alerts.includes('reconnecting'), 'ai', t.ai(st.name), t.aiOk(st.name));
       on(st.alerts.includes('mt-throttled'), 'mt', t.mt(st.name), t.mtOk(st.name));
       on(st.alerts.includes('high-latency'), 'late', t.late(st.name), t.lateOk(st.name));
+      on(st.alerts.includes('not-saving'), 'saving', t.saving(st.name), t.savingOk(st.name));
       if (st.dueTalk) {
         const over = Math.round((now - st.dueTalk.start) / 60_000);
         // Once per due talk, when it's 5 minutes late (a speaker finishing a sentence isn't news).

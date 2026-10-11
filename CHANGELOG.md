@@ -4,6 +4,21 @@ All notable changes to this project are documented in this file. The format foll
 
 ## [Unreleased]
 
+### Added
+
+- **Nothing else to install.** The Mac app and the Windows launcher download Node.js themselves the first time, when the computer doesn't have version 20 or later: the official one from nodejs.org, checked against its published checksums, kept in OpenCaptions' own folder. Before, people had to install Node.js first.
+- **Ask your AI assistant about the event (MCP).** Claude, ChatGPT, Cursor and other assistants can connect to `https://<your address>/mcp` with the crew password (as `Authorization: Bearer`) and list the rooms and what's live, list a day's or a room's talks, read any transcript in any of its languages, search every transcript for a phrase (with the room, talk, time and quote), and read the event report. Read-only: no tool changes anything yet. Same sign-in rules, failed-attempt limit and rate limit as the API; no new dependency. Setup for Claude Code and Claude Desktop in [Integrations](docs/integrations.md#use-it-from-an-ai-assistant-mcp).
+- **The `talk.ended` webhook now carries download links** for the talk's subtitles and text, in each of its languages (`files.orig.srt`, `files.es.vtt`, `files.en.txt`…), so Zapier, Make or n8n can save them to Drive, post them to YouTube or email them without building links. Downloading a finished talk needs the crew password as an `Authorization: Bearer` header (unless `PUBLIC_TRANSCRIPTS=all`); the webhook never contains it. Two step-by-step recipes in [Integrations](docs/integrations.md#webhooks). Only new fields: existing automations keep working.
+
+### Fixed
+
+- **Macs with Apple chips no longer ask to install Rosetta** to open the Mac app. Its program was a script, which macOS treats as an Intel app; it's now a small program for both Apple and Intel chips that starts the same script.
+- **A damaged `data/secrets.json` stops the server with a clear message.** Before, it started over silently: new passwords, no Gemini key (simulated captions) and two-factor sign-in off, and the next save wiped the rest.
+- **The dashboard and the organizers' phones warn when transcripts can't be saved** (a full disk, a removed folder): a "transcripts not being saved" alert, until saving works again. Before, captions kept showing but were lost without a word.
+- **Settings files survive a power cut or full disk mid-save**: rooms, setup, sign-ins, passwords, glossary, agenda and each talk's details are written to a temporary file first and then swapped in.
+- **Failed sign-ins are counted per real visitor.** A device on the venue Wi-Fi could fake the `X-Forwarded-For` header to get a fresh allowance for every password guess; proxy headers now count only from the proxies `TRUST_PROXY` trusts, the same rule the web server uses.
+- **Cleaning up a cancelled recording on Windows no longer pauses the server** (up to 1.5 s of frozen captions in every room): the retries run in the background.
+
 ## [0.6.1] - 2026-10-09
 
 ### Fixed

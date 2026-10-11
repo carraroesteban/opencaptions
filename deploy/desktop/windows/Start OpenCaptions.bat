@@ -3,6 +3,8 @@ rem OpenCaptions without the launcher (if Windows or an antivirus blocks "Start 
 rem this file inside the app folder. Same as the launcher: data in %LOCALAPPDATA%\OpenCaptions\data.
 title OpenCaptions
 cd /d "%~dp0"
+rem The Node.js the launcher downloaded, if there is one.
+if exist "%LOCALAPPDATA%\OpenCaptions\node\node.exe" set "PATH=%LOCALAPPDATA%\OpenCaptions\node;%PATH%"
 where node >nul 2>nul
 if errorlevel 1 (
   echo.

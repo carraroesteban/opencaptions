@@ -38,12 +38,36 @@ A caption:
   "text": "It all started with one question.", "speaker": "Ana Gómez", "start": 61200, "end": 63900, "at": "2026-10-05T13:01:04.512Z" }
 ```
 
-A finished talk (sent when the next talk starts), with the link to its transcript:
+A finished talk (sent when the next talk starts), with the link to its transcript page and, in `files`, a direct download link for each of the talk's languages (`orig` is what was spoken) as subtitles (`srt`, `vtt`) and plain text (`txt`):
 
 ```json
 { "event": "talk.ended", "room": "main", "roomName": "Main stage", "talk": "2026-10-05T13-00-00-000Z", "title": "Opening keynote",
-  "startedAt": 1791205200000, "captions": 412, "transcript": "https://captions.example.org/talk.html?stage=main&talk=…", "at": "…" }
+  "startedAt": 1791205200000, "captions": 412, "transcript": "https://captions.example.org/talk.html?stage=main&talk=…",
+  "files": {
+    "orig": { "srt": "https://captions.example.org/api/stages/main/export.srt?talk=…&lang=orig",
+              "vtt": "https://captions.example.org/api/stages/main/export.vtt?talk=…&lang=orig",
+              "txt": "https://captions.example.org/api/stages/main/export.txt?talk=…&lang=orig" },
+    "es":   { "srt": "…/export.srt?talk=…&lang=es", "vtt": "…", "txt": "…" }
+  },
+  "at": "…" }
 ```
+
+The links start with your **public address** (the one the dashboard created, or `PUBLIC_URL`), so the automation tool must be able to reach it.
+
+**Downloading needs the crew password** (unless `PUBLIC_TRANSCRIPTS=all`). By the time this arrives, the talk is a past talk, and past talks are private by default, exactly like the transcript page. The webhook never carries a password. In your automation, add a header to the download step: `Authorization: Bearer <crew password>`. If the crew password changes, update it there too.
+
+### Recipe: Zapier — talk ends → SRT to Google Drive + message to Slack
+
+1. **Trigger:** *Webhooks by Zapier → Catch Hook*. Copy its address, add it in OpenCaptions (**Integrations → Webhook**, event *talk ended*), and press **Test** on the connector or wait for a talk to end.
+2. **Action:** *Webhooks by Zapier → GET*. URL: `Files Orig Srt` (or `Files Es Srt` for Spanish). Headers: `Authorization` = `Bearer <crew password>`. Turn on *Unflatten*, and leave *File* output on, so the next step gets a file.
+3. **Action:** *Google Drive → Upload File*. File: the GET step's file. File name: `Title`.srt.
+4. **Action:** *Slack → Send Channel Message*. Message: `Captions for "Title" (Room Name) are in Drive: <Drive link>. Read online: Transcript`.
+
+### Recipe: n8n — talk ends → email the transcript to the speaker
+
+1. **Webhook** node, method `POST`. Put its production address in OpenCaptions (**Integrations → Webhook**, event *talk ended*).
+2. **HTTP Request** node: URL `{{ $json.body.files.orig.txt }}`, *Authentication → Generic → Header Auth* with name `Authorization` and value `Bearer <crew password>`. *Response format: Text*.
+3. **Send Email** node: To = the speaker's address (from your agenda sheet, or a fixed address), Subject `Your talk: {{ $('Webhook').item.json.body.title }}`, Text = `{{ $json.data }}` followed by the transcript page `{{ $('Webhook').item.json.body.transcript }}`.
 
 **Test** on a connector sends `{ "event": "test", … }`.
 
@@ -55,7 +79,7 @@ const expected = 'sha256=' + crypto.createHmac('sha256', SECRET).update(rawBody)
 const ok = crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(req.headers['x-opencaptions-signature'] || ''));
 ```
 
-Zapier and Make accept webhooks too ("Catch Hook" / "Custom webhook"): use their address, then send the captions or transcripts anywhere they connect.
+Zapier, Make and n8n accept webhooks too ("Catch Hook" / "Custom webhook" / "Webhook"): use their address, then send the captions or transcripts anywhere they connect.
 
 ## Status and failures
 
@@ -78,6 +102,36 @@ When the stream switches to a break (a "Break" slide, ads, "Starting soon"), the
 - **OBS Studio 28 or newer:** **Tools → WebSocket Server Settings → Enable**, and copy the password. OpenCaptions connects to `ws://<obs-pc>:4455` and follows the program scene.
 
 A scene or input whose name contains one of the **break words** (default: break, pausa, intervalo, receso, almuerzo, lunch, coffee, cafe, publicidad, tanda, comercial, commercial, ads, sponsor, brb, be right back, volvemos, starting soon, empezamos, intermission; whole words, accents ignored) starts a break; switching to any other scene ends it. Only changes act: if the crew resumes captions by hand while the mixer stays on the break scene, it stays resumed. Both run on your production network, so private addresses are fine; the OBS password is kept with the other secrets and never shown again.
+
+## Use it from an AI assistant (MCP)
+
+AI assistants such as Claude, ChatGPT and Cursor can read your event through MCP (Model Context Protocol): which rooms are live, the talks of a day, any transcript in any of its languages, a search across every talk, and the event report. Ask *"what did the keynote say about bike lanes?"* or *"summarize yesterday's talks in Room B"*, and the assistant looks it up, with the room, talk and minute of each quote.
+
+The address is your server's public address plus `/mcp` (for example `https://subs.example.com/mcp`), and the password is the **crew password** (**Settings → Passwords**), sent as `Authorization: Bearer <password>`. On the server computer itself no password is needed (unless `AUTH=token`). The admin password works too, but not while two-factor sign-in is on.
+
+**Claude Code** (one command):
+
+```bash
+claude mcp add --transport http opencaptions https://subs.example.com/mcp --header "Authorization: Bearer YOUR_CREW_PASSWORD"
+```
+
+**Claude Desktop**: open **Settings → Developer → Edit Config** and add this to `claude_desktop_config.json` (it uses the small `mcp-remote` helper, which needs Node.js), then restart Claude:
+
+```json
+{
+  "mcpServers": {
+    "opencaptions": {
+      "command": "npx",
+      "args": ["-y", "mcp-remote", "https://subs.example.com/mcp", "--header", "Authorization: Bearer ${OC_PASSWORD}"],
+      "env": { "OC_PASSWORD": "YOUR_CREW_PASSWORD" }
+    }
+  }
+}
+```
+
+Other assistants (Cursor, ChatGPT and so on) take the same address and header wherever they add a "remote" or "HTTP" MCP server.
+
+The tools only read: no assistant can change rooms, talks or settings through MCP yet. Everyone who has the crew password can read every transcript this way, as on the dashboard; in Just for me, only the personal room's.
 
 ## Already built in
 

@@ -1,6 +1,7 @@
 // Durable transcript storage (one JSONL per talk) + SRT/VTT/TXT export.
 import fs from 'node:fs';
 import path from 'node:path';
+import { writeFileAtomic } from './config.js';
 
 const safe = (s) => String(s).replace(/[^a-zA-Z0-9_-]/g, '_');
 
@@ -34,6 +35,7 @@ export class Store {
     if (n) console.log(`[store] retention: deleted ${n} talk(s) older than ${this.retentionDays} days`);
   }
 
+  saveError = ''; // why the last caption couldn't be saved; '' once saving works again
   #summaries = new Map(); // meta.json path → { key, value }
   #parsed = new Map(); // captions.jsonl path → { key, segs }, least recently used first
 
@@ -44,16 +46,21 @@ export class Store {
   openTalk(stage, talk, languages) {
     if (!this.enabled) return;
     const d = this.#talkDir(stage, talk.id);
-    fs.mkdirSync(d, { recursive: true });
-    fs.writeFileSync(path.join(d, 'meta.json'), JSON.stringify({ stage, ...talk, languages }, null, 2));
+    try {
+      fs.mkdirSync(d, { recursive: true });
+      writeFileAtomic(path.join(d, 'meta.json'), JSON.stringify({ stage, ...talk, languages }, null, 2));
+    } catch (e) { this.saveError = e.message; }
   }
 
   append(stage, talkId, seg) {
     if (!this.enabled) return;
     try {
       fs.appendFileSync(path.join(this.#talkDir(stage, talkId), 'captions.jsonl'), JSON.stringify(seg) + '\n');
+      this.saveError = '';
     } catch (e) {
-      console.warn('[store] append failed', e.message);
+      // A full disk or a removed folder: rooms raise the 'not-saving' alert while it lasts (src/stage.js).
+      if (!this.saveError) console.warn('[store] append failed', e.message);
+      this.saveError = e.message;
     }
   }
 
