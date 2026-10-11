@@ -20,35 +20,71 @@
     header a { display: inline-flex; align-items: center; gap: 6px; }
     .linkish { background: none; border: 0; box-shadow: none; padding: 4px; text-decoration: underline; text-underline-offset: 3px; }
     .linkish:hover { color: var(--fg); background: none; }
-    .bar { display: flex; flex-wrap: wrap; align-items: end; gap: 12px; padding: 14px 16px; border-bottom: 1px solid var(--line); background: var(--bg2); }
-    .bar .field { margin: 0; }
-    #src-label { display: block; }
-    .seg { display: inline-flex; border: 1px solid var(--line); border-radius: var(--pill); padding: 3px; gap: 3px; background: var(--bg); }
-    .seg button { border: 0; border-radius: var(--pill); padding: 7px 14px; background: none; }
-    .seg button[aria-checked='true'] { background: var(--primary-bg); color: var(--primary-fg); }
-    #go { min-width: 190px; }
-    /* One meter per source, centered on the Start button's height (the bar aligns its items to the bottom). */
-    #meters { align-self: end; min-height: 42px; display: flex; flex-direction: column; justify-content: center; gap: 6px; }
+    /* First run: one thing per screen (as the event wizard, welcome.html), then the captions fill the page. */
+    main { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+    #setup { flex: 1; overflow-y: auto; padding: 28px 20px 40px; }
+    .setup-in { max-width: 620px; margin: 0 auto; }
+    .progress { display: flex; gap: 6px; margin-bottom: 26px; }
+    .progress span { height: 4px; flex: 1; border-radius: 4px; background: var(--line-strong); }
+    .progress span.on { background: var(--fg); }
+    .kicker { font-size: 13px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--fg2); margin: 0 0 10px; }
+    .step h2 { font-size: clamp(28px, 4vw, 40px); line-height: 1.08; letter-spacing: -.03em; margin: 0 0 12px; }
+    .lede { font-size: 17px; color: var(--fg2); margin: 0 0 22px; line-height: 1.55; }
+    .step select { font-size: 18px; padding: 11px 14px; width: 100%; max-width: 420px; }
+    .or { margin: 26px 0 0; padding-top: 18px; border-top: 1px solid var(--line); display: grid; gap: 6px; justify-items: start; }
+    .or small { color: var(--fg2); font-size: 14px; }
+    .actions { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-top: 30px; }
+    .actions button { padding: 11px 20px; font-size: 16px; border-radius: 12px; }
+    .actions .primary { margin-left: auto; }
+    #src-label { display: block; font-size: 13px; color: var(--fg2); margin-bottom: 5px; }
+    .step h2:focus { outline: none; } /* focused so screen readers start at the new step, not a control */
+    #src { display: inline-flex; flex-wrap: wrap; border: 1px solid var(--line); border-radius: var(--pill); padding: 3px; gap: 3px; background: var(--bg); }
+    #src button { border: 0; border-radius: var(--pill); padding: 7px 14px; background: none; }
+    #src button[aria-checked='true'] { background: var(--primary-bg); color: var(--primary-fg); }
+    .sound { display: grid; gap: 16px; justify-items: start; }
+    .sound .field { width: 100%; }
+    #meters { display: flex; flex-direction: column; justify-content: center; gap: 6px; }
     #meters:empty { display: none; }
     #meters div { display: grid; grid-template-columns: auto 120px; align-items: center; gap: 8px; font-size: 13px; color: var(--fg2); }
     #meters .m { height: 8px; border-radius: 4px; background: var(--bg3); overflow: hidden; }
     #meters i { display: block; height: 100%; width: 0; background: var(--accent); transition: width .1s linear; }
     .call { color: var(--fg); font-weight: 600; }
-    .hint { flex-basis: 100%; margin: 0; font-size: 14px; color: var(--fg2); }
-    #ai-box { padding: 14px 16px; border-bottom: 1px solid var(--line); }
-    #scroll { flex: 1; overflow-y: auto; padding: 24px 20px 40px; }
-    #text { font-size: var(--size, 28px); line-height: 1.45; font-family: var(--read-font, var(--font)); max-width: 860px; margin: 0 auto; }
+    .hint { margin: 0; font-size: 14px; color: var(--fg2); line-height: 1.5; }
+    .notice { margin: 0; padding: 10px 20px; border-bottom: 1px solid var(--line); background: var(--bg2); font-size: 15px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+    #view { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+    #scroll { flex: 1; overflow-y: auto; padding: 28px 20px 40px; }
+    #text { font-size: var(--size, 28px); line-height: 1.45; font-family: var(--read-font, var(--font)); max-width: 960px; margin: 0 auto; }
     #text p { margin: 0 0 .6em; }
+    #text .seg { display: inline; background: none; padding: 0; border-radius: 0; } /* caption spans (common.js), not the segmented control */
     #text p.old { color: var(--fg2); }
     #text .empty { color: var(--fg2); font-size: 18px; margin-top: 16vh; text-align: center; }
     #orig { border-top: 1px solid var(--line); padding: 10px 20px; font-size: 16px; color: var(--translation); background: var(--bg2); min-height: 2.8em; }
     #orig b { color: var(--fg2); font-size: 11px; letter-spacing: .1em; text-transform: uppercase; margin-right: 8px; }
-    footer { display: flex; gap: 6px; padding: 10px 12px calc(10px + env(safe-area-inset-bottom)); border-top: 1px solid var(--line); background: var(--bg); align-items: center; flex-wrap: wrap; }
+    /* The slim bar: the few things used while captioning. Everything else is in Settings. */
+    footer { display: flex; gap: 6px; padding: 8px 12px calc(8px + env(safe-area-inset-bottom)); border-top: 1px solid var(--line); background: var(--bg); align-items: center; flex-wrap: wrap; }
     footer .spacer { flex: 1; }
     footer button, footer .btn { padding: 8px 11px; font-size: 15px; }
     footer a.btn { text-decoration: none; }
+    footer select { padding: 7px 30px 7px 10px; font-size: 15px; max-width: 180px; }
+    footer #meters div { grid-template-columns: 80px; } footer #meters div > span:first-child { display: none; }
+    a.btn { display: inline-flex; align-items: center; gap: 7px; border: 1px solid var(--line-strong); border-radius: 10px; padding: 8px 14px; background: var(--bg2); color: inherit; text-decoration: none; }
+    a.btn:hover { border-color: color-mix(in srgb, var(--fg) 28%, var(--line-strong)); }
     #pip[aria-pressed='true'] { background: var(--primary-bg); border-color: var(--primary-bg); color: var(--primary-fg); }
-    @media (max-width: 560px) { #meters { display: none; } #go { min-width: 0; flex: 1; } }
+    #go { min-width: 120px; }
+    #status:empty { display: none; }
+    #dlg-settings nav { display: grid; gap: 8px; }
+    #dlg-settings nav button, #dlg-settings nav a { display: flex; align-items: center; gap: 10px; width: 100%; justify-content: flex-start; padding: 12px 14px; font-size: 16px; text-align: left; }
+    #dlg-settings nav small { color: var(--fg2); margin-left: auto; font-size: 14px; }
+    @media (max-width: 640px) {
+      #mode-chip { display: none; }
+      footer .lbl, header .lbl { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+      footer #meters { display: none; }
+      footer button, footer .btn { padding: 8px 10px; }
+      footer select { max-width: 100px; }
+      #go { min-width: 0; flex: 1 0 auto; } footer .spacer { display: none; }
+      .notice, #orig { font-size: 13px; padding: 8px 16px; }
+      #scroll { padding: 20px 16px 32px; }
+    }
     /* Switching to events: what stays and what changes, before anything happens. */
     #dlg-events h3 { margin: 0 0 6px; }
     #dlg-events h4 { margin: 18px 0 8px; font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--fg2); }
@@ -66,39 +102,75 @@
     <h1><svg viewBox="0 0 878 664" aria-hidden="true"><use href="/brand/sprite.svg#oc-o"/><use href="/brand/sprite.svg#oc-line"/></svg><span>OpenCaptions</span> <span class="chip" id="mode-chip"></span></h1>
     <span class="spacer"></span>
     <a href="/talks.html" id="mine-link" data-icon="doc"></a>
-    <button type="button" id="to-events" class="linkish"></button>
   </header>
 
-  <section class="bar" aria-labelledby="go">
-    <div class="field"><span id="src-label"></span>
-      <div class="seg" role="radiogroup" id="src">
-        <button type="button" role="radio" data-src="mic" data-icon="mic"></button>
-        <button type="button" role="radio" data-src="screen" data-icon="monitor"></button>
-        <button type="button" role="radio" data-src="both" data-icon="headphones"></button>
+  <main id="app">
+    <section id="setup" class="hidden" aria-labelledby="kicker">
+      <div class="setup-in">
+        <div class="progress" id="progress" aria-hidden="true"></div>
+        <p class="kicker" id="kicker"></p>
+        <div class="step" data-step="ai">
+          <h2 id="ai-h"></h2>
+          <p class="lede" id="ai-lede"></p>
+          <p class="hint" id="ai-note"></p>
+          <div id="ai-key"></div>
+          <div id="local-offer"></div>
+        </div>
+        <div class="step" data-step="lang">
+          <h2 id="lang-h"></h2>
+          <p class="lede" id="lang-lede"></p>
+          <label class="field"><span id="to-label"></span><select id="to"></select></label>
+        </div>
+        <div class="step" data-step="sound">
+          <h2 id="sound-h"></h2>
+          <p class="lede" id="sound-lede"></p>
+          <div class="sound">
+            <div class="field"><span id="src-label"></span>
+              <div class="seg" role="radiogroup" id="src">
+                <button type="button" role="radio" data-src="mic" data-icon="mic"></button>
+                <button type="button" role="radio" data-src="screen" data-icon="monitor"></button>
+                <button type="button" role="radio" data-src="both" data-icon="headphones"></button>
+              </div>
+            </div>
+            <label class="field" id="f-device"><span id="device-label"></span><select id="device"></select></label>
+            <p class="hint" id="hint"></p>
+            <p class="hint call hidden" id="call" role="status"><span></span> <button type="button" id="call-use" class="linkish hidden"></button></p>
+            <button type="button" id="test" data-icon="play"></button>
+            <div id="meters" aria-hidden="true"></div>
+          </div>
+        </div>
+        <div class="actions"><button type="button" id="back"></button><button type="button" class="primary" id="next"></button></div>
       </div>
-    </div>
-    <label class="field" id="f-device"><span id="device-label"></span><select id="device"></select></label>
-    <label class="field"><span id="to-label"></span><select id="to"></select></label>
+    </section>
+
+    <section id="view" class="hidden" aria-label="Captions">
+      <p class="notice hidden" id="ai-box"><span id="ai-box-note"></span> <button type="button" id="ai-fix"></button></p>
+      <div id="scroll" aria-live="polite"><div id="text"></div></div>
+      <div id="orig" class="hidden" role="complementary"><b id="orig-label"></b><span></span></div>
+    </section>
+  </main>
+
+  <footer class="hidden">
     <button class="primary" id="go" type="button"></button>
-    <div id="meters" aria-hidden="true"></div>
-    <p class="hint call hidden" id="call" role="status"><span></span> <button type="button" id="call-use" class="linkish hidden"></button></p>
-    <p class="hint" id="hint"></p>
-  </section>
-
-  <section id="ai-box" class="hidden" aria-label="AI"><p class="u-m0" id="ai-note"></p><div id="ai-key"></div><div id="local-offer"></div></section>
-
-  <div id="scroll" role="main" aria-live="polite"><div id="text"></div></div>
-  <div id="orig" class="hidden" role="complementary"><b id="orig-label"></b><span></span></div>
-
-  <footer>
-    <button type="button" id="smaller" aria-label="A−">A−</button>
-    <button type="button" id="bigger" aria-label="A+">A+</button>
     <span class="chip" id="status" role="status"></span>
     <span class="spacer"></span>
+    <label><span class="sr-only" id="to2-label"></span><select id="to2"></select></label>
+    <button type="button" id="smaller" aria-label="A−">A−</button>
+    <button type="button" id="bigger" aria-label="A+">A+</button>
     <button type="button" id="pip" class="hidden" data-icon="pin" aria-pressed="false"></button>
-    <a class="btn" id="doc" target="_blank" rel="noopener" data-icon="doc"></a>
     <a class="btn" id="download" data-icon="download"></a>
+    <button type="button" id="settings" data-icon="gear"></button>
   </footer>
+  <dialog id="dlg-settings" class="sheet" aria-labelledby="set-title">
+    <div class="sheet-head"><h2 id="set-title"></h2><button type="button" id="set-close" data-icon="x"></button></div>
+    <nav aria-labelledby="set-title">
+      <button type="button" data-open="ai" data-icon="spark"></button>
+      <button type="button" data-open="lang" data-icon="chat"></button>
+      <button type="button" data-open="sound" data-icon="mic"></button>
+      <a class="btn" id="doc" target="_blank" rel="noopener" data-icon="doc"></a>
+      <button type="button" id="to-events" data-icon="dashboard"></button>
+    </nav>
+  </dialog>
   <dialog id="dlg-events" aria-labelledby="ev-title"><form method="dialog">
     <h3 id="ev-title"></h3>
     <p class="u-m0" id="ev-intro"></p>
