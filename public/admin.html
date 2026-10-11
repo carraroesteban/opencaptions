@@ -214,6 +214,58 @@
     html[data-theme='dark'] .note:not(.err) { border: 1px solid #3A3940; }
     @media (prefers-color-scheme: dark) { html:not([data-theme='light']) .note:not(.err) { border: 1px solid #3A3940; } }
     @keyframes oc-note { from { opacity: 0; translate: 0 10px; } }
+
+    /* Settings: a window over the page (#settings/<section>), sections on the left, options on the right */
+    dialog.settings { padding: 0; width: 100%; max-width: min(980px, calc(100vw - 32px)); height: min(740px, calc(100dvh - 32px)); overflow: hidden; }
+    dialog.settings[open] { display: grid; grid-template-rows: auto minmax(0, 1fr); }
+    .set-head { display: flex; align-items: center; gap: 12px; padding: 14px 16px 14px 22px; border-bottom: 1px solid var(--line); }
+    .set-head h2 { margin: 0; font-size: 20px; flex: 1; }
+    .set-search input { width: min(300px, 36vw); box-sizing: border-box; }
+    dialog .set-x { flex: none; display: grid; place-items: center; width: 36px; height: 36px; padding: 0; border-radius: var(--pill); border: 0; box-shadow: none; background: var(--bg3); }
+    .set-x svg.i { margin: 0; }
+    .set-body { display: grid; grid-template-columns: 220px minmax(0, 1fr); min-height: 0; }
+    .set-nav { display: grid; align-content: start; gap: 2px; padding: 14px 10px; border-right: 1px solid var(--line); background: var(--bg); overflow: auto; }
+    .set-nav a { display: flex; align-items: center; gap: 10px; padding: 9px 10px; border-radius: 10px; color: var(--fg2); text-decoration: none; font-size: 15px; }
+    .set-nav a:hover { background: var(--bg3); color: var(--fg); }
+    .set-nav a[aria-current] { background: var(--primary-bg); color: var(--primary-fg); font-weight: 700; }
+    .set-panes { overflow: auto; min-width: 0; padding: 6px 28px 28px; }
+    .set-pane { display: none; align-content: start; grid-template-columns: minmax(0, 1fr); }
+    .set-pane.on, .settings.searching .set-pane.set-hit { display: grid; }
+    .settings.searching .set-pane:not(.set-hit) { display: none; }
+    .set-h { font-size: 22px; margin: 16px 0 2px; }
+    .set-panes .card { background: none; border: 0; border-top: 1px solid var(--line); border-radius: 0; box-shadow: none; padding: 18px 0; }
+    .set-h + .card { border-top: 0; }
+    .set-panes select { max-width: 100%; }
+    .set-miss { display: none !important; }
+    .set-none { color: var(--fg2); padding: 24px 0; }
+    .settings .set-back { display: none; margin-top: 12px; }
+    .set-back svg.i { rotate: 90deg; }
+    @media (max-width: 700px) {
+      dialog.settings { max-width: 100vw; height: 100dvh; max-height: 100dvh; margin: 0; border: 0; border-radius: 0; }
+      .set-head { flex-wrap: wrap; padding: 12px 16px; }
+      .set-search { order: 3; flex-basis: 100%; }
+      .set-search input { width: 100%; }
+      .set-body { grid-template-columns: minmax(0, 1fr); }
+      .set-nav { border-right: 0; background: none; padding: 10px 16px; gap: 0; }
+      .set-nav a { padding: 14px 8px; font-size: 16px; border-radius: 0; border-bottom: 1px solid var(--line); }
+      .settings:not(.picked) .set-nav a[aria-current] { background: none; color: var(--fg2); font-weight: 400; }
+      .settings.picked .set-nav, .settings.searching .set-nav { display: none; }
+      .settings:not(.picked):not(.searching) .set-panes { display: none; }
+      .settings.picked:not(.searching) .set-back { display: inline-flex; }
+      .set-panes { padding: 0 16px 24px; }
+    }
+    /* A room's settings: a side panel (#rooms/<room>) */
+    dialog.panel { margin: 0 0 0 auto; height: 100dvh; max-height: 100dvh; max-width: min(560px, 100vw); padding: 0; border-right: 0; border-radius: var(--radius-lg) 0 0 var(--radius-lg); overflow: auto; }
+    dialog.panel[open] { animation: oc-panel .22s var(--ease); }
+    @keyframes oc-panel { from { opacity: 0; translate: 24px 0; } }
+    dialog.panel form { padding: 18px 22px 0; }
+    .panel-head { display: flex; align-items: center; gap: 10px; }
+    .panel-head h3 { flex: 1; min-width: 0; }
+    dialog.panel fieldset { margin: 4px 0 0; padding: 14px 0 0; border: 0; border-top: 1px solid var(--line); min-width: 0; }
+    dialog.panel label.row { flex-wrap: nowrap; align-items: flex-start; }
+    dialog.panel legend { padding: 0 8px 0 0; font-weight: 700; font-size: 16px; }
+    .panel-foot { position: sticky; bottom: 0; background: var(--bg2); padding: 14px 0 18px; border-top: 1px solid var(--line); }
+    @media (max-width: 560px) { dialog.panel { border-radius: 0; border: 0; } }
   </style>
 </head>
 <body>
@@ -381,81 +433,111 @@
         <div class="card flush" id="history-list" data-no-i18n></div>
       </section>
 
-      <!-- SETTINGS -->
-      <section class="view" data-view="settings">
-        <section class="card setting">
-          <div><h3>Modo evento</h3><p>Durante el evento, bloqueá la configuración: nadie puede borrar ni cambiar salas, agenda o glosario por error. Las acciones en vivo (siguiente charla, reconectar una sala) siguen funcionando.</p></div>
-          <button id="lock2" type="button"></button>
-        </section>
-        <section class="card setting">
-          <div><h3>Nombre del evento</h3><p>Aparece en los celulares, en la pantalla del escenario y en los carteles.</p></div>
-          <form class="rowbar" id="name-form"><input id="name-in" maxlength="80" class="u-minw220" /><button data-icon="check">Guardar</button></form>
-        </section>
-        <section class="card setting">
-          <div><h3>Idiomas</h3><p>Los que pueden elegir las salas. Agregá los que necesites y quitá los que no; después elegilos en cada sala.</p><div class="chips" id="langs-list" data-no-i18n></div></div>
-          <form class="rowbar" id="lang-form"><select id="lang-add" aria-label="Idioma para agregar" class="u-minw220"></select><button data-icon="plus">Agregar</button></form>
-        </section>
-        <section class="card setting">
-          <div><h3>Transcripciones para el público</h3><p id="tx-access-note">Qué puede leer y descargar el público sin iniciar sesión. Pedí permiso a los oradores antes de publicar charlas anteriores.</p></div>
-          <select id="tx-access" aria-label="Transcripciones para el público" class="u-minw220">
-            <option value="current">Solo la charla en curso</option>
-            <option value="all">Todas las charlas</option>
-            <option value="none">Ninguna (solo el equipo)</option>
-          </select>
-        </section>
-        <section class="card">
-          <h3 class="u-h17">Acceso</h3>
-          <p class="muted-note u-mb14">Quién puede entrar a este panel, y desde qué dispositivos.</p>
-          <div id="access-panel" data-no-i18n></div>
-        </section>
-        <section class="card">
-          <h3 class="u-h17">Alertas en tu celular</h3>
-          <p class="muted-note u-mb14">Para cuando nadie está mirando el panel.</p>
-          <div id="alerts-panel" data-no-i18n></div>
-        </section>
-        <section class="card">
-          <h3 class="u-h17">IA en la nube</h3>
-          <p class="muted-note u-mb14">La API key de Gemini, la IA de Google con la que OpenCaptions subtitula en la nube. Se guarda en este servidor y nunca se muestra completa.</p>
-          <div id="key-panel" data-no-i18n></div>
-        </section>
-        <section class="card">
-          <h3 class="u-h17">Modelo de voz</h3>
-          <p class="muted-note u-mb14" id="speech-note">Con qué modelo de Gemini se escucha al orador en las salas que traducen los subtítulos como texto (el modo normal).</p>
-          <select id="speech-model" aria-label="Modelo de voz" class="u-minw220" data-setup>
-            <option value="transcribe">Solo subtítulos (Transcribe Live, unos US$ 0,54 por hora de sala; recomendado)</option>
-            <option value="translate">Subtítulos + voz traducida (Live Translate, unos US$ 2,2 por hora de sala)</option>
-          </select>
-        </section>
-        <section class="card">
-          <h3 class="u-h17">Dirección pública</h3>
-          <p class="muted-note u-mb14">La dirección a la que apuntan los QR y los links.</p>
-          <div id="tunnel-panel" data-no-i18n></div>
-        </section>
-        <section class="card setting hidden" id="ai-setting">
-          <div><h3>IA y respaldo sin internet</h3><p id="ai-desc"></p></div>
-          <select id="ai-mode" aria-label="Motor de IA">
-            <option value="auto">Automática: la nube, y esta computadora si se corta internet</option>
-            <option value="cloud">Siempre en la nube</option>
-            <option value="local">Siempre esta computadora</option>
-          </select>
-        </section>
-        <section class="card setting">
-          <div><h3>Asistente de configuración</h3><p>Volvé a responder las preguntas del primer día: nombre, salas e idiomas. Antes de aplicar, muestra exactamente qué va a cambiar.</p></div>
-          <a href="/welcome.html#name" id="wizard-link"><button data-icon="wand" tabindex="-1">Abrir el asistente</button></a>
-        </section>
-        <section class="card setting">
-          <div><h3>Solo para mí</h3><p>Usá OpenCaptions solo para vos: tus llamadas, videos y conversaciones en esta compu. Las salas, la agenda y las transcripciones quedan guardadas para cuando vuelvas.</p></div>
-          <button type="button" id="to-me" data-icon="headphones" data-setup>Pasar a Solo para mí</button>
-        </section>
-        <section class="card setting">
-          <div><h3>Servidor</h3><p id="sys" data-no-i18n></p></div>
-          <span></span>
-        </section>
-      </section>
     </main>
   </div>
 
   <!-- dialogs -->
+  <!-- SETTINGS: a window over the page, one section at a time (#settings/<section>) -->
+  <dialog id="dlg-settings" class="settings" aria-labelledby="set-title">
+    <div class="set-head">
+      <h2 id="set-title">Ajustes</h2>
+      <label class="set-search"><span class="sr-only">Buscar en los ajustes</span><input type="search" id="set-q" placeholder="Buscar" autocomplete="off" /></label>
+      <button type="button" class="set-x" id="set-close" aria-label="Cerrar los ajustes" data-icon="x"></button>
+    </div>
+    <div class="set-body">
+      <nav class="set-nav" aria-label="Secciones de los ajustes">
+        <a href="#settings/general" data-pane="general" data-icon="gear">General</a>
+        <a href="#settings/ai" data-pane="ai" data-icon="spark">IA</a>
+        <a href="#settings/address" data-pane="address" data-icon="cloud">Dirección pública</a>
+        <a href="#settings/security" data-pane="security" data-icon="shield">Seguridad</a>
+        <a href="#settings/alerts" data-pane="alerts" data-icon="alert">Alertas</a>
+      </nav>
+      <div class="set-panes">
+        <button type="button" class="set-back" id="set-back" data-icon="chevron">Secciones</button>
+        <section class="set-pane" data-pane="general" aria-labelledby="set-h-general">
+          <h3 class="set-h" id="set-h-general">General</h3>
+          <section class="card setting">
+            <div><h3>Modo evento</h3><p>Durante el evento, bloqueá la configuración: nadie puede borrar ni cambiar salas, agenda o glosario por error. Las acciones en vivo (siguiente charla, reconectar una sala) siguen funcionando.</p></div>
+            <button id="lock2" type="button"></button>
+          </section>
+          <section class="card setting">
+            <div><h3>Nombre del evento</h3><p>Aparece en los celulares, en la pantalla del escenario y en los carteles.</p></div>
+            <form class="rowbar" id="name-form"><input id="name-in" maxlength="80" class="u-minw220" /><button data-icon="check">Guardar</button></form>
+          </section>
+          <section class="card setting">
+            <div><h3>Idiomas</h3><p>Los que pueden elegir las salas. Agregá los que necesites y quitá los que no; después elegilos en cada sala.</p><div class="chips" id="langs-list" data-no-i18n></div></div>
+            <form class="rowbar" id="lang-form"><select id="lang-add" aria-label="Idioma para agregar" class="u-minw220"></select><button data-icon="plus">Agregar</button></form>
+          </section>
+          <section class="card setting">
+            <div><h3>Transcripciones para el público</h3><p id="tx-access-note">Qué puede leer y descargar el público sin iniciar sesión. Pedí permiso a los oradores antes de publicar charlas anteriores.</p></div>
+            <select id="tx-access" aria-label="Transcripciones para el público" class="u-minw220">
+              <option value="current">Solo la charla en curso</option>
+              <option value="all">Todas las charlas</option>
+              <option value="none">Ninguna (solo el equipo)</option>
+            </select>
+          </section>
+          <section class="card setting">
+            <div><h3>Solo para mí</h3><p>Usá OpenCaptions solo para vos: tus llamadas, videos y conversaciones en esta compu. Las salas, la agenda y las transcripciones quedan guardadas para cuando vuelvas.</p></div>
+            <button type="button" id="to-me" data-icon="headphones" data-setup>Pasar a Solo para mí</button>
+          </section>
+          <section class="card setting">
+            <div><h3>Servidor</h3><p id="sys" data-no-i18n></p></div>
+            <span></span>
+          </section>
+        </section>
+        <section class="set-pane" data-pane="ai" aria-labelledby="set-h-ai">
+          <h3 class="set-h" id="set-h-ai">IA</h3>
+          <section class="card">
+            <h3 class="u-h17">IA en la nube</h3>
+            <p class="muted-note u-mb14">La API key de Gemini, la IA de Google con la que OpenCaptions subtitula en la nube. Se guarda en este servidor y nunca se muestra completa.</p>
+            <div id="key-panel" data-no-i18n></div>
+          </section>
+          <section class="card">
+            <h3 class="u-h17">Modelo de voz</h3>
+            <p class="muted-note u-mb14" id="speech-note">Con qué modelo de Gemini se escucha al orador en las salas que traducen los subtítulos como texto (el modo normal).</p>
+            <select id="speech-model" aria-label="Modelo de voz" class="u-minw220" data-setup>
+              <option value="transcribe">Solo subtítulos (Transcribe Live, unos US$ 0,54 por hora de sala; recomendado)</option>
+              <option value="translate">Subtítulos + voz traducida (Live Translate, unos US$ 2,2 por hora de sala)</option>
+            </select>
+          </section>
+          <section class="card setting hidden" id="ai-setting">
+            <div><h3>IA y respaldo sin internet</h3><p id="ai-desc"></p></div>
+            <select id="ai-mode" aria-label="Motor de IA">
+              <option value="auto">Automática: la nube, y esta computadora si se corta internet</option>
+              <option value="cloud">Siempre en la nube</option>
+              <option value="local">Siempre esta computadora</option>
+            </select>
+          </section>
+        </section>
+        <section class="set-pane" data-pane="address" aria-labelledby="set-h-address">
+          <h3 class="set-h" id="set-h-address">Dirección pública</h3>
+          <section class="card">
+            <h3 class="u-h17">Dirección pública</h3>
+            <p class="muted-note u-mb14">La dirección a la que apuntan los QR y los links.</p>
+            <div id="tunnel-panel" data-no-i18n></div>
+          </section>
+        </section>
+        <section class="set-pane" data-pane="security" aria-labelledby="set-h-security">
+          <h3 class="set-h" id="set-h-security">Seguridad</h3>
+          <section class="card">
+            <h3 class="u-h17">Acceso</h3>
+            <p class="muted-note u-mb14">Quién puede entrar a este panel, y desde qué dispositivos.</p>
+            <div id="access-panel" data-no-i18n></div>
+          </section>
+        </section>
+        <section class="set-pane" data-pane="alerts" aria-labelledby="set-h-alerts">
+          <h3 class="set-h" id="set-h-alerts">Alertas</h3>
+          <section class="card">
+            <h3 class="u-h17">Alertas en tu celular</h3>
+            <p class="muted-note u-mb14">Para cuando nadie está mirando el panel.</p>
+            <div id="alerts-panel" data-no-i18n></div>
+          </section>
+        </section>
+        <p class="set-none hidden" id="set-none" role="status">Ningún ajuste coincide.</p>
+      </div>
+    </div>
+  </dialog>
+
   <dialog id="dlg-conn"><form method="dialog" id="f-conn" class="u-stack12">
     <h3 class="u-m0" id="conn-title"></h3>
     <p class="muted-note u-m0" id="conn-help" data-no-i18n></p>
@@ -481,8 +563,8 @@
     <p class="muted-note u-m0 u-bad" id="sw-err" role="alert"></p>
     <div class="dlg-actions"><button value="cancel" formnovalidate>Cancelar</button><button class="primary" value="ok" data-icon="link">Conectar</button></div>
   </form></dialog>
-  <dialog id="dlg-edit"><form method="dialog" id="f-edit" class="u-stack12">
-    <h3 class="u-m0" id="edit-title">Sala</h3>
+  <dialog id="dlg-edit" class="panel" aria-labelledby="edit-title"><form method="dialog" id="f-edit" class="u-stack12">
+    <div class="panel-head"><h3 class="u-m0" id="edit-title">Sala</h3><button value="cancel" formnovalidate class="set-x" aria-label="Cerrar sin guardar" data-icon="x"></button></div>
     <div class="row u-stretch">
       <label class="field u-grow">ID<input name="id" required pattern="[a-z0-9_-]+" /></label>
       <label class="field u-grow2">Nombre<input name="name" required /></label>
@@ -495,10 +577,13 @@
       <option value="live">Live (speech-to-speech de Gemini · 1 sesión por idioma)</option>
       <option value="hybrid">Híbrido (subtítulos por texto + voz traducida en todos los idiomas)</option>
     </select></label>
-    <div class="u-stack8">
+    <fieldset class="field u-stack8"><legend>Sonido</legend>
+      <p class="muted-note u-m0">Con un micrófono en la computadora junto al escenario, abrí ahí la página de sonido de la sala. Desde OBS o vMix, creá una dirección y pegala en el programa de streaming.</p>
+      <div class="rowbar"><a id="edit-ingest" target="_blank" class="hidden"><button type="button" tabindex="-1" data-icon="mic">Abrir la página de sonido</button></a><button type="button" data-addr="rtmp" data-icon="link" data-setup>Dirección RTMP (OBS, vMix)</button><button type="button" data-addr="srt" data-icon="link" data-setup>Dirección SRT</button></div>
+      <div id="edit-addr" class="u-stack8" data-no-i18n></div>
       <label class="field">Sonido desde un stream o un archivo (opcional)<input name="pull" aria-describedby="pull-hint" placeholder="rtmp://0.0.0.0:1935/live/sala1  ·  srt://0.0.0.0:9001?mode=listener  ·  https://…/stream.m3u8  ·  samples/charla.mp3" /></label>
-      <p class="muted-note u-m0" id="pull-hint">Dejalo vacío si el sonido llega desde la página de sonido de la sala. Para OBS o vMix, el asistente crea la dirección (Ajustes → Abrir el asistente, paso 7). También acepta el enlace de un stream (SRT, RTMP, HLS) o un archivo de la carpeta samples de OpenCaptions.</p>
-    </div>
+      <p class="muted-note u-m0" id="pull-hint">Dejalo vacío si el sonido llega desde la página de sonido de la sala. También acepta el enlace de un stream (SRT, RTMP, HLS) o un archivo de la carpeta samples de OpenCaptions.</p>
+    </fieldset>
     <label class="row muted"><input type="checkbox" name="musicGuard" checked /> Pausar los subtítulos cuando suena música (entre charlas, videos)</label>
     <div class="u-stack8">
       <label class="row muted"><input type="checkbox" name="roomSound" /> El sonido de la sala en los celulares (escucha asistida)</label>
@@ -506,7 +591,7 @@
       <label class="field">Máximo de personas escuchando a la vez<input name="roomSoundMax" type="number" min="1" max="5000" step="1" inputmode="numeric" placeholder="100" /></label>
     </div>
     <label class="row muted"><input type="checkbox" name="loop" /> Repetir en loop (archivos de prueba)</label>
-    <div class="dlg-actions"><button value="cancel" formnovalidate>Cancelar</button><button class="primary" value="ok">Guardar</button></div>
+    <div class="dlg-actions panel-foot"><button value="cancel" formnovalidate>Cancelar</button><button class="primary" value="ok" data-icon="check">Guardar</button></div>
   </form></dialog>
 
   <dialog id="dlg-confirm"><form method="dialog">

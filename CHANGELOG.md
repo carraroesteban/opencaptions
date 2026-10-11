@@ -11,6 +11,11 @@ All notable changes to this project are documented in this file. The format foll
 - **Ask your AI assistant about the event (MCP).** Claude, ChatGPT, Cursor and other assistants can connect to `https://<your address>/mcp` with the crew password (as `Authorization: Bearer`) and list the rooms and what's live, list a day's or a room's talks, read any transcript in any of its languages, search every transcript for a phrase (with the room, talk, time and quote), and read the event report. Read-only: no tool changes anything yet. Same sign-in rules, failed-attempt limit and rate limit as the API; no new dependency. Setup for Claude Code and Claude Desktop in [Integrations](docs/integrations.md#use-it-from-an-ai-assistant-mcp).
 - **The `talk.ended` webhook now carries download links** for the talk's subtitles and text, in each of its languages (`files.orig.srt`, `files.es.vtt`, `files.en.txt`…), so Zapier, Make or n8n can save them to Drive, post them to YouTube or email them without building links. Downloading a finished talk needs the crew password as an `Authorization: Bearer` header (unless `PUBLIC_TRANSCRIPTS=all`); the webhook never contains it. Two step-by-step recipes in [Integrations](docs/integrations.md#webhooks). Only new fields: existing automations keep working.
 
+### Changed
+
+- **Settings is a window over the dashboard**, like a desktop app's: sections on the left (General, AI, Public address, Security, Alerts), the options on the right, a search box that finds any option, and × or Esc to close. Each section has its own link (`#settings/security`). On a phone the sections are a list that opens each one. Nothing moved out: the same options, now grouped. **Settings → Access** is now **Settings → Security**.
+- **A room's settings open in a panel at the side** (Rooms → Edit, or **See the address** on a room's card), not in the first-day wizard. Besides the name, languages and sound, it makes the address for OBS or vMix (RTMP or SRT) and shows the server and stream key to paste. The welcome wizard is only for the first start; its Settings entry is gone.
+
 ### Fixed
 
 - **Macs with Apple chips no longer ask to install Rosetta** to open the Mac app. Its program was a script, which macOS treats as an Intel app; it's now a small program for both Apple and Intel chips that starts the same script.

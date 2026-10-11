@@ -739,7 +739,7 @@ app.post('/api/ingest/ticket', need('ingest'), (req, res) => {
 });
 const useTicket = (t) => { const ok = !!t && (tickets.get(t) || 0) > Date.now(); tickets.delete(t); return ok; };
 // A room link (Screens and QR, the setup wizard): /ingest.html?stage=…&link=<code>. Opening it signs that one browser
-// in to send audio and nothing else (an 'ingest' session, listed in Settings → Access), so nobody has to find the
+// in to send audio and nothing else (an 'ingest' session, listed in Settings → Security), so nobody has to find the
 // room-computer password. The code works once, for 30 minutes, and only its hash is kept. A browser that can already
 // send audio (the server computer, a signed-in dashboard) doesn't use it up.
 const LINK_MINUTES = 30;

@@ -1,4 +1,4 @@
-// Settings → Access (admins only): signed-in devices, the three passwords, two-factor sign-in and company sign-in.
+// Settings → Security (admins only): signed-in devices, the three passwords, two-factor sign-in and company sign-in.
 // Server side: src/auth.js and the /api/auth/* endpoints. Passwords are never shown, except a new one, once.
 import { LANG } from '/i18n.js';
 import { esc } from '/common.js';

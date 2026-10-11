@@ -36,11 +36,11 @@ Objetivo: **cero operadores dedicados durante las charlas**. Una persona de prod
 
    **Nunca abras puertos del router hacia una PC de sala ni hacia el server**: el túnel o la VM en la nube hacen que todo sea saliente por el puerto 443.
 3. **Contraseñas e ingreso.** La computadora del server no pide contraseña; cualquier otro dispositivo ingresa al panel con una. Hay tres, y la ventana de OpenCaptions las muestra al arrancar (o definilas vos con `ADMIN_TOKEN`, `CREW_TOKEN` e `INGEST_TOKEN`):
-   - **Administración** (`Admin token`): todo el panel. Solo para la organización. Activá la **verificación en dos pasos** en Ajustes → Acceso.
+   - **Administración** (`Admin token`): todo el panel. Solo para la organización. Activá la **verificación en dos pasos** en Ajustes → Seguridad.
    - **Equipo** (`Crew token`): para voluntarios y técnicos. Solo maneja los controles en vivo (siguiente charla, renombrar, quién habla, reconectar); no puede cambiar ni borrar la configuración.
    - **Computadoras de las salas** (`Ingest token`): para mandar el sonido; no abre el panel. Casi nunca hace falta: en **Pantallas y QR → Computadora junto al escenario**, **Crear un enlace para esa computadora** da un enlace (y un QR) que sirve una vez, por 30 minutos, y deja a esa computadora enviar el sonido de la sala sin escribir ninguna contraseña.
 
-   **Ajustes → Acceso** muestra qué dispositivos tienen sesión iniciada (y permite cerrarlas) y cambia las contraseñas. El público, el proyector y el overlay **no** necesitan contraseña.
+   **Ajustes → Seguridad** muestra qué dispositivos tienen sesión iniciada (y permite cerrarlas) y cambia las contraseñas. El público, el proyector y el overlay **no** necesitan contraseña.
 4. **Alertas en el celular:** Ajustes → Alertas → **App ntfy** (gratis, dos minutos): seguí los pasos y tocá **Guardar y probar**. Avisa si una sala se queda sin sonido, si la IA falla, si una charla se pasa 5 minutos o si se corta internet.
 5. **Facturación y cuotas**: facturación activa en Google AI Studio (el plan gratuito limita las traducciones por minuto, y en ese plan Google puede usar el audio para mejorar sus productos). Configurá una **alerta de presupuesto**. Revisá en AI Studio las sesiones Live simultáneas de tu plan; si hay más salas que el límite, repartilas entre dos proyectos (ver [Deployment](../deployment.md#capacity-and-sharding)).
    **Avisá a oradores y público** que las charlas se subtitulan con IA, dónde se procesa el audio y si las transcripciones se publican. Hay un aviso listo para usar en [Licencias y responsabilidades](../legal.md#notice-template).
@@ -152,7 +152,7 @@ Con las alertas en el celular configuradas, las que duran te llegan estés donde
 | Se reinicia el server | Pantallas, celulares y PCs reconectan solos; las transcripciones guardadas quedan | Volver a abrir OpenCaptions (o `docker compose restart`). |
 | Se cuelga Chrome en una PC | Sin audio de esa sala | Reabrir la dirección; en kiosco con autostart arranca sola. El agente evita esto. |
 | Gemini caído o sin crédito | Se detienen los subtítulos; el panel muestra el error y reintenta | Revisar estado y crédito en AI Studio. Plan B: `npm run local` ([modo local](../local.md)); probarlo antes, la primera vez baja ~4 GB de modelos. |
-| Contraseña filtrada o dispositivo perdido | Una fuente desconocida reemplaza el audio, o hay un dispositivo desconocido con sesión | Ajustes → Acceso: cerrar esa sesión y cambiar la contraseña ([cómo](../security-guide.md#responding-to-a-leaked-password-or-a-lost-device)). |
+| Contraseña filtrada o dispositivo perdido | Una fuente desconocida reemplaza el audio, o hay un dispositivo desconocido con sesión | Ajustes → Seguridad: cerrar esa sesión y cambiar la contraseña ([cómo](../security-guide.md#responding-to-a-leaked-password-or-a-lost-device)). |
 
 ## Al cierre de cada día
 
@@ -165,7 +165,7 @@ Con las alertas en el celular configuradas, las que duran te llegan estés donde
 ## Después del evento
 
 - **Informe del evento:** Panel → Transcripciones → Informe del evento. Charlas, palabras, público y costo de IA por sala; se imprime o se guarda como PDF para los sponsors, o se descarga como planilla (CSV).
-- Ajustes → Acceso: cerrar las demás sesiones y cambiar la contraseña del equipo.
+- Ajustes → Seguridad: cerrar las demás sesiones y cambiar la contraseña del equipo.
 
 ## Referencia rápida de direcciones
 

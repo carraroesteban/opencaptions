@@ -167,7 +167,7 @@ button, .btn-i { vertical-align: middle; }
 .connect .cx-own[open] summary { margin-bottom: 10px; }
 .connect .cx-grid { display: grid; gap: 10px; }
 
-/* Settings → Access (public/access.js) */
+/* Settings → Security (public/access.js) */
 .access h4 { margin: 10px 0 0; font-size: 15px; }
 .access h4:first-child { margin-top: 0; }
 .access .ax-list { display: grid; gap: 8px; }

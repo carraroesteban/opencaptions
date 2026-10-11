@@ -299,7 +299,7 @@ This is topology B on Google Cloud.
 
    Then run `sudo systemctl reload caddy`.
 
-6. Open `https://subs.example.com/admin.html` and sign in with the admin password (`docker compose logs opencaptions | grep "Admin token"`). Then turn on two-factor sign-in in **Settings → Access**.
+6. Open `https://subs.example.com/admin.html` and sign in with the admin password (`docker compose logs opencaptions | grep "Admin token"`). Then turn on two-factor sign-in in **Settings → Security**.
 
 **Cloud Run and other serverless platforms** aren't recommended. OpenCaptions keeps room state in memory and holds long-lived WebSockets. Serverless platforms cap request duration and can start extra instances that don't share state. If you must use one, set minimum and maximum instances to 1 and allocate CPU always. Clients reconnect automatically when a socket is cut.
 

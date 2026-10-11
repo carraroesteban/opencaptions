@@ -130,14 +130,14 @@ Three passwords, each with its own job:
 
 Any that isn't set is generated on first start (24 random characters), stored in `data/secrets.json` (file mode 600) and printed in the startup screen.
 
-**Room links** spare room computers the ingest password. An admin makes one in **Screens and QR → Computer next to the stage** (or the wizard's step 7): `https://<server>/ingest.html?stage=<room>&link=<code>`, also as a QR code. Opening it signs that one browser in with a session that can send audio and nothing else (no dashboard, no status, no setup). The code is random (144 bits), works **once**, expires after **30 minutes**, is kept only as a hash in memory (a restart voids unused ones), and leaves the address bar as soon as the page reads it. A browser that can already send audio doesn't use it up. Each link made is recorded in the History, and the session it creates is listed in **Settings → Access → Signed-in devices** as "Room computer · <room>", where it can be signed out. Like the ingest password, it isn't tied to one room. Treat an unused link like the password: send it only to the person at that computer, and make a new one if it leaked. **Settings → Access → Passwords** changes a generated one: the new value is shown once, the old one stops working, and every device signed in with it is signed out. One set in `.env` is changed there, followed by a restart.
+**Room links** spare room computers the ingest password. An admin makes one in **Screens and QR → Computer next to the stage** (or the wizard's step 7): `https://<server>/ingest.html?stage=<room>&link=<code>`, also as a QR code. Opening it signs that one browser in with a session that can send audio and nothing else (no dashboard, no status, no setup). The code is random (144 bits), works **once**, expires after **30 minutes**, is kept only as a hash in memory (a restart voids unused ones), and leaves the address bar as soon as the page reads it. A browser that can already send audio doesn't use it up. Each link made is recorded in the History, and the session it creates is listed in **Settings → Security → Signed-in devices** as "Room computer · <room>", where it can be signed out. Like the ingest password, it isn't tied to one room. Treat an unused link like the password: send it only to the person at that computer, and make a new one if it leaked. **Settings → Security → Passwords** changes a generated one: the new value is shown once, the old one stops working, and every device signed in with it is signed out. One set in `.env` is changed there, followed by a restart.
 
 ### Signing in
 
 The dashboard and the welcome wizard show a sign-in screen on any device other than the server itself. The password is sent once; the server answers with a **session cookie** (`HttpOnly`, `SameSite=Strict`, `Secure` over HTTPS). The page never keeps the password: nothing goes into `localStorage`, and a `?token=` link (like the one Docker prints) is exchanged for a session and removed from the address bar. Scripts on the page can't read the cookie, so even an injected script couldn't steal the sign-in.
 
 - **Sessions expire** after `SESSION_HOURS` (24 by default). The server stores only a hash of each session.
-- **Each device has a name** ("Stage left tablet"), shown in **Settings → Access → Signed-in devices**, where any session can be signed out, or every other one at once. The History records who made each change.
+- **Each device has a name** ("Stage left tablet"), shown in **Settings → Security → Signed-in devices**, where any session can be signed out, or every other one at once. The History records who made each change.
 - **Changes from other websites are refused:** a browser's requests must come from the dashboard itself (the cookie is `SameSite=Strict`, and the server checks the `Origin`), on the server computer too.
 - **Wrong passwords** count towards the lockout: 20 per 10 minutes per address and browser, 100 per address. Someone guessing on the venue Wi-Fi locks out only their own browser, not the crew sharing the same public address.
 
@@ -145,7 +145,7 @@ Scripts, the room agent and Prometheus send a password as `Authorization: Bearer
 
 ### Two-factor sign-in
 
-**Settings → Access → Two-factor sign-in** adds a 6-digit code from an authenticator app (Google Authenticator, 1Password, Authy… standard TOTP) to the admin password. Each code works once. While it's on, the admin password alone opens nothing: not the sign-in screen, and not a script's `Authorization` header either. Scripts that need the admin password (`npm run loadtest`, `subtitle`, `multi`) then run on the server computer, which needs no password. The crew password is unaffected. Lost the phone? On the server computer, open the dashboard (no sign-in there) and turn it off, or delete `totpSecret` from `data/secrets.json` and restart.
+**Settings → Security → Two-factor sign-in** adds a 6-digit code from an authenticator app (Google Authenticator, 1Password, Authy… standard TOTP) to the admin password. Each code works once. While it's on, the admin password alone opens nothing: not the sign-in screen, and not a script's `Authorization` header either. Scripts that need the admin password (`npm run loadtest`, `subtitle`, `multi`) then run on the server computer, which needs no password. The crew password is unaffected. Lost the phone? On the server computer, open the dashboard (no sign-in there) and turn it off, or delete `totpSecret` from `data/secrets.json` and restart.
 
 ### Company sign-in
 
@@ -218,7 +218,7 @@ Viewers need no account, so access is per kind of data and per role. *This compu
 |---|---|---|---|---|
 | Live captions and translations of a room, the translated voice | Anyone with the room's address (the QR code) | ✓ | ✓ | Only this computer and devices signed in with the admin password |
 | The room's sound, live (assistive listening for hearing aids and earbuds) | Only in rooms where an admin turned on **The room's sound on phones** (off by default). Then anyone with the room's address can listen, from anywhere, up to the room's listener limit. | Listens like the audience; can't turn it on | Turns it on or off per room | Never, not even for its own room |
-| Transcripts of talks, *What did I miss?* and *Ask the talk* | As set in **Settings → Transcripts for the audience**: the talk in progress (default), every talk, or none | Read | Read, correct, delete | Only this computer and signed-in devices |
+| Transcripts of talks, *What did I miss?* and *Ask the talk* | As set in **Settings → General → Transcripts for the audience**: the talk in progress (default), every talk, or none | Read | Read, correct, delete | Only this computer and signed-in devices |
 | Room names, talk titles, speakers, the agenda | Shown on the audience pages | ✓ | ✓, and change them | Not used |
 | Room status, the glossary, the History | No | Read (stream addresses left out: they can carry keys) | Read and change | Not used |
 | Integrations, vision mixers, alerts, signed-in devices | No | No | ✓ | Not used |
@@ -257,8 +257,8 @@ Before exposing a server for an event:
 - [ ] HTTPS in front: **Settings → Public address** (Cloudflare Tunnel), Caddy or built-in TLS. With your own proxy, `PUBLIC_URL` set to the HTTPS address. A quick `trycloudflare.com` address is public to anyone who has the link, like any other public address: the dashboard still needs sign-in through it, and room computers their password. Turning it off and on is locked in Event mode.
 - [ ] No router port forwarding to any venue PC. The app port (8080) is not reachable from the internet (`BIND_ADDR=127.0.0.1` or `HOST=127.0.0.1` behind a proxy).
 - [ ] The admin password only for organizers, the **crew password** for volunteers, the ingest password only on room computers. Set your own (`openssl rand -base64 24`) if `data/` may be wiped.
-- [ ] **Two-factor sign-in** on (Settings → Access), or company sign-in with your provider's two-factor.
-- [ ] After the event, sign out every other device and change the crew password (Settings → Access).
+- [ ] **Two-factor sign-in** on (Settings → Security), or company sign-in with your provider's two-factor.
+- [ ] After the event, sign out every other device and change the crew password (Settings → Security).
 - [ ] `AUTH` is `auto` or `token`, never `off`.
 - [ ] `.env` has file mode 600 and isn't committed.
 - [ ] A budget alert is configured in Google Cloud or AI Studio. A dedicated API key or project is used for the event.
@@ -270,12 +270,12 @@ Before exposing a server for an event:
 
 ### Responding to a leaked password or a lost device
 
-1. **Settings → Access → Signed-in devices:** sign out the lost device, or every other device.
-2. **Settings → Access → Passwords → Change** the leaked one. Devices signed in with it are signed out at once; the new value is shown once. (Set in `.env`? Change it there and restart.)
+1. **Settings → Security → Signed-in devices:** sign out the lost device, or every other device.
+2. **Settings → Security → Passwords → Change** the leaked one. Devices signed in with it are signed out at once; the new value is shown once. (Set in `.env`? Change it there and restart.)
 3. If it was the ingest password, update the agents' service configuration and each room's audio page.
 4. Check the History (who changed what), the event log and the Gemini usage page for unexpected activity.
 
-To rotate the Gemini API key, create a new key in AI Studio, paste it in **Settings → Gemini** (or update `.env` and restart), then delete the old key.
+To rotate the Gemini API key, create a new key in AI Studio, paste it in **Settings → AI** (or update `.env` and restart), then delete the old key.
 
 ## Known gaps
 

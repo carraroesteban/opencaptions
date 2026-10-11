@@ -23,7 +23,7 @@ A shorter Spanish version for venue crews is in [event-day.es.md](event-day.es.m
 - [ ] Set up HTTPS: **Settings → Public address** (use your own domain for the event: a quick address changes on every restart), or your own proxy with `PUBLIC_URL` set to the final address.
 - [ ] Note the three passwords from the startup window (admin, crew, room computers), or set your own with `ADMIN_TOKEN`, `CREW_TOKEN` and `INGEST_TOKEN` (`openssl rand -base64 24`). Store them in the team's password manager.
 - [ ] Set up **alerts on your phone**: Settings → Alerts → **ntfy app** (free, two minutes), follow the steps and press **Save and send a test**.
-- [ ] Give volunteers and technicians the **crew password** (live controls only), not the admin one. Turn on **two-factor sign-in** in Settings → Access.
+- [ ] Give volunteers and technicians the **crew password** (live controls only), not the admin one. Turn on **two-factor sign-in** in Settings → Security.
 - [ ] Walk through the [hardening checklist](../security-guide.md#hardening-checklist).
 - [ ] Enable billing on the Gemini project and set a budget alert.
 - [ ] **Tell speakers and the audience** that talks are captioned by AI, where the audio is processed and whether transcripts are published (a ready-made notice is in [Licenses and responsibilities](../legal.md#notice-template)). Turn off public transcripts for talks that shouldn't be published.
@@ -39,7 +39,7 @@ A shorter Spanish version for venue crews is in [event-day.es.md](event-day.es.m
 - [ ] Design the caption style once in `/style.html` and copy the generated overlay and projector URLs.
 - [ ] Paste the agenda in **Dashboard → Agenda**; it shows what will change before you save. From Swapcard or Sessionize: export the sessions to Excel or Google Sheets, select everything including the header row, copy and paste. Columns are found by their header, rooms by their name, and rows for rooms without captions are skipped. By hand: CSV `room,time,title,speaker` (see `config/schedule.example.csv`). Talks then get their title and speaker automatically, and speaker names and titles are passed to the recognizer and the translator so they're spelled right; a room waits for a pause before switching, so a speaker who runs late is never cut.
 - [ ] Print the QR posters: **Dashboard → Screens and QR → QR kit** (`/kit.html`), one bilingual A4 poster per room. Check the warning at the top: the QR must point to the public HTTPS address, not `localhost`.
-- [ ] Decide what the audience can read afterwards: **Settings → Transcripts for the audience** (*Only the talk in progress*, the default; *Every talk*, after the speakers agree; or *None*).
+- [ ] Decide what the audience can read afterwards: **Settings → General → Transcripts for the audience** (*Only the talk in progress*, the default; *Every talk*, after the speakers agree; or *None*).
 
 ### Rehearsal
 
@@ -48,11 +48,11 @@ A shorter Spanish version for venue crews is in [event-day.es.md](event-day.es.m
 
 ## Two hours before: set up each room
 
-Choose one audio path per room. The setup wizard's last step (**Settings → Open the wizard**, or **See the address** on a room's card) walks through A and C on screen.
+Choose one audio path per room. The room's panel (**Rooms → Edit**, or **See the address** on a room's card) walks through A and C on screen.
 
 | Option | When | Per-room hardware |
 |---|---|---|
-| **A. OBS or vMix stream** | The desk already feeds vMix or OBS | None. In the wizard's step 7, **OBS, vMix or another streaming app → Get an address for this room** sets the room up and shows the server and stream key to paste (*OBS: Settings → Stream → Service: Custom*; *vMix: Outputs / Streaming → Custom RTMP Server*), or an SRT address. Each room gets its own port (RTMP from 1935, SRT from 9001). By hand: **Dashboard → Rooms → Edit → Sound from a stream or a file**: `rtmp://0.0.0.0:1935/live/<room>`, `srt://0.0.0.0:9001?mode=listener` or `https://…m3u8` (an HLS stream on the LAN needs `PULL_ALLOW_PRIVATE=1`). |
+| **A. OBS or vMix stream** | The desk already feeds vMix or OBS | None. In the room's panel, **Sound → RTMP address (OBS, vMix)** fills in the room's address and shows the server and stream key to paste (*OBS: Settings → Stream → Service: Custom*; *vMix: Outputs / Streaming → Custom RTMP Server*), or **SRT address**; then **Save**. Each room gets its own port (RTMP from 1935, SRT from 9001). By hand: **Dashboard → Rooms → Edit → Sound from a stream or a file**: `rtmp://0.0.0.0:1935/live/<room>`, `srt://0.0.0.0:9001?mode=listener` or `https://…m3u8` (an HLS stream on the LAN needs `PULL_ALLOW_PRIVATE=1`). |
 | **B. Headless agent** (recommended with a PC) | Audio arrives by cable at a PC | Mini PC running `scripts/agent.js` as a service, with no browser |
 | C. Browser sound page | Quick or emergency setup | Any PC with Chrome |
 
@@ -70,7 +70,7 @@ Install it as a service so it survives reboots ([Deployment](../deployment.md#ru
 
 **C. Browser sound page:**
 
-1. On the server computer, open the room's card → **Open the sound page**. On another computer, open a room link: **Dashboard → Screens and QR → Computer next to the stage → Make a link for that computer** (or **Link for another computer** in the wizard), then open it there or scan its QR code. The link works once, for 30 minutes, and signs that browser in to send sound only (it's listed in **Settings → Access** and can be signed out there); no password travels. Without a link, `https://<server>/ingest.html?stage=<room>&token=<INGEST_TOKEN>` still works: the room computer keeps the password and removes it from the address bar. Either way the audio connection uses a one-minute ticket, never the password.
+1. On the server computer, open the room's card → **Open the sound page**. On another computer, open a room link: **Dashboard → Screens and QR → Computer next to the stage → Make a link for that computer** (or **Link for another computer** in the wizard), then open it there or scan its QR code. The link works once, for 30 minutes, and signs that browser in to send sound only (it's listed in **Settings → Security** and can be signed out there); no password travels. Without a link, `https://<server>/ingest.html?stage=<room>&token=<INGEST_TOKEN>` still works: the room computer keeps the password and removes it from the address bar. Either way the audio connection uses a one-minute ticket, never the password.
 2. Choose the input and channel, and tick **Start by itself when this page opens**.
 3. For an unattended kiosk, run:
 
@@ -166,7 +166,7 @@ With **alerts on your phone** set up (Settings → Alerts), the ones that last r
 
 ## End of each day
 
-- [ ] The audience keeps every transcript at `/talks.html` (read, search, summary, download) if **Settings → Transcripts for the audience** is *Every talk*.
+- [ ] The audience keeps every transcript at `/talks.html` (read, search, summary, download) if **Settings → General → Transcripts for the audience** is *Every talk*.
 - [ ] **Dashboard → Transcripts** per room: SRT or VTT to upload with the videos, TXT for the blog or accessibility archive.
 - [ ] Back up the data folder ([where it is](../deployment.md#backups-and-upgrades)).
 - [ ] Compare the day's estimated cost on the dashboard with **AI Studio → Usage**.
@@ -193,4 +193,4 @@ With **alerts on your phone** set up (Settings → Alerts), the ones that last r
 ## After the event
 
 - [ ] **Dashboard → Transcripts → Event report**: talks, words, audience and AI cost per room. Print it or save it as a PDF for sponsors, or download the CSV for a spreadsheet.
-- [ ] Settings → Access: sign out every other device and change the crew password.
+- [ ] Settings → Security: sign out every other device and change the crew password.
