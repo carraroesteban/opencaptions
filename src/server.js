@@ -36,6 +36,7 @@ import { summarize, ask, audienceAiEnabled, assistStats } from './assist.js';
 import { Schedule, parseSchedule } from './schedule.js';
 import { History } from './history.js';
 import { asrInfo, asrReachable } from './local/asr.js';
+import { appleSupported } from './local/apple.js';
 import { llmInfo, llmHealth, chat as localChat } from './local/llm.js';
 import { authMode, tokens, noteAuthFailure, securityHeaders, apiRateLimit, originAllowed, wsAllowed, checkPullUrl, clientIp, setTrustProxy } from './security.js';
 
@@ -1132,7 +1133,8 @@ function leaveLocal() {
   setEngine(config.geminiApiKey || config.vertex ? 'gemini' : 'mock');
   for (const st of stages.values()) { st.log('info', `captions now come from ${config.engine === 'gemini' ? 'Gemini' : 'nowhere: simulated'}`); st.reconfigure(st.def); }
 }
-const localStatus = () => ({ ...localMode.status(), engine: config.engine, hasKey: !!(config.geminiApiKey || config.vertex) });
+// apple: an Apple-chip Mac on macOS 26+, where "this computer" uses Apple's built-in speech (no big download).
+const localStatus = () => ({ ...localMode.status(), engine: config.engine, hasKey: !!(config.geminiApiKey || config.vertex), apple: appleSupported() && process.arch === 'arm64' });
 app.get('/api/local', admin, (req, res) => res.json(localStatus()));
 app.post('/api/local/start', admin, (req, res) => { localMode.start(); res.json(localStatus()); });
 app.post('/api/local/retry', admin, (req, res) => { localMode.retryText(); res.json(localStatus()); });
@@ -1416,7 +1418,7 @@ function snapshot() {
     publicUrl: config.publicUrl, // '' = none: QR codes use the address the page was opened with
     setupDone: !!setup.done,
     locked: !!setup.locked,
-    local: config.engine === 'local' ? { asrUrl: asrInfo().url, llmUrl: llmInfo().url, llmModel: llmInfo().model, mtModel: llmInfo().mtModel, llmOff: config.localLlmOff, ...localHealth } : undefined,
+    local: config.engine === 'local' ? { asrUrl: asrInfo().url, llmUrl: llmInfo().url, llmModel: llmInfo().model, mtModel: llmInfo().mtModel, llmOff: config.localLlmOff, apple: asrInfo().api === 'apple', ...localHealth } : undefined,
     event: config.event.name,
     uptimeSec: Math.round(process.uptime()),
     system: systemStats(),
@@ -1696,10 +1698,10 @@ server.listen(config.port, config.host, () => {
   ]);
   if (config.fresh) tty.info(`Fresh start ${tty.c.gray('· nothing from earlier runs, in a temporary folder deleted when you stop · data/ is untouched')}`);
   if (config.engine === 'local') {
-    tty.table([['  speech', tty.c.gray(asrInfo().url)], ['  text', tty.c.gray(config.localLlmOff ? 'off' : `${llmInfo().url} · ${localModels()}`)]]);
+    tty.table([['  speech', tty.c.gray(asrInfo().api === 'apple' ? asrInfo().label : asrInfo().url)], ['  text', tty.c.gray(config.localLlmOff ? (asrInfo().api === 'apple' ? 'Apple translation' : 'off') : `${llmInfo().url} · ${localModels()}`)]]);
     checkLocal().then(async ({ asr, llm }) => {
       if (!asr) tty.warn(`speech server not reachable at ${asrInfo().url} — start everything with: npm run local`);
-      if (llm.off) tty.info('transcription only (LOCAL_LLM=off): no translations or AI summaries');
+      if (llm.off) tty.info(asrInfo().api === 'apple' ? 'translations by Apple, on this Mac; no AI summaries (LOCAL_LLM=off)' : 'transcription only (LOCAL_LLM=off): no translations or AI summaries');
       else if (!llm.ok) tty.warn(`text model not reachable at ${llmInfo().url} — translations and summaries won't work (npm run local starts Ollama)`);
       else if (!llm.hasModel) {
         for (const m of llm.missing) tty.warn(llmInfo().api === 'ollama' ? `model "${m}" is not installed — run: ollama pull ${m}` : `the text model server doesn't list "${m}" (it has: ${llm.models.slice(0, 5).join(', ')}) — check LOCAL_LLM_MODEL / LOCAL_MT_MODEL`);

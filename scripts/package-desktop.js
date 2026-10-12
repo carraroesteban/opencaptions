@@ -56,6 +56,15 @@ if (process.platform === 'darwin') {
   fs.chmodSync(path.join(contents, 'Resources', 'launch.sh'), 0o755);
   fs.copyFileSync(path.join(DESK, 'OpenCaptions.icns'), path.join(contents, 'Resources', 'OpenCaptions.icns'));
   copyApp(path.join(contents, 'Resources', 'app'));
+  // Apple's speech helper (src/local/apple.js), prebuilt so organizers' Macs don't need the developer tools.
+  const helper = path.join(contents, 'Resources', 'app', 'src', 'local', 'opencaptions-apple');
+  try {
+    for (const arch of ['arm64', 'x86_64']) execFileSync('xcrun', ['swiftc', '-parse-as-library', '-O', '-target', `${arch}-apple-macos26.0`, path.join(ROOT, 'src', 'local', 'apple.swift'), '-o', `${helper}-${arch}`]);
+    execFileSync('lipo', ['-create', `${helper}-arm64`, `${helper}-x86_64`, '-output', helper]);
+  } catch (e) {
+    console.log(`· Apple speech helper not prebuilt (needs the macOS 26 SDK): ${String(e.message).split('\n')[0]}`);
+  }
+  for (const arch of ['arm64', 'x86_64']) fs.rmSync(`${helper}-${arch}`, { force: true });
   fs.copyFileSync(path.join(DESK, 'macos', 'Read me.txt'), path.join(mac, 'Read me.txt'));
   zip(path.join(DIST, 'mac'), 'OpenCaptions', path.join(DIST, 'OpenCaptions-mac.zip'));
   console.log(`✓ dist/OpenCaptions-mac.zip (${version}, ${appFiles.length} app files)`);

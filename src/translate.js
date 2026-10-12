@@ -11,6 +11,7 @@
 import { getClient } from './genai.js';
 import { config } from './config.js';
 import { chat as localChat, cleanTranslation, llmBusy, llmInfo } from './local/llm.js';
+import { appleTranslate } from './local/apple.js';
 import { promptLanguage } from './languages.js';
 
 let ai = null;
@@ -131,6 +132,10 @@ export function translateGemmaPrompt({ text, from, to }) {
 }
 
 async function translateLocal({ text, from, to, prior, vocabulary, partial, priority }) {
+  // Apple's speech on a Mac: Apple's translation too (no Ollama needed). A language pair it can't do goes to Ollama.
+  if (config.localAsrApi === 'apple' && from) {
+    try { return await appleTranslate(text, from, to, config.mtTimeoutMs); } catch (e) { if (config.localLlmOff) throw e; }
+  }
   const model = llmInfo().mtModel;
   const request = { model, maxTokens: Math.min(400, 32 + Math.ceil(text.length / 2)), temperature: 0.1, timeoutMs: config.mtTimeoutMs, priority: priority ?? (partial ? 0 : 2) };
   // Its prompt needs the source language; until Whisper has detected one, the generic prompt below is used.
