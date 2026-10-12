@@ -1,4 +1,4 @@
-// 🎧 Listen in any language. The AI speaks the room's main translation in a natural voice (Gemini Live Translate);
+// 🎧 Listen in any language. The AI speaks the room's main translation in a natural voice (Gemini Live Translate, or the Mac's own voice in local mode);
 // for every other language the phone reads the captions aloud with its own voice (Web Speech API): free, offline,
 // on every modern phone. Each finished caption is read once; when it falls behind (a fast speaker, a slow voice) it
 // skips ahead to the newest caption instead of drifting further and further from the room.

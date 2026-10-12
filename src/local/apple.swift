@@ -7,6 +7,10 @@
 //       when it is settled. SIGUSR1 = the room went quiet: settle what was heard. End of stdin: settle and exit.
 //   opencaptions-apple translate
 //       stdin: {"id":1,"text":…,"from":"en","to":"es"} per line. stdout: {"id":1,"text":…} or {"id":1,"error":…}
+//   opencaptions-apple speak
+//       stdin: {"id":1,"text":…,"lang":"es","rate":1} per line, read aloud one at a time with the Mac's best voice for
+//       the language. stdout: {"id":1,"pcm":base64} (24 kHz mono PCM16LE, the phones' 🎧 format) as it's made, then
+//       {"id":1,"done":true,"voice":…} or {"id":1,"error":…}
 import AVFoundation
 import Foundation
 import Speech
@@ -194,6 +198,53 @@ func translate() async {
   }
 }
 
+// ---------- speak ----------
+/** The best voice installed for a language: premium, then enhanced, then the system's default for it. */
+func voice(_ lang: String) -> AVSpeechSynthesisVoice? {
+  let base = Locale.Language(identifier: lang).languageCode?.identifier ?? lang
+  let dflt = AVSpeechSynthesisVoice(language: lang)?.identifier
+  let rank = { (v: AVSpeechSynthesisVoice) in v.quality.rawValue * 2 + (v.identifier == dflt ? 1 : 0) }
+  return AVSpeechSynthesisVoice.speechVoices()
+    .filter { ($0.language == base || $0.language.hasPrefix("\(base)-")) && $0.voiceTraits.isDisjoint(with: [.isNoveltyVoice, .isPersonalVoice]) }
+    .max { rank($0) < rank($1) }
+}
+
+func speak() async {
+  let synth = AVSpeechSynthesizer()
+  let format = AVAudioFormat(commonFormat: .pcmFormatInt16, sampleRate: 24000, channels: 1, interleaved: true)!
+  while let line = readLine() {
+    guard let o = try? JSONSerialization.jsonObject(with: Data(line.utf8)) as? [String: Any],
+          let text = o["text"] as? String, let lang = o["lang"] as? String else { continue }
+    let id = o["id"] ?? 0
+    guard let v = voice(lang) else {
+      emit(["id": id, "error": "this Mac has no voice for '\(lang)' (System Settings → Accessibility → Spoken Content → System voice → Manage Voices)"])
+      continue
+    }
+    let u = AVSpeechUtterance(string: text)
+    u.voice = v
+    u.rate = AVSpeechUtteranceDefaultSpeechRate * Float(o["rate"] as? Double ?? 1)
+    var conv: AVAudioConverter?
+    var done = false
+    await withCheckedContinuation { (c: CheckedContinuation<Void, Never>) in
+      synth.write(u) { buf in
+        guard !done else { return }
+        guard let pcm = buf as? AVAudioPCMBuffer, pcm.frameLength > 0 else { done = true; c.resume(); return } // empty = the end
+        conv = conv ?? AVAudioConverter(from: pcm.format, to: format) // the voice's own rate (often 22.05 kHz) → 24 kHz
+        let dst = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: AVAudioFrameCount(Double(pcm.frameLength) * 24000 / pcm.format.sampleRate) + 64)!
+        var fed = false
+        conv?.convert(to: dst, error: nil) { _, st in
+          if fed { st.pointee = .noDataNow; return nil }
+          fed = true
+          st.pointee = .haveData
+          return pcm
+        }
+        if dst.frameLength > 0 { emit(["id": id, "pcm": Data(bytes: dst.int16ChannelData![0], count: Int(dst.frameLength) * 2).base64EncodedString()]) }
+      }
+    }
+    emit(["id": id, "done": true, "voice": v.name])
+  }
+}
+
 @main struct Main {
   static func main() async {
     guard #available(macOS 26, *) else { emit(["error": "needs macOS 26 or later"]); exit(2) }
@@ -202,7 +253,8 @@ func translate() async {
       case "check": await check()
       case "listen": try await listen()
       case "translate": await translate()
-      default: emit(["error": "usage: opencaptions-apple check|listen|translate"]); exit(2)
+      case "speak": await speak()
+      default: emit(["error": "usage: opencaptions-apple check|listen|translate|speak"]); exit(2)
       }
     } catch {
       emit(["error": error.localizedDescription])
