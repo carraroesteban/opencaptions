@@ -7,6 +7,12 @@ import { store, qs } from '/common.js';
 const DICTS = {
   en: {
     // integrations and agenda import
+    // a room's page, the rooms' gallery and list, Tools
+    'Galería': 'Gallery', 'Lista': 'List', 'Ver las salas como': 'Show rooms as', 'Herramientas': 'Tools', 'Secciones de la sala': 'Room sections',
+    'Página de sonido en esta computadora': 'Sound page on this computer', 'Sirve una vez, sin contraseña.': 'Works once, no password.', 'Crear el enlace': 'Make the link',
+    'Desde OBS, vMix o un stream': 'From OBS, vMix or a stream', 'Vocabulario de la sala': 'Room vocabulary', 'Eliminar la sala': 'Delete room',
+    'Nombres y términos de esta sala, separados por comas. Se suman al glosario.': 'This room’s names and terms, separated by commas. Added to the glossary.',
+    'Audio': 'Audio',
     'Alertas al celular del equipo cuando algo necesita atención (Ajustes → Alertas).': 'Alerts on the team’s phones when something needs attention (Settings → Alerts).',
     'Cada charla terminada (con el enlace a la transcripción)': 'Each finished talk (with the link to its transcript)',
     'Cada subtítulo': 'Each caption',
@@ -151,7 +157,7 @@ const DICTS = {
     "Nombres y términos": "Names and terms",
     "Nombres y términos que la IA tiene que escribir bien, y correcciones que se aplican a todos los subtítulos al instante.": "Names and terms the AI has to get right, and corrections applied to every caption instantly.",
     "Overlay vMix/OBS": "vMix/OBS overlay",
-    "Pantallas y QR": "Screens and QR",
+    "Pantallas y QR": "Screens & QR",
     "Quitar": "Remove",
     "Reemplazar la agenda": "Replace the agenda",
     "Registro de eventos": "Event log",
@@ -226,9 +232,9 @@ const DICTS = {
     'Mono (mezcla L+R)': 'Mono (L+R mix)', 'Solo izquierdo': 'Left only', 'Solo derecho': 'Right only', 'Archivo': 'File', 'Audio de prueba': 'Test audio', 'Grabación': 'Recording', 'Charla de prueba': 'Sample talk',
     'Charla en inglés (EN → ES)': 'English talk (EN → ES)', 'Charla en español (ES → EN)': 'Spanish talk (ES → EN)', 'Ganancia': 'Gain', 'Volumen': 'Volume',
     'Esta computadora todavía no puede enviar sonido': 'This computer can’t send sound yet', 'Contraseña de las computadoras de sala': 'Room computer password',
-    'Abrí el enlace de esta sala que te pasó quien organiza (está en el panel: Pantallas y QR → Computadora junto al escenario). Sin enlace, escribí la contraseña de las computadoras de sala: el servidor la muestra al iniciar, y en Ajustes → Seguridad se puede crear una nueva. En la computadora del servidor no hace falta nada de esto.':
-    'Open the link for this room that the organizer gave you (it’s in the dashboard: Screens and QR → Computer next to the stage). No link? Type the room computer password: the server shows it when it starts, and Settings → Security can make a new one. The server’s own computer needs none of this.',
-    'Este enlace ya se usó o tiene más de 30 minutos. Pedí uno nuevo a quien organiza: en el panel, Pantallas y QR → Computadora junto al escenario.': 'This link was already used or is more than 30 minutes old. Ask the organizer for a new one: in the dashboard, Screens and QR → Computer next to the stage.',
+    'Abrí el enlace de esta sala que te pasó quien organiza (está en el panel: la sala → Sonido). Sin enlace, escribí la contraseña de las computadoras de sala: el servidor la muestra al iniciar, y en Ajustes → Seguridad se puede crear una nueva. En la computadora del servidor no hace falta nada de esto.':
+    'Open the link for this room that the organizer gave you (it’s in the dashboard: the room → Sound). No link? Type the room computer password: the server shows it when it starts, and Settings → Security can make a new one. The server’s own computer needs none of this.',
+    'Este enlace ya se usó o tiene más de 30 minutos. Pedí uno nuevo a quien organiza: en el panel, la sala → Sonido.': 'This link was already used or is more than 30 minutes old. Ask the organizer for a new one: in the dashboard, the room → Sound.',
     'No se pudo abrir el enlace de la sala. Revisá la conexión y abrilo de nuevo.': 'The room link couldn’t be opened. Check the connection and open it again.',
     'Escucharla también en esta computadora (grabación o prueba)': 'Also play it on this computer (recording or sample)', 'Empezar solo al abrir esta página': 'Start by itself when this page opens', 'Nivel de entrada': 'Input level',
     'Una vez que empieza, no necesita a nadie: si hay silencio un rato deja de enviar (sin costo) y sigue solo cuando alguien habla. Si se corta la red, se vuelve a conectar y manda lo que quedó pendiente.':
@@ -276,7 +282,7 @@ const DICTS = {
     'La entrada de audio se desconectó. Revisá el cable/placa y volvé a empezar.': 'The audio input was disconnected. Check the cable/interface and start again.',
     'entrada desconectada': 'input disconnected',
     'El navegador bloqueó el audio: hacé clic en la página (o usá el agente nativo).': 'The browser blocked audio: click the page (or use the native agent).',
-    // sending a room's sound: the room card, Screens and QR
+    // sending a room's sound: the room card, its Sound section
     'Todavía no llega sonido': 'No sound yet', 'Esperando el stream': 'Waiting for the stream',
     'Abrir la página de sonido': 'Open the sound page', 'Abrir la página de sonido acá': 'Open the sound page here', 'Enlace para otra computadora': 'Link for another computer', 'Ver la dirección': 'See the address',
     'Computadora junto al escenario': 'Computer next to the stage',

@@ -136,7 +136,7 @@ The tools only read: no assistant can change rooms, talks or settings through MC
 ## Already built in
 
 - **Alerts** to the ntfy app, Telegram, Slack, Discord or a webhook: **Settings → Alerts**. Pick a destination, follow its steps and press **Save and send a test**.
-- **OBS and vMix**: the transparent overlay (**Screens and QR**), and room audio over RTMP or SRT ([Deployment](deployment.md)).
+- **OBS and vMix**: the transparent overlay (a room's **Screens & QR**), and room audio over RTMP or SRT ([Deployment](deployment.md)).
 - **Company sign-in** with Google, Microsoft or any OpenID Connect provider ([Security](security-guide.md#company-sign-in)).
 
 ## Security

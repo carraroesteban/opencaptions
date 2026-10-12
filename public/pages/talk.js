@@ -1,5 +1,5 @@
 // talk.html: page script (kept out of the HTML so the Content-Security-Policy can forbid inline scripts).
-import { qs, t, UI, esc, store, wsUrl, Socket, langLabel, getEvent, applyReadingPrefs, setReadingPref, setTheme, fmtClock, liveHtml, endsSentence } from '/common.js';
+import { qs, t, UI, esc, store, wsUrl, Socket, langLabel, getEvent, applyReadingPrefs, setReadingPref, setTheme, fmtClock, liveHtml, endsSentence, copyText } from '/common.js';
 import { mountAssistant } from '/assist-ui.js';
 import { icon, mountIcons } from '/illustrations.js';
 import { prefsControls } from '/i18n.js';
@@ -192,7 +192,7 @@ $('dl-lbl').textContent = t('download');
 for (const [f, k] of [['txt', 'fmtText'], ['srt', 'fmtSubs'], ['vtt', 'fmtWeb']]) $(`dl-${f}`).textContent = `${f.toUpperCase()} · ${t(k)}`;
 $('copy').onclick = async () => {
   const u = new URL(location.href); u.searchParams.set('talk', talkId);
-  try { await navigator.clipboard.writeText(u.toString()); $('copy').querySelector('span').textContent = t('copied'); setTimeout(() => ($('copy').querySelector('span').textContent = t('copyLink')), 1800); } catch { prompt('', u.toString()); }
+  try { await copyText(u.toString()); $('copy').querySelector('span').textContent = t('copied'); setTimeout(() => ($('copy').querySelector('span').textContent = t('copyLink')), 1800); } catch { prompt('', u.toString()); }
 };
 $('print').querySelector('span').textContent = t('print');
 $('print').title = t('print');

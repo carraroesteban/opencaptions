@@ -36,7 +36,7 @@ Open these pages in your browser:
 | http://localhost:8080/ | The audience page. Pick a room and a language. |
 | http://localhost:8080/admin.html | The production dashboard with every room's status. |
 
-The first time you open the dashboard, a short welcome wizard asks for your event's name, its rooms and languages, connects the AI, offers a public address for phones and shows how to connect the sound. Every question can be skipped. Later, each room is changed from **Rooms → Edit** (a panel at the side), and everything else in **Settings**. A new install has one room, `main`; that's all this guide needs until step 5.
+The first time you open the dashboard, a short welcome wizard asks for your event's name, its rooms and languages, connects the AI, offers a public address for phones and shows how to connect the sound. Every question can be skipped. Later, click a room (in the sidebar or **Rooms**) for its page: **Live**, **Screens & QR**, **Sound** and **Settings**. Everything else is in **Settings**, at the bottom of the sidebar. A new install has one room, `main`; that's all this guide needs until step 5.
 
 Nothing is captioned yet, because no room is receiving audio.
 

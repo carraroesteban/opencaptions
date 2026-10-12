@@ -1,5 +1,5 @@
 // style.html: page script (kept out of the HTML so the Content-Security-Policy can forbid inline scripts).
-import { esc, store, getEvent, FONTS, langLabel } from '/common.js';
+import { esc, store, getEvent, FONTS, langLabel, copyText } from '/common.js';
 import { localize, prefsControls, tr } from '/i18n.js';
 import { mountIcons } from '/illustrations.js';
 mountIcons();
@@ -95,7 +95,7 @@ document.querySelector('.controls').addEventListener('input', update);
 $('stage').onchange = () => { fillLangs(); update(); };
 $('presets').onclick = (e) => { const b = e.target.closest('[data-preset]'); if (!b) return; write({ ...DEFAULTS[target], ...PRESETS[b.dataset.preset] }); update(); };
 document.querySelectorAll('[data-target]').forEach((b) => (b.onclick = () => setTarget(b.dataset.target)));
-$('copy').onclick = () => { navigator.clipboard.writeText($('url').value); $('copy').textContent = tr('✓ Copiada'); setTimeout(() => ($('copy').textContent = tr('Copiar')), 1500); };
+$('copy').onclick = () => { copyText($('url').value); $('copy').textContent = tr('✓ Copiada'); setTimeout(() => ($('copy').textContent = tr('Copiar')), 1500); };
 setTarget(target);
 fit();
 localize();

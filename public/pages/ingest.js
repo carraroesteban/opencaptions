@@ -9,7 +9,7 @@ const $ = (id) => document.getElementById(id);
 goLabel(false);
 localize(); // before anything waits on the network: the page and its tab title are never shown in the wrong language
 
-// A room link from the dashboard (?link=…, Screens and QR or the setup wizard): it signs this browser in to send sound,
+// A room link from the dashboard (?link=…, a room's Sound section or the setup wizard): it signs this browser in to send sound,
 // once, and leaves the address bar so it isn't in history or a screenshot.
 let linkProblem = '';
 if (qs.get('link')) {
@@ -17,7 +17,7 @@ if (qs.get('link')) {
   u.searchParams.delete('link');
   history.replaceState(null, '', u.pathname + u.search + u.hash);
   const r = await fetch('/api/ingest/link/use', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ link: qs.get('link') }) }).catch(() => null);
-  if (!r?.ok) linkProblem = r?.status === 401 ? 'Este enlace ya se usó o tiene más de 30 minutos. Pedí uno nuevo a quien organiza: en el panel, Pantallas y QR → Computadora junto al escenario.' : 'No se pudo abrir el enlace de la sala. Revisá la conexión y abrilo de nuevo.';
+  if (!r?.ok) linkProblem = r?.status === 401 ? 'Este enlace ya se usó o tiene más de 30 minutos. Pedí uno nuevo a quien organiza: en el panel, la sala → Sonido.' : 'No se pudo abrir el enlace de la sala. Revisá la conexión y abrilo de nuevo.';
 }
 const ev = await getEvent();
 $('stage').innerHTML = ev.stages.map((s) => `<option value="${s.id}">${esc(s.name)} (${s.id})</option>`).join('');

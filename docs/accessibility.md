@@ -34,7 +34,7 @@ Automated tools find roughly a third to a half of real accessibility problems. T
 
 Some people hear a talk better with its sound in their ears than from the room's speakers: people whose hearing aids or cochlear implants stream from a phone, people who use earbuds to cut out the room's echo and chatter, and people sitting far from a speaker. Venues often provide an assistive listening system for them (a hearing loop, or FM or infrared receivers). OpenCaptions can also send each room's own sound to phones, as some captioning services do.
 
-- **Turn it on per room:** **Rooms → Edit → The room's sound on phones**. It's off by default.
+- **Turn it on per room:** the room → **Settings → The room's sound on phones**. It's off by default.
 - **On the phone:** pick **Original**, then 🎧 **Listen**. The sound plays in earbuds, headphones or hearing aids paired with the phone (Bluetooth, Made for iPhone, Android's hearing aid streaming). On iPhone it plays with the silent switch on, like the translated voice.
 - **Privacy:** anyone with the room's link can listen, even from outside the venue if the server has a public address. Turn it on only in rooms whose talks are public, not in closed-door sessions. The sound isn't recorded, and it never plays in Just for me (its room is someone's own calls). See [who can see what](security-guide.md#who-can-see-what).
 - **Breaks and music:** it keeps playing. It's the room's sound, not the captions.

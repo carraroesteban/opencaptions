@@ -38,7 +38,7 @@ Objetivo: **cero operadores dedicados durante las charlas**. Una persona de prod
 3. **Contraseñas e ingreso.** La computadora del server no pide contraseña; cualquier otro dispositivo ingresa al panel con una. Hay tres, y la ventana de OpenCaptions las muestra al arrancar (o definilas vos con `ADMIN_TOKEN`, `CREW_TOKEN` e `INGEST_TOKEN`):
    - **Administración** (`Admin token`): todo el panel. Solo para la organización. Activá la **verificación en dos pasos** en Ajustes → Seguridad.
    - **Equipo** (`Crew token`): para voluntarios y técnicos. Solo maneja los controles en vivo (siguiente charla, renombrar, quién habla, reconectar); no puede cambiar ni borrar la configuración.
-   - **Computadoras de las salas** (`Ingest token`): para mandar el sonido; no abre el panel. Casi nunca hace falta: en **Pantallas y QR → Computadora junto al escenario**, **Crear un enlace para esa computadora** da un enlace (y un QR) que sirve una vez, por 30 minutos, y deja a esa computadora enviar el sonido de la sala sin escribir ninguna contraseña.
+   - **Computadoras de las salas** (`Ingest token`): para mandar el sonido; no abre el panel. Casi nunca hace falta: en la sala → **Sonido**, **Crear el enlace** da un enlace (y un QR) que sirve una vez, por 30 minutos, y deja a esa computadora enviar el sonido de la sala sin escribir ninguna contraseña.
 
    **Ajustes → Seguridad** muestra qué dispositivos tienen sesión iniciada (y permite cerrarlas) y cambia las contraseñas. El público, el proyector y el overlay **no** necesitan contraseña.
 4. **Alertas en el celular:** Ajustes → Alertas → **App ntfy** (gratis, dos minutos): seguí los pasos y tocá **Guardar y probar**. Avisa si una sala se queda sin sonido, si la IA falla, si una charla se pasa 5 minutos o si se corta internet.
@@ -49,7 +49,7 @@ Objetivo: **cero operadores dedicados durante las charlas**. Una persona de prod
    - *Traducir a*: los idiomas de subtítulos.
 7. **Glosario** (Panel → Glosario): nombres de speakers, sponsors, productos y siglas de la agenda. Se aplica al instante.
 8. **Agenda**: Panel → Agenda → pegar la exportación de Swapcard, Sessionize o una planilla (o un CSV `sala,hora,título,speaker`; hay un ejemplo en `config/schedule.example.csv`). Muestra qué cambia antes de guardar. Cada charla toma su título y speaker sola; si el speaker anterior se pasa de tiempo, espera una pausa para no cortarlo.
-9. **Carteles QR**: Panel → Pantallas y QR → Kit de QR (`/kit.html`): un A4 bilingüe por sala. Revisá que el QR apunte a la dirección pública, no a `localhost`.
+9. **Carteles QR**: Panel → Herramientas → Kit de QR (`/kit.html`): un A4 bilingüe por sala. Revisá que el QR apunte a la dirección pública, no a `localhost`.
 10. **Ensayo general**: `npm run loadtest -- --stages 10 --input samples/talk-en.wav` (10 salas simultáneas, mirar el panel), o `/demo.html?v=<charla de YouTube>` para comparar la voz con los subtítulos.
 
 ## T‑2 h: armar cada sala
@@ -58,7 +58,7 @@ Hay tres formas de llevar el audio de cada sala al server; elegí una por sala:
 
 | Opción | Cuándo | Hardware por sala |
 |---|---|---|
-| **A. Tomar el stream** (si vMix/OBS ya emite) | La consola ya entra a vMix/OBS | **Ninguno**: Panel → Salas → Editar → *Pull de audio* `srt://…` / `rtmp://…` / `https://…m3u8` (un HLS en la red local requiere `PULL_ALLOW_PRIVATE=1`) |
+| **A. Tomar el stream** (si vMix/OBS ya emite) | La consola ya entra a vMix/OBS | **Ninguno**: la sala → **Sonido** → *Sonido desde un stream o un archivo* `srt://…` / `rtmp://…` / `https://…m3u8` (un HLS en la red local requiere `PULL_ALLOW_PRIVATE=1`) |
 | **B. Agente** (recomendado con una PC) | Audio por cable a una PC | Mini PC con Linux, macOS o Windows, **sin navegador**: `scripts/agent.js` como servicio del sistema |
 | C. Página de audio en Chrome | Armado rápido o de emergencia | Cualquier PC con Chrome |
 
@@ -141,7 +141,7 @@ Con las alertas en el celular configuradas, las que duran te llegan estés donde
 | **hay alguien hablando durante la pausa** | Una pausa puesta a mano (o por la mezcla) mientras alguien habla | Si empezó la charla, **Reanudar subtítulos**. |
 | **MÚSICA · en pausa** | Suena música en la sala | Nada. Si es una charla, **Es una charla: subtitular igual**. |
 | Términos mal escritos | Nombres o siglas | **Corregir subtítulos** en la tarjeta de la sala y aceptar «escribirlo siempre así»; o Panel → Glosario → agregar una corrección. Se aplica al instante. |
-| Idioma equivocado | La charla es en otro idioma | Panel → Salas → Editar → *Idioma de la charla* → «Detectar automáticamente». |
+| Idioma equivocado | La charla es en otro idioma | la sala → **Ajustes** → *Idioma de la charla* → «Detectar automáticamente». |
 
 ### Plan B
 
