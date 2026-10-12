@@ -23,7 +23,7 @@ All notable changes to this project are documented in this file. The format foll
 ### Fixed
 
 - **The Rooms page no longer shows an empty "Deleted rooms" heading** when nothing has been deleted.
-- **Just for me's captions no longer show a grey box around each sentence** (they picked up the style of a button group).
+- **Captions no longer show a grey box around each sentence** on the audience page and Just for me, and sentences in the transcript's Correct mode flow as normal text again. Caption text and button groups shared a style name; they now have their own.
 - **Macs with Apple chips no longer ask to install Rosetta** to open the Mac app. Its program was a script, which macOS treats as an Intel app; it's now a small program for both Apple and Intel chips that starts the same script.
 - **A damaged `data/secrets.json` stops the server with a clear message.** Before, it started over silently: new passwords, no Gemini key (simulated captions) and two-factor sign-in off, and the next save wiped the rest.
 - **The dashboard and the organizers' phones warn when transcripts can't be saved** (a full disk, a removed folder): a "transcripts not being saved" alert, until saving works again. Before, captions kept showing but were lost without a word.
