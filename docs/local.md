@@ -14,7 +14,7 @@ Everything else stays the same: the audience page, the projector, the overlay, t
 | Cost | About US$ 0.54 per room-hour (US$ 2.2 with a translated voice) | Nothing per hour |
 | Caption delay | About 2–3 s behind the speaker | About 4–5 s on a laptop CPU; with Apple's speech on a Mac, first words in about 1 s, whole sentences about 4 s behind (see [Measured results](#measured-results)) |
 | Rooms per server | 30 tested on one laptop | About one per computer today (see [Limits](#limits)) |
-| Translated voice 🎧 | Gemini's natural voice | The phone reads the translated captions with its own voice |
+| Translated voice 🎧 | Gemini's natural voice | On a Mac with Apple's speech: the Mac's own voice reads each translated sentence, like AirPods' Live Translation. Elsewhere: the phone reads the translated captions with its own voice |
 
 Local mode is new. Use it for small events, rooms without internet, sensitive talks, or to try OpenCaptions without an account. For a multi-room conference, Gemini is still the tested option.
 
@@ -46,6 +46,7 @@ macOS 26 and later include Apple's own speech recognition (*SpeechAnalyzer*, the
 - **Languages.** Apple's speech recognition knows about 25 languages (on macOS 27: Spanish, English, Portuguese, French, German, Italian, Japanese, Korean, Chinese, Cantonese, Hindi and other languages of India). The Mac's own language is usually installed already; for another one, Apple downloads it by itself the first time a room uses it. Translation knows 25 (Apple's list includes Arabic, Dutch, Polish, Russian, Turkish and Ukrainian too); download the ones you need once in **System Settings → General → Language & Region → Translation Languages**. A pair Apple can't translate goes to Ollama, if it's installed.
 - **Set each room's language.** Apple doesn't detect which language is spoken. A room on "automatic" is transcribed in the Mac's language (the room's log says so).
 - **Accuracy and speed.** About as accurate as Whisper `small` in our tests, words appear sooner, and it uses about 60 times less of the processor (see [Measured results](#measured-results)). Its punctuation and capitals are good; names it doesn't know come out as sound-alikes ("Horizon Sum Meet"); the glossary's vocabulary is passed to it as hints, and its `replacements` fix recurring mistakes.
+- **Translated voice 🎧.** People who tap 🎧 on their phone hear each translated sentence read aloud by the Mac's own voice, as with AirPods' Live Translation, in every language the room translates into. The voice is ready about 0.1 s after the translated text (the first sentence: about 1.5 s, while the voice loads) and costs the processor about 1 second per minute of voice. The Mac uses the best voice it has for each language: the ones it comes with sound robotic; for a natural one, download an *Enhanced* or *Premium* voice once in **System Settings → Accessibility → Spoken Content → System voice → Manage Voices**.
 - **Summaries and questions** (*What did I miss?*, *Ask the talk*) still need Ollama. Without it they fall back to extracts of the transcript, as with `--no-llm`.
 
 To use Whisper instead: `npm run local -- --asr builtin`. The code is in `src/engines/apple.js` (the engine), `src/local/apple.js` (starting the helper) and `src/local/apple.swift` (the helper itself).
@@ -119,7 +120,7 @@ The backup only covers the AI. Whether the audience still sees captions depends 
 | Audience phones on the venue Wi-Fi, projector, overlay, dashboard | ✅ If they reach this computer through the local network (its IP address, or a local name). Fonts fall back to system fonts. |
 | Audience phones on mobile data, or a public URL through a tunnel or the cloud | ❌ They can't reach a laptop inside the venue. For an event that must survive outages, print the QR codes with the local address (`PUBLIC_URL=http://192.168.1.20:8080`) and ask people to join the Wi-Fi. |
 | Room audio | ✅ If it reaches the server over the local network (agent, browser, or RTMP/SRT from OBS on the same network). |
-| Translated voice 🎧 | ⚠️ Gemini's voice needs the internet: phones read the translated captions with their own voice instead, in the languages they have a voice for. |
+| Translated voice 🎧 | ⚠️ Gemini's voice needs the internet. On a Mac with Apple's speech, the Mac's own voice takes over; elsewhere phones read the translated captions with their own voice, in the languages they have a voice for. |
 | *What did I miss?* and questions | ✅ Answered by the local model, a little slower. |
 
 If OpenCaptions itself runs in the cloud (Cloud Run, a VPS), there's nothing to switch: when the venue loses internet, the audio can't reach the server. Run it on a computer inside the venue to use the backup.
@@ -277,6 +278,8 @@ Same Mac (MacBook Pro, Apple M3 Pro, macOS 27), each sample played in real time,
 | Processor use per minute of speech | 233–258 s (about 4 cores busy all the time) | 3.6–4.8 s |
 | Download | about 670 MB | none for the Mac's language |
 | Translation per sentence | 0.6–0.8 s (gemma3:4b, Ollama) | 0.4–0.7 s (the first: 1.8–2.4 s) |
+| Translated voice 🎧: from the translated text to its sound | none (phones read captions with their own voice) | 0.06–0.09 s (the first sentence: 1.5–1.9 s, loading the voice) |
+| Processor use per minute of translated voice | none | about 1 s per language |
 
 What Apple got wrong is mostly small: *Deutsche Telekom* as *Deutsch Telecom*, *first* as *1st*, a dropped *um*, *Horizon Summit* as *Horizon Sum Meet* in Spanish. Whisper's mistakes were of the same kind.
 
@@ -295,7 +298,7 @@ What this tells you:
 ## Limits
 
 - **Rooms per machine.** One speech server works on one request at a time. Several rooms can share it: final passes queue and provisional updates are skipped while it's busy, so captions stay correct but fall behind. We've measured one room per machine. For more rooms, run one OpenCaptions server per machine, each with its own rooms (`STAGES`, see [Capacity and sharding](deployment.md#capacity-and-sharding)), or use a GPU speech server that handles parallel requests (`LOCAL_ASR_CONCURRENCY`).
-- **No natural translated voice** (🎧): phones read the translated captions with their own voice instead. No `live` or `hybrid` translation modes: captions are translated as text.
+- **Translated voice** (🎧): only on a Mac with Apple's speech. Elsewhere phones read the translated captions with their own voice instead. The voice reads finished sentences, so it starts a sentence after the speaker does; behind a fast speaker it reads a little faster and skips to the newest sentences. While the speaker talks the language someone listens in, that person hears nothing (there's nothing to translate). No `live` or `hybrid` translation modes: captions are translated as text.
 - **Apple's speech recognition** doesn't detect the language (set each room's), and its languages are Apple's list. Apple limits how many analyses run at once on a Mac; several rooms on one Mac haven't been measured yet.
 - **Accuracy depends on the models.** Accents, fast speech, and switching languages mid-sentence are harder for Whisper than for Gemini. Pinning each room's language helps.
 - **Hardware.** The defaults need about 6 GB of free memory while running: about 1 GB for Whisper `small` and about 4–5 GB for `gemma3:4b` with its context.

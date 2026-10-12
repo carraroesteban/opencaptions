@@ -9,6 +9,7 @@ import { GeminiEngine } from './engines/gemini.js';
 import { MockEngine } from './engines/mock.js';
 import { LocalEngine } from './engines/local.js';
 import { AppleEngine } from './engines/apple.js';
+import { appleVoice } from './local/apple.js';
 import { SentenceTranslator } from './translate.js';
 import { VoiceDetector } from './voice.js';
 
@@ -32,6 +33,7 @@ export class Stage extends EventEmitter {
     this.ticks = 0;
     this.applyDef(def);
     this.engines = new Map();
+    this.voices = {}; // per language, in local mode on a Mac: Apple reads the translations aloud (🎧)
     // Audio sources: the room's computer and, optionally, a backup on another output of the sound desk (another
     // computer, or the same one with a second interface). Only the active one is captioned; the backup takes over
     // by itself when the main one fails (see #failover). Each: { kind, label, since, role, token, detach, lastAudioAt, loudAt, okSince, level }.
@@ -88,7 +90,9 @@ export class Stage extends EventEmitter {
     this.sessionTargets = this.mode === 'text' ? liveTargets.slice(0, 1) : liveTargets;
     // Text mode can transcribe with Transcribe Live instead (cheaper): no translated voice, no Live caption fallback.
     this.transcribeOnly = this.mode === 'text' && config.engine === 'gemini' && !!config.transcribeModel;
-    this.audioLangs = config.engine === 'local' || this.transcribeOnly ? [] : this.sessionTargets.filter((t) => this.transTargets.includes(t)); // 🎧 needs Live Translate's voice
+    // 🎧 needs Live Translate's voice, or, in local mode on a Mac, Apple's: it reads each translated sentence aloud.
+    this.audioLangs = this.#macVoice() ? foreign
+      : config.engine === 'local' || this.transcribeOnly ? [] : this.sessionTargets.filter((t) => this.transTargets.includes(t));
     // Languages a viewer can pick. 'orig' = whatever is being spoken.
     this.aliases = {};
     this.languages = ['orig', ...this.transTargets];
@@ -338,7 +342,12 @@ export class Stage extends EventEmitter {
     this.log('info', `started ${this.engines.size} ${config.engine} session(s): ${this.sessionTargets.join(', ')}`);
   }
 
+  /** Local mode with Apple's speech (a Mac): translations are read aloud by the Mac (src/local/apple.js appleVoice). */
+  #macVoice() { return config.engine === 'local' && config.localAsrApi === 'apple'; }
+
   #stopEngines(reason) {
+    for (const v of Object.values(this.voices)) v.stop();
+    this.voices = {};
     if (!this.engines.size) return;
     for (const e of this.engines.values()) { e.stop(); e.removeAllListeners(); }
     this.engines.clear();
@@ -456,6 +465,9 @@ export class Stage extends EventEmitter {
         },
         onFinal: (out) => {
           this.#markLatency(t, out);
+          if (this.#macVoice() && this.audioLangs.includes(t)) {
+            (this.voices[t] ??= appleVoice(t, (pcm) => this.emit('audio', t, pcm), (m) => this.log('warn', `voice ${t}: ${m}`))).say(out);
+          }
           if (q.detached) { tracks[t]?.finishDetached(q.detached, out, t); q.detached = null; clearTimeout(q.detachedTimer); return; }
           tracks[t]?.replace(out, { final: true, lang: t });
         },

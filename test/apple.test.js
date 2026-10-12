@@ -131,3 +131,81 @@ test('"Run it on this computer" with Apple speech: translations are ready withou
   assert.equal(askedOllama, false);
   m.reset();
 });
+
+// ---------- translated voice (🎧) ----------
+const { appleVoice } = await import('../src/local/apple.js');
+
+/** A stand-in for appleSpeak: each sentence is `ms` of audio in 100 ms chunks, made at once like Apple does. */
+function fakeSpeak(ms = 300) {
+  const asked = [];
+  const speak = async (text, lang, rate, onPcm) => {
+    asked.push({ text, lang, rate });
+    if (text === 'boom') throw new Error('this Mac has no voice for \'xx\'');
+    for (let i = 0; i < ms / 100; i++) onPcm(Buffer.alloc(4800, asked.length)); // 100 ms of 24 kHz PCM16
+    return 'Mónica';
+  };
+  return { speak, asked };
+}
+
+test('voice: each translated sentence is read aloud, sent at the pace it is heard', async () => {
+  const { speak, asked } = fakeSpeak(1500);
+  const got = [];
+  const v = appleVoice('es', (pcm) => got.push({ at: Date.now(), n: pcm[0] }), () => {}, speak);
+  const t0 = Date.now();
+  v.say('Hola a todos.');
+  v.say('Bienvenidos.');
+  v.say('Gracias.');
+  await sleep(20);
+  assert.deepEqual(asked, [{ text: 'Hola a todos.', lang: 'es', rate: 1 }]);
+  assert.equal(got.length, 11, 'about a second ahead goes out at once');
+  await sleep(1700);
+  assert.equal(asked.length, 2, 'the next sentence once this one is nearly heard');
+  assert.equal(asked[1].rate, 1.15, 'another one waiting: a little faster');
+  assert.ok(got.filter((g) => g.n === 1).at(-1).at - t0 >= 400, 'never more than a second ahead of the ear');
+  assert.ok(got.findIndex((g) => g.n === 2) > got.findLastIndex((g) => g.n === 1), 'in order');
+  v.stop();
+  const before = got.length;
+  await sleep(1600);
+  assert.equal(got.length, before, 'stopped: nothing more');
+});
+
+test('voice: behind a fast speaker only the two newest sentences wait; a problem is reported once', async () => {
+  const { speak, asked } = fakeSpeak(100);
+  const errors = [];
+  const v = appleVoice('es', () => {}, (m) => errors.push(m), speak);
+  v.say('boom');
+  for (const s of ['uno', 'dos', 'tres', 'cuatro']) v.say(s);
+  v.say('  ');
+  await sleep(50);
+  assert.deepEqual(asked.map((a) => a.text), ['boom', 'tres', 'cuatro']);
+  v.say('boom');
+  await sleep(150);
+  v.say('boom');
+  await sleep(50);
+  assert.deepEqual(errors, ['this Mac has no voice for \'xx\'', 'this Mac has no voice for \'xx\''], 'again after it worked in between');
+  v.say('boom');
+  await sleep(50);
+  assert.equal(errors.length, 2, 'not twice in a row');
+  v.stop();
+});
+
+test('voice: local mode on a Mac offers 🎧 in every translated language; Whisper offers none', async () => {
+  const { config } = await import('../src/config.js');
+  const { Stage } = await import('../src/stage.js');
+  const prev = { engine: config.engine, localAsrApi: config.localAsrApi };
+  const deps = { glossary: { apply: (t) => t, vocabulary: () => [] }, store: { openTalk() {}, append() {} } };
+  try {
+    const langs = (source, targets) => {
+      const st = new Stage({ id: 'v', name: 'v', source, targets, vocabulary: [], title: '' }, deps);
+      st.destroy();
+      return st.audioLangs;
+    };
+    Object.assign(config, { engine: 'local', localAsrApi: 'apple' });
+    assert.deepEqual(langs('en', ['es', 'fr', 'en']), ['es', 'fr'], 'not the language being spoken');
+    assert.deepEqual(langs('auto', ['es', 'fr']), ['es', 'fr']);
+    config.localAsrApi = 'whispercpp';
+    assert.deepEqual(langs('en', ['es']), []);
+  } finally {
+    Object.assign(config, prev);
+  }
+});
