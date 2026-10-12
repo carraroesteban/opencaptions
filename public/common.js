@@ -257,7 +257,7 @@ export class CaptionFlow {
         this.box.append(p);
         while (this.box.children.length > this.max) this.box.firstElementChild.remove();
       } else p.append(' ');
-      span = Object.assign(document.createElement('span'), { className: 'seg' });
+      span = Object.assign(document.createElement('span'), { className: 'cap-seg' });
       span.dataset.id = seg.id;
       p.append(span);
     }
