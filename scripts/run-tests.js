@@ -9,8 +9,9 @@ import { fileURLToPath } from 'node:url';
 
 const dir = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'test');
 const files = fs.readdirSync(dir).filter((f) => f.endsWith('.test.js')).sort().map((f) => path.join(dir, f));
-// Tests run against a fictional event (four rooms, example glossary) instead of the blank config/ a new user starts with.
-const env = { ...process.env, EVENT_CONFIG: process.env.EVENT_CONFIG || 'test/fixtures/event.json', GLOSSARY: process.env.GLOSSARY || 'test/fixtures/glossary.json' };
+// Tests run against a fictional event (four rooms, example glossary) instead of the blank config/ a new user starts with,
+// and their servers don't ask GitHub for new versions.
+const env = { ...process.env, EVENT_CONFIG: process.env.EVENT_CONFIG || 'test/fixtures/event.json', GLOSSARY: process.env.GLOSSARY || 'test/fixtures/glossary.json', UPDATE_CHECK: process.env.UPDATE_CHECK || '0' };
 // A test that hangs (a process that never exits, a promise never resolved) fails after 2 minutes instead of blocking
 // the run: the slowest test takes about 20 s.
 const r = spawnSync(process.execPath, ['--test', '--test-timeout=120000', ...process.argv.slice(2), ...files], { stdio: 'inherit', env });

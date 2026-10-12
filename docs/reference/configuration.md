@@ -72,7 +72,9 @@ See [Security](../security-guide.md) for the full threat model.
 | `GEMINI_API_BASE` | `https://generativelanguage.googleapis.com` | Where the dashboard's key check asks Google (tests point it at a stand-in). |
 | `GEMINI_MODEL` | `gemini-3.5-live-translate-preview` (or `event.json`'s `model`) | Gemini Live Translate model used for transcription + speech translation. |
 | `TRANSCRIBE_MODEL` | unset: `gemini-3.5-transcribe-live`, or the dashboard's choice (or `event.json`'s `transcribeModel`) | The speech model of `text`-mode rooms. **Transcribe Live** (`gemini-3.5-transcribe-live`, the default) writes down what's said for about US$ 0.54 per room-hour, with no translated voice (🎧) and no Live Translate captions while text translation is rate-limited. `off` (or empty) uses `GEMINI_MODEL`'s Live Translate instead: about US$ 2.21 per room-hour, with the translated voice. `live`/`hybrid` rooms always use Live Translate. Usually chosen from the dashboard (**Settings → AI → Speech model**, saved in `data/setup.json`); setting it here, even empty or `off`, fixes it and the dashboard can't change it. `npm run compare-transcribe` measures both with your key; see [Latency](../latency.md#which-speech-model). |
-| `TEXT_MODEL` | `gemini-3.5-flash-lite` (or `event.json`'s `textModel`) | Fast text model used for per-sentence caption translation (`text`/`hybrid` modes). |
+| `TEXT_MODEL` | `gemini-3.5-flash-lite` (or `event.json`'s `textModel`) | Fast text model used for per-sentence caption translation (`text`/`hybrid` modes), summaries and questions. With `TEXT_API_URL`, the model's name on that service. |
+| `TEXT_API_URL` | unset (Gemini) | Translations, summaries and questions on another AI service that speaks OpenAI's API, instead of Gemini: its base URL, e.g. `https://api.openai.com/v1`. See [Use another AI for translations](#use-another-ai-for-translations). |
+| `TEXT_API_KEY` | unset | The API key for `TEXT_API_URL`, sent as `Authorization: Bearer …`. |
 | `RECORDING_MODEL` | `gemini-3.5-flash-lite` (or `event.json`'s `recordingModel`) | Model that transcribes an uploaded recording with timestamps (the regular API, not Live); its translations use `TEXT_MODEL`. See [Caption a recording](../recording.md). |
 | `RECORDING_MAX_MB` | `2048` (or `event.json`'s `recordingMaxMb`) | Largest recording accepted by **Transcripts → Caption a recording** and `npm run subtitle`. |
 | `RECORDING_CONCURRENCY` | `4` (or `event.json`'s `recordingConcurrency`) | Pieces of a recording sent to Gemini at once (half while a live room is captioning). |
@@ -80,6 +82,29 @@ See [Security](../security-guide.md) for the full threat model.
 | `GOOGLE_GENAI_USE_VERTEXAI` | `false` | `1`/`true` switches from the Gemini Developer API to **Vertex AI** in your own Google Cloud project — data stays in your project/region, covered by Google Cloud's compliance program (ISO 27001/27017/27018/27701, ISO 42001, SOC 2, HIPAA BAA, DPA). Auth via Application Default Credentials (`gcloud auth application-default login`, or a service account on the VM) — no API key needed. |
 | `GOOGLE_CLOUD_PROJECT` | `''` | GCP project ID. Required when `GOOGLE_GENAI_USE_VERTEXAI=1`. |
 | `GOOGLE_CLOUD_LOCATION` | `us-central1` | GCP region for Vertex AI. |
+
+### Use another AI for translations
+
+Gemini translates the captions, summarizes talks and answers the audience's questions, unless you pick another service: OpenAI, OpenRouter, Groq, Mistral, or anything else that speaks OpenAI's chat API. The speech model stays Gemini (so a Gemini key is still needed), and local mode keeps its own text model (`LOCAL_LLM_*`, see [Local AI](#local-ai-enginelocal)).
+
+The easy way: **Settings → AI → AI for translations → Use another AI service**. Type the address, the API key and the model's name; OpenCaptions asks the service one tiny question (a few tokens) before saving. The key is kept in `data/secrets.json` and never shown again. **Back to Gemini** removes it.
+
+Or in `.env` (a choice saved in the dashboard wins over these):
+
+| Service | `TEXT_API_URL` | `TEXT_MODEL` (an example) |
+|---|---|---|
+| OpenAI | `https://api.openai.com/v1` | `gpt-5-mini` |
+| OpenRouter | `https://openrouter.ai/api/v1` | `openai/gpt-5-mini` |
+| Groq | `https://api.groq.com/openai/v1` | `llama-3.3-70b-versatile` |
+| Mistral | `https://api.mistral.ai/v1` | `mistral-small-latest` |
+
+```bash
+TEXT_API_URL=https://api.openai.com/v1
+TEXT_API_KEY=sk-...
+TEXT_MODEL=gpt-5-mini
+```
+
+Pick a small, fast model: each caption waits for its translation (`MT_TIMEOUT_MS`, 5 s by default). Translations arrive whole instead of word by word, uploaded recordings are translated one sentence at a time, and that service's cost is billed by it and not counted in the dashboard. Settings a model refuses (JSON mode, `max_tokens`, a temperature) are dropped or renamed the first time it says so.
 
 ### Audience AI
 
@@ -186,6 +211,12 @@ These are read by `docker-compose.yml` itself, not by the Node process (except `
 | `WITH_YTDLP` | `0` | Build arg — `1` includes `yt-dlp` in the image (needed for YouTube demos / `npm run multi`). |
 | `TUNNEL_TOKEN` | required for the `tunnel` profile | Cloudflare Tunnel token, used by `docker compose --profile tunnel up` (a separate `cloudflared` container). The dashboard's **Public address** does the same without the profile, and never passes this variable to a quick tunnel. |
 | `TRUST_PROXY` | `uniquelocal` (compose default; `loopback` if run outside Compose) | Trusts `X-Forwarded-*` from the private Docker network the `tunnel` service sits on. |
+
+### New versions
+
+| Variable | Default | Description |
+|---|---|---|
+| `UPDATE_CHECK` | on | At start and once a day the server asks GitHub's public endpoint for the latest release of OpenCaptions (`api.github.com/repos/carraroesteban/opencaptions/releases/latest`). The request carries nothing about you or this install. When a newer version is out, the dashboard shows one line with a link to what's new and the download for this computer (a Docker install or a copy of the code shows the command to update instead). Nothing is installed by itself. `0`/`false`/`no`/`off` turns it off; so does **Settings → General → New versions**. |
 
 ### Debugging
 
@@ -332,11 +363,11 @@ All under `DATA_DIR` (default `data/`), created on demand.
 | Path | Written by | Contents |
 |---|---|---|
 | `data/stages.json` | Every `POST`/`PATCH`/`DELETE /api/stages*` call | JSON array of the current stage definitions (same shape as `event.json`'s `stages`). Takes precedence over `config/event.json` on the next restart — see [precedence](#configuration-reference). |
-| `data/setup.json` | The welcome wizard and the dashboard's Settings | `{ "done", "name", "locked", "tunnel", "mode", "eventDone", "languages", "removedLanguages" }`: whether first-run setup is finished, the event name (overrides `eventName` in `config/event.json`), whether Event mode is on, the public address to bring back after a restart (`{ "mode": "quick" \| "token", "host" }`), `event` or `personal` (Just for me), whether the event wizard was ever finished, and the languages added to or removed from `config/event.json`'s. |
+| `data/setup.json` | The welcome wizard and the dashboard's Settings | `{ "done", "name", "locked", "tunnel", "mode", "eventDone", "languages", "removedLanguages", "updateCheck"? }`: whether first-run setup is finished, the event name (overrides `eventName` in `config/event.json`), whether Event mode is on, the public address to bring back after a restart (`{ "mode": "quick" \| "token", "host" }`), `event` or `personal` (Just for me), whether the event wizard was ever finished, the languages added to or removed from `config/event.json`'s, and `false` when **New versions** is turned off. |
 | `data/instance.json` | First startup with this data folder | `{ "id", "createdAt" }`: names this data folder. Pages read it from `GET /api/instance` and forget what the browser remembered for another one (after a fresh start, or a deleted `data/`). |
 | `data/sessions.json` | Signing in to the dashboard | Signed-in devices: `{ hash, pid, role, device, via, createdAt, lastSeen, expiresAt, ip }`. `hash` is the SHA-256 of the session cookie; the cookie itself is never stored. File mode `0600`. Delete it to sign everyone out. |
 | `data/history.jsonl` | Every change to the setup: rooms, agenda, glossary, event name, AI mode, Event mode | One JSON object per line: `{ "id", "at", "kind", "target", "summary", "before", "after", "undoes"? }`. `before` is what an undo puts back. Only appended to; an undo is a new line pointing at the change it reverted. Deleted rooms stay restorable from here (the dashboard's trash). |
-| `data/secrets.json` | First startup, when `AUTH != off` and `ADMIN_TOKEN`/`INGEST_TOKEN`/`CREW_TOKEN` aren't all set via env; the dashboard, when you save a Gemini API key or a Cloudflare tunnel token, change a password or turn on two-factor sign-in | `{ "adminToken", "ingestToken", "crewToken", "geminiApiKey"?, "tunnelToken"?, "totpSecret"?, "alerts"? }` (`alerts`: where phone alerts go, as JSON). Tokens are random 24-character base64url strings (18 random bytes). Written with file mode `0600`. Whichever admin/ingest token you *do* set via env is used in preference to the stored value; the file still fills in the other. A saved `geminiApiKey` wins over `GEMINI_API_KEY`. Never sent to the browser (the dashboard sees only the key's last 4 characters). |
+| `data/secrets.json` | First startup, when `AUTH != off` and `ADMIN_TOKEN`/`INGEST_TOKEN`/`CREW_TOKEN` aren't all set via env; the dashboard, when you save a Gemini API key, another AI service for translations or a Cloudflare tunnel token, change a password or turn on two-factor sign-in | `{ "adminToken", "ingestToken", "crewToken", "geminiApiKey"?, "textApi"?, "tunnelToken"?, "totpSecret"?, "alerts"? }` (`alerts`: where phone alerts go, as JSON; `textApi`: `{ url, key, model }` of another AI service for translations, as JSON, which wins over `TEXT_API_URL`). Tokens are random 24-character base64url strings (18 random bytes). Written with file mode `0600`. Whichever admin/ingest token you *do* set via env is used in preference to the stored value; the file still fills in the other. A saved `geminiApiKey` wins over `GEMINI_API_KEY`. Never sent to the browser (the dashboard sees only the key's last 4 characters). |
 | `data/transcripts/<stage-id>/<talk-id>/meta.json` | `Store.openTalk` — on every new talk and title change, and every minute during a talk (only when `STORE_TRANSCRIPTS` is not disabled) | `{ "stage", "id", "title", "speaker", "startedAt", "languages", "peakViewers", "viewerMs", "costUsd" }` (the last three feed the event report). `stage-id` and `talk-id` are sanitized to `[a-zA-Z0-9_-]`; `talk-id` is an ISO timestamp with `:`/`.` replaced by `-` (e.g. `2026-09-24T18-30-05-123Z`). |
 | `data/transcripts/<stage-id>/<talk-id>/captions.jsonl` | `Store.append` — one line per **finalized** caption segment | Each line: `{ "id", "channel", "lang", "text", "start", "end", "final": true, "spk"? }` (`spk`: who was speaking, when the crew set it) (`start`/`end` in ms since the talk started). Read back by `GET /api/stages/:id/export.{srt,vtt,txt,json}`. |
 | `data/latency-<ISO timestamp>.json` | `npm run multi` (`scripts/multi-youtube.js`), on exit/Ctrl+C | Latency/cost report: p50/p90 for original transcription and translation, total cost, system stats, and a per-room breakdown. Not written by the server itself. |
