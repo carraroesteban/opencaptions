@@ -4,7 +4,7 @@
 //   textApiPanel → translations, summaries and questions on another AI service (PUT/DELETE /api/ai/text)
 //   tunnelPanel → a public HTTPS address through Cloudflare, with one click (POST /api/tunnel)
 import { LANG } from '/i18n.js';
-import { esc } from '/common.js';
+import { esc, copyText } from '/common.js';
 import { icon } from '/illustrations.js';
 
 const T = {
@@ -356,7 +356,7 @@ export function tunnelPanel(el, { api, confirm = async (m) => window.confirm(m),
     if (a === 'retry') start({ mode: tu.mode === 'token' ? 'token' : 'quick', host: tu.host });
     if (a === 'stop' && (tu.state !== 'on' || (await confirm(t.stopAsk)))) start({ mode: 'off' });
     if (a === 'copy') {
-      try { await navigator.clipboard.writeText(tu.url); /** @type {HTMLElement} */ (e.target).closest('button').textContent = t.copied; } catch { /* the link is selectable */ }
+      try { await copyText(tu.url); /** @type {HTMLElement} */ (e.target).closest('button').textContent = t.copied; } catch { /* the link is selectable */ }
     }
   });
   el.addEventListener('submit', (e) => {

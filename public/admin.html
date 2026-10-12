@@ -87,8 +87,8 @@
     .stage .preview div { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .stage .preview div + div { color: var(--translation); }
     .stage .preview span.l { display: inline-block; min-width: 38px; font-size: 10px; font-weight: 700; color: var(--fg2); letter-spacing: .06em; text-transform: uppercase; }
-    .view.focus #onboard, .view.focus .kpis { display: none !important; } /* one room, like a channel: only its card */
-    .view.focus .grid { grid-template-columns: minmax(0, 1fr); }
+    #room-live .grid { grid-template-columns: minmax(0, 1fr); max-width: 820px; } /* a room's page: only its card */
+    #room-live .on-live { display: none; }
     .empty-rooms { grid-column: 1 / -1; display: grid; justify-items: center; gap: 14px; text-align: center; padding: 30px 20px 40px; }
     .empty-rooms img { width: 220px; border-radius: 20px; }
     .empty-rooms h3 { font-size: 22px; margin: 0; }
@@ -245,18 +245,34 @@
       .settings.picked:not(.searching) .set-back { display: inline-flex; }
       .set-panes { padding: 0 16px 24px; }
     }
-    /* A room's settings: a side panel (#rooms/<room>) */
-    dialog.panel { margin: 0 0 0 auto; height: 100dvh; max-height: 100dvh; max-width: min(560px, 100vw); padding: 0; border-right: 0; border-radius: var(--radius-lg) 0 0 var(--radius-lg); overflow: auto; }
-    dialog.panel[open] { animation: oc-panel .22s var(--ease); }
-    @keyframes oc-panel { from { opacity: 0; translate: 24px 0; } }
-    dialog.panel form { padding: 18px 22px 0; }
-    .panel-head { display: flex; align-items: center; gap: 10px; }
-    .panel-head h3 { flex: 1; min-width: 0; }
-    dialog.panel fieldset { margin: 4px 0 0; padding: 14px 0 0; border: 0; border-top: 1px solid var(--line); min-width: 0; }
-    dialog.panel label.row { flex-wrap: nowrap; align-items: flex-start; }
-    dialog.panel legend { padding: 0 8px 0 0; font-weight: 700; font-size: 16px; }
-    .panel-foot { position: sticky; bottom: 0; background: var(--bg2); padding: 14px 0 18px; border-top: 1px solid var(--line); }
-    @media (max-width: 560px) { dialog.panel { border-radius: 0; border: 0; } }
+    /* One room (#room/<room>/<section>): Live, Screens & QR, Sound, Settings */
+    .room-tabs { justify-self: start; flex-wrap: wrap; }
+    .room-tabs a { padding: 7px 14px; border-radius: 9px; color: var(--fg2); text-decoration: none; font-size: 14px; }
+    .room-tabs a:hover { color: var(--fg); }
+    .room-tabs a[aria-current] { background: var(--bg2); box-shadow: var(--shadow-sm); font-weight: 700; color: var(--fg); }
+    .room-pane { display: grid; gap: 16px; align-content: start; }
+    .room-pane:not(.on) { display: none; }
+    .room-pane > .card { max-width: 820px; }
+    #f-edit label.row { flex-wrap: nowrap; align-items: flex-start; }
+    /* a link in one row: what it is, then Copy and Open */
+    .crow { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 8px; padding: 10px 0; border-bottom: 1px solid var(--line); min-width: 0; }
+    .crow:last-child { border-bottom: 0; }
+    .crow-l { flex: 1 1 220px; min-width: 0; font-weight: 600; }
+    .crow-v { display: block; font: 400 12px var(--mono); color: var(--fg2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .crow-b { display: flex; gap: 6px; flex: none; }
+    .crow button { padding: 7px 12px; font-size: 14px; }
+    /* Rooms: tiles or a list */
+    .rooms-gallery { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
+    a.tile { display: grid; gap: 6px; padding: 14px 16px; color: inherit; text-decoration: none; min-width: 0; }
+    a.tile:hover { border-color: var(--line-strong); }
+    .tile b, .rooms-list b { display: flex; align-items: center; gap: 8px; font-size: 16px; min-width: 0; }
+    .tile .said { font-size: 13px; color: var(--fg2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-height: 1.4em; }
+    .rooms-list a { color: inherit; text-decoration: none; }
+    .rooms-list a:hover b { text-decoration: underline; }
+    .tools-btn { margin-left: auto; }
+    .topbar #engine + .tools-btn { margin-left: 0; }
+    .ctx button { display: flex; align-items: center; gap: 10px; width: 100%; padding: 8px 10px; border: 0; border-radius: 8px; background: none; box-shadow: none; font-size: 14px; text-align: left; }
+    .ctx button:hover { background: var(--bg3); }
   </style>
 </head>
 <body>
@@ -272,7 +288,14 @@
 
     <main class="content">
       <div class="crumbbar" id="crumbbar"></div>
-      <div class="topbar"><h1 id="view-title">En vivo</h1><span class="chip" id="engine"></span></div>
+      <div class="topbar"><h1 id="view-title">En vivo</h1><span class="chip" id="engine"></span>
+        <button type="button" class="tools-btn" popovertarget="tools-menu" data-icon="sliders">Herramientas</button>
+        <div class="ctx" popover id="tools-menu">
+          <a href="/kit.html" target="_blank" data-icon="qr">Kit de QR</a>
+          <a href="/style.html" target="_blank" data-icon="palette">Estilo de subtítulos</a>
+          <a href="/demo.html?mode=mic" target="_blank" data-icon="mic">Prueba de sonido</a>
+          <button type="button" class="hidden" id="float" data-icon="pin">Ventana flotante</button>
+        </div></div>
       <section class="netbar hidden" id="netbar" role="status"></section>
       <section class="card hidden" id="local-offer" data-no-i18n aria-live="polite"></section>
       <div class="lockedbar hidden" id="lockedbar"></div>
@@ -303,8 +326,9 @@
       <!-- ROOMS -->
       <section class="view" data-view="rooms">
         <p class="help-pop" popover id="help-rooms">Cada sala tiene su QR, su pantalla y su overlay. Cada cambio queda en el Historial y se puede deshacer.</p>
-        <div class="rowbar"><button class="primary" id="add" data-icon="plus">Nueva sala</button></div>
-        <div class="card flush"><table class="table"><thead><tr><th>Sala</th><th class="hide-sm">Idiomas</th><th class="hide-sm">Audio</th><th></th></tr></thead><tbody id="rooms-body" data-no-i18n></tbody></table></div>
+        <div class="rowbar"><button class="primary" id="add" data-icon="plus">Nueva sala</button><span class="spacer"></span>
+          <div class="seg" role="group" aria-label="Ver las salas como"><button type="button" data-rooms-view="gallery" aria-pressed="true" data-icon="dashboard">Galería</button><button type="button" data-rooms-view="list" aria-pressed="false" data-icon="doc">Lista</button></div></div>
+        <div id="rooms-box" data-no-i18n></div>
         <div id="trash-box" class="hidden">
           <h2 class="sec">Salas eliminadas</h2>
           <p data-help>Sus transcripciones se conservan. Restaurá una sala para tenerla de nuevo tal como estaba.</p>
@@ -353,17 +377,52 @@
         <div class="rowbar"><span class="spacer"></span><button class="primary" id="gloss-save" data-icon="check">Guardar glosario</button></div>
       </section>
 
-      <!-- SCREENS -->
-      <section class="view" data-view="screens">
-        <p class="help-pop" popover id="help-screens">Lo que va en cada pantalla del lugar: el QR para el público, la pantalla del escenario y el overlay del streaming.</p>
-        <div class="tools">
-          <a class="card tool" href="/kit.html" target="_blank"><b data-icon="qr">Kit de QR</b><span>Un cartel A4 por sala, para imprimir.</span></a>
-          <a class="card tool" href="/style.html" target="_blank"><b data-icon="palette">Estilo de subtítulos</b><span>Letra, colores y posición.</span></a>
-          <a class="card tool" href="/demo.html?mode=mic" target="_blank"><b data-icon="mic">Prueba de sonido</b><span>Hablá al micrófono y mirá los subtítulos.</span></a>
-          <button class="card tool hidden u-left" id="float" type="button"><b data-icon="pin">Ventana flotante</b><span>Todas las salas en una ventana siempre visible, encima de OBS o vMix.</span></button>
+      <!-- ONE ROOM: everything about it, in four sections (#room/<room>/<section>) -->
+      <section class="view" data-view="room">
+        <nav class="seg room-tabs" id="room-tabs" aria-label="Secciones de la sala" data-no-i18n></nav>
+        <div class="room-pane" data-tab="live" id="room-live"></div>
+        <div class="room-pane" data-tab="screens"><section class="card links" id="screens-links"></section></div>
+        <div class="room-pane" data-tab="sound">
+          <section class="card links">
+            <div class="crow"><span class="crow-l">Página de sonido en esta computadora</span><a id="edit-ingest" target="_blank"><button type="button" tabindex="-1" data-icon="mic">Abrir</button></a></div>
+            <div class="crow" data-admin><span class="crow-l">Enlace para la computadora junto al escenario<span class="crow-v">Sirve una vez, sin contraseña.</span></span><button type="button" data-ingest-link data-icon="link">Crear el enlace</button></div>
+            <div id="ingest-link"></div>
+          </section>
+          <section class="card u-stack12" data-admin>
+            <h3 class="u-m0 u-fs20">Desde OBS, vMix o un stream</h3>
+            <div class="rowbar"><button type="button" data-addr="rtmp" data-icon="link" data-setup>Dirección RTMP (OBS, vMix)</button><button type="button" data-addr="srt" data-icon="link" data-setup>Dirección SRT</button></div>
+      <div id="edit-addr" class="u-stack8" data-no-i18n></div>
+      <label class="field">Sonido desde un stream o un archivo (opcional)<input name="pull" form="f-edit" aria-describedby="pull-hint" placeholder="rtmp://0.0.0.0:1935/live/sala1  ·  srt://0.0.0.0:9001?mode=listener  ·  https://…/stream.m3u8  ·  samples/charla.mp3" /></label>
+      <p class="muted-note u-m0" id="pull-hint">Vacío si el sonido llega por la página de sonido de la sala.</p>
+      <label class="row muted"><input type="checkbox" name="loop" form="f-edit" /> Repetir en loop (archivos de prueba)</label>
+      <div class="rowbar"><button class="primary" form="f-edit" data-icon="check" data-setup>Guardar</button></div>
+          </section>
         </div>
-        <div class="rowbar"><label class="row">Sala <select id="screens-room"></select></label></div>
-        <section class="card links" id="screens-links"></section>
+        <div class="room-pane" data-tab="settings" data-admin>
+      <form id="f-edit" class="card u-stack12">
+        <div class="row u-stretch">
+          <label class="field u-grow">ID<input name="id" required pattern="[a-z0-9_-]+" /></label>
+          <label class="field u-grow2">Nombre<input name="name" required /></label>
+        </div>
+        <label class="field">Idioma de la charla<select name="source"><option value="auto">Detectar automáticamente</option></select></label>
+        <div class="field">Traducir a<div class="langs-check" id="edit-targets"></div></div>
+        <label class="field">Modo de traducción de subtítulos<select name="translation">
+          <option value="">Por defecto del servidor</option>
+          <option value="text">Texto (frase a frase · menor latencia · 1 sesión Live por sala)</option>
+          <option value="live">Live (speech-to-speech de Gemini · 1 sesión por idioma)</option>
+          <option value="hybrid">Híbrido (subtítulos por texto + voz traducida en todos los idiomas)</option>
+        </select></label>
+        <label class="row muted"><input type="checkbox" name="musicGuard" checked /> Pausar los subtítulos cuando suena música (entre charlas, videos)</label>
+        <div class="u-stack8">
+          <label class="row muted"><input type="checkbox" name="roomSound" /> El sonido de la sala en los celulares (escucha asistida)</label>
+          <p data-help>Para quien usa audífonos: escucha la sala en su celular (Original → Escuchar). Quien tenga el enlace la escucha aunque no esté en la sala: activalo solo si lo que se dice es público.</p>
+          <label class="field">Máximo de personas escuchando a la vez<input name="roomSoundMax" type="number" min="1" max="5000" step="1" inputmode="numeric" placeholder="100" /></label>
+        </div>
+        <label class="field">Vocabulario de la sala<textarea name="vocabulary" rows="2" aria-describedby="vocab-hint" placeholder="María José Fernández, OpenCaptions, WCAG"></textarea></label>
+        <p class="muted-note u-m0" id="vocab-hint">Nombres y términos de esta sala, separados por comas. Se suman al glosario.</p>
+        <div class="rowbar"><button type="button" class="danger" id="room-del" data-setup>Eliminar la sala</button><span class="spacer"></span><button class="primary" data-icon="check" data-setup>Guardar</button></div>
+      </form>
+        </div>
       </section>
 
       <!-- TRANSCRIPTS -->
@@ -389,7 +448,7 @@
         <div class="tools">
           <a class="card tool" href="#agenda"><b data-icon="calendar">Sessionize y calendarios</b><span>Importá la agenda desde Sessionize o un enlace de calendario (Google, Outlook).</span></a>
           <a class="card tool" href="#settings"><b data-icon="alert">ntfy, Telegram, Slack, Discord</b><span>Alertas al celular del equipo cuando algo necesita atención (Ajustes → Alertas).</span></a>
-          <a class="card tool" href="#screens"><b data-icon="monitor">OBS y vMix</b><span>Overlay transparente para el streaming, y audio por RTMP o SRT.</span></a>
+          <a class="card tool" href="#rooms"><b data-icon="monitor">OBS y vMix</b><span>Overlay transparente para el streaming, y audio por RTMP o SRT.</span></a>
           <a class="card tool" href="https://github.com/carraroesteban/opencaptions/blob/main/docs/security-guide.md#company-sign-in" target="_blank" rel="noopener"><b data-icon="shield">Google y Microsoft</b><span>Inicio de sesión con las cuentas de la empresa (OpenID Connect).</span></a>
         </div>
         <h2 class="sec">En la nube, en minutos</h2>
@@ -553,36 +612,6 @@
     <label class="field">Escenas de pausa (palabras separadas por comas)<input name="scenes" autocomplete="off" spellcheck="false" /></label>
     <p class="muted-note u-m0 u-bad" id="sw-err" role="alert"></p>
     <div class="dlg-actions"><button value="cancel" formnovalidate>Cancelar</button><button class="primary" value="ok" data-icon="link">Conectar</button></div>
-  </form></dialog>
-  <dialog id="dlg-edit" class="panel" aria-labelledby="edit-title"><form method="dialog" id="f-edit" class="u-stack12">
-    <div class="panel-head"><h3 class="u-m0" id="edit-title">Sala</h3><button value="cancel" formnovalidate class="set-x" aria-label="Cerrar sin guardar" data-icon="x"></button></div>
-    <div class="row u-stretch">
-      <label class="field u-grow">ID<input name="id" required pattern="[a-z0-9_-]+" /></label>
-      <label class="field u-grow2">Nombre<input name="name" required /></label>
-    </div>
-    <label class="field">Idioma de la charla<select name="source"><option value="auto">Detectar automáticamente</option></select></label>
-    <div class="field">Traducir a<div class="langs-check" id="edit-targets"></div></div>
-    <label class="field">Modo de traducción de subtítulos<select name="translation">
-      <option value="">Por defecto del servidor</option>
-      <option value="text">Texto (frase a frase · menor latencia · 1 sesión Live por sala)</option>
-      <option value="live">Live (speech-to-speech de Gemini · 1 sesión por idioma)</option>
-      <option value="hybrid">Híbrido (subtítulos por texto + voz traducida en todos los idiomas)</option>
-    </select></label>
-    <fieldset class="field u-stack8"><legend>Sonido</legend>
-      <p data-help>Con un micrófono en la computadora junto al escenario, abrí ahí la página de sonido de la sala. Desde OBS o vMix, creá una dirección y pegala en el programa de streaming.</p>
-      <div class="rowbar"><a id="edit-ingest" target="_blank" class="hidden"><button type="button" tabindex="-1" data-icon="mic">Abrir la página de sonido</button></a><button type="button" data-addr="rtmp" data-icon="link" data-setup>Dirección RTMP (OBS, vMix)</button><button type="button" data-addr="srt" data-icon="link" data-setup>Dirección SRT</button></div>
-      <div id="edit-addr" class="u-stack8" data-no-i18n></div>
-      <label class="field">Sonido desde un stream o un archivo (opcional)<input name="pull" aria-describedby="pull-hint" placeholder="rtmp://0.0.0.0:1935/live/sala1  ·  srt://0.0.0.0:9001?mode=listener  ·  https://…/stream.m3u8  ·  samples/charla.mp3" /></label>
-      <p class="muted-note u-m0" id="pull-hint">Vacío si el sonido llega por la página de sonido de la sala.</p>
-    </fieldset>
-    <label class="row muted"><input type="checkbox" name="musicGuard" checked /> Pausar los subtítulos cuando suena música (entre charlas, videos)</label>
-    <div class="u-stack8">
-      <label class="row muted"><input type="checkbox" name="roomSound" /> El sonido de la sala en los celulares (escucha asistida)</label>
-      <p class="muted-note u-m0">Para quien usa audífonos: escucha la sala en su celular (Original → Escuchar). Quien tenga el enlace la escucha aunque no esté en la sala: activalo solo si lo que se dice es público.</p>
-      <label class="field">Máximo de personas escuchando a la vez<input name="roomSoundMax" type="number" min="1" max="5000" step="1" inputmode="numeric" placeholder="100" /></label>
-    </div>
-    <label class="row muted"><input type="checkbox" name="loop" /> Repetir en loop (archivos de prueba)</label>
-    <div class="dlg-actions panel-foot"><button value="cancel" formnovalidate>Cancelar</button><button class="primary" value="ok" data-icon="check">Guardar</button></div>
   </form></dialog>
 
   <dialog id="dlg-confirm"><form method="dialog">

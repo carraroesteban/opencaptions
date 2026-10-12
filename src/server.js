@@ -741,7 +741,7 @@ app.post('/api/ingest/ticket', need('ingest'), (req, res) => {
   res.json({ ticket, expiresIn: 60 });
 });
 const useTicket = (t) => { const ok = !!t && (tickets.get(t) || 0) > Date.now(); tickets.delete(t); return ok; };
-// A room link (Screens and QR, the setup wizard): /ingest.html?stage=…&link=<code>. Opening it signs that one browser
+// A room link (a room's Sound section, the setup wizard): /ingest.html?stage=…&link=<code>. Opening it signs that one browser
 // in to send audio and nothing else (an 'ingest' session, listed in Settings → Security), so nobody has to find the
 // room-computer password. The code works once, for 30 minutes, and only its hash is kept. A browser that can already
 // send audio (the server computer, a signed-in dashboard) doesn't use it up.
@@ -764,7 +764,7 @@ app.post('/api/ingest/link/use', (req, res) => {
   roomLinks.delete(h);
   if (!l || l.expires < Date.now()) {
     if (!noteAuthFailure(req)) return res.set('Retry-After', '600').status(429).json({ error: 'too many failed attempts: wait 10 minutes' });
-    return res.status(401).json({ error: 'This link was already used or is more than 30 minutes old. Make a new one in the dashboard: Screens and QR → Computer next to the stage.' });
+    return res.status(401).json({ error: 'This link was already used or is more than 30 minutes old. Make a new one in the dashboard: the room → Sound.' });
   }
   const name = stages.get(l.stage)?.def.name || l.stage;
   const { cookie } = createSession({ role: 'ingest', device: `Room computer · ${name}`, via: 'link' }, req);
@@ -1773,7 +1773,7 @@ server.listen(config.port, config.host, () => {
     tty.table([
       ['Admin token', `${tokens.admin}  ${tty.c.gray(`dashboard, everything${twoFactorOn() ? ' · plus a two-factor code' : ''}${tokens.adminGenerated ? ` · generated, kept in ${config.fresh ? 'the temporary folder' : 'data/secrets.json'}` : ''}`)}`],
       ['Crew token', `${tokens.crew}  ${tty.c.gray('dashboard, live controls only: for the crew')}`],
-      ['Ingest token', `${tokens.ingest}  ${tty.c.gray('room computers sending audio · easier: a one-time link from Dashboard → Screens and QR')}`],
+      ['Ingest token', `${tokens.ingest}  ${tty.c.gray('room computers sending audio · easier: a one-time link from Dashboard → the room → Sound')}`],
     ]);
     // Docker: the browser on the host counts as another device, so hand over a link that signs in directly.
     if (process.env.OC_DOCKER) console.log(`\n${tty.sym.arrow} Open the dashboard: ${config.publicUrl || 'http://localhost:8080'}/admin.html?token=${tokens.admin}`);

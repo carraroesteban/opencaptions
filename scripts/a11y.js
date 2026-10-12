@@ -28,7 +28,7 @@ if (!CHROME) { tty.fail('Chrome not found: set CHROME=/path/to/chrome'); process
 
 const PAGES = [
   '/', '/watch.html?stage=main', '/talk.html?stage=main', '/talks.html', '/screen.html?stage=main', '/overlay.html?stage=main&bg=ink',
-  '/admin.html?dashboard', '/admin.html?dashboard#rooms', '/admin.html?dashboard#agenda', '/admin.html?dashboard#integrations', '/admin.html?dashboard#transcripts', '/admin.html?dashboard#transcripts?record', '/admin.html?dashboard#settings', '/admin.html?dashboard#settings/ai', '/admin.html?dashboard#settings/security', '/admin.html?dashboard#settings/alerts', '/admin.html?dashboard#rooms/main', '/admin.html?dashboard#live/main', '/welcome.html', '/welcome.html#rooms', '/welcome.html#audio', '/me.html', '/me.html?step=lang', '/me.html?step=sound', '/me.html?step=captions',
+  '/admin.html?dashboard', '/admin.html?dashboard#rooms', '/admin.html?dashboard#agenda', '/admin.html?dashboard#integrations', '/admin.html?dashboard#transcripts', '/admin.html?dashboard#transcripts?record', '/admin.html?dashboard#settings', '/admin.html?dashboard#settings/ai', '/admin.html?dashboard#settings/security', '/admin.html?dashboard#settings/alerts', '/admin.html?dashboard#room/main', '/admin.html?dashboard#room/main/screens', '/admin.html?dashboard#room/main/sound', '/admin.html?dashboard#room/main/settings', '/welcome.html', '/welcome.html#rooms', '/welcome.html#audio', '/me.html', '/me.html?step=lang', '/me.html?step=sound', '/me.html?step=captions',
   '/ingest.html', '/demo.html', '/kit.html', '/style.html', '/report.html',
 ].filter((p) => p.includes(only));
 
