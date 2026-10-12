@@ -1,5 +1,5 @@
 // welcome.html: page script (kept out of the HTML so the Content-Security-Policy can forbid inline scripts).
-import { esc, store, LISTEN, listenPort, freeListenPort, serverHost } from '/common.js';
+import { esc, store, LISTEN, listenPort, freeListenPort, serverHost, copyText } from '/common.js';
 import { prefsControls, LANG } from '/i18n.js';
 import { icon } from '/illustrations.js';
 import { ensureSignedIn, signInScreen } from '/signin.js';
@@ -414,7 +414,7 @@ $('audio').addEventListener('click', async (e) => {
   if (b.dataset.room) { soundRoom = b.dataset.room; pickProto(); return renderSound(); }
   if (b.dataset.proto) { proto = b.dataset.proto; return renderSound(); }
   if (b.dataset.copy) {
-    try { await navigator.clipboard.writeText(b.dataset.copy); b.textContent = t.copied; setTimeout(() => { b.textContent = t.copy; }, 1500); } catch { b.previousElementSibling?.select(); }
+    try { await copyText(b.dataset.copy); b.textContent = t.copied; setTimeout(() => { b.textContent = t.copy; }, 1500); } catch { b.previousElementSibling?.select(); }
     return;
   }
   if (!b.dataset.sound) return; // the buttons inside links just open them

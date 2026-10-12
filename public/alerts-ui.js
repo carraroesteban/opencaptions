@@ -3,7 +3,7 @@
 // not); a destination is set up in its own dialog, with room for its steps, and tested right after it's saved.
 // ntfy is the easy one: a free app, no account, a topic name generated here.
 import { LANG } from '/i18n.js';
-import { esc } from '/common.js';
+import { esc, copyText } from '/common.js';
 import { icon } from '/illustrations.js';
 
 const T = {
@@ -194,7 +194,7 @@ export function alertsPanel(el, { api, toast }) {
     if (e.target === dlg) return dlg.close(); // a click on the backdrop
     const a = /** @type {HTMLElement} */ (e.target).closest('[data-a]')?.getAttribute('data-a');
     if (a === 'copy') {
-      await navigator.clipboard.writeText(dlg.querySelector('[data-topic]').textContent).catch(() => {});
+      await copyText(dlg.querySelector('[data-topic]').textContent).catch(() => {});
       const s = dlg.querySelector('[data-a="copy"] span'); s.textContent = t.copied; setTimeout(() => (s.textContent = t.copy), 1500);
     }
     if (a === 'remove') {

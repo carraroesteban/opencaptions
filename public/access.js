@@ -1,7 +1,7 @@
 // Settings → Security (admins only): signed-in devices, the three passwords, two-factor sign-in and company sign-in.
 // Server side: src/auth.js and the /api/auth/* endpoints. Passwords are never shown, except a new one, once.
 import { LANG } from '/i18n.js';
-import { esc } from '/common.js';
+import { esc, copyText } from '/common.js';
 import { icon } from '/illustrations.js';
 
 const T = {
@@ -19,7 +19,7 @@ const T = {
     passwords: 'Contraseñas',
     pwAdmin: 'Administración', pwAdminD: 'Todo el panel, incluida la configuración.',
     pwCrew: 'Equipo', pwCrewD: 'Solo los controles en vivo: siguiente charla, renombrar, reconectar. Dásela a voluntarios y técnicos.',
-    pwIngest: 'Computadoras de las salas', pwIngestD: 'Para enviar el sonido de cada sala. No abre el panel. Más fácil: un enlace para cada computadora, desde Pantallas y QR.',
+    pwIngest: 'Computadoras de las salas', pwIngestD: 'Para enviar el sonido de cada sala. No abre el panel. Más fácil: un enlace para cada computadora, desde la sala → Sonido.',
     change: 'Cambiar', fromEnv: 'definida en .env',
     changeAsk: (w) => `¿Cambiar la contraseña de ${w}? La actual deja de funcionar y se cierran las sesiones que la usaron.`,
     newPw: 'Nueva contraseña. Copiala ahora: no se vuelve a mostrar.', copy: 'Copiar', copied: 'Copiada',
@@ -55,7 +55,7 @@ const T = {
     passwords: 'Passwords',
     pwAdmin: 'Admin', pwAdminD: 'The whole dashboard, setup included.',
     pwCrew: 'Crew', pwCrewD: 'Live controls only: next talk, rename, reconnect. Give it to volunteers and technicians.',
-    pwIngest: 'Room computers', pwIngestD: 'For sending each room’s sound. It doesn’t open the dashboard. Easier: a link for each computer, from Screens and QR.',
+    pwIngest: 'Room computers', pwIngestD: 'For sending each room’s sound. It doesn’t open the dashboard. Easier: a link for each computer, from the room → Sound.',
     change: 'Change', fromEnv: 'set in .env',
     changeAsk: (w) => `Change the ${w} password? The current one stops working, and devices signed in with it are signed out.`,
     newPw: 'New password. Copy it now: it won’t be shown again.', copy: 'Copy', copied: 'Copied',
@@ -152,7 +152,7 @@ export function accessPanel(el, { api, confirm, toast, me }) {
         reveal = { which: b.dataset.which, value: r.password };
         await load();
       }
-      if (a === 'copy') { await navigator.clipboard.writeText(reveal.value).catch(() => {}); b.textContent = t.copied; }
+      if (a === 'copy') { await copyText(reveal.value).catch(() => {}); b.textContent = t.copied; }
       if (a === 'tfa-on') { tfa = await api('POST', '/api/auth/2fa/start'); render(); el.querySelector('[data-ax=confirm] input')?.focus(); }
       if (a === 'tfa-off') { tfa = 'off'; render(); el.querySelector('[data-ax=disable] input')?.focus(); }
       if (a === 'cancel') { tfa = null; render(); }

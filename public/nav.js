@@ -8,31 +8,33 @@ import { icon } from '/illustrations.js';
 
 const T = {
   es: {
-    views: { live: 'En vivo', rooms: 'Salas', agenda: 'Agenda', glossary: 'Glosario', screens: 'Pantallas y QR', integrations: 'Integraciones', transcripts: 'Transcripciones', history: 'Historial', settings: 'Ajustes' },
+    views: { live: 'En vivo', rooms: 'Salas', agenda: 'Agenda', glossary: 'Glosario', integrations: 'Integraciones', transcripts: 'Transcripciones', history: 'Historial', settings: 'Ajustes' },
     panes: { general: 'General', ai: 'IA', address: 'Dirección pública', security: 'Seguridad', alerts: 'Alertas' },
     pages: [['dashboard', 'Informe del evento', '/report.html'], ['wand', 'Configurar el evento', '/welcome.html'], ['book', 'Biblioteca de transcripciones', '/talks.html'], ['qr', 'Kit de QR', '/kit.html'], ['palette', 'Estilo de subtítulos', '/style.html'], ['mic', 'Prueba de sonido', '/demo.html?mode=mic']],
     state: { live: 'en vivo', pause: 'en pausa', off: 'sin sonido', bad: 'necesita atención' },
     home: 'Panel', sections: 'Secciones', rooms: 'Salas', menu: 'Menú', back: 'Atrás', here: 'Estás en', help: 'Ayuda',
-    search: 'Buscar', jump: 'Ir a', jumpPh: 'Una sala, una página o un ajuste', page: 'Página', roomSet: 'Ajustes de la sala', recent: 'Recientes',
-    focus: 'Ver en vivo', sound: 'Página de sonido', screen: 'Pantalla del escenario', audience: 'Subtítulos en el celular', qr: 'Cartel con QR', newRoom: 'Nueva sala',
-    keys: 'Atajos de teclado', toggle: 'Mostrar u ocultar el menú', menuKey: 'Menú de una sala (o clic derecho)', closeMenu: 'Cerrar el menú', move: 'moverse', open: 'abrir', close: 'Cerrar',
+    search: 'Buscar', jump: 'Ir a', jumpPh: 'Una sala, una página o un ajuste', page: 'Página', roomSet: 'Ajustes de la sala', roomTabs: { live: 'En vivo', screens: 'Pantallas y QR', sound: 'Sonido', settings: 'Ajustes' }, room: 'Abrir la sala', recent: 'Recientes',
+    sound: 'Página de sonido', screen: 'Pantalla del escenario', audience: 'Subtítulos en el celular', qr: 'Cartel con QR', newRoom: 'Nueva sala',
+    keys: 'Atajos de teclado', toggle: 'Mostrar u ocultar el menú', collapse: 'Contraer el menú', menuKey: 'Menú de una sala (o clic derecho)', closeMenu: 'Cerrar el menú', move: 'moverse', open: 'abrir', close: 'Cerrar',
     found: (n) => (n ? `${n} ${n === 1 ? 'resultado' : 'resultados'}` : 'Nada coincide'),
   },
   en: {
-    views: { live: 'Live', rooms: 'Rooms', agenda: 'Agenda', glossary: 'Glossary', screens: 'Screens and QR', integrations: 'Integrations', transcripts: 'Transcripts', history: 'History', settings: 'Settings' },
+    views: { live: 'Live', rooms: 'Rooms', agenda: 'Agenda', glossary: 'Glossary', integrations: 'Integrations', transcripts: 'Transcripts', history: 'History', settings: 'Settings' },
     panes: { general: 'General', ai: 'AI', address: 'Public address', security: 'Security', alerts: 'Alerts' },
     pages: [['dashboard', 'Event report', '/report.html'], ['wand', 'Set up the event', '/welcome.html'], ['book', 'Transcript library', '/talks.html'], ['qr', 'QR kit', '/kit.html'], ['palette', 'Caption style', '/style.html'], ['mic', 'Sound check', '/demo.html?mode=mic']],
     state: { live: 'live', pause: 'paused', off: 'no sound', bad: 'needs attention' },
     home: 'Dashboard', sections: 'Sections', rooms: 'Rooms', menu: 'Menu', back: 'Back', here: 'You are here', help: 'Help',
-    search: 'Search', jump: 'Go to', jumpPh: 'A room, a page or a setting', page: 'Page', roomSet: 'Room settings', recent: 'Recent',
-    focus: 'Watch live', sound: 'Sound page', screen: 'Stage screen', audience: 'Captions on phones', qr: 'QR poster', newRoom: 'New room',
-    keys: 'Keyboard shortcuts', toggle: 'Show or hide the menu', menuKey: 'A room’s menu (or right-click)', closeMenu: 'Close the menu', move: 'move', open: 'open', close: 'Close',
+    search: 'Search', jump: 'Go to', jumpPh: 'A room, a page or a setting', page: 'Page', roomSet: 'Room settings', roomTabs: { live: 'Live', screens: 'Screens & QR', sound: 'Sound', settings: 'Settings' }, room: 'Open the room', recent: 'Recent',
+    sound: 'Sound page', screen: 'Stage screen', audience: 'Captions on phones', qr: 'QR poster', newRoom: 'New room',
+    keys: 'Keyboard shortcuts', toggle: 'Show or hide the menu', collapse: 'Collapse the menu', menuKey: 'A room’s menu (or right-click)', closeMenu: 'Close the menu', move: 'move', open: 'open', close: 'Close',
     found: (n) => (n ? `${n} ${n === 1 ? 'result' : 'results'}` : 'Nothing matches'),
   },
 };
 const L = T[LANG] || T.en;
 // [view, icon, admin only]; null is a divider
-const VIEWS = [['live', 'play'], ['rooms', 'dashboard', 1], ['agenda', 'calendar', 1], ['glossary', 'book', 1], ['screens', 'qr'], ['integrations', 'link', 1], ['transcripts', 'doc'], null, ['history', 'refresh'], ['settings', 'gear', 1]];
+// Settings isn't in the list: it's always the sidebar's last item, at the bottom.
+const VIEWS = [['live', 'play'], ['rooms', 'dashboard', 1], ['agenda', 'calendar', 1], ['glossary', 'book', 1], ['integrations', 'link', 1], ['transcripts', 'doc'], ['history', 'refresh']];
+const SETTINGS = ['settings', 'gear', 1];
 const onAdmin = location.pathname === '/admin.html';
 const to = (hash) => (onAdmin ? hash : `/admin.html${hash}`); // on the dashboard itself, only the #hash changes
 const MAC = /Mac|iP(hone|ad|od)/.test(navigator.platform);
@@ -41,6 +43,7 @@ const fold = (x) => x.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase();
 const $ = (id) => document.getElementById(id);
 const crew = () => document.body.classList.contains('role-crew');
 
+const link = (v) => `<a href="${to(`#${v[0]}`)}" data-view="${v[0]}"${v[2] ? ' data-admin' : ''}>${icon(v[1])}<span class="lbl">${L.views[v[0]]}</span></a>`;
 let crumbs = [];
 let rooms = [];
 let currentRoom = '';
@@ -56,14 +59,20 @@ export function mountNav({ current = '', crumbs: c = [] } = {}) {
     document.body.prepend(side);
   }
   document.body.classList.add('has-side');
-  side.insertAdjacentHTML('afterbegin', `<button type="button" class="nav-btn side-close" id="side-close" aria-label="${L.closeMenu}" title="${L.closeMenu}">${icon('x')}</button>`);
+  // The top row: the logo and the button that collapses the sidebar to icons (on a phone, closes the menu).
+  const top = document.createElement('div');
+  top.className = 'side-top';
+  side.querySelector('.brand').before(top);
+  top.append(side.querySelector('.brand'));
+  top.insertAdjacentHTML('beforeend', `<button type="button" class="nav-btn" id="side-toggle" aria-controls="side">${icon('menu')}</button>`);
   const block = document.createElement('div');
   block.className = 'side-main';
   block.dataset.noI18n = '';
   block.innerHTML = `<button type="button" class="side-jump" id="side-jump" aria-keyshortcuts="${MAC ? 'Meta+K' : 'Control+K'}">${icon('search')}<span class="lbl">${L.search}</span><kbd aria-hidden="true">${MAC ? '⌘K' : 'Ctrl K'}</kbd></button>
-    <nav id="nav" aria-label="${L.sections}">${VIEWS.map((v) => (v ? `<a href="${to(`#${v[0]}`)}" data-view="${v[0]}"${v[2] ? ' data-admin' : ''}>${icon(v[1])}<span class="lbl">${L.views[v[0]]}</span></a>` : '<span class="sep"></span>')).join('')}
-      <h2 class="side-h hidden" id="side-rooms-h">${L.rooms}</h2><ul class="side-rooms" id="side-rooms" aria-labelledby="side-rooms-h"></ul></nav>`;
+    <nav id="nav" aria-label="${L.sections}"><h2 class="side-h hidden" id="side-rooms-h">${L.rooms}</h2><ul class="side-rooms" id="side-rooms" aria-labelledby="side-rooms-h"></ul>
+      <span class="sep"></span>${VIEWS.map(link).join('')}</nav>`;
   side.querySelector('.foot') ? side.querySelector('.foot').before(block) : side.append(block);
+  side.insertAdjacentHTML('beforeend', `<nav class="side-last" aria-label="${L.views.settings}">${link(SETTINGS)}</nav>`);
   setCurrent(current);
 
   const bar = $('crumbbar');
@@ -72,7 +81,7 @@ export function mountNav({ current = '', crumbs: c = [] } = {}) {
     <nav aria-label="${L.here}" data-no-i18n><ol class="crumbs" id="crumbs"></ol></nav><span class="spacer"></span>`);
   $('nav-menu')?.addEventListener('click', toggleMenu);
   $('nav-back')?.addEventListener('click', goBack);
-  $('side-close').onclick = () => { openMenu(false); $('nav-menu')?.focus(); };
+  $('side-toggle').onclick = () => { if (!phone.matches) return toggleMenu(); openMenu(false); $('nav-menu')?.focus(); };
   side.addEventListener('click', (e) => { if (phone.matches && e.target.closest('a')) openMenu(false); });
   side.addEventListener('keydown', (e) => { if (e.key === 'Escape' && phone.matches && document.body.classList.contains('nav-open')) { openMenu(false); $('nav-menu')?.focus(); } });
   phone.addEventListener('change', syncMenu);
@@ -84,7 +93,7 @@ export function mountNav({ current = '', crumbs: c = [] } = {}) {
   $('side-jump').onclick = openJump;
   addEventListener('keydown', onKey);
   mountRoomMenu();
-  side.addEventListener('click', (e) => remember(e.target.closest('#nav a')?.getAttribute('href')));
+  side.addEventListener('click', (e) => remember(e.target.closest('#side nav a')?.getAttribute('href')));
   // Other pages ask for the rooms once; the dashboard passes them in on every update (setRooms).
   if (!onAdmin) fetch('/api/status').then((r) => (r.ok ? r.json() : null)).then((s) => s && setRooms(s.stages)).catch(() => {});
   mountHelp();
@@ -92,8 +101,8 @@ export function mountNav({ current = '', crumbs: c = [] } = {}) {
 
 /** Marks the current section in the sidebar (a view name, '' for none) and, with a room, that room. */
 export function setCurrent(view, room = '') {
-  for (const a of document.querySelectorAll('#nav a[data-view]')) a.toggleAttribute('aria-current', !room && a.dataset.view === view);
-  for (const a of document.querySelectorAll('#nav a[aria-current]')) a.setAttribute('aria-current', 'page');
+  for (const a of document.querySelectorAll('#side a[data-view]')) a.toggleAttribute('aria-current', !room && a.dataset.view === view);
+  for (const a of document.querySelectorAll('#side a[data-view][aria-current]')) a.setAttribute('aria-current', 'page');
   for (const a of document.querySelectorAll('#side-rooms a')) a.toggleAttribute('aria-current', a.dataset.room === room);
   for (const a of document.querySelectorAll('#side-rooms a[aria-current]')) a.setAttribute('aria-current', 'page');
   currentRoom = room;
@@ -115,6 +124,10 @@ function openMenu(on) {
 function syncMenu() {
   const open = phone.matches ? document.body.classList.contains('nav-open') : !document.body.classList.contains('rail');
   $('nav-menu')?.setAttribute('aria-expanded', String(open));
+  const tl = phone.matches ? L.closeMenu : open ? L.collapse : L.toggle;
+  $('side-toggle').setAttribute('aria-label', tl);
+  $('side-toggle').title = tl;
+  $('side-toggle').setAttribute('aria-expanded', String(open));
   // Icons only: a tooltip with each label (screen readers still read the label itself).
   for (const a of $('side').querySelectorAll('a, .side-jump')) {
     const lbl = a.querySelector('.lbl')?.textContent.trim();
@@ -123,7 +136,9 @@ function syncMenu() {
 }
 
 // ---------- rooms as channels ----------
-const stateOf = (st) => (st.alerts?.some((a) => a !== 'no-ingest') || st.dueTalk ? 'bad' : !st.ingest ? 'off' : st.engines?.length && !st.gated ? 'live' : 'pause');
+/** A room's state for its dot: live, pause, off (no sound) or bad (needs attention), and how to say it. */
+export const stateOf = (st) => (st.alerts?.some((a) => a !== 'no-ingest') || st.dueTalk ? 'bad' : !st.ingest ? 'off' : st.engines?.length && !st.gated ? 'live' : 'pause');
+export const stateLabel = (state) => L.state[state];
 const initials = (name) => name.split(/\s+/).filter((w) => /\p{L}|\d/u.test(w[0] || '')).slice(0, 2).map((w) => w[0]).join('').toUpperCase() || '·';
 let roomsKey = '';
 /** The rooms in the sidebar, each with its status dot: [{ id, name, alerts, ingest, engines, gated, dueTalk }] as /api/status gives them. */
@@ -136,8 +151,8 @@ export function setRooms(stages = []) {
   if (!ul) return;
   const had = document.activeElement?.closest('#side-rooms a')?.dataset.room;
   $('side-rooms-h').classList.toggle('hidden', !rooms.length);
-  ul.innerHTML = rooms.map((r) => `<li><a href="${to(`#live/${encodeURIComponent(r.id)}`)}" data-room="${esc(r.id)}"><span class="ini" aria-hidden="true">${esc(initials(r.name))}<i class="dot ${r.state}"></i></span><span class="lbl">${esc(r.name)}<span class="sr-only">, ${L.state[r.state]}</span></span>${r.state === 'bad' ? '<span class="n" aria-hidden="true">!</span>' : ''}</a></li>`).join('');
-  setCurrent(document.querySelector('#nav a[aria-current]')?.dataset.view || '', currentRoom);
+  ul.innerHTML = rooms.map((r) => `<li><a href="${to(`#room/${encodeURIComponent(r.id)}`)}" data-room="${esc(r.id)}"><span class="ini" aria-hidden="true">${esc(initials(r.name))}<i class="dot ${r.state}"></i></span><span class="lbl">${esc(r.name)}<span class="sr-only">, ${L.state[r.state]}</span></span>${r.state === 'bad' ? '<span class="n" aria-hidden="true">!</span>' : ''}</a></li>`).join('');
+  setCurrent(document.querySelector('#side a[data-view][aria-current]')?.dataset.view || '', currentRoom);
   syncMenu();
   if (had) ul.querySelector(`a[data-room="${CSS.escape(had)}"]`)?.focus();
 }
@@ -173,12 +188,13 @@ export const viewCrumb = (view) => ({ label: L.views[view], href: to(`#${view}`)
 function roomActions(r) {
   const id = encodeURIComponent(r.id);
   return [
-    { ic: 'play', label: L.focus, href: to(`#live/${id}`) },
-    { ic: 'gear', label: L.roomSet, href: to(`#rooms/${id}`), admin: 1 },
+    { ic: 'play', label: L.room, href: to(`#room/${id}`) },
+    { ic: 'qr', label: L.roomTabs.screens, href: to(`#room/${id}/screens`) },
+    { ic: 'gear', label: L.roomSet, href: to(`#room/${id}/settings`), admin: 1 },
     { ic: 'mic', label: L.sound, href: `/ingest.html?stage=${id}`, blank: 1 },
     { ic: 'monitor', label: L.screen, href: `/screen.html?stage=${id}`, blank: 1 },
     { ic: 'phone', label: L.audience, href: `/watch.html?stage=${id}`, blank: 1 },
-    { ic: 'qr', label: L.qr, href: `/kit.html?stage=${id}` },
+    { ic: 'qr', label: L.qr, href: `/kit.html?stage=${id}`, blank: 1 },
     { ic: 'doc', label: L.views.transcripts, href: to(`#transcripts/${id}`) },
   ].filter((x) => !x.admin || !crew());
 }
@@ -230,7 +246,7 @@ const recent = () => store.get('nav.recent', []);
 const remember = (href) => { if (href) store.set('nav.recent', [href, ...recent().filter((h) => h !== href)].slice(0, 6)); };
 function items() {
   const admin = !crew();
-  const out = VIEWS.filter((v) => v && (admin || !v[2])).map(([v, ic]) => ({ ic, label: L.views[v], href: to(`#${v}`) }));
+  const out = [...VIEWS, SETTINGS].filter((v) => admin || !v[2]).map(([v, ic]) => ({ ic, label: L.views[v], href: to(`#${v}`) }));
   if (admin) out.push({ ic: 'plus', label: L.newRoom, sub: L.views.rooms, href: to('#rooms/new') });
   for (const r of rooms) for (const it of roomActions(r)) out.push({ ...it, label: r.name, sub: it.label, dot: r.state });
   if (admin) {
@@ -312,7 +328,7 @@ function pick(it) {
 
 // ---------- keyboard: shortcuts and their cheat sheet ("?") ----------
 // G then a letter, as in Gmail and Linear
-const GO = { l: 'live', r: 'rooms', a: 'agenda', g: 'glossary', s: 'screens', i: 'integrations', t: 'transcripts', h: 'history', ',': 'settings' };
+const GO = { l: 'live', r: 'rooms', a: 'agenda', g: 'glossary', i: 'integrations', t: 'transcripts', h: 'history', ',': 'settings' };
 const typing = (el) => el?.closest('input, textarea, select, [contenteditable]:not([contenteditable="false"])');
 let gAt = 0;
 function onKey(e) {
@@ -323,7 +339,7 @@ function onKey(e) {
   if (e.key === '?') { e.preventDefault(); return openKeys(); }
   if (e.key === '/') { e.preventDefault(); return openJump(); }
   if (Date.now() - gAt < 1200 && GO[e.key.toLowerCase()]) {
-    const v = VIEWS.find((x) => x && x[0] === GO[e.key.toLowerCase()]);
+    const v = [...VIEWS, SETTINGS].find((x) => x[0] === GO[e.key.toLowerCase()]);
     gAt = 0;
     if (v && (!v[2] || !crew())) location.href = to(`#${v[0]}`);
     return;
@@ -341,7 +357,7 @@ function openKeys() {
     const k = (...ks) => ks.map((x) => `<kbd>${x}</kbd>`).join(' ');
     const cmd = MAC ? '⌘' : 'Ctrl';
     const rows = [[k(cmd, 'K'), L.jump], [k('/'), L.jump], [k(cmd, '\\'), L.toggle], [k('?'), L.keys], [MAC ? k('⌘', '[') : k('Alt', '←'), L.back],
-      ...Object.entries(GO).filter(([, v]) => !crew() || !VIEWS.find((x) => x && x[0] === v)[2]).map(([key, v]) => [k('G', key === ',' ? ',' : key.toUpperCase()), L.views[v]]),
+      ...Object.entries(GO).filter(([, v]) => !crew() || ![...VIEWS, SETTINGS].find((x) => x[0] === v)[2]).map(([key, v]) => [k('G', key === ',' ? ',' : key.toUpperCase()), L.views[v]]),
       [k(MAC ? '⇧ F10' : 'Shift F10'), L.menuKey]];
     d.innerHTML = `<div class="keys-head"><h2 id="keys-h">${L.keys}</h2><button type="button" class="nav-btn" aria-label="${L.close}">${icon('x')}</button></div>
       <dl>${rows.map(([a, b]) => `<div><dt>${a}</dt><dd>${b}</dd></div>`).join('')}</dl>`;

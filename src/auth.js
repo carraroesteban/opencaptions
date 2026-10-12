@@ -9,7 +9,7 @@
 //     the browser an HttpOnly, SameSite=Strict cookie. The password itself is never kept in the browser or put in
 //     a link. Sessions expire (SESSION_HOURS, default 24), are listed in Settings → Security, and each one can be
 //     signed out;
-//   • a room link (Screens and QR, the setup wizard): a single-use code that signs one browser in to send a room's
+//   • a room link (a room's Sound section, the setup wizard): a single-use code that signs one browser in to send a room's
 //     audio and nothing else (a session with the 'ingest' role), so the room-computer password never has to travel;
 //   • a password in a header (Authorization: Bearer …) for scripts and room computers. The admin password is refused
 //     this way while two-factor sign-in is on: a leaked password alone must not be enough.

@@ -775,6 +775,7 @@ export class Stage extends EventEmitter {
       audioLangs: this.audioLangs,
       mt: Object.fromEntries(Object.entries(this.mtQ || {}).map(([k, q]) => [k, q.stats])),
       pull: this.def.pull || '',
+      vocabulary: this.def.vocabulary || [],
       loop: !!this.def.loop,
       musicGuard: this.def.musicGuard !== false,
       roomSound: !!this.def.roomSound,

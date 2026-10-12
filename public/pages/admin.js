@@ -1,11 +1,11 @@
 // admin.html: the production dashboard (kept out of the HTML so the Content-Security-Policy can forbid inline scripts).
 //
-// Views (sidebar): Live, Rooms, Agenda, Glossary, Screens and QR, Transcripts, History. Settings is a window over
-// them (#settings/<section>), and a room's settings a side panel (#rooms/<room>).
+// Views (sidebar): Live, Rooms, Agenda, Glossary, Integrations, Transcripts, History, and one page per room
+// (#room/<room>/<section>: Live, Screens & QR, Sound, Settings). Settings is a window over them (#settings/<section>).
 // Safety model: every setup change is recorded on the server and can be undone (History, and an Undo button
 // right after each change); deleted rooms go to a trash; Event mode locks the setup on the server, so nothing
 // here can delete or change the event's configuration by accident while it's live.
-import { qs, esc, store, wsUrl, Socket, langLabel, setAccent, LISTEN, listenPort, freeListenPort, serverHost } from '/common.js';
+import { qs, esc, store, copyText, wsUrl, Socket, langLabel, setAccent, LISTEN, listenPort, freeListenPort, serverHost } from '/common.js';
 import { localize, prefsControls, tr, LANG } from '/i18n.js';
 import { icon, mountIcons } from '/illustrations.js';
 import { ensureSignedIn, signInScreen, signOut } from '/signin.js';
@@ -14,7 +14,7 @@ import { alertsPanel } from '/alerts-ui.js';
 import { keyPanel, tunnelPanel, textApiPanel } from '/connect.js';
 import { localPanel } from '/local-mode.js';
 import { LANGUAGE_CATALOG } from '/languages.js';
-import { mountNav, setRooms, setCurrent, setCrumbs, home, viewCrumb, helpButton, addCommands } from '/nav.js';
+import { mountNav, setRooms, setCurrent, setCrumbs, home, viewCrumb, helpButton, addCommands, stateOf, stateLabel } from '/nav.js';
 
 const $ = (id) => document.getElementById(id);
 mountNav();
@@ -33,11 +33,12 @@ setAccent(ev.accent);
 let last = null;
 let locked = false;
 const logs = [];
-const VIEWS = isCrew ? ['live', 'screens', 'transcripts', 'history'] : ['live', 'rooms', 'agenda', 'glossary', 'screens', 'integrations', 'transcripts', 'history'];
+const VIEWS = isCrew ? ['live', 'room', 'transcripts', 'history'] : ['live', 'rooms', 'agenda', 'glossary', 'room', 'integrations', 'transcripts', 'history'];
+const TABS = isCrew ? ['live', 'screens', 'sound'] : ['live', 'screens', 'sound', 'settings'];
 let view = 'live';
 let focusRoom = '';
 const roomName = (id) => last?.stages.find((x) => x.id === id)?.name || ev.stages?.find((x) => x.id === id)?.name || id;
-let screensRoom = null;
+let roomTab = 'live';
 let txRoom = null;
 
 // Sentences with names and numbers in them, per language (the page translator only handles fixed strings).
@@ -106,10 +107,12 @@ const L = {
       'event.lock': (c) => (c.after ? 'Modo evento activado' : 'Modo evento desactivado'),
       'auth.link': (c) => `Enlace creado para la computadora de una sala (${c.after})`,
     },
-    fields: { name: 'nombre', source: 'idioma de la charla', targets: 'idiomas', translation: 'modo de traducción', pull: 'fuente de audio', loop: 'loop', musicGuard: 'pausa con música', roomSound: 'sonido de la sala', roomSoundMax: 'máximo de oyentes' },
+    fields: { name: 'nombre', source: 'idioma de la charla', targets: 'idiomas', translation: 'modo de traducción', pull: 'fuente de audio', loop: 'loop', musicGuard: 'pausa con música', roomSound: 'sonido de la sala', roomSoundMax: 'máximo de oyentes', vocabulary: 'vocabulario' },
     ai: { auto: 'Automática (nube + respaldo)', cloud: 'Siempre en la nube', local: 'Siempre esta computadora' },
     sys: (y, up) => `Encendido hace ${up} · CPU ${y.cpuPct} % · memoria ${y.rssMB} MB · event loop ${y.loopLagMs.p99} ms (p99)`,
-    audioNone: 'Sin sonido', copied: 'Copiado',
+    audioNone: 'Sin sonido', copied: 'Copiado', copyFail: 'No se pudo copiar: seleccioná el texto y copialo a mano.',
+    tabs: { live: 'En vivo', screens: 'Pantallas y QR', sound: 'Sonido', settings: 'Ajustes' }, rooms: 'Salas', noCaption: 'Sin subtítulos todavía',
+    copy: 'Copiar', open: 'Abrir', qrDl: 'Descargar el QR', poster: 'Cartel para imprimir',
     kinds: { browser: 'página de sonido', agent: 'agente de la sala', pull: 'stream o archivo', personal: 'esta computadora' }, audioStream: 'stream o archivo',
     linkMade: (hm) => `Sirve una vez, hasta las ${hm}. Solo deja enviar el sonido de esta sala: no hace falta contraseña.`, linkQr: 'QR del enlace para la computadora junto al escenario',
   },
@@ -180,7 +183,9 @@ const L = {
     fields: { name: 'name', source: 'talk language', targets: 'languages', translation: 'translation mode', pull: 'audio source', loop: 'loop', musicGuard: 'pause for music', roomSound: 'room sound', roomSoundMax: 'most listeners' },
     ai: { auto: 'Automatic (cloud + backup)', cloud: 'Always in the cloud', local: 'Always this computer' },
     sys: (y, up) => `Up for ${up} · CPU ${y.cpuPct}% · memory ${y.rssMB} MB · event loop ${y.loopLagMs.p99} ms (p99)`,
-    audioNone: 'No sound', copied: 'Copied',
+    audioNone: 'No sound', copied: 'Copied', copyFail: 'Couldn’t copy: select the text and copy it yourself.',
+    tabs: { live: 'Live', screens: 'Screens & QR', sound: 'Sound', settings: 'Settings' }, rooms: 'Rooms', noCaption: 'No captions yet',
+    copy: 'Copy', open: 'Open', qrDl: 'Download the QR', poster: 'Poster to print',
     kinds: { browser: 'sound page', agent: 'room agent', pull: 'stream or file', personal: 'this computer' }, audioStream: 'stream or file',
     linkMade: (hm) => `Works once, until ${hm}. It only lets that computer send this room’s sound: no password needed.`, linkQr: 'QR code of the link for the computer next to the stage',
   },
@@ -284,28 +289,46 @@ if (!isCrew) addCommands(() => [{ ic: 'lock', label: locked ? t.unlock : t.lockA
 $('lock2').onclick = toggleLock;
 
 // ---------- views ----------
+// Old addresses still work: #live/<room>, #screens/<room> and #rooms/<room> are now sections of the room's page.
+function oldHash(h, sub) {
+  if (h === 'rooms' && sub) return `#room/${sub}${sub === 'new' ? '' : '/settings'}`;
+  if (h === 'live' && sub) return `#room/${sub}`;
+  if (h === 'screens') return sub ? `#room/${sub}/screens` : '#rooms';
+  return '';
+}
+const gridHome = $('grid').nextElementSibling; // where the rooms' cards live on Live (a room's page borrows its card)
+let formRoom = null; // the room the Settings form was filled for, so live updates don't wipe what's being typed
 function go() {
-  const [h, sub] = location.hash.slice(1).split('?')[0].split('/');
+  let [h, sub, tab] = location.hash.slice(1).split('?')[0].split('/');
+  const moved = oldHash(h, sub);
+  if (moved) { history.replaceState(history.state, '', moved); [h, sub, tab] = moved.slice(1).split('/'); }
   if (h === 'settings' && !isCrew) {
     openSettings(sub);
     if (document.querySelector('.view.on')) return; // the view behind it stays as it was
   } else if ($('dlg-settings').open) $('dlg-settings').close();
-  if (h === 'rooms' && sub && !isCrew) openEdit(sub === 'new' ? null : decodeURIComponent(sub)); // #rooms/<room>: its panel
-  view = VIEWS.includes(h) ? h : 'live';
-  focusRoom = view === 'live' && sub ? decodeURIComponent(sub) : ''; // #live/<room>: that room alone, like a channel
-  const forRoom = sub && ['screens', 'transcripts'].includes(view) ? decodeURIComponent(sub) : ''; // #screens/<room>, #transcripts/<room>
-  if (forRoom && view === 'screens') screensRoom = forRoom;
-  if (forRoom && view === 'transcripts') txRoom = forRoom;
+  view = VIEWS.includes(h) && (h !== 'room' || sub) ? h : 'live';
+  focusRoom = view === 'room' ? decodeURIComponent(sub) : '';
+  const isNew = focusRoom === 'new' && !isCrew;
+  roomTab = isNew ? 'settings' : TABS.includes(tab) ? tab : 'live';
+  const forRoom = sub && view === 'transcripts' ? decodeURIComponent(sub) : ''; // #transcripts/<room>
+  if (forRoom) txRoom = forRoom;
   for (const s of document.querySelectorAll('.view')) s.classList.toggle('on', s.dataset.view === view);
-  document.querySelector('.view[data-view="live"]').classList.toggle('focus', !!focusRoom);
-  setCurrent(view, focusRoom);
-  const label = document.querySelector(`#nav a[data-view="${view}"] .lbl`).textContent;
-  $('view-title').textContent = focusRoom ? roomName(focusRoom) : label;
-  setCrumbs(view === 'live' && !focusRoom ? [home()] : forRoom ? [home(), viewCrumb(view), { label: roomName(forRoom) }] : [home(), { label: $('view-title').textContent }]);
+  setCurrent(view === 'room' ? 'rooms' : view, focusRoom);
+  const label = view === 'room' ? (isNew ? tr('Nueva sala') : roomName(focusRoom)) : document.querySelector(`#side a[data-view="${view}"] .lbl`).textContent;
+  $('view-title').textContent = label;
+  setCrumbs(view === 'live' ? [home()] : view === 'room' ? [home(), viewCrumb('rooms'), { label }] : forRoom ? [home(), viewCrumb(view), { label: roomName(forRoom) }] : [home(), { label }]);
   const help = $(`help-${view}`);
-  viewHelp.classList.toggle('hidden', !help || !!focusRoom);
+  viewHelp.classList.toggle('hidden', !help);
   if (help) viewHelp.setAttribute('popovertarget', help.id);
+  // A room's page: its sections as tabs, and its card from Live in the first one
+  if (view === 'room') $('room-live').append($('grid')); else gridHome.before($('grid'));
   for (const el of $('grid').querySelectorAll('.stage')) el.classList.toggle('hidden', !!focusRoom && el.dataset.id !== focusRoom);
+  if (view === 'room') {
+    const id = encodeURIComponent(focusRoom);
+    $('room-tabs').innerHTML = (isNew ? ['settings'] : TABS).map((k) => `<a href="#room/${id}/${k}"${k === roomTab ? ' aria-current="page"' : ''}>${esc(t.tabs[k])}</a>`).join('');
+    for (const p of document.querySelectorAll('.room-pane')) p.classList.toggle('on', p.dataset.tab === roomTab);
+    if (formRoom !== focusRoom && !isCrew) { formRoom = focusRoom; openEdit(isNew ? null : focusRoom); }
+  } else formRoom = null;
   setLocked(locked);
   refreshView();
   window.scrollTo(0, 0);
@@ -314,7 +337,7 @@ function refreshView() {
   if (view === 'rooms') loadRooms();
   else if (view === 'agenda') loadAgenda();
   else if (view === 'glossary') loadGlossary();
-  else if (view === 'screens') loadScreens();
+  else if (view === 'room' && focusRoom !== 'new') loadRoom(focusRoom);
   else if (view === 'integrations') { loadIntegrations(); loadSwitchers(); }
   else if (view === 'transcripts') loadTranscripts();
   else if (view === 'history') loadHistory();
@@ -357,7 +380,7 @@ const OB = {
     noKey: '<a href="#settings/ai">pegar la API key</a> · por ahora, subtítulos simulados',
     address: 'Dirección pública para los celulares', addressD: (u) => (u ? esc(u) : '<a href="#settings/address">crearla</a> (opcional con Wi-Fi compartido)'),
     rooms: 'Crear las salas', roomsD: (n) => `${n} ${n === 1 ? 'sala' : 'salas'} · <a href="#rooms">ver salas</a>`,
-    audio: 'Conectar el sonido de cada sala', audioD: (a, n, room) => `${a} de ${n} · <a href="#rooms/${room}">conectar</a>`,
+    audio: 'Conectar el sonido de cada sala', audioD: (a, n, room) => `${a} de ${n} · <a href="#room/${room}/sound">conectar</a>`,
     agenda: 'Cargar la agenda', agendaD: (n) => (n ? `${n} ${n === 1 ? 'charla cargada' : 'charlas cargadas'}` : '<a href="#agenda">pegarla</a> (opcional)'),
     kit: 'Imprimir los QR de cada sala', kitD: '<a href="/kit.html" target="_blank" data-ob="kit">abrir el kit de QR</a>',
     sound: 'Prueba de sonido en cada sala', soundD: '<a href="/demo.html?mode=mic" target="_blank" data-ob="sound">abrir la prueba de sonido</a>',
@@ -373,7 +396,7 @@ const OB = {
     noKey: '<a href="#settings/ai">paste the API key</a> · simulated captions until then',
     address: 'A public address for phones', addressD: (u) => (u ? esc(u) : '<a href="#settings/address">create it</a> (optional on a shared Wi-Fi)'),
     rooms: 'Create your rooms', roomsD: (n) => `${n} ${n === 1 ? 'room' : 'rooms'} · <a href="#rooms">see rooms</a>`,
-    audio: 'Connect each room’s sound', audioD: (a, n, room) => `${a} of ${n} · <a href="#rooms/${room}">connect</a>`,
+    audio: 'Connect each room’s sound', audioD: (a, n, room) => `${a} of ${n} · <a href="#room/${room}/sound">connect</a>`,
     agenda: 'Load the agenda', agendaD: (n) => (n ? `${n} ${n === 1 ? 'talk' : 'talks'} loaded` : '<a href="#agenda">paste it</a> (optional)'),
     kit: 'Print each room’s QR code', kitD: '<a href="/kit.html" target="_blank" data-ob="kit">open the QR kit</a>',
     sound: 'Sound check in every room', soundD: '<a href="/demo.html?mode=mic" target="_blank" data-ob="sound">open the sound check</a>',
@@ -498,7 +521,8 @@ function render(s) {
   navLive.querySelector('.n')?.remove();
   if (alerts) navLive.insertAdjacentHTML('beforeend', `<span class="n">${alerts}</span>`);
   setRooms(s.stages);
-  if (focusRoom && $('view-title').textContent !== roomName(focusRoom)) go(); // the room's name arrived, or it was renamed
+  if (view === 'room' && focusRoom !== 'new' && $('view-title').textContent !== roomName(focusRoom)) go(); // the room's name arrived, or it was renamed
+  if (view === 'rooms') renderRooms(s);
   renderGrid(s);
   renderMini(s);
 }
@@ -517,7 +541,7 @@ function renderGrid(s) {
       el.dataset.id = st.id;
       el.classList.toggle('hidden', !!focusRoom && st.id !== focusRoom);
       el.innerHTML = `
-        <div class="top"><h3 data-no-i18n></h3><span data-f="state"></span></div>
+        <div class="top"><h3 data-no-i18n><a href="#room/${encodeURIComponent(st.id)}"></a></h3><span data-f="state"></span></div>
         <div class="talkline" data-f="talkline" data-no-i18n></div>
         <div class="next" data-f="next" data-no-i18n></div>
         <div class="meter"><i data-f="lvl"></i><b data-f="pk"></b></div>
@@ -526,8 +550,8 @@ function renderGrid(s) {
           <p class="u-m0" data-f="nosound-pull"><b>Esperando el stream</b></p>
           <div class="row">
             <a href="/ingest.html?stage=${encodeURIComponent(st.id)}" target="_blank" data-f="nosound-open"><button type="button" class="primary" tabindex="-1">${icon('mic')}Abrir la página de sonido</button></a>
-            <button type="button" data-a="screens" data-f="nosound-link">${icon('link')}Enlace para otra computadora</button>
-            <a href="#rooms/${encodeURIComponent(st.id)}" data-f="nosound-addr" data-setup><button type="button" tabindex="-1">${icon('link')}Ver la dirección</button></a>
+            <a href="#room/${encodeURIComponent(st.id)}/sound" data-f="nosound-link"><button type="button" tabindex="-1">${icon('link')}Enlace para otra computadora</button></a>
+            <a href="#room/${encodeURIComponent(st.id)}/sound" data-f="nosound-addr" data-setup><button type="button" tabindex="-1">${icon('link')}Ver la dirección</button></a>
           </div>
         </div>
         <div class="said" data-f="said" data-no-i18n></div>
@@ -536,7 +560,7 @@ function renderGrid(s) {
         <div class="row" data-f="alerts"></div>
         <div class="actions">
           <button data-a="due" class="primary hidden"></button>
-          <button data-a="screens">${icon('qr')}Pantallas y QR</button>
+          <a href="#room/${encodeURIComponent(st.id)}/screens" class="on-live"><button type="button" tabindex="-1">${icon('qr')}Pantallas y QR</button></a>
           <button data-a="break" data-f="brk">${icon('pause')}<span>Pausa</span></button>
           <button data-a="next">${icon('next')}Siguiente charla</button>
           <button data-a="details" class="more" aria-expanded="false"><span>Ver detalles</span>${icon('chevron')}</button>
@@ -558,7 +582,7 @@ function renderGrid(s) {
       if (![...$('logfilter').options].some((o) => o.value === st.id)) $('logfilter').append(new Option(st.name, st.id));
     }
     const f = (k) => el.querySelector(`[data-f="${k}"]`);
-    el.querySelector('h3').textContent = st.name;
+    el.querySelector('h3 a').textContent = st.name;
     f('talkline').textContent = st.talk.title || t.noTalk;
     f('talkline').classList.toggle('none', !st.talk.title);
     const due = st.dueTalk;
@@ -647,9 +671,6 @@ $('grid').onclick = async (e) => {
   } else if (a === 'musicok') {
     await api('POST', `/api/stages/${id}/music`, { caption: true });
     toast(tr('Se subtitula igual hasta la próxima charla.'), { ms: 3000 });
-  } else if (a === 'screens') {
-    screensRoom = id;
-    location.hash = '#screens';
   } else if (a === 'due') {
     await api('POST', `/api/stages/${id}/talk`, { title: st.dueTalk.title, speaker: st.dueTalk.speaker || '' });
     toast(t.done, { ms: 3000 });
@@ -751,8 +772,7 @@ $('float').onclick = async () => {
     const r = e.target.closest('[data-id]');
     if (!r) return;
     window.focus();
-    location.hash = '#live';
-    $('grid').querySelector(`[data-id="${CSS.escape(r.dataset.id)}"]`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    location.hash = `#room/${encodeURIComponent(r.dataset.id)}`;
   };
   mini.addEventListener('pagehide', () => { mini = null; });
   if (last) renderMini(last);
@@ -770,42 +790,48 @@ function renderMini(s) {
   }).join('');
 }
 
-// ---------- Rooms ----------
+// ---------- Rooms: tiles (a dot and the live caption) or a list, remembered ----------
 let hist = { changes: [], trash: [] };
 async function loadRooms() {
-  ev = await (await fetch('/api/event')).json();
-  const status = last || (await api('GET', '/api/status'));
-  const byId = Object.fromEntries(status.stages.map((x) => [x.id, x]));
-  $('rooms-body').innerHTML = ev.stages.map((st) => {
-    const s = byId[st.id] || {};
-    const audio = s.ingest ? `${t.kinds[s.ingest.kind] || s.ingest.kind}${s.ingest.label ? ` · ${s.ingest.label}` : ''}` : s.pull ? t.audioStream : t.audioNone;
-    return `<tr data-id="${esc(st.id)}"><td><b>${esc(st.name)}</b><div class="muted-note"><code>${esc(st.id)}</code>${st.title ? ` · ${esc(st.title)}` : ''}</div></td>
-      <td class="hide-sm">${esc(langsOf({ source: st.source, targets: st.languages.filter((l) => l !== 'orig') }))}</td>
-      <td class="hide-sm">${esc(audio)}</td>
-      <td class="r"><button data-room="edit" data-setup>${icon('gear')} ${esc(tr('Editar'))}</button> <button data-room="delete" class="danger" data-setup>${esc(tr('Eliminar'))}</button></td></tr>`;
-  }).join('') || `<tr><td colspan="4" class="empty">${esc(tr('Todavía no hay salas'))}</td></tr>`;
+  renderRooms(last || (await api('GET', '/api/status')));
   hist = await api('GET', '/api/history', null, { quiet: true }).catch(() => ({ changes: [], trash: [] }));
   $('trash-box').classList.toggle('hidden', !hist.trash.length);
   $('trash-list').innerHTML = `<table class="table">${hist.trash.map((x) => `<tr><td><b>${esc(x.room.name)}</b><div class="muted-note"><code>${esc(x.room.id)}</code> · ${esc(when(x.at))}</div></td><td class="r"><button data-restore="${x.id}" data-setup>${icon('refresh')} ${esc(t.restore)}</button></td></tr>`).join('')}</table>`;
   setLocked(locked);
 }
-$('rooms-body').onclick = async (e) => {
-  const b = e.target.closest('[data-room]');
-  if (!b) return;
-  const id = b.closest('[data-id]').dataset.id;
-  const st = ev.stages.find((x) => x.id === id);
-  if (b.dataset.room === 'edit') return openEdit(id);
-  if (await confirmDialog({ title: t.delAsk(st.name), body: t.delAskBody, ok: t.delOk, danger: true })) {
-    const r = await api('DELETE', `/api/stages/${encodeURIComponent(id)}`);
-    toast(t.deleted(st.name), { undo: r.change });
-    loadRooms();
+const roomsView = () => (store.get('rooms.view', 'gallery') === 'list' ? 'list' : 'gallery');
+const said = (st) => (st.preview.orig ?? Object.values(st.preview)[0] ?? '').slice(-140) || st.talk.title || t.noCaption;
+// Drawn again only when the rooms or the view change; on each update just the dots and captions (keeps focus put)
+function renderRooms(s) {
+  const box = $('rooms-box'), mode = roomsView();
+  const key = JSON.stringify([mode, s.stages.map((x) => [x.id, x.name])]);
+  if (box.dataset.key !== key) {
+    box.dataset.key = key;
+    const href = (st) => `#room/${encodeURIComponent(st.id)}`;
+    const name = (st) => `<b><i class="dot" aria-hidden="true"></i>${esc(st.name)}<span class="sr-only" data-f="state"></span></b>`;
+    box.innerHTML = !s.stages.length ? `<p class="card empty">${esc(tr('Todavía no hay salas'))}</p>`
+      : mode === 'gallery' ? `<ul class="rooms-gallery">${s.stages.map((st) => `<li><a class="card tile" href="${href(st)}" data-id="${esc(st.id)}">${name(st)}<span class="said" data-f="said"></span></a></li>`).join('')}</ul>`
+        : `<div class="card flush"><table class="table rooms-list"><thead><tr><th>${esc(tr('Sala'))}</th><th>${esc(tr('Subtítulos'))}</th><th class="hide-sm">${esc(tr('Idiomas'))}</th><th class="hide-sm">${esc(tr('Audio'))}</th></tr></thead><tbody>${s.stages.map((st) => `<tr data-id="${esc(st.id)}"><td><a href="${href(st)}">${name(st)}</a></td><td class="muted-note" data-f="said"></td><td class="hide-sm" data-f="langs"></td><td class="hide-sm" data-f="audio"></td></tr>`).join('')}</tbody></table></div>`;
   }
-};
+  for (const st of s.stages) {
+    const el = box.querySelector(`[data-id="${CSS.escape(st.id)}"]`);
+    if (!el) continue;
+    const f = (k) => el.querySelector(`[data-f="${k}"]`), state = stateOf(st);
+    el.querySelector('.dot').className = `dot ${state}`;
+    f('state').textContent = `, ${stateLabel(state)}`;
+    f('said').textContent = said(st);
+    if (f('langs')) f('langs').textContent = langsOf(st);
+    if (f('audio')) f('audio').textContent = st.ingest ? `${t.kinds[st.ingest.kind] || st.ingest.kind}${st.ingest.label ? ` · ${st.ingest.label}` : ''}` : st.pull ? t.audioStream : t.audioNone;
+  }
+  for (const b of document.querySelectorAll('[data-rooms-view]')) b.setAttribute('aria-pressed', String(b.dataset.roomsView === mode));
+}
+for (const b of document.querySelectorAll('[data-rooms-view]')) b.onclick = () => { store.set('rooms.view', b.dataset.roomsView); if (last) renderRooms(last); };
 $('trash-list').onclick = async (e) => {
   const b = e.target.closest('[data-restore]');
   if (b) await undoChange(Number(b.dataset.restore));
 };
 
+// ---------- One room: its Settings (the form) and Sound (#room/<room>/settings, /sound) ----------
 let editing = null;
 let editStages = [], editSetup = {}; // for the stream address: the ports other rooms use, and this computer's address
 const fe = $('f-edit');
@@ -813,13 +839,12 @@ for (const [code, name] of Object.entries(ev.languages)) fe.source.append(new Op
 async function openEdit(id) {
   [editStages, editSetup] = await Promise.all([api('GET', '/api/status').then((s) => s.stages), api('GET', '/api/setup', null, { quiet: true }).catch(() => ({}))]);
   const st = id ? editStages.find((x) => x.id === id) : null;
-  if (id && !st) return toast(tr('Esa sala no existe.'), { error: true });
+  if (id && !st) { toast(tr('Esa sala no existe.'), { error: true }); location.hash = '#rooms'; return; }
   editing = st;
   $('edit-ingest').href = st ? `/ingest.html?stage=${encodeURIComponent(st.id)}` : '';
-  $('edit-ingest').classList.toggle('hidden', !st);
-  $('edit-title').textContent = st ? `${tr('Editar')} · ${st.name}` : tr('Nueva sala');
   fe.id.value = st?.id || '';
   fe.id.disabled = !!st;
+  fe.id.closest('label').classList.toggle('hidden', !!st); // the id is only chosen once, for a new room
   fe.name.value = st?.name || '';
   fe.source.value = st?.source || 'auto';
   fe.pull.value = st?.pull || '';
@@ -829,9 +854,12 @@ async function openEdit(id) {
   fe.roomSoundMax.value = st?.roomSoundMax ?? ''; // a new room: the server's default (ROOM_SOUND_MAX, 100)
   fe.roomSoundMax.disabled = !fe.roomSound.checked;
   fe.translation.value = st?.translationDef || '';
+  fe.vocabulary.value = (st?.vocabulary || []).join(', ');
+  $('room-del').classList.toggle('hidden', !st);
   $('edit-targets').innerHTML = Object.entries(ev.languages).map(([c, n]) => `<label class="row"><input type="checkbox" value="${c}" ${(st?.targets || ['es', 'en']).includes(c) ? 'checked' : ''}/> ${esc(n)}</label>`).join('');
+  $('ingest-link').innerHTML = '';
   renderAddr();
-  if (!$('dlg-edit').open) { $('dlg-edit').returnValue = ''; $('dlg-edit').showModal(); }
+  setLocked(locked);
 }
 // What to type in OBS or vMix, when the room listens for a stream (its pull address is an RTMP or SRT listener).
 function renderAddr(note = '') {
@@ -842,9 +870,10 @@ function renderAddr(note = '') {
       : srt ? `<p class="muted-note u-m0">${esc(t.addrSrt)}</p>${copyRow(t.addrAddress, `srt://${host}:${srt}`, false)}<p class="muted-note u-m0">${esc(t.addrNet(`${srt}/udp`))}</p>` : '';
 }
 fe.pull.oninput = () => renderAddr();
-$('dlg-edit').addEventListener('click', (e) => {
+document.querySelector('.view[data-view="room"]').addEventListener('click', (e) => {
   const c = e.target.closest('[data-copy]');
-  if (c) return navigator.clipboard.writeText(c.dataset.copy).then(() => toast(t.copied, { ms: 1500 }), () => {});
+  if (c) return copy(c.dataset.copy);
+  if (e.target.closest('[data-ingest-link]')) return makeIngestLink(focusRoom).catch(() => {});
   const p = e.target.closest('[data-addr]')?.dataset.addr;
   if (!p) return;
   if (!editSetup.ffmpeg) return renderAddr(t.addrNoFfmpeg);
@@ -854,21 +883,31 @@ $('dlg-edit').addEventListener('click', (e) => {
   renderAddr();
 });
 fe.id.oninput = () => renderAddr();
-$('add').onclick = () => openEdit(null);
+$('add').onclick = () => { location.hash = '#rooms/new'; };
 fe.roomSound.onchange = () => { fe.roomSoundMax.disabled = !fe.roomSound.checked; };
-$('dlg-edit').addEventListener('close', async () => {
-  if (/^#rooms\//.test(location.hash)) history.replaceState(history.state, '', '#rooms');
-  if ($('dlg-edit').returnValue !== 'ok') return;
+// Saving keeps the form as it is when the server says no (a taken id, a bad stream address), so nothing typed is lost.
+fe.onsubmit = async (e) => {
+  e.preventDefault();
   const body = {
     name: fe.name.value, source: fe.source.value, translation: fe.translation.value || '', pull: fe.pull.value.trim(), loop: fe.loop.checked, musicGuard: fe.musicGuard.checked,
     roomSound: fe.roomSound.checked, roomSoundMax: fe.roomSound.checked && fe.roomSoundMax.value ? Number(fe.roomSoundMax.value) : undefined,
     targets: [...$('edit-targets').querySelectorAll('input:checked')].map((i) => i.value),
+    vocabulary: [...new Set(fe.vocabulary.value.split(/[,\n]/).map((w) => w.trim()).filter(Boolean))],
   };
   const r = editing ? await api('PATCH', `/api/stages/${editing.id}`, body) : await api('POST', '/api/stages', { id: fe.id.value, ...body });
   if (r.change) toast(editing ? t.changedRoom(body.name) : t.created(body.name), { undo: r.change });
+  else if (editing) toast(t.saved, { ms: 2000 });
   ev = await (await fetch('/api/event')).json();
-  loadRooms();
-});
+  formRoom = null; // fill it again from what the server kept
+  if (editing) go(); else location.hash = `#room/${encodeURIComponent(fe.id.value)}`;
+};
+$('room-del').onclick = async () => {
+  const st = editing;
+  if (!st || !(await confirmDialog({ title: t.delAsk(st.name), body: t.delAskBody, ok: t.delOk, danger: true }))) return;
+  const r = await api('DELETE', `/api/stages/${encodeURIComponent(st.id)}`);
+  toast(t.deleted(st.name), { undo: r.change });
+  location.hash = '#rooms';
+};
 
 // ---------- Agenda ----------
 async function loadAgenda() {
@@ -1075,49 +1114,42 @@ $('lang-form').querySelector('button').dataset.setup = '';
 $('term-form').querySelector('button').dataset.setup = '';
 $('name-form').querySelector('button').dataset.setup = '';
 
-// ---------- Screens and QR ----------
+// ---------- A room's links: Screens & QR ----------
 const origin = () => ev.publicUrl || location.origin;
+const copy = (text) => copyText(text).then(() => toast(t.copied, { ms: 1500 }), () => toast(t.copyFail, { error: true }));
+// One row: what it is (and the address, small), then Copy and Open.
 function copyRow(label, url, open = true) {
-  return `<label class="field">${esc(label)}<div class="copy"><input readonly value="${esc(url)}" /><button type="button" data-copy="${esc(url)}">${esc(tr('Copiar'))}</button>${open ? `<a href="${esc(url)}" target="_blank"><button type="button" tabindex="-1">${esc(tr('Abrir'))}</button></a>` : ''}</div></label>`;
+  return `<div class="crow"><span class="crow-l">${esc(label)}<span class="crow-v">${esc(url)}</span></span><span class="crow-b"><button type="button" data-copy="${esc(url)}" aria-label="${esc(`${t.copy}: ${label}`)}">${esc(t.copy)}</button>${open ? `<a href="${esc(url)}" target="_blank" aria-label="${esc(`${t.open}: ${label}`)}"><button type="button" tabindex="-1">${esc(t.open)}</button></a>` : ''}</span></div>`;
 }
-async function loadScreens() {
+async function loadRoom(id) {
   ev = await (await fetch('/api/event')).json();
-  const sel = $('screens-room');
-  sel.innerHTML = ev.stages.map((s) => `<option value="${esc(s.id)}">${esc(s.name)}</option>`).join('');
-  sel.value = screensRoom && ev.stages.some((s) => s.id === screensRoom) ? screensRoom : ev.stages[0]?.id || '';
-  renderScreens();
-}
-function renderScreens() {
-  const st = ev.stages.find((s) => s.id === $('screens-room').value);
+  const st = ev.stages.find((s) => s.id === id);
   if (!st) { $('screens-links').innerHTML = ''; return; }
-  screensRoom = st.id;
-  const o = origin(), aud = `${o}/s/${st.id}`;
+  const o = origin(), aud = `${o}/s/${st.id}`, qr = `/api/qr.svg?text=${encodeURIComponent(aud)}`;
   const others = st.languages.filter((l) => l !== 'orig');
   $('screens-links').innerHTML = `
-    <div class="qrrow"><img src="/api/qr.svg?text=${encodeURIComponent(aud)}" alt="QR" /><div class="u-stack8 u-minw0">${copyRow(tr('Público (celular, QR)'), aud)}<a href="/api/qr.svg?text=${encodeURIComponent(aud)}" download="qr-${st.id}.svg">${esc(tr('Descargar QR (SVG para imprimir)'))}</a></div></div>
+    <div class="qrrow"><img src="${qr}" alt="QR" /><div class="u-stack8 u-minw0">${copyRow(tr('Público (celular, QR)'), aud)}<div class="row"><a href="${qr}" download="qr-${esc(st.id)}.svg">${esc(t.qrDl)}</a><a href="/kit.html?stage=${encodeURIComponent(st.id)}" target="_blank">${esc(t.poster)}</a></div></div></div>
     ${copyRow(tr('Pantalla del escenario / proyector'), `${o}/screen.html?stage=${st.id}&langs=${others[0] || 'orig'},orig`)}
     ${others.map((l) => copyRow(`${tr('Overlay vMix/OBS')} — ${langLabel(l, ev.languages)}`, `${o}/overlay.html?stage=${st.id}&lang=${l}`)).join('')}
     ${copyRow(tr('Overlay con fondo verde (chroma key)'), `${o}/overlay.html?stage=${st.id}&lang=${others[0] || 'orig'}&bg=%2300ff00&style=outline`)}
-    ${copyRow(tr('Transcripción en vivo (leer, buscar, resumen IA)'), `${o}/talk.html?stage=${st.id}`)}
-    <div class="field u-stack8"><b>${esc(tr('Computadora junto al escenario'))}</b>
-      <p class="muted-note u-m0">${esc(tr('La computadora que recibe el sonido de la sala (un micrófono o una salida de la consola) abre la página de sonido. Desde otra computadora, usá un enlace: sirve una vez y no pide contraseña.'))}</p>
-      <div class="row">${isCrew ? '' : `<button type="button" class="primary" data-ingest-link>${icon('link')}${esc(tr('Crear un enlace para esa computadora'))}</button>`}<a href="/ingest.html?stage=${encodeURIComponent(st.id)}" target="_blank"><button type="button" tabindex="-1">${icon('mic')}${esc(tr('Abrir la página de sonido acá'))}</button></a></div>
-      <div id="ingest-link"></div>
-    </div>`;
+    ${copyRow(tr('Transcripción en vivo (leer, buscar, resumen IA)'), `${o}/talk.html?stage=${st.id}`)}`;
 }
 // The stage computer's link: single use, 30 minutes, sound only (POST /api/ingest/link). It replaces typing the
 // room-computer password on a second computer; this page never sees that password.
-async function makeIngestLink(st) {
-  const r = await api('POST', '/api/ingest/link', { stage: st.id });
+async function makeIngestLink(id) {
+  const r = await api('POST', '/api/ingest/link', { stage: id });
   const until = hm(Date.now() + r.expiresIn * 1000);
   $('ingest-link').innerHTML = `<div class="qrrow"><img src="/api/qr.svg?text=${encodeURIComponent(r.url)}" alt="${esc(t.linkQr)}" /><div class="u-stack8 u-minw0">${copyRow(tr('Enlace para la computadora junto al escenario'), r.url)}<p class="muted-note u-m0">${esc(t.linkMade(until))}</p>${r.url.startsWith('http:') ? `<p class="muted-note u-m0 u-danger-outline">${esc(tr('Esta dirección no es segura (http), así que el navegador de la otra computadora no le va a dejar usar un micrófono. Creá primero una dirección pública (Ajustes → Dirección pública) y volvé a crear el enlace.'))}</p>` : ''}</div></div>`;
 }
-$('screens-room').onchange = renderScreens;
-$('screens-links').addEventListener('click', (e) => {
-  if (e.target.closest('[data-ingest-link]')) return makeIngestLink(ev.stages.find((s) => s.id === $('screens-room').value)).catch(() => {});
-  const b = e.target.closest('[data-copy]');
-  if (b) navigator.clipboard.writeText(b.dataset.copy).then(() => toast(t.copied, { ms: 1500 }), () => {});
+
+// ---------- Tools: QR kit, caption style, sound check, the floating window ----------
+$('tools-menu').addEventListener('toggle', (e) => {
+  if (e.newState !== 'open') return;
+  const m = $('tools-menu'), b = document.querySelector('[popovertarget="tools-menu"]').getBoundingClientRect();
+  m.style.top = `${b.bottom + 6}px`;
+  m.style.left = `${Math.max(8, Math.min(b.right - m.offsetWidth, innerWidth - m.offsetWidth - 8))}px`;
 });
+$('tools-menu').addEventListener('click', (e) => { if (e.target.closest('a, button')) $('tools-menu').hidePopover(); });
 
 // ---------- Transcripts ----------
 async function loadTranscripts() {

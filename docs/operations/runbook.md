@@ -38,7 +38,7 @@ A shorter Spanish version for venue crews is in [event-day.es.md](event-day.es.m
 - [ ] Fill the glossary (**Dashboard → Glossary** or `config/glossary.json`) with speaker names, sponsors, products and acronyms from the schedule. Changes apply immediately.
 - [ ] Design the caption style once in `/style.html` and copy the generated overlay and projector URLs.
 - [ ] Paste the agenda in **Dashboard → Agenda**; it shows what will change before you save. From Swapcard or Sessionize: export the sessions to Excel or Google Sheets, select everything including the header row, copy and paste. Columns are found by their header, rooms by their name, and rows for rooms without captions are skipped. By hand: CSV `room,time,title,speaker` (see `config/schedule.example.csv`). Talks then get their title and speaker automatically, and speaker names and titles are passed to the recognizer and the translator so they're spelled right; a room waits for a pause before switching, so a speaker who runs late is never cut.
-- [ ] Print the QR posters: **Dashboard → Screens and QR → QR kit** (`/kit.html`), one bilingual A4 poster per room. Check the warning at the top: the QR must point to the public HTTPS address, not `localhost`.
+- [ ] Print the QR posters: **Dashboard → Tools → QR kit** (`/kit.html`), one bilingual A4 poster per room. Check the warning at the top: the QR must point to the public HTTPS address, not `localhost`.
 - [ ] Decide what the audience can read afterwards: **Settings → General → Transcripts for the audience** (*Only the talk in progress*, the default; *Every talk*, after the speakers agree; or *None*).
 
 ### Rehearsal
@@ -48,11 +48,11 @@ A shorter Spanish version for venue crews is in [event-day.es.md](event-day.es.m
 
 ## Two hours before: set up each room
 
-Choose one audio path per room. The room's panel (**Rooms → Edit**, or **See the address** on a room's card) walks through A and C on screen.
+Choose one audio path per room. The room's page (click the room, then **Sound**) walks through A and C on screen.
 
 | Option | When | Per-room hardware |
 |---|---|---|
-| **A. OBS or vMix stream** | The desk already feeds vMix or OBS | None. In the room's panel, **Sound → RTMP address (OBS, vMix)** fills in the room's address and shows the server and stream key to paste (*OBS: Settings → Stream → Service: Custom*; *vMix: Outputs / Streaming → Custom RTMP Server*), or **SRT address**; then **Save**. Each room gets its own port (RTMP from 1935, SRT from 9001). By hand: **Dashboard → Rooms → Edit → Sound from a stream or a file**: `rtmp://0.0.0.0:1935/live/<room>`, `srt://0.0.0.0:9001?mode=listener` or `https://…m3u8` (an HLS stream on the LAN needs `PULL_ALLOW_PRIVATE=1`). |
+| **A. OBS or vMix stream** | The desk already feeds vMix or OBS | None. In the room's **Sound**, **RTMP address (OBS, vMix)** fills in the room's address and shows the server and stream key to paste (*OBS: Settings → Stream → Service: Custom*; *vMix: Outputs / Streaming → Custom RTMP Server*), or **SRT address**; then **Save**. Each room gets its own port (RTMP from 1935, SRT from 9001). By hand: the room → **Sound → Sound from a stream or a file**: `rtmp://0.0.0.0:1935/live/<room>`, `srt://0.0.0.0:9001?mode=listener` or `https://…m3u8` (an HLS stream on the LAN needs `PULL_ALLOW_PRIVATE=1`). |
 | **B. Headless agent** (recommended with a PC) | Audio arrives by cable at a PC | Mini PC running `scripts/agent.js` as a service, with no browser |
 | C. Browser sound page | Quick or emergency setup | Any PC with Chrome |
 
@@ -70,7 +70,7 @@ Install it as a service so it survives reboots ([Deployment](../deployment.md#ru
 
 **C. Browser sound page:**
 
-1. On the server computer, open the room's card → **Open the sound page**. On another computer, open a room link: **Dashboard → Screens and QR → Computer next to the stage → Make a link for that computer** (or **Link for another computer** in the wizard), then open it there or scan its QR code. The link works once, for 30 minutes, and signs that browser in to send sound only (it's listed in **Settings → Security** and can be signed out there); no password travels. Without a link, `https://<server>/ingest.html?stage=<room>&token=<INGEST_TOKEN>` still works: the room computer keeps the password and removes it from the address bar. Either way the audio connection uses a one-minute ticket, never the password.
+1. On the server computer, open the room's card → **Open the sound page**. On another computer, open a room link: the room → **Sound → Make the link** (or **Link for another computer** in the wizard), then open it there or scan its QR code. The link works once, for 30 minutes, and signs that browser in to send sound only (it's listed in **Settings → Security** and can be signed out there); no password travels. Without a link, `https://<server>/ingest.html?stage=<room>&token=<INGEST_TOKEN>` still works: the room computer keeps the password and removes it from the address bar. Either way the audio connection uses a one-minute ticket, never the password.
 2. Choose the input and channel, and tick **Start by itself when this page opens**.
 3. For an unattended kiosk, run:
 
@@ -106,7 +106,7 @@ With someone speaking into the stage microphone, or with a handheld mic on `/dem
 
 ## During talks
 
-There's nothing to press. If you're also running OBS or vMix, open **Floating window** in the dashboard’s **Screens and QR** (Chrome or Edge): every room's status and alerts stay on top of the production software, and clicking a room jumps to it.
+There's nothing to press. If you're also running OBS or vMix, open **Tools → Floating window** in the dashboard (Chrome or Edge): every room's status and alerts stay on top of the production software, and clicking a room jumps to it.
 
 The system:
 
@@ -151,7 +151,7 @@ With **alerts on your phone** set up (Settings → Alerts), the ones that last r
 | **Someone speaking during the break** | A break set by hand (or by the vision mixer) while people speak | If the talk started, press **Resume captions**. |
 | **Music · paused** | Music detected in the room | Nothing to do. If it's actually a talk, press **It's a talk: caption anyway**. |
 | Misspelled names | Speaker, product or acronym | **Fix captions** on the room card, and accept "always write it this way"; or **Dashboard → Glossary** → add a replacement. It applies instantly. |
-| Wrong language | The talk isn't in the configured language | **Dashboard → Rooms → Edit → Talk language** → *Detect automatically* (switches are handled live) |
+| Wrong language | The talk isn't in the configured language | the room → **Settings → Talk language** → *Detect automatically* (switches are handled live) |
 
 ### Plan B
 
