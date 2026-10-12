@@ -10,6 +10,7 @@ import { words, bestPrefixWer } from './wer.js';
 process.env.ENGINE = 'local';
 const { config } = await import('../src/config.js');
 const { LocalEngine } = await import('../src/engines/local.js');
+const { AppleEngine } = await import('../src/engines/apple.js');
 const { asrInfo, asrReachable } = await import('../src/local/asr.js');
 const { llmInfo, llmHealth } = await import('../src/local/llm.js');
 const { translateText } = await import('../src/translate.js');
@@ -26,6 +27,7 @@ const guessLang = /-es\b/.test(input) ? 'es' : /-en\b/.test(input) ? 'en' : null
 const target = arg('target', guessLang === 'es' ? 'en' : 'es');
 const s = (ms) => `${(ms / 1000).toFixed(1)} s`;
 
+const apple = asrInfo().api === 'apple'; // Apple's speech and translation (src/local/apple.js)
 const models = [...new Set([llmInfo().model, llmInfo().mtModel])].join(' + ');
 console.log(`speech  ${asrInfo().label} · ${asrInfo().url} (${asrInfo().api})\ntext    ${config.localLlmOff ? 'off' : `${models} · ${llmInfo().url} (${llmInfo().api})`}\ninput   ${input} · first ${seconds} s → ${target}\n`);
 
@@ -39,7 +41,7 @@ if (!asrUp) process.exit(1);
 
 // ---- 2. stream the talk in real time ----
 console.log('\nstreaming (committed text in cyan, provisional in grey)…\n');
-const engine = new LocalEngine({ label: 'check', target, source, vocabulary: ['Horizon Summit', 'María José Fernández', 'Hiroshi Tanaka', 'telehealth'], languages: ['es', 'en', 'pt'] });
+const engine = new (apple ? AppleEngine : LocalEngine)({ label: 'check', target, source, vocabulary: ['Horizon Summit', 'María José Fernández', 'Hiroshi Tanaka', 'telehealth'], languages: ['es', 'en', 'pt'] });
 let committed = '', firstText = 0, firstCommit = 0, t0 = 0, lang = null;
 const lags = [];
 const refWords = words(reference);
@@ -75,14 +77,15 @@ clearInterval(lagTimer);
 engine.endAudio();
 // wait for the last final pass
 const waitStart = Date.now();
-while ((engine.busy || engine.finals.length) && Date.now() - waitStart < 60000) await new Promise((r) => setTimeout(r, 200));
+if (apple) await new Promise((r) => setTimeout(r, 3000)); // the last sentence settles after the pause
+while (engine instanceof LocalEngine && (engine.busy || engine.finals.length) && Date.now() - waitStart < 60000) await new Promise((r) => setTimeout(r, 200));
 const st = engine.status();
 engine.stop();
 
 // ---- 3. translate what we heard ----
 const sentences = (committed.match(/[^.!?¿¡]+[.!?]+/g) || [committed]).map((x) => x.trim()).filter(Boolean).slice(0, 3);
 const translations = [];
-if (llm.ok && sentences.length) {
+if ((llm.ok || apple) && sentences.length) {
   console.log(`\ntranslating ${sentences.length} sentence(s) → ${target}…`);
   for (const x of sentences) {
     const a = Date.now();
@@ -104,6 +107,6 @@ console.log(`transcript            ${hyp.length} words${wer != null ? ` · word 
 console.log(`first words on screen ${firstText ? s(firstText - t0) : '—'} after the audio started (provisional) · first committed ${firstCommit ? s(firstCommit - t0) : '—'}`);
 console.log(`captions behind the speaker ≈ ${avg(lags) != null ? `${avg(lags).toFixed(1)} s on average (committed words)` : '—'}`);
 console.log(`speech server         ${st.requests} passes (${st.partials} provisional, ${st.finals} final, ${st.skipped} skipped while busy) · ${st.avgMs ?? '—'} ms per pass`);
-if (translations.length) console.log(`translation           ${Math.round(avg(translations.map((t) => t.ms)))} ms per sentence (${llmInfo().mtModel})`);
+if (translations.length) console.log(`translation           ${Math.round(avg(translations.map((t) => t.ms)))} ms per sentence (${apple ? 'Apple' : llmInfo().mtModel})`);
 console.log(`\nfaster machine or smaller model → lower delay; bigger model → fewer errors. See docs/local.md.`);
 process.exit(hyp.length ? 0 : 2);

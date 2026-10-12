@@ -12,6 +12,7 @@ const T = {
     go: 'Usar esta computadora (gratis, más lento)',
     noKey: '¿No tenés key? Usá esta computadora (gratis, más lento)',
     fine: 'La primera vez descarga unos 650 MB. Nada sale de esta computadora.',
+    fineMac: 'Usa el reconocimiento de voz y la traducción que trae esta Mac, así que normalmente no hay que descargar nada grande. Nada sale de esta computadora.',
     working: 'Preparando…',
     failed: 'No se pudo preparar:',
     retry: 'Reintentar',
@@ -32,6 +33,7 @@ const T = {
     go: 'Use this computer (free, slower)',
     noKey: 'No key? Run it on this computer (free, slower)',
     fine: 'The first time it downloads about 650 MB. Nothing leaves this computer.',
+    fineMac: 'Uses the speech recognition and translation built into this Mac, so there’s usually nothing big to download. Nothing leaves this computer.',
     working: 'Getting ready…',
     failed: 'Couldn’t get it ready:',
     retry: 'Try again',
@@ -68,7 +70,7 @@ export function localPanel(el, { api, quota = false, onChange = () => {} }) {
     let html = '';
     if (s.state === 'idle' || s.state === 'error') {
       if (quota) html += `<p class="cx-status warn">${icon('alert')}<span>${esc(t.quota)}</span></p>`;
-      html += `<div class="cx-row"><button type="button" class="${quota ? 'primary' : ''}" data-lm="start">${esc(quota ? t.go : t.noKey)}</button></div><p class="cx-fine">${esc(t.fine)}</p>`;
+      html += `<div class="cx-row"><button type="button" class="${quota ? 'primary' : ''}" data-lm="start">${esc(quota ? t.go : t.noKey)}</button></div><p class="cx-fine">${esc(s.apple ? t.fineMac : t.fine)}</p>`;
       if (s.state === 'error') html += `<p class="cx-msg bad" role="status">${esc(t.failed)} ${esc(s.error)}</p>`;
     } else if (s.state === 'working') html += bar(s);
     else {

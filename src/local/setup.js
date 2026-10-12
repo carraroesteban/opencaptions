@@ -7,6 +7,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { appleCheck, appleSupported, macLanguage } from './apple.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..'); // not config.js: the npm run local launcher doesn't load the server's settings
 
@@ -134,6 +135,7 @@ async function download(ui, url, dest, label) {
  */
 export async function prepareSpeech({ asr = 'auto', asrModel = env.LOCAL_ASR_SIZE || '', buildWhisper = false } = {}, ui) {
   fs.mkdirSync(MODELS, { recursive: true });
+  if (asr === 'apple' || env.LOCAL_ASR_API === 'apple') return startApple(ui);
   if (env.LOCAL_ASR_URL) {
     if (!(await reachable(env.LOCAL_ASR_URL))) throw new Error(`LOCAL_ASR_URL=${env.LOCAL_ASR_URL} is not reachable. Start that server, or remove LOCAL_ASR_URL from .env to let OpenCaptions manage one.`);
     return { url: env.LOCAL_ASR_URL, api: env.LOCAL_ASR_API || '', label: env.LOCAL_ASR_LABEL || env.LOCAL_ASR_MODEL || 'your speech server' };
@@ -152,7 +154,21 @@ export async function prepareSpeech({ asr = 'auto', asrModel = env.LOCAL_ASR_SIZ
   const whisperKit = appleSilicon && which('whisperkit-cli');
   if ((asr === 'auto' || asr === 'whisperkit') && whisperKit) return startWhisperKit(ui, whisperKit, asrModel);
   if (asr === 'whisperkit') throw new Error('whisperkit-cli not found. Install it with: brew install whisperkit-cli   (Apple Silicon)');
+  // Apple-chip Macs on macOS 26+: the speech recognition built into the Mac, instead of downloading Whisper.
+  if (asr === 'auto' && appleSilicon && appleSupported()) {
+    try { return await startApple(ui); } catch (e) { ui.warn(`${e.message}; using Whisper instead`); }
+  }
   return startBuiltin(ui, asrModel);
+}
+
+/** Apple's speech recognition (src/local/apple.js): nothing to start, the helper runs per room. */
+async function startApple(ui) {
+  ui.info('checking the speech recognition built into this Mac (the first time it prepares a small helper: a few seconds)');
+  const lang = macLanguage();
+  const c = await appleCheck(lang);
+  if (!c.speech) throw new Error('Apple\'s speech recognition is not available on this Mac');
+  ui.ok(`speech   Apple, on this Mac · installed: ${c.installed.join(', ') || 'none yet'}${c.status === 'installed' ? '' : ` · ${lang} downloads from Apple when a room first uses it`}`);
+  return { url: 'apple:', api: 'apple', label: 'Apple speech (on this Mac)' };
 }
 
 async function buildWhisperCpp(ui) {

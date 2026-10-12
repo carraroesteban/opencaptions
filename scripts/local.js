@@ -3,13 +3,14 @@
 //
 // Prepares and starts, as needed:
 //   • a Whisper speech server — whisper.cpp's whisper-server or WhisperKit (Apple Silicon) when installed,
-//     otherwise the bundled one (scripts/local-asr-server.js + a Whisper model downloaded once);
+//     else on Apple-chip Macs with macOS 26+ the speech recognition and translation built into the Mac (nothing to
+//     download), otherwise the bundled one (scripts/local-asr-server.js + a Whisper model downloaded once);
 //   • Ollama with a translation model (default gemma3:4b, ~3 GB, downloaded once);
 // then OpenCaptions itself with ENGINE=local. Ctrl+C stops everything it started.
 //
 //   npm run local                         everything, then the server on http://localhost:8080
 //   npm run local -- --check              everything, then a 30-second end-to-end test instead of the server
-//   npm run local -- --asr builtin        speech backend: auto (default) | builtin | whispercpp | whisperkit
+//   npm run local -- --asr builtin        speech backend: auto (default) | builtin | whispercpp | whisperkit | apple
 //   npm run local -- --asr-model small    Whisper size: tiny | base | small | medium | large-v3-turbo
 //   npm run local -- --llm-model qwen2.5:7b     text model for translation, summaries and questions
 //   npm run local -- --mt-model translategemma  a separate model just for caption translation (+3.3 GB)
@@ -40,9 +41,10 @@ async function prepare() {
   const mtModel = opt('mt-model', env.LOCAL_MT_MODEL || '');
   const text = await prepareText({ model: opt('llm-model', env.LOCAL_LLM_MODEL || 'gemma3:4b'), mtModel }, tty).catch((e) => {
     if (e.code !== 'no-ollama') throw e;
+    if (speech.api === 'apple') { tty.info('translations: Apple\'s, built into this Mac (Ollama adds AI summaries and answers)'); return null; }
     throw new Error(`${e.message}\n  macOS:   brew install ollama     (or the app: https://ollama.com/download)\n  Linux:   curl -fsSL https://ollama.com/install.sh | sh\n  Windows: https://ollama.com/download\n  Then run npm run local again. Or: npm run local -- --no-llm (no translations).`);
   });
-  if (!mtModel) tty.info('tip: for better translations add a translation model: npm run local -- --mt-model translategemma (+3.3 GB)');
+  if (!mtModel && text) tty.info('tip: for better translations add a translation model: npm run local -- --mt-model translategemma (+3.3 GB)');
   return { speech, text };
 }
 
