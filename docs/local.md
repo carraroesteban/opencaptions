@@ -8,11 +8,11 @@ Everything else stays the same: the audience page, the projector, the overlay, t
 
 | | Gemini (default) | Local mode |
 |---|---|---|
-| Speech recognition | Gemini 3.5 Live Translate | Whisper, on this computer |
-| Translation, summaries, questions | Gemini Flash-Lite | An open model through Ollama (Gemma 3 by default) |
+| Speech recognition | Gemini 3.5 Live Translate | Whisper, on this computer. On a Mac with an Apple chip and macOS 26 or later: Apple's own, built into the Mac |
+| Translation, summaries, questions | Gemini Flash-Lite | An open model through Ollama (Gemma 3 by default). On those Macs, translation is Apple's, built in, and Ollama is only for summaries and questions |
 | Needs | An API key and internet | A capable computer; internet only to download the models once |
 | Cost | About US$ 0.54 per room-hour (US$ 2.2 with a translated voice) | Nothing per hour |
-| Caption delay | About 2–3 s behind the speaker | About 4–5 s on a laptop CPU (see [Measured results](#measured-results)) |
+| Caption delay | About 2–3 s behind the speaker | About 4–5 s on a laptop CPU; with Apple's speech on a Mac, first words in about 1 s, whole sentences about 4 s behind (see [Measured results](#measured-results)) |
 | Rooms per server | 30 tested on one laptop | About one per computer today (see [Limits](#limits)) |
 | Translated voice 🎧 | Gemini's natural voice | The phone reads the translated captions with its own voice |
 
@@ -27,8 +27,8 @@ In the desktop app (or any OpenCaptions started with `npm start`), you don't nee
 
 One click, and the server prepares everything while it keeps running, with a progress bar on the page:
 
-1. **Captions first.** It installs the speech engine and downloads Whisper `small` (about 670 MB together, once), then switches every room to this computer. Captions are in the spoken language for now.
-2. **Translations next, if Ollama is installed.** Ollama is a separate free app, and OpenCaptions never installs system software by itself. If it's missing, the page says so with a link to [ollama.com/download](https://ollama.com/download) and three steps: download it, install it, open it once. OpenCaptions checks every few seconds, notices it by itself, downloads the translation model (`gemma3:4b`, about 3.1 GB, once) with a progress bar, and turns translations on.
+1. **Captions first.** On a Mac with an Apple chip and macOS 26 or later, it uses the speech recognition and translation built into the Mac: nothing big to download, and translations work right away ([details below](#on-a-mac-apples-speech-recognition-and-translation)). Elsewhere it installs the speech engine and downloads Whisper `small` (about 670 MB together, once), then switches every room to this computer. Captions are in the spoken language for now.
+2. **Translations next, if Ollama is installed** (not on those Macs: Apple translates). Ollama is a separate free app, and OpenCaptions never installs system software by itself. If it's missing, the page says so with a link to [ollama.com/download](https://ollama.com/download) and three steps: download it, install it, open it once. OpenCaptions checks every few seconds, notices it by itself, downloads the translation model (`gemma3:4b`, about 3.1 GB, once) with a progress bar, and turns translations on.
 
 The choice is remembered: the next time OpenCaptions starts, it uses this computer again (in a few seconds, nothing to download). Saving a Gemini key, or **Back to Gemini** on the same panel, goes back to the cloud.
 
@@ -36,7 +36,19 @@ Measured on a MacBook Pro (Apple M3 Pro) from a fresh install, on a home connect
 
 The desktop apps keep these downloads outside the app's folder (`LOCAL_DIR`: `~/Library/Application Support/OpenCaptions/local` on a Mac, `%LOCALAPPDATA%\OpenCaptions\local` on Windows), so an update doesn't download them again. Without `LOCAL_DIR`, they go in the repository's `local/` folder, like `npm run local`'s.
 
-The button always uses the bundled speech server unless whisper.cpp or WhisperKit is installed, and the default models; for other choices (`--asr-model`, `--mt-model`…), use `npm run local` from a terminal.
+The button uses whisper.cpp or WhisperKit if one is installed, then Apple's speech on a Mac that has it, then the bundled speech server, always with the default models; for other choices (`--asr-model`, `--mt-model`…), use `npm run local` from a terminal.
+
+## On a Mac: Apple's speech recognition and translation
+
+macOS 26 and later include Apple's own speech recognition (*SpeechAnalyzer*, the one behind Notes and Voice Memos) and translation, for any app to use, on the device. On a Mac with an Apple chip, local mode uses them by default, instead of downloading Whisper: captions start in a few seconds, and translations need no Ollama. It's the same kind of pipeline Apple uses for Live Translation with AirPods; how that works, with the evidence, is in [How Apple's Live Translation works](research/apple-live-translation.md).
+
+- **What it needs.** A Mac with macOS 26 or later. The Mac app comes with the small helper program that talks to Apple's frameworks. From the source code, the helper is built the first time (about 5 seconds) with Apple's developer tools: `xcode-select --install` if you don't have them. An Intel Mac with macOS 26 can use it too, with `npm run local -- --asr apple`.
+- **Languages.** Apple's speech recognition knows about 25 languages (on macOS 27: Spanish, English, Portuguese, French, German, Italian, Japanese, Korean, Chinese, Cantonese, Hindi and other languages of India). The Mac's own language is usually installed already; for another one, Apple downloads it by itself the first time a room uses it. Translation knows 25 (Apple's list includes Arabic, Dutch, Polish, Russian, Turkish and Ukrainian too); download the ones you need once in **System Settings → General → Language & Region → Translation Languages**. A pair Apple can't translate goes to Ollama, if it's installed.
+- **Set each room's language.** Apple doesn't detect which language is spoken. A room on "automatic" is transcribed in the Mac's language (the room's log says so).
+- **Accuracy and speed.** About as accurate as Whisper `small` in our tests, words appear sooner, and it uses about 60 times less of the processor (see [Measured results](#measured-results)). Its punctuation and capitals are good; names it doesn't know come out as sound-alikes ("Horizon Sum Meet"); the glossary's vocabulary is passed to it as hints, and its `replacements` fix recurring mistakes.
+- **Summaries and questions** (*What did I miss?*, *Ask the talk*) still need Ollama. Without it they fall back to extracts of the transcript, as with `--no-llm`.
+
+To use Whisper instead: `npm run local -- --asr builtin`. The code is in `src/engines/apple.js` (the engine), `src/local/apple.js` (starting the helper) and `src/local/apple.swift` (the helper itself).
 
 ## Quick start
 
@@ -121,8 +133,9 @@ The dashboard's button (above) does steps 1 and 2 the same way: the code is shar
    2. a speech server already listening on port 8178;
    3. whisper.cpp's `whisper-server`, if it's on your `PATH` or you built it with `--build-whisper`;
    4. WhisperKit (`whisperkit-cli`), on Apple Silicon;
-   5. the bundled server: Whisper on [sherpa-onnx](https://github.com/k2-fsa/sherpa-onnx), which runs on the CPU of any Mac, Linux or Windows machine. The engine is installed into `local/runtime` on first use, so a normal `npm install` stays small.
-2. **Text model.** It connects to Ollama, or starts `ollama serve` if Ollama is installed but not running. It downloads the model if needed, and loads it so the first caption doesn't wait.
+   5. on a Mac with an Apple chip and macOS 26 or later, Apple's speech recognition (see [above](#on-a-mac-apples-speech-recognition-and-translation)): no server, nothing to download;
+   6. the bundled server: Whisper on [sherpa-onnx](https://github.com/k2-fsa/sherpa-onnx), which runs on the CPU of any Mac, Linux or Windows machine. The engine is installed into `local/runtime` on first use, so a normal `npm install` stays small.
+2. **Text model.** With Apple's speech, Ollama is optional (Apple translates; Ollama adds summaries and answers). It connects to Ollama, or starts `ollama serve` if Ollama is installed but not running. It downloads the model if needed, and loads it so the first caption doesn't wait.
 3. **OpenCaptions** itself, with `ENGINE=local` and the addresses of both servers. With `--check`, it runs the end-to-end test instead.
 
 Models go in `local/models` and the servers' logs in `local/logs` (or in `LOCAL_DIR`, if set). Both folders are ignored by git.
@@ -130,7 +143,7 @@ Models go in `local/models` and the servers' logs in `local/logs` (or in `LOCAL_
 | Option | Effect |
 |---|---|
 | `--check` | Run the 30-second end-to-end test instead of the server. Accepts the check's own options: `--input <file>`, `--seconds <n>`, `--target <lang>`, `--source <lang>`. |
-| `--asr auto\|builtin\|whispercpp\|whisperkit` | Choose the speech backend instead of the first available one. |
+| `--asr auto\|builtin\|whispercpp\|whisperkit\|apple` | Choose the speech backend instead of the first available one. `apple`: Apple's speech recognition and translation (macOS 26+). |
 | `--asr-model <size>` | Whisper model: `tiny`, `base`, `small`, `medium` or `large-v3-turbo`. For WhisperKit, a WhisperKit model name. |
 | `--build-whisper` | Clone and build whisper.cpp's server first (needs git and cmake). On a Mac it uses the GPU. |
 | `--llm-model <name>` | Text model for translation, summaries and questions. Default `gemma3:4b`. |
@@ -249,6 +262,26 @@ The bundled samples ([`samples/`](../samples/)) are fictional talks read by a sy
 | MacBook Pro, Apple M3 Pro (11 cores), bundled server on the CPU | small | English sample | 0.0 % | 1.5 s | about 3.9 s | 1.0 s | 0.6 s (gemma3:4b) |
 | MacBook Pro, Apple M3 Pro (11 cores), bundled server on the CPU | small | Spanish sample | 0.0 % | 1.4 s | about 4.7 s | 1.8 s | 0.7 s (gemma3:4b) |
 
+### Apple's speech recognition compared with Whisper
+
+Same Mac (MacBook Pro, Apple M3 Pro, macOS 27), each sample played in real time, one engine at a time: the bundled Whisper `small` on the CPU, and Apple's speech recognition. Three recordings: the two bundled samples (synthetic voice, with their scripts), and a 3-minute excerpt of a real conference talk in English (a person on a room microphone, with *um*s), which has no script: for it, "words wrong" counts differences from Gemini 3.5's transcript of the same audio, which is itself imperfect (two Gemini models disagree on 8.6 % of its words). Processor use is the processor time of every program doing the work (for Apple, its speech services), divided by the minutes of audio.
+
+| | Whisper `small` | Apple |
+|---|---|---|
+| Words wrong: English sample | 0.0 % | 1.1–2.9 % (3 runs) |
+| Words wrong: Spanish sample | 0.0–1.4 % (2 runs) | 2.0–3.1 % (3 runs) |
+| Words different from Gemini: real talk | 2.4 % | 2.5–3.4 % (3 runs) |
+| First words on screen after someone starts talking (median of the 6 pauses in the recordings) | about 1.7 s | about 1.1 s |
+| Committed words behind the speaker (English sample, `--check`) | about 3.9 s | about 4.1 s |
+| A finished sentence settles | at the next pause | about 0.9 s after it ends (90 % within 1.1 s) |
+| Processor use per minute of speech | 233–258 s (about 4 cores busy all the time) | 3.6–4.8 s |
+| Download | about 670 MB | none for the Mac's language |
+| Translation per sentence | 0.6–0.8 s (gemma3:4b, Ollama) | 0.4–0.7 s (the first: 1.8–2.4 s) |
+
+What Apple got wrong is mostly small: *Deutsche Telekom* as *Deutsch Telecom*, *first* as *1st*, a dropped *um*, *Horizon Summit* as *Horizon Sum Meet* in Spanish. Whisper's mistakes were of the same kind.
+
+What this means: on a Mac with macOS 26 or later, Apple's speech recognition is the better default. It's about as accurate, shows words sooner, leaves the processor free (more rooms per Mac become plausible, not measured yet), and needs no download. Whisper stays the choice for other computers, for automatic language detection, and where every word counts on clean audio.
+
 On real recorded talks (room microphones, accents, applause), `small` made about 9 % word errors in English and 18 % in Spanish on a 4-core Linux VM, about 4–5 s behind the speaker. `base` was faster but made more than twice as many mistakes, too many for Spanish.
 
 Translation with `gemma3:4b`, on 90 captions that Whisper `small` cut from a real English talk (many end mid-sentence, as captions do in local mode), translated into Spanish on the same Mac: when the previous sentences were written into the message, the model copied that instruction into 4 captions, repeated earlier captions in 3 and ran on far longer than the sentence in 14. With the previous sentences given as earlier turns, as now, none copied or repeated anything and 1 ran long, at the same speed (about 0.8 s per caption).
@@ -263,6 +296,7 @@ What this tells you:
 
 - **Rooms per machine.** One speech server works on one request at a time. Several rooms can share it: final passes queue and provisional updates are skipped while it's busy, so captions stay correct but fall behind. We've measured one room per machine. For more rooms, run one OpenCaptions server per machine, each with its own rooms (`STAGES`, see [Capacity and sharding](deployment.md#capacity-and-sharding)), or use a GPU speech server that handles parallel requests (`LOCAL_ASR_CONCURRENCY`).
 - **No natural translated voice** (🎧): phones read the translated captions with their own voice instead. No `live` or `hybrid` translation modes: captions are translated as text.
+- **Apple's speech recognition** doesn't detect the language (set each room's), and its languages are Apple's list. Apple limits how many analyses run at once on a Mac; several rooms on one Mac haven't been measured yet.
 - **Accuracy depends on the models.** Accents, fast speech, and switching languages mid-sentence are harder for Whisper than for Gemini. Pinning each room's language helps.
 - **Hardware.** The defaults need about 6 GB of free memory while running: about 1 GB for Whisper `small` and about 4–5 GB for `gemma3:4b` with its context.
 
@@ -270,6 +304,9 @@ What this tells you:
 
 | Symptom | Cause | Fix |
 |---|---|---|
+| `couldn't build the Apple speech helper` | Apple's developer tools aren't installed (running from the source code) | `xcode-select --install`, or use Whisper: `npm run local -- --asr builtin` |
+| `en→ja is not downloaded` (or another pair) in the room's log, translations missing for one language | That translation language isn't on the Mac | System Settings → General → Language & Region → Translation Languages → Download |
+| Captions in the wrong language, or nonsense, with Apple's speech | The room is on "automatic" and the talk isn't in the Mac's language | Set the room's language in the dashboard |
 | `speech server not reachable at http://127.0.0.1:8178/inference` | The speech server isn't running | Start with `npm run local`, not `npm start`. Details in `local/logs/speech-server.log` (or `whisper-server.log`, `whisperkit.log`). |
 | `Ollama is not installed` | The launcher needs Ollama for translation | Install it (see [Quick start](#quick-start)), or run `npm run local -- --no-llm` for transcription only |
 | Dashboard: `falta el modelo …` / `model "…" is not installed` | The text model hasn't been downloaded | `ollama pull <model>` |
