@@ -5,8 +5,10 @@
 //   • OpenAI-compatible servers:           POST /v1/audio/transcriptions   (speaches / faster-whisper-server,
 //     LocalAI, vLLM, whisper.cpp started with --inference-path /v1/audio/transcriptions…)
 // The dialect is picked from the URL path (override with LOCAL_ASR_API=whispercpp|openai).
+// LOCAL_ASR_API=apple is no server: Apple's own speech recognition on a Mac (src/local/apple.js).
 import { config } from '../config.js';
 import { SAMPLE_RATE } from '../audio.js';
+import { appleHelper, appleTranscribe } from './apple.js';
 
 // Whisper reports languages by name ("spanish"); captions route by ISO code ("es").
 const WHISPER_LANGS = {
@@ -39,7 +41,7 @@ export function asrInfo() {
   let api = config.localAsrApi;
   if (!api) api = /\/v1\/audio\/transcriptions\/?$/.test(new URL(url).pathname) ? 'openai' : 'whispercpp';
   const model = config.localAsrModel || (api === 'openai' ? 'whisper-1' : 'whisper');
-  return { url, api, model, label: config.localAsrLabel || config.localAsrModel || (api === 'openai' ? 'Whisper' : 'whisper.cpp') };
+  return { url, api, model, label: config.localAsrLabel || config.localAsrModel || { openai: 'Whisper', apple: 'Apple speech (on this Mac)' }[api] || 'whisper.cpp' };
 }
 
 /** PCM16LE mono 16 kHz → WAV file bytes. */
@@ -126,6 +128,7 @@ function parseResult(j) {
  */
 export async function transcribe(pcm, { language = null, prompt = '', final = true, signal } = {}) {
   const { url, api, model } = asrInfo();
+  if (api === 'apple') return appleTranscribe(pcm, { language, signal });
   const form = new FormData();
   form.append('file', new Blob([wavFile(pcm)], { type: 'audio/wav' }), 'audio.wav');
   form.append('response_format', 'verbose_json');
@@ -169,7 +172,8 @@ export function isNetworkError(e) {
 
 /** true if the speech server answers at all (any HTTP status). */
 export async function asrReachable(timeoutMs = 3000) {
-  const { url } = asrInfo();
+  const { url, api } = asrInfo();
+  if (api === 'apple') return appleHelper().then(() => true, () => false);
   try {
     await fetch(new URL(url).origin + '/', { signal: AbortSignal.timeout(timeoutMs) });
     return true;

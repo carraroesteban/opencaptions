@@ -8,6 +8,7 @@ import { CaptionTrack } from './captions.js';
 import { GeminiEngine } from './engines/gemini.js';
 import { MockEngine } from './engines/mock.js';
 import { LocalEngine } from './engines/local.js';
+import { AppleEngine } from './engines/apple.js';
 import { SentenceTranslator } from './translate.js';
 import { VoiceDetector } from './voice.js';
 
@@ -314,6 +315,7 @@ export class Stage extends EventEmitter {
         transcribeOnly: this.transcribeOnly,
       };
       const e = config.engine === 'gemini' ? new GeminiEngine(opts)
+        : config.engine === 'local' && config.localAsrApi === 'apple' ? new AppleEngine(opts)
         : config.engine === 'local' ? new LocalEngine({ ...opts, languages: [...new Set([...this.transTargets, this.source, ...Object.keys(config.event.languages)])] })
           : new MockEngine(opts);
       e.on('input', (t) => primary && this.#onInput(t));
@@ -434,7 +436,8 @@ export class Stage extends EventEmitter {
 
   // ---------- text translation (sentence by sentence, with provisional partials) ----------
   #mtFeed(text, finished, spoken) {
-    if (config.engine === 'local' && config.localLlmOff) return; // transcription only (npm run local -- --no-llm)
+    // Transcription only (npm run local -- --no-llm), unless Apple translates (src/local/apple.js).
+    if (config.engine === 'local' && config.localLlmOff && config.localAsrApi !== 'apple') return;
     this.mtQ ??= {};
     // Bind translators to the tracks of the current talk: a translation that returns after a talk
     // rollover must land in the talk it belongs to, not in the next one.

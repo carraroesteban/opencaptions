@@ -356,7 +356,7 @@ const ob = OB[LANG] || OB.en;
 function localDetail(s) {
   const l = s.local || {};
   if (l.asr === false) return ob.localNoAsr(esc(l.asrUrl || ''));
-  if (l.llmOff) return ob.localLlmOff(esc(s.model));
+  if (l.llmOff) return l.apple ? ob.localReady(esc(s.model)) : ob.localLlmOff(esc(s.model)); // Apple translates without Ollama
   if (l.llm === false) return ob.localNoLlm(esc(l.llmUrl || ''));
   if (l.modelInstalled === false) return ob.localMissing(esc((l.missing || [])[0] || l.llmModel || ''));
   return ob.localReady(esc(s.model));
