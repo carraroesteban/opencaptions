@@ -56,7 +56,7 @@ const DICTS = {
     'IA para traducir': 'AI for translations',
     'La IA que traduce los subtítulos, resume las charlas y responde las preguntas del público. Gemini, salvo que elijas otra.': 'The AI that translates the captions, summarizes the talks and answers the audience’s questions. Gemini, unless you pick another one.',
     'Versiones nuevas': 'New versions',
-    'Una vez por día, OpenCaptions le pregunta a GitHub si salió una versión nueva y lo avisa arriba del panel. No envía nada sobre vos ni instala nada solo.': 'Once a day, OpenCaptions asks GitHub whether a new version is out and says so at the top of the dashboard. It sends nothing about you and never installs anything by itself.',
+    'Una vez por día, OpenCaptions le pregunta a GitHub si salió una versión nueva y lo avisa arriba del panel, con un botón para instalarla. No envía nada sobre vos ni instala nada sin que lo toques.': 'Once a day, OpenCaptions asks GitHub whether a new version is out and says so at the top of the dashboard, with a button to install it. It sends nothing about you and installs nothing until you click.',
     'Avisar': 'Tell me',
     'No avisar': 'Don’t check',
     'Lo fija UPDATE_CHECK=0 en el archivo .env.': 'Turned off by UPDATE_CHECK=0 in the .env file.',
