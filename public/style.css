@@ -153,6 +153,9 @@ button, .btn-i { vertical-align: middle; }
 .connect .cx-row button svg { width: 17px; height: 17px; margin-right: 6px; vertical-align: -3px; }
 .connect .cx-steps { margin: 0; padding-left: 20px; display: grid; gap: 10px; }
 .connect .cx-steps .cx-row { margin-top: 8px; }
+.connect .cx-form { display: grid; gap: 10px; }
+.connect .cx-field { display: grid; gap: 4px; font-size: 14px; color: var(--fg2); }
+.connect .cx-field input { font-size: 15px; }
 .connect .cx-fine { font-size: 13px; color: var(--fg2); }
 .connect .cx-msg { font-size: 14px; padding: 10px 12px; border-radius: 12px; background: var(--bg3); }
 .connect .cx-msg.ok { color: var(--ok); background: color-mix(in srgb, var(--ok) 10%, var(--bg2)); }

@@ -1,6 +1,7 @@
 // The two things a new install needs from the organizer, as browser controls instead of terminal steps. Used by
 // the welcome wizard and the dashboard's Settings.
 //   keyPanel    → paste a Gemini API key; the server checks it with Google and saves it (POST/PUT /api/ai/key)
+//   textApiPanel → translations, summaries and questions on another AI service (PUT/DELETE /api/ai/text)
 //   tunnelPanel → a public HTTPS address through Cloudflare, with one click (POST /api/tunnel)
 import { LANG } from '/i18n.js';
 import { esc } from '/common.js';
@@ -31,6 +32,27 @@ const T = {
     saveAnyway: 'Guardarla igual',
     error: 'Google respondió con un error. Probá de nuevo en un minuto.',
     cost: 'Gemini cobra por uso: unos US$ 2 por hora por sala (la cuota gratis alcanza para probar).',
+    // another AI for the text
+    taGemini: 'Las traducciones, los resúmenes y las preguntas usan Gemini.',
+    taOn: (m, host, l4, src) => `Las traducciones, los resúmenes y las preguntas usan ${m} en ${host}${l4 ? ` (key ••••${l4})` : ''}${src === 'env' ? ' (del archivo .env)' : ''}.`,
+    taOpen: 'Usar otro servicio de IA',
+    taChange: 'Cambiar',
+    taRemove: 'Volver a Gemini',
+    taRemoveAsk: '¿Volver a Gemini para las traducciones, los resúmenes y las preguntas?',
+    taUrl: 'Dirección (base URL)',
+    taKey: 'API key',
+    taKeyKept: (l4) => `Dejala vacía para usar la misma (••••${l4})`,
+    taModel: 'Modelo',
+    taSave: 'Comprobar y guardar',
+    taChecking: 'Probando con una pregunta corta…',
+    taSaved: 'Listo: las traducciones ahora usan ese servicio.',
+    taQuota: 'Guardado, pero el servicio dice que no hay crédito o cuota ahora mismo.',
+    taFine: 'OpenAI, OpenRouter, Groq, Mistral o cualquier servicio compatible con la API de OpenAI. Solo en la nube: el modelo de voz sigue siendo Gemini. Ese servicio cobra aparte y su costo no se suma acá.',
+    ta_url: 'Escribí la dirección completa, por ejemplo https://api.openai.com/v1.',
+    ta_invalid: 'El servicio no aceptó la API key.',
+    ta_model: 'El servicio no encontró ese modelo (o la dirección no es la de su API). Revisá el nombre exacto del modelo.',
+    ta_offline: 'No se pudo llegar a esa dirección. ¿Está bien escrita? ¿Hay internet?',
+    ta_error: 'El servicio respondió con un error.',
     // tunnel
     tIntro: 'Para que los celulares lleguen a los subtítulos desde cualquier red, con HTTPS. Gratis, a través de Cloudflare: no hay que tocar el router ni comprar nada.',
     tStart: 'Crear una dirección pública',
@@ -58,6 +80,27 @@ const T = {
     fixed: (u) => `Los QR apuntan a ${u} (configurado en el servidor).`,
   },
   en: {
+    // another AI for the text
+    taGemini: 'Translations, summaries and questions use Gemini.',
+    taOn: (m, host, l4, src) => `Translations, summaries and questions use ${m} at ${host}${l4 ? ` (key ••••${l4})` : ''}${src === 'env' ? ' (from the .env file)' : ''}.`,
+    taOpen: 'Use another AI service',
+    taChange: 'Change',
+    taRemove: 'Back to Gemini',
+    taRemoveAsk: 'Go back to Gemini for translations, summaries and questions?',
+    taUrl: 'Address (base URL)',
+    taKey: 'API key',
+    taKeyKept: (l4) => `Leave empty to keep the same one (••••${l4})`,
+    taModel: 'Model',
+    taSave: 'Check and save',
+    taChecking: 'Trying it with a short question…',
+    taSaved: 'Done: translations now use that service.',
+    taQuota: 'Saved, but the service says there’s no credit or quota right now.',
+    taFine: 'OpenAI, OpenRouter, Groq, Mistral or any service compatible with OpenAI’s API. Cloud mode only: the speech model stays Gemini. That service bills you separately, and its cost isn’t added here.',
+    ta_url: 'Type the whole address, for example https://api.openai.com/v1.',
+    ta_invalid: 'The service didn’t accept the API key.',
+    ta_model: 'The service didn’t find that model (or the address isn’t its API). Check the model’s exact name.',
+    ta_offline: 'Couldn’t reach that address. Is it typed right? Is there internet?',
+    ta_error: 'The service answered with an error.',
     keyNone: 'No API key: captions are simulated.',
     keyOn: (l4, src) => `Connected to Gemini with the key ••••${l4}${src === 'env' ? ' (from the .env file)' : ''}.`,
     vertex: 'Connected to Gemini through Google Cloud Vertex AI (set in .env).',
@@ -186,6 +229,74 @@ export function keyPanel(el, { api, confirm = async (m) => window.confirm(m), on
   });
   return { update(s) { setup = s; if (!el.contains(document.activeElement)) render(); } };
 }
+
+// Base URLs people paste most; any other OpenAI-compatible address works too.
+const TEXT_APIS = ['https://api.openai.com/v1', 'https://openrouter.ai/api/v1', 'https://api.groq.com/openai/v1', 'https://api.mistral.ai/v1'];
+
+/**
+ * Translations, summaries and questions on another AI service: status, and a form (checked before saving).
+ * @param {HTMLElement} el
+ * @param {Ctx} ctx
+ * @returns {{ update: (setup: any) => void }}
+ */
+export function textApiPanel(el, { api, confirm = async (m) => window.confirm(m) }) {
+  let ta = null;
+  let open = false;
+  let msg = { text: '', cls: '' };
+  let draft = { url: '', key: '', model: '' }; // kept when the check fails, to fix instead of typing again
+  el.classList.add('connect');
+  function render() {
+    if (!ta) return;
+    let html = ta.url
+      ? `<p class="cx-status ok">${icon('check')}<span>${esc(t.taOn(ta.model, hostOf(ta.url), ta.last4, ta.source))}</span></p>`
+      : `<p class="cx-status">${esc(t.taGemini)}</p>`;
+    if (!open) html += `<div class="cx-row"><button type="button" data-cx="open">${esc(ta.url ? t.taChange : t.taOpen)}</button>${ta.source === 'dashboard' ? `<button type="button" class="cx-link" data-cx="remove">${esc(t.taRemove)}</button>` : ''}</div>`;
+    else {
+      const kept = ta.source === 'dashboard' && ta.last4;
+      html += `<form class="cx-form" data-cx="form">
+        <label class="cx-field"><span>${esc(t.taUrl)}</span><input name="url" type="url" list="ta-urls" required autocomplete="off" spellcheck="false" placeholder="https://api.openai.com/v1" value="${esc(draft.url || ta.url)}" /></label>
+        <datalist id="ta-urls">${TEXT_APIS.map((u) => `<option value="${u}"></option>`).join('')}</datalist>
+        <label class="cx-field"><span>${esc(t.taKey)}</span><input name="key" type="password" autocomplete="off" spellcheck="false" placeholder="${esc(kept ? t.taKeyKept(ta.last4) : 'sk-…')}" /></label>
+        <label class="cx-field"><span>${esc(t.taModel)}</span><input name="model" required autocomplete="off" spellcheck="false" placeholder="gpt-5-mini" value="${esc(draft.model || ta.model)}" /></label>
+        <div class="cx-row"><button class="primary" type="submit">${esc(t.taSave)}</button></div>
+      </form>`;
+    }
+    html += `<p class="cx-fine">${esc(t.taFine)}</p>`;
+    if (msg.text) html += `<p class="cx-msg ${msg.cls}" role="status">${esc(msg.text)}</p>`;
+    el.innerHTML = html;
+    const key = /** @type {HTMLInputElement | null} */ (el.querySelector('input[name=key]'));
+    if (key) key.value = draft.key;
+  }
+  el.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const f = /** @type {HTMLFormElement} */ (e.target);
+    const body = { url: f.url.value.trim(), key: f.key.value.trim(), model: f.model.value.trim() };
+    draft = body;
+    msg = { text: t.taChecking, cls: '' };
+    render();
+    try {
+      const r = await api('PUT', '/api/ai/text', body);
+      ta = r.textApi;
+      open = false;
+      draft = { url: '', key: '', model: '' };
+      msg = r.check === 'quota' ? { text: t.taQuota, cls: 'warn' } : { text: t.taSaved, cls: 'ok' };
+    } catch (err) {
+      const code = err.body?.code || 'error';
+      msg = { text: `${t[`ta_${code}`] || t.ta_error}${err.body?.detail ? ` (${err.body.detail})` : ''}`, cls: 'bad' };
+    }
+    render();
+  });
+  el.addEventListener('click', async (e) => {
+    const a = /** @type {HTMLElement} */ (e.target).closest('[data-cx]')?.getAttribute('data-cx');
+    if (a === 'open') { open = true; msg = { text: '', cls: '' }; render(); el.querySelector('input')?.focus(); }
+    if (a === 'remove' && (await confirm(t.taRemoveAsk))) {
+      try { ta = (await api('DELETE', '/api/ai/text')).textApi; msg = { text: '', cls: '' }; } catch (err) { msg = { text: err.message, cls: 'bad' }; }
+      render();
+    }
+  });
+  return { update(s) { ta = s.textApi; if (!el.contains(document.activeElement)) render(); } };
+}
+const hostOf = (u) => { try { return new URL(u).host; } catch { return u; } };
 
 /**
  * Public address: start a quick tunnel (or one on your own domain), see when it's reachable, turn it off.

@@ -15,6 +15,8 @@ import { config, normalizeStage, ROOT, langName, setEngine, writeFileAtomic } fr
 import { Failover } from './failover.js';
 import { LocalMode } from './local/mode.js';
 import { checkKey, saveKey, keyInfo, looksLikeKey, readSecret, saveSecret } from './aikey.js';
+import { textApiOn, textApiInfo, checkTextApi, saveTextApi, looksLikeUrl } from './textapi.js';
+import { startChecks, checkNow, updateInfo } from './updates.js';
 import { Tunnel, tunnelOrigin } from './tunnel.js';
 import * as tty from './tty.js';
 import { Alerts, publicConfig, mergeChannels } from './alerts.js';
@@ -952,6 +954,9 @@ app.get('/api/setup', crew, (req, res) => {
     primaryEngine: config.primaryEngine,
     failover: failoverStatus(),
     ai: keyInfo(),
+    textApi: textApiInfo(),
+    updateCheck: updatesOn(),
+    updateCheckFixed: !updateCheckEnv,
     tunnel: tunnel.status(),
     tunnelTokenSaved: !!readSecret('tunnelToken'),
     tunnelMoved, // the free address is not the one the QR codes were printed with
@@ -972,6 +977,7 @@ app.put('/api/setup', admin, (req, res) => {
   if ('publicTranscripts' in b && transcriptsFixed) return res.status(409).json({ error: 'PUBLIC_TRANSCRIPTS is set in .env: change it there and restart' });
   if ('speechModel' in b && !['translate', 'transcribe'].includes(b.speechModel)) return res.status(400).json({ error: 'speechModel: translate or transcribe' });
   if ('speechModel' in b && transcribeFixed) return res.status(409).json({ error: 'TRANSCRIBE_MODEL is set in .env: change it there and restart' });
+  if ('updateCheck' in b && !updateCheckEnv) return res.status(409).json({ error: 'UPDATE_CHECK=0 is set in .env: change it there and restart' });
   let added = null;
   if ('languages' in b) {
     const l = b.languages && typeof b.languages === 'object' ? Object.entries(b.languages) : null;
@@ -1005,6 +1011,10 @@ app.put('/api/setup', admin, (req, res) => {
     config.event.named = true;
   }
   if ('done' in b) patch.done = !!b.done;
+  if ('updateCheck' in b) {
+    patch.updateCheck = !!b.updateCheck;
+    if (b.updateCheck) checkNow();
+  }
   if ('mode' in b) patch.mode = b.mode === 'personal' ? 'personal' : 'event'; // "just for me" or an event
   if (b.done && b.mode === 'event') patch.eventDone = true; // the wizard was finished for an event at least once
   if ('timezone' in b) {
@@ -1175,6 +1185,29 @@ app.delete('/api/ai/key', admin, unlocked, (req, res) => {
   useKeyChange(envKey ? 'Saved Gemini API key removed: using the one in .env' : 'Gemini API key removed: simulated captions');
   res.json({ ok: true, engine: config.engine, key: keyInfo() });
 });
+// Another AI service for translations, summaries and questions (src/textapi.js): checked with one tiny request, then
+// saved. An empty key keeps the saved one. The key is never sent back.
+app.put('/api/ai/text', admin, async (req, res) => {
+  const url = String(req.body?.url || '').trim(), model = String(req.body?.model || '').trim();
+  const key = String(req.body?.key || '').trim() || (config.textApi.source === 'dashboard' ? config.textApi.key : '');
+  if (!looksLikeUrl(url) || url.length > 500) return res.status(400).json({ ok: false, code: 'url', error: 'the address must be a web address, e.g. https://api.openai.com/v1' });
+  if (!model || model.length > 200) return res.status(400).json({ ok: false, code: 'model', error: 'the model name is missing' });
+  const check = await checkTextApi({ url, key, model });
+  if (!check.ok) return res.status(400).json({ ...check, error: `the service didn't accept it (${check.code})` });
+  saveTextApi({ url, key, model });
+  recordChange({ kind: 'ai.text', summary: `Translations, summaries and questions: ${model} (${new URL(url).host})` });
+  res.json({ ok: true, check: check.code, textApi: textApiInfo() });
+});
+app.delete('/api/ai/text', admin, (req, res) => {
+  saveTextApi(null);
+  recordChange({ kind: 'ai.text', summary: config.textApi.url ? 'Translations: back to the service in .env' : 'Translations, summaries and questions: back to Gemini' });
+  res.json({ ok: true, textApi: textApiInfo() });
+});
+
+// "A new version is available" (src/updates.js): off with UPDATE_CHECK=0, or in Settings → General.
+const updateCheckEnv = !/^(0|false|no|off)$/i.test(process.env.UPDATE_CHECK || '');
+const updatesOn = () => updateCheckEnv && setup.updateCheck !== false;
+startChecks(updatesOn);
 const speechSummary = (m) => (m === 'transcribe' ? 'Speech model: captions only (Transcribe Live)' : 'Speech model: captions + translated voice (Live Translate)');
 /** Switch the speech model (Settings): saved, and text-mode Gemini rooms reconnect with it like useKeyChange does. */
 function useSpeechModel(m) {
@@ -1360,7 +1393,7 @@ app.use((err, req, res, next) => { // eslint-disable-line no-unused-vars
 // Local engine: keep an eye on the speech server and the text model (shown on the dashboard).
 const localHealth = { asr: null, llm: null, modelInstalled: null, missing: [], checkedAt: 0 };
 const localModels = () => [...new Set([llmInfo().model, config.localMtModel].filter(Boolean))].join(' + ');
-const engineLabel = () => (config.engine === 'gemini' ? config.model + (config.transcribeModel ? ` · ${config.transcribeModel} (text mode)` : '') : config.engine === 'local' ? (config.localLlmOff ? asrInfo().label : `${asrInfo().label} + ${localModels()}`) : 'mock');
+const engineLabel = () => (config.engine === 'gemini' ? config.model + (config.transcribeModel ? ` · ${config.transcribeModel} (text mode)` : '') + (textApiOn() ? ` · ${config.textApi.model} (translations)` : '') : config.engine === 'local' ? (config.localLlmOff ? asrInfo().label : `${asrInfo().label} + ${localModels()}`) : 'mock');
 async function checkLocal() {
   const [asr, llm] = /** @type {[boolean, any]} */ (await Promise.all([asrReachable(), config.localLlmOff ? { ok: false, hasModel: false, models: [], off: true } : llmHealth()]));
   Object.assign(localHealth, { asr, llm: llm.ok, modelInstalled: llm.hasModel, missing: llm.missing || [], checkedAt: Date.now() });
@@ -1413,6 +1446,7 @@ function snapshot() {
     failover: failoverStatus(),
     tunnel: tunnel.status(),
     ai: keyInfo(),
+    update: updatesOn() ? updateInfo() : null,
     publicUrl: config.publicUrl, // '' = none: QR codes use the address the page was opened with
     setupDone: !!setup.done,
     locked: !!setup.locked,
