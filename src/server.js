@@ -15,6 +15,8 @@ import { config, normalizeStage, ROOT, langName, setEngine, writeFileAtomic } fr
 import { Failover } from './failover.js';
 import { LocalMode } from './local/mode.js';
 import { checkKey, saveKey, keyInfo, looksLikeKey, readSecret, saveSecret } from './aikey.js';
+import { textApiOn, textApiInfo, checkTextApi, saveTextApi, looksLikeUrl } from './textapi.js';
+import { startChecks, checkNow, updateInfo, installUpdate, RESTART } from './updates.js';
 import { Tunnel, tunnelOrigin } from './tunnel.js';
 import * as tty from './tty.js';
 import { Alerts, publicConfig, mergeChannels } from './alerts.js';
@@ -952,6 +954,9 @@ app.get('/api/setup', crew, (req, res) => {
     primaryEngine: config.primaryEngine,
     failover: failoverStatus(),
     ai: keyInfo(),
+    textApi: textApiInfo(),
+    updateCheck: updatesOn(),
+    updateCheckFixed: !updateCheckEnv,
     tunnel: tunnel.status(),
     tunnelTokenSaved: !!readSecret('tunnelToken'),
     tunnelMoved, // the free address is not the one the QR codes were printed with
@@ -972,6 +977,7 @@ app.put('/api/setup', admin, (req, res) => {
   if ('publicTranscripts' in b && transcriptsFixed) return res.status(409).json({ error: 'PUBLIC_TRANSCRIPTS is set in .env: change it there and restart' });
   if ('speechModel' in b && !['translate', 'transcribe'].includes(b.speechModel)) return res.status(400).json({ error: 'speechModel: translate or transcribe' });
   if ('speechModel' in b && transcribeFixed) return res.status(409).json({ error: 'TRANSCRIBE_MODEL is set in .env: change it there and restart' });
+  if ('updateCheck' in b && !updateCheckEnv) return res.status(409).json({ error: 'UPDATE_CHECK=0 is set in .env: change it there and restart' });
   let added = null;
   if ('languages' in b) {
     const l = b.languages && typeof b.languages === 'object' ? Object.entries(b.languages) : null;
@@ -1005,6 +1011,10 @@ app.put('/api/setup', admin, (req, res) => {
     config.event.named = true;
   }
   if ('done' in b) patch.done = !!b.done;
+  if ('updateCheck' in b) {
+    patch.updateCheck = !!b.updateCheck;
+    if (b.updateCheck) checkNow();
+  }
   if ('mode' in b) patch.mode = b.mode === 'personal' ? 'personal' : 'event'; // "just for me" or an event
   if (b.done && b.mode === 'event') patch.eventDone = true; // the wizard was finished for an event at least once
   if ('timezone' in b) {
@@ -1174,6 +1184,49 @@ app.delete('/api/ai/key', admin, unlocked, (req, res) => {
   Object.assign(config, { geminiApiKey: envKey, keySource: envKey ? 'env' : '' });
   useKeyChange(envKey ? 'Saved Gemini API key removed: using the one in .env' : 'Gemini API key removed: simulated captions');
   res.json({ ok: true, engine: config.engine, key: keyInfo() });
+});
+// Another AI service for translations, summaries and questions (src/textapi.js): checked with one tiny request, then
+// saved. An empty key keeps the saved one. The key is never sent back.
+app.put('/api/ai/text', admin, async (req, res) => {
+  const url = String(req.body?.url || '').trim(), model = String(req.body?.model || '').trim();
+  const key = String(req.body?.key || '').trim() || (config.textApi.source === 'dashboard' ? config.textApi.key : '');
+  if (!looksLikeUrl(url) || url.length > 500) return res.status(400).json({ ok: false, code: 'url', error: 'the address must be a web address, e.g. https://api.openai.com/v1' });
+  if (!model || model.length > 200) return res.status(400).json({ ok: false, code: 'model', error: 'the model name is missing' });
+  const check = await checkTextApi({ url, key, model });
+  if (!check.ok) return res.status(400).json({ ...check, error: `the service didn't accept it (${check.code})` });
+  saveTextApi({ url, key, model });
+  recordChange({ kind: 'ai.text', summary: `Translations, summaries and questions: ${model} (${new URL(url).host})` });
+  res.json({ ok: true, check: check.code, textApi: textApiInfo() });
+});
+app.delete('/api/ai/text', admin, (req, res) => {
+  saveTextApi(null);
+  recordChange({ kind: 'ai.text', summary: config.textApi.url ? 'Translations: back to the service in .env' : 'Translations, summaries and questions: back to Gemini' });
+  res.json({ ok: true, textApi: textApiInfo() });
+});
+
+// "A new version is available" (src/updates.js): off with UPDATE_CHECK=0, or in Settings → General.
+const updateCheckEnv = !/^(0|false|no|off)$/i.test(process.env.UPDATE_CHECK || '');
+const updatesOn = () => updateCheckEnv && setup.updateCheck !== false;
+startChecks(updatesOn);
+// "Update now": the new files go over this copy, then the server stops with RESTART and scripts/start.js starts the
+// new version. Phones, screens and room computers reconnect by themselves. Not in Event mode.
+let updating = false;
+app.post('/api/update', admin, unlocked, async (req, res) => {
+  const up = updateInfo();
+  if (!up?.canUpdate) return res.status(409).json({ error: 'this installation can\'t update itself: download the new version' });
+  if (updating) return res.status(409).json({ error: 'already updating' });
+  updating = true;
+  try {
+    await installUpdate();
+  } catch (e) {
+    updating = false;
+    console.error('✗ update:', e.message);
+    return res.status(502).json({ error: `The update didn't finish: ${e.stderr?.trim() || e.message}` });
+  }
+  recordChange({ kind: 'app.update', summary: `OpenCaptions updated to ${up.version}: restarting` });
+  console.log(`\n${tty.sym.ok} OpenCaptions ${up.version} is in place. Restarting…`);
+  res.json({ ok: true, version: up.version });
+  setTimeout(() => shutdown(RESTART), 300); // the answer goes out first
 });
 const speechSummary = (m) => (m === 'transcribe' ? 'Speech model: captions only (Transcribe Live)' : 'Speech model: captions + translated voice (Live Translate)');
 /** Switch the speech model (Settings): saved, and text-mode Gemini rooms reconnect with it like useKeyChange does. */
@@ -1360,7 +1413,7 @@ app.use((err, req, res, next) => { // eslint-disable-line no-unused-vars
 // Local engine: keep an eye on the speech server and the text model (shown on the dashboard).
 const localHealth = { asr: null, llm: null, modelInstalled: null, missing: [], checkedAt: 0 };
 const localModels = () => [...new Set([llmInfo().model, config.localMtModel].filter(Boolean))].join(' + ');
-const engineLabel = () => (config.engine === 'gemini' ? config.model + (config.transcribeModel ? ` · ${config.transcribeModel} (text mode)` : '') : config.engine === 'local' ? (config.localLlmOff ? asrInfo().label : `${asrInfo().label} + ${localModels()}`) : 'mock');
+const engineLabel = () => (config.engine === 'gemini' ? config.model + (config.transcribeModel ? ` · ${config.transcribeModel} (text mode)` : '') + (textApiOn() ? ` · ${config.textApi.model} (translations)` : '') : config.engine === 'local' ? (config.localLlmOff ? asrInfo().label : `${asrInfo().label} + ${localModels()}`) : 'mock');
 async function checkLocal() {
   const [asr, llm] = /** @type {[boolean, any]} */ (await Promise.all([asrReachable(), config.localLlmOff ? { ok: false, hasModel: false, models: [], off: true } : llmHealth()]));
   Object.assign(localHealth, { asr, llm: llm.ok, modelInstalled: llm.hasModel, missing: llm.missing || [], checkedAt: Date.now() });
@@ -1413,6 +1466,7 @@ function snapshot() {
     failover: failoverStatus(),
     tunnel: tunnel.status(),
     ai: keyInfo(),
+    update: updatesOn() ? updateInfo() : null,
     publicUrl: config.publicUrl, // '' = none: QR codes use the address the page was opened with
     setupDone: !!setup.done,
     locked: !!setup.locked,
@@ -1742,21 +1796,21 @@ process.on('uncaughtException', (e) => console.error('✗ uncaught exception (se
 // Every socket hears 1012 "server restarting", never 4000 ("another source took your room"), so room computers and
 // phones reconnect by themselves once the server is back. The close frames get up to a second to go out; a second
 // Ctrl+C quits at once.
-function shutdown() {
-  if (stopping) process.exit(0);
+function shutdown(code = 0) {
+  if (stopping) process.exit(code);
   stopping = true;
   tunnel.stop();
   switchers?.stop();
   for (const id of [...stages.keys()]) removeStage(id, 'server restarting');
   let open = wss.clients.size;
-  if (!open) process.exit(0);
+  if (!open) process.exit(code);
   for (const ws of wss.clients) {
-    ws.once('close', () => { if (--open === 0) process.exit(0); });
+    ws.once('close', () => { if (--open === 0) process.exit(code); });
     ws.close(1012, 'server restarting'); // the dashboards (the rooms' sockets are closing already)
   }
-  setTimeout(() => process.exit(0), 1000);
+  setTimeout(() => process.exit(code), 1000);
 }
-for (const sig of ['SIGINT', 'SIGTERM', 'SIGHUP']) process.on(sig, shutdown);
+for (const sig of ['SIGINT', 'SIGTERM', 'SIGHUP']) process.on(sig, () => shutdown());
 // A program that started the server with an IPC channel can stop it the same way with child.send('shutdown'). On
 // Windows that's the only way: child.kill() there ends the process at once, whatever the signal, and nothing above runs.
 if (process.send) process.on('message', (m) => { if (m === 'shutdown') shutdown(); });

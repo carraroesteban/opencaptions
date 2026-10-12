@@ -12,6 +12,7 @@ import { getClient } from './genai.js';
 import { config } from './config.js';
 import { chat as localChat, cleanTranslation, llmBusy, llmInfo } from './local/llm.js';
 import { promptLanguage } from './languages.js';
+import { textApiOn, textChat } from './textapi.js';
 
 let ai = null;
 const client = () => ai ?? getClient(); // tests can inject their own (_setClient)
@@ -81,6 +82,8 @@ export async function translateText({ text, from, to, context = [], prior = [], 
   const ctx = context.length ? `Previous sentences (context only, do not translate):\n${context.join(' ')}\n\n` : '';
   const call = async (thinking) => {
     limiter.take();
+    // Another AI service (Settings → AI): no streaming, and its cost isn't counted.
+    if (textApiOn()) return (await textChat({ system: sys, user: `${ctx}Translate:\n${text}`, maxTokens: 512, temperature: 0.1, timeoutMs: config.mtTimeoutMs })).replace(/^["“]|["”]$/g, '');
     const cfg = { systemInstruction: sys, temperature: 0.1, maxOutputTokens: 512, abortSignal: AbortSignal.timeout(config.mtTimeoutMs) };
     if (thinking) cfg.thinkingConfig = { thinkingLevel: 'MINIMAL' }; // captions need speed, not reasoning
     const req = { model: config.textModel, contents: `${ctx}Translate:\n${text}`, config: cfg };

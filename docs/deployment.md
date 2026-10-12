@@ -339,6 +339,6 @@ Rooms share no state, so no message bus is needed. See [Architecture](architectu
 ## Backups and upgrades
 
 - **Back up the data folder.** It holds transcripts, rooms created from the dashboard, the History, and the passwords and API key (`secrets.json`): `data/` in a clone or Docker, `~/Library/Application Support/OpenCaptions/data` with the Mac app, `%LOCALAPPDATA%\OpenCaptions\data` with the Windows launcher. In a clone, also back up `config/`.
-- **Upgrade:** download the new Mac or Windows version; or `git pull`, then `npm ci --omit=dev` and restart; or `docker compose up -d --build`. Check [CHANGELOG.md](../CHANGELOG.md) for breaking changes first.
+- **Upgrade:** download the new Mac or Windows version; or `git pull`, then `npm ci --omit=dev` and restart; or `git pull && docker compose up -d --build`; with the published image, `docker pull ghcr.io/carraroesteban/opencaptions` and start the container again with your `docker run` line. The dashboard says when a new version is out; in the Mac and Windows apps (and with `npm run app`), **Update now** does it in one click. `UPDATE_CHECK=0` turns the check off; see [New versions](reference/configuration.md#new-versions). Check [CHANGELOG.md](../CHANGELOG.md) for breaking changes first.
 - **Roll back:** `git checkout <previous tag>` and restart.
 - Screens, phones and agents reconnect by themselves after a restart. A restart during a talk loses a few seconds of captions.
