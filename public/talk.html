@@ -23,9 +23,9 @@
   <style>
     body { min-height: 100dvh; }
     /* Correcting (admins): each sentence is editable; it's saved when you leave it. */
-    .seg { border-radius: 4px; box-shadow: 0 0 0 1px var(--line); padding: 0 2px; transition: background .4s; }
-    .seg:focus { outline: 2px solid var(--accent); box-shadow: none; }
-    .seg.saved { background: color-mix(in srgb, var(--ok) 25%, transparent); }
+    .edit-seg { border-radius: 4px; box-shadow: 0 0 0 1px var(--line); padding: 0 2px; transition: background .4s; }
+    .edit-seg:focus { outline: 2px solid var(--accent); box-shadow: none; }
+    .edit-seg.saved { background: color-mix(in srgb, var(--ok) 25%, transparent); }
     #fix[aria-pressed='true'] { background: var(--primary-bg); border-color: var(--primary-bg); color: var(--primary-fg); }
     .wrap { max-width: 1180px; margin: 0 auto; padding: 22px 20px 64px; }
     .top { display: flex; align-items: center; gap: 10px; justify-content: space-between; flex-wrap: wrap; }

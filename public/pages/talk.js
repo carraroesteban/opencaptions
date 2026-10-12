@@ -102,7 +102,7 @@ let editing = false; // admins correct the transcript in place (Correct button)
 let renderLater = false;
 function render() {
   // Don't rebuild the sentence someone is correcting: a live caption arriving would throw their typing away.
-  if (document.activeElement?.classList.contains('seg')) { renderLater = true; return; }
+  if (document.activeElement?.classList.contains('edit-seg')) { renderLater = true; return; }
   const ps = paragraphs();
   if (!ps.length && !partial) { patchDoc([`<div class="empty">${esc(info.current ? t('waiting') : t('noTalks'))}</div>`]); $('count').textContent = ''; return; }
   let matches = 0;
@@ -110,7 +110,7 @@ function render() {
     const text = p.texts.join(' ');
     if (query) matches += (text.toLowerCase().split(query.toLowerCase()).length - 1);
     const id = `t${Math.floor(p.start / 1000)}`;
-    const body = editing ? p.segs.map((x) => `<span class="seg" contenteditable="true" spellcheck="true" data-id="${esc(x.id)}">${esc(x.text)}</span>`).join(' ') : hl(text);
+    const body = editing ? p.segs.map((x) => `<span class="edit-seg" contenteditable="true" spellcheck="true" data-id="${esc(x.id)}">${esc(x.text)}</span>`).join(' ') : hl(text);
     return `<div class="para" id="${id}"><a class="ts" href="#${id}">${fmtClock(p.start)}</a><p>${p.named ? `<b class="spk">${esc(p.who)}</b> ` : ''}${body}</p></div>`;
   });
   if (partial?.text) blocks.push(`<div class="para" aria-hidden="true"><span class="ts"></span><p class="partial">${liveHtml(partial.text)}</p></div>`);
@@ -233,13 +233,13 @@ $('fix').onclick = () => {
 };
 // A corrected sentence is saved when you leave it (Enter, Tab or a click elsewhere); Escape puts it back.
 $('doc').addEventListener('keydown', (e) => {
-  const el = e.target.closest?.('.seg');
+  const el = e.target.closest?.('.edit-seg');
   if (!el) return;
   if (e.key === 'Enter') { e.preventDefault(); el.blur(); }
   if (e.key === 'Escape') { el.textContent = segs.find((x) => x.id === el.dataset.id)?.text || el.textContent; el.blur(); }
 });
 $('doc').addEventListener('focusout', async (e) => {
-  const el = e.target.closest?.('.seg');
+  const el = e.target.closest?.('.edit-seg');
   if (!el) return;
   const seg = segs.find((x) => x.id === el.dataset.id);
   const text = el.textContent.replace(/\s+/g, ' ').trim();
