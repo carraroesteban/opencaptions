@@ -93,6 +93,7 @@ Conferences and summits · universities and schools · places of worship · town
 
 - **Guided setup:** the first time you open the dashboard, a short illustrated wizard asks for the event name, rooms and languages. Skip anything you're not sure about.
 - **Production dashboard** with every room's status, audio level, delay, audience, cost and alerts, plus a floating mini-dashboard. It warns when a talk runs over and starts the next one in one click.
+- **Find anything in a keystroke:** ⌘K / Ctrl+K jumps to any room, page or setting; the sidebar lists the rooms with a live dot and folds away to icons; every page has a back button.
 - **Safe on event day:** Event mode locks the setup while you're live, every change can be undone from History, and deleted rooms come back from the trash.
 - **Agenda import** from Swapcard, Sessionize or any spreadsheet: titles and speaker names appear automatically.
 - **Printable QR posters** for every room, in one click.

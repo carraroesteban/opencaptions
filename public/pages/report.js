@@ -3,6 +3,7 @@
 import { esc } from '/common.js';
 import { prefsControls, LANG } from '/i18n.js';
 import { ensureSignedIn } from '/signin.js';
+import { mountNav, home, viewCrumb } from '/nav.js';
 
 const $ = (id) => document.getElementById(id);
 $('prefs-slot').append(prefsControls());
@@ -10,7 +11,7 @@ document.documentElement.lang = LANG;
 
 const T = {
   es: {
-    doc: 'Informe del evento', title: (e) => (e ? `${e}: informe` : 'Informe del evento'), back: '← Panel',
+    doc: 'Informe del evento', title: (e) => (e ? `${e}: informe` : 'Informe del evento'),
     sub: (n, d) => `${n} ${n === 1 ? 'charla subtitulada' : 'charlas subtituladas'}${d ? ` el ${d}` : ''}.`,
     allDays: 'Todos los días', print: 'Imprimir o guardar PDF', csv: 'Descargar CSV',
     talks: 'Charlas', hours: 'Horas subtituladas', words: 'Palabras', peak: 'Pico de público', vh: 'Horas de lectura', cost: 'Costo de IA',
@@ -21,7 +22,7 @@ const T = {
     foot: (d) => `Generado por OpenCaptions el ${d}. Público = personas con los subtítulos abiertos a la vez; minutos de lectura = la suma de todas ellas. El costo es una estimación de la IA (Gemini); el modo local no tiene costo.`,
   },
   en: {
-    doc: 'Event report', title: (e) => (e ? `${e}: report` : 'Event report'), back: '← Dashboard',
+    doc: 'Event report', title: (e) => (e ? `${e}: report` : 'Event report'),
     sub: (n, d) => `${n} ${n === 1 ? 'talk' : 'talks'} captioned${d ? ` on ${d}` : ''}.`,
     allDays: 'All days', print: 'Print or save as PDF', csv: 'Download CSV',
     talks: 'Talks', hours: 'Hours captioned', words: 'Words', peak: 'Peak audience', vh: 'Reading hours', cost: 'AI cost',
@@ -34,7 +35,7 @@ const T = {
 };
 const t = T[LANG] || T.en;
 document.title = `${t.doc} · OpenCaptions`;
-$('back').textContent = t.back;
+mountNav({ current: 'transcripts', crumbs: [home(), viewCrumb('transcripts'), { label: t.doc }] });
 $('print').textContent = t.print;
 $('csv-btn').textContent = t.csv;
 $('print').onclick = () => print();

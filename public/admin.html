@@ -13,41 +13,27 @@
   <link rel="stylesheet" href="/style.css" />
   <style>
     body { min-height: 100vh; }
-    /* ---- shell: sidebar + content ---- */
-    .shell { display: grid; grid-template-columns: 248px minmax(0, 1fr); min-height: 100vh; }
-    .side { position: sticky; top: 0; height: 100vh; box-sizing: border-box; display: flex; flex-direction: column; gap: 4px; padding: 18px 14px; border-right: 1px solid var(--line); background: var(--bg2); }
-    .side .brand { font-size: 15px; padding: 2px 8px 0; }
-    .side .event { font-family: var(--font-display); font-weight: 800; font-size: 19px; letter-spacing: -.02em; line-height: 1.15; padding: 6px 8px 14px; overflow-wrap: anywhere; }
-    .side nav { display: grid; gap: 2px; }
-    .side nav a { display: flex; align-items: center; gap: 10px; padding: 9px 10px; border-radius: 10px; color: var(--fg2); text-decoration: none; font-size: 15px; }
-    .side nav a:hover { background: var(--bg3); color: var(--fg); }
-    .side nav a.on { background: var(--primary-bg); color: var(--primary-fg); font-weight: 700; }
-    .side nav a .n { margin-left: auto; font-size: 12px; font-weight: 700; padding: 0 7px; border-radius: 99px; background: var(--bad); color: #fff; }
-    .side nav .sep { height: 1px; background: var(--line); margin: 8px 6px; }
-    .side .foot { margin-top: auto; display: grid; gap: 10px; padding: 8px 4px 0; }
+    /* the sidebar itself is shared (style.css, public/nav.js); the dashboard adds the event, who's signed in and Event mode */
+    .side .event { font-family: var(--font-display); font-weight: 800; font-size: 19px; letter-spacing: -.02em; line-height: 1.15; padding: 6px 8px 0; overflow-wrap: anywhere; }
     .lockbtn { display: flex; align-items: center; gap: 10px; width: 100%; text-align: left; padding: 11px 12px; border-radius: 12px; font-size: 14px; }
     .lockbtn b { display: block; font-size: 14px; }
     .lockbtn small { display: block; font-size: 12px; color: var(--fg2); font-weight: 400; }
     .lockbtn.on { background: var(--primary-bg); border-color: var(--primary-bg); color: var(--primary-fg); }
     .lockbtn.on small { color: inherit; opacity: .75; }
     .lockbtn svg.i { width: 20px; height: 20px; }
-    @media (max-width: 900px) {
-      .shell { grid-template-columns: minmax(0, 1fr); }
-      .side { min-width: 0; }
-      .side { position: static; height: auto; border-right: 0; border-bottom: 1px solid var(--line); padding: 12px 16px; }
-      .side .event { padding: 2px 8px 8px; font-size: 17px; }
-      .side nav { display: flex; overflow-x: auto; gap: 4px; padding-bottom: 4px; }
-      .side nav a { white-space: nowrap; padding: 7px 10px; }
-      .side nav .sep { display: none; }
-      .side .foot { margin-top: 8px; grid-template-columns: minmax(0, 1fr) auto; align-items: center; }
+    @media (min-width: 901px) {
+      body.rail .lockbtn { justify-content: center; padding: 10px 0; }
+      body.rail .lockbtn > span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
     }
-    .content { min-width: 0; padding: 22px 32px 48px; display: grid; gap: 20px; align-content: start; max-width: 1500px; }
+    .content { min-width: 0; padding: 14px 32px 48px; display: grid; gap: 20px; align-content: start; max-width: 1500px; }
+    .content > .crumbbar { margin: 0 0 -14px -10px; }
     @media (max-width: 560px) { .content { padding: 16px; } }
     .topbar { display: flex; gap: 10px 14px; align-items: center; flex-wrap: wrap; }
-    .topbar h1 { font-size: 30px; margin: 0; flex: 1; min-width: 0; }
+    .topbar h1 { font-size: 30px; margin: 0; min-width: 0; }
+    .topbar .help-q { margin: 0; }
+    .topbar #engine { margin-left: auto; }
     .view { display: none; gap: 20px; align-content: start; min-width: 0; }
     .view.on { display: grid; }
-    .view > .lede { margin: -8px 0 0; color: var(--fg2); max-width: 760px; font-size: 16px; }
     h2.sec { font-size: 20px; margin: 6px 0 -6px; }
     .lockedbar { display: flex; gap: 12px; align-items: center; padding: 12px 16px; border-radius: 14px; background: var(--bg3); font-size: 14px; }
     .lockedbar svg.i { width: 20px; height: 20px; flex: none; }
@@ -78,7 +64,6 @@
     .stage .meter b { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--fg2); }
     /* No sound yet: what to do, right on the card */
     .stage .nosound { display: grid; gap: 10px; padding: 12px 14px; border-radius: 12px; background: var(--bg3); font-size: 14px; line-height: 1.45; }
-    .stage .nosound b::after { content: ' · '; font-weight: 400; }
     .stage .nosound .row { gap: 8px; flex-wrap: wrap; }
     .stage .stats { display: flex; gap: 6px 16px; flex-wrap: wrap; font-size: 13px; color: var(--fg2); }
     .stage .stats span { display: inline-flex; align-items: center; gap: 6px; }
@@ -99,6 +84,8 @@
     .stage .preview div { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .stage .preview div + div { color: var(--translation); }
     .stage .preview span.l { display: inline-block; min-width: 38px; font-size: 10px; font-weight: 700; color: var(--fg2); letter-spacing: .06em; text-transform: uppercase; }
+    .view.focus #onboard, .view.focus .kpis { display: none !important; } /* one room, like a channel: only its card */
+    .view.focus .grid { grid-template-columns: minmax(0, 1fr); }
     .empty-rooms { grid-column: 1 / -1; display: grid; justify-items: center; gap: 14px; text-align: center; padding: 30px 20px 40px; }
     .empty-rooms img { width: 220px; border-radius: 20px; }
     .empty-rooms h3 { font-size: 22px; margin: 0; }
@@ -121,6 +108,7 @@
     @media (max-width: 760px) { .table .hide-sm { display: none; } }
     .rowbar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
     .rowbar .spacer { flex: 1; }
+    #trash-box:not(.hidden) { display: grid; gap: 14px; } /* not u-stack14: its !important beat .hidden */
     .empty { padding: 22px 18px; color: var(--fg2); font-size: 14px; }
 
     /* agenda */
@@ -269,30 +257,18 @@
   </style>
 </head>
 <body>
-  <div class="shell">
-    <aside class="side">
-      <div class="brand">OpenCaptions</div>
-      <div class="event" id="event" data-no-i18n>…</div>
-      <nav id="nav">
-        <a href="#live" data-view="live" data-icon="play">En vivo</a>
-        <a href="#rooms" data-admin data-view="rooms" data-icon="dashboard">Salas</a>
-        <a href="#agenda" data-admin data-view="agenda" data-icon="calendar">Agenda</a>
-        <a href="#glossary" data-admin data-view="glossary" data-icon="book">Glosario</a>
-        <a href="#screens" data-view="screens" data-icon="qr">Pantallas y QR</a>
-        <a href="#integrations" data-admin data-view="integrations" data-icon="link">Integraciones</a>
-        <a href="#transcripts" data-view="transcripts" data-icon="doc">Transcripciones</a>
-        <span class="sep"></span>
-        <a href="#history" data-view="history" data-icon="refresh">Historial</a>
-        <a href="#settings" data-admin data-view="settings" data-icon="gear">Ajustes</a>
-      </nav>
-      <div class="foot">
-        <div class="me" id="me" data-no-i18n></div>
-        <button type="button" class="lockbtn" id="lockbtn" data-admin></button>
-        <span id="prefs-slot"></span>
-      </div>
-    </aside>
+  <aside class="side" id="side">
+    <a class="brand" href="#live">OpenCaptions</a>
+    <div class="event" id="event" data-no-i18n>…</div>
+    <div class="foot">
+      <div class="me" id="me" data-no-i18n></div>
+      <button type="button" class="lockbtn" id="lockbtn" data-admin></button>
+      <span id="prefs-slot"></span>
+    </div>
+  </aside>
 
     <main class="content">
+      <div class="crumbbar" id="crumbbar"></div>
       <div class="topbar"><h1 id="view-title">En vivo</h1><span class="chip" id="engine"></span></div>
       <section class="netbar hidden" id="netbar" role="status"></section>
       <section class="card hidden" id="local-offer" data-no-i18n aria-live="polite"></section>
@@ -322,30 +298,30 @@
 
       <!-- ROOMS -->
       <section class="view" data-view="rooms">
-        <p class="lede">Cada sala tiene su QR, su pantalla y su overlay. Cada cambio queda en el Historial y se puede deshacer.</p>
+        <p class="help-pop" popover id="help-rooms">Cada sala tiene su QR, su pantalla y su overlay. Cada cambio queda en el Historial y se puede deshacer.</p>
         <div class="rowbar"><button class="primary" id="add" data-icon="plus">Nueva sala</button></div>
         <div class="card flush"><table class="table"><thead><tr><th>Sala</th><th class="hide-sm">Idiomas</th><th class="hide-sm">Audio</th><th></th></tr></thead><tbody id="rooms-body" data-no-i18n></tbody></table></div>
-        <div id="trash-box" class="hidden u-stack14">
+        <div id="trash-box" class="hidden">
           <h2 class="sec">Salas eliminadas</h2>
-          <p class="muted-note u-m0">Sus transcripciones se conservan. Restaurá una sala para tenerla de nuevo tal como estaba.</p>
+          <p data-help>Sus transcripciones se conservan. Restaurá una sala para tenerla de nuevo tal como estaba.</p>
           <div class="card flush" id="trash-list" data-no-i18n></div>
         </div>
       </section>
 
       <!-- AGENDA -->
       <section class="view" data-view="agenda">
-        <p class="lede">Con la agenda, cada sala nombra sola sus charlas sin cortar a quien se pasa de tiempo, y los nombres de speakers ayudan a la IA a escribirlos bien.</p>
+        <p class="help-pop" popover id="help-agenda">Con la agenda, cada sala nombra sola sus charlas sin cortar a quien se pasa de tiempo, y los nombres de speakers ayudan a la IA a escribirlos bien.</p>
         <div id="agenda-current" data-no-i18n></div>
         <section class="card u-stack12">
           <h2 class="u-m0 u-fs20">Reemplazar la agenda</h2>
-          <p class="muted-note u-m0">Desde Swapcard, Sessionize o una planilla: exportá las sesiones, seleccioná todo (con la fila de títulos), copiá y pegá acá. O una charla por línea: sala, hora, título, speaker.</p>
+          <p data-help>Desde Swapcard, Sessionize o una planilla: exportá las sesiones, seleccioná todo (con la fila de títulos), copiá y pegá acá. O una charla por línea: sala, hora, título, speaker.</p>
           <textarea id="agenda-text" class="paste" placeholder="main,10:00,Keynote de apertura,Equipo del evento&#10;room-a,10:30,Diseñar ciudades para todos,María José Fernández"></textarea>
           <div class="rowbar"><button id="agenda-preview" data-icon="eye">Ver qué cambia</button><span class="spacer"></span></div>
           <div id="agenda-diff" class="hidden" data-no-i18n></div>
         </section>
         <section class="card u-stack12">
           <h2 class="u-m0 u-fs20">Importar</h2>
-          <p class="muted-note u-m0">Desde Sessionize (API / Embed → un endpoint con «All») o un enlace de calendario (.ics): la sala es el lugar del evento y el título, su nombre. Las salas se reconocen por su nombre.</p>
+          <p data-help>Desde Sessionize (API / Embed → un endpoint con «All») o un enlace de calendario (.ics): la sala es el lugar del evento y el título, su nombre. Las salas se reconocen por su nombre.</p>
           <form class="rowbar" id="import-form">
             <select id="import-source" aria-label="Origen"><option value="sessionize">Sessionize</option><option value="ics">Calendario (.ics)</option></select>
             <input id="import-ref" class="u-grow" aria-label="Enlace" placeholder="https://sessionize.com/api/v2/…/view/All" />
@@ -357,16 +333,16 @@
 
       <!-- GLOSSARY -->
       <section class="view" data-view="glossary">
-        <p class="lede">Nombres y términos que la IA tiene que escribir bien, y correcciones que se aplican a todos los subtítulos al instante.</p>
+        <p class="help-pop" popover id="help-glossary">Nombres y términos que la IA tiene que escribir bien, y correcciones que se aplican a todos los subtítulos al instante.</p>
         <section class="card u-stack12">
           <h2 class="u-m0 u-fs20">Nombres y términos</h2>
-          <p class="muted-note u-m0">Speakers, marcas, siglas y palabras técnicas. Ayudan al reconocimiento de voz y a la traducción.</p>
+          <p data-help>Speakers, marcas, siglas y palabras técnicas. Ayudan al reconocimiento de voz y a la traducción.</p>
           <div class="terms" id="terms" data-no-i18n></div>
           <form class="rowbar" id="term-form"><input id="term-in" placeholder="Ej: María José Fernández" class="u-grow u-minw200" maxlength="80" /><button data-icon="plus">Agregar</button></form>
         </section>
         <section class="card u-stack12">
           <h2 class="u-m0 u-fs20">Correcciones</h2>
-          <p class="muted-note u-m0">Cuando la IA escribe algo mal siempre igual, corregilo acá. Podés poner varias variantes separadas por una barra vertical.</p>
+          <p data-help>Cuando la IA escribe algo mal siempre igual, corregilo acá. Podés poner varias variantes separadas por una barra vertical.</p>
           <table class="table reps"><thead><tr><th>Si dice</th><th>Escribir</th><th class="hide-sm">Idioma</th><th></th></tr></thead><tbody id="reps"></tbody></table>
           <div><button id="rep-add" data-icon="plus">Agregar corrección</button></div>
         </section>
@@ -375,10 +351,10 @@
 
       <!-- SCREENS -->
       <section class="view" data-view="screens">
-        <p class="lede">Lo que va en cada pantalla del lugar: el QR para el público, la pantalla del escenario y el overlay del streaming.</p>
+        <p class="help-pop" popover id="help-screens">Lo que va en cada pantalla del lugar: el QR para el público, la pantalla del escenario y el overlay del streaming.</p>
         <div class="tools">
           <a class="card tool" href="/kit.html" target="_blank"><b data-icon="qr">Kit de QR</b><span>Un cartel A4 por sala, para imprimir.</span></a>
-          <a class="card tool" href="/style.html" target="_blank"><b data-icon="palette">Estilo de subtítulos</b><span>Tipografía, colores y posición del overlay y la pantalla.</span></a>
+          <a class="card tool" href="/style.html" target="_blank"><b data-icon="palette">Estilo de subtítulos</b><span>Letra, colores y posición.</span></a>
           <a class="card tool" href="/demo.html?mode=mic" target="_blank"><b data-icon="mic">Prueba de sonido</b><span>Hablá al micrófono y mirá los subtítulos.</span></a>
           <button class="card tool hidden u-left" id="float" type="button"><b data-icon="pin">Ventana flotante</b><span>Todas las salas en una ventana siempre visible, encima de OBS o vMix.</span></button>
         </div>
@@ -388,18 +364,18 @@
 
       <!-- TRANSCRIPTS -->
       <section class="view" data-view="integrations">
-        <p class="lede">Llevá los subtítulos adonde ya está tu público: una reunión de Zoom o Teams, una transmisión de YouTube, o cualquier sistema con un webhook.</p>
+        <p class="help-pop" popover id="help-integrations">Llevá los subtítulos adonde ya está tu público: una reunión de Zoom o Teams, una transmisión de YouTube, o cualquier sistema con un webhook.</p>
         <h2 class="sec">Subtítulos en tus reuniones y transmisiones</h2>
         <div class="tools">
-          <button class="card tool u-left" type="button" data-connect="zoom"><b data-icon="monitor">Zoom</b><span>Subtítulos (y traducción) dentro de la reunión o el webinar, para todos los participantes.</span></button>
-          <button class="card tool u-left" type="button" data-connect="youtube"><b data-icon="film">YouTube Live</b><span>Subtítulos en la transmisión en vivo, que el público activa con el botón CC.</span></button>
+          <button class="card tool u-left" type="button" data-connect="zoom"><b data-icon="monitor">Zoom</b><span>En la reunión o el webinar, para todos.</span></button>
+          <button class="card tool u-left" type="button" data-connect="youtube"><b data-icon="film">YouTube Live</b><span>En la transmisión, con el botón CC.</span></button>
           <button class="card tool u-left" type="button" data-connect="teams"><b data-icon="chat">Microsoft Teams</b><span>Subtítulos CART dentro de la reunión de Teams.</span></button>
-          <button class="card tool u-left" type="button" data-connect="webhook"><b data-icon="link">Webhook</b><span>Cada subtítulo y cada charla terminada, en JSON firmado, a tu sistema (intranet, archivo, Zapier, Make).</span></button>
+          <button class="card tool u-left" type="button" data-connect="webhook"><b data-icon="link">Webhook</b><span>Cada subtítulo y cada charla, a tu sistema (Zapier, Make…).</span></button>
         </div>
         <h2 class="sec">Conectadas</h2>
         <div class="card flush" id="conn-list" data-no-i18n></div>
         <h2 class="sec">Pausas desde la mezcla de video</h2>
-        <p class="muted-note">Cuando la transmisión pasa a una escena de pausa («Pausa», «Break», «Publicidad»…), los subtítulos de esa sala se pausan solos y las pantallas muestran la pausa y la próxima charla. Al volver, siguen.</p>
+        <p data-help>Cuando la transmisión pasa a una escena de pausa («Pausa», «Break», «Publicidad»…), los subtítulos de esa sala se pausan solos y las pantallas muestran la pausa y la próxima charla. Al volver, siguen.</p>
         <div class="tools">
           <button class="card tool u-left" type="button" data-switcher="vmix"><b data-icon="film">vMix</b><span>Lee qué entrada está al aire (Web Controller, puerto 8088).</span></button>
           <button class="card tool u-left" type="button" data-switcher="obs"><b data-icon="film">OBS Studio</b><span>Lee la escena al aire (servidor WebSocket de OBS 28 o más nuevo, puerto 4455).</span></button>
@@ -421,20 +397,19 @@
       </section>
 
       <section class="view" data-view="transcripts">
-        <p class="lede">Todo lo que se dijo en cada charla, para leer, buscar y descargar en cada idioma.</p>
-        <div class="rowbar"><label class="row">Sala <select id="tx-room"></select></label><button type="button" id="tx-zip" data-admin data-icon="download" title="Todas las charlas de esta sala, en cada idioma: SRT, VTT y TXT">Descargar todo (.zip)</button><button type="button" id="tx-rec" class="primary" data-admin data-icon="film" title="Un archivo de audio o video de tu computadora, mucho más rápido que el tiempo real">Subtitular una grabación</button><span class="spacer"></span><a href="/report.html" target="_blank"><button data-icon="dashboard" tabindex="-1">Informe del evento</button></a><a href="/talks.html" target="_blank"><button data-icon="doc" tabindex="-1">Abrir la biblioteca pública</button></a></div>
+        <p class="help-pop" popover id="help-transcripts">Todo lo que se dijo en cada charla, para leer, buscar y descargar en cada idioma.</p>
+        <div class="rowbar"><label class="row">Sala <select id="tx-room"></select></label><button type="button" id="tx-zip" data-admin data-icon="download" title="Todas las charlas de esta sala, en cada idioma: SRT, VTT y TXT">Descargar todo (.zip)</button><button type="button" id="tx-rec" class="primary" data-admin data-icon="film" title="Un archivo de audio o video de tu computadora, mucho más rápido que el tiempo real">Subtitular una grabación</button><span class="spacer"></span><a href="/report.html"><button data-icon="dashboard" tabindex="-1">Informe del evento</button></a><a href="/talks.html" target="_blank"><button data-icon="doc" tabindex="-1">Abrir la biblioteca pública</button></a></div>
         <div class="card flush hidden" id="tx-jobs" data-admin></div>
         <div class="card flush" id="tx-list"></div>
       </section>
 
       <!-- HISTORY -->
       <section class="view" data-view="history">
-        <p class="lede">Cada cambio en la configuración del evento queda acá. Deshacé cualquiera para volver a como estaba.</p>
+        <p class="help-pop" popover id="help-history">Cada cambio en la configuración del evento queda acá. Deshacé cualquiera para volver a como estaba.</p>
         <div class="card flush" id="history-list" data-no-i18n></div>
       </section>
 
     </main>
-  </div>
 
   <!-- dialogs -->
   <!-- SETTINGS: a window over the page, one section at a time (#settings/<section>) -->
@@ -457,19 +432,19 @@
         <section class="set-pane" data-pane="general" aria-labelledby="set-h-general">
           <h3 class="set-h" id="set-h-general">General</h3>
           <section class="card setting">
-            <div><h3>Modo evento</h3><p>Durante el evento, bloqueá la configuración: nadie puede borrar ni cambiar salas, agenda o glosario por error. Las acciones en vivo (siguiente charla, reconectar una sala) siguen funcionando.</p></div>
+            <div><h3>Modo evento</h3><p data-help>Durante el evento, bloqueá la configuración: nadie puede borrar ni cambiar salas, agenda o glosario por error. Las acciones en vivo (siguiente charla, reconectar una sala) siguen funcionando.</p></div>
             <button id="lock2" type="button"></button>
           </section>
           <section class="card setting">
-            <div><h3>Nombre del evento</h3><p>Aparece en los celulares, en la pantalla del escenario y en los carteles.</p></div>
+            <div><h3>Nombre del evento</h3><p data-help>Aparece en los celulares, en la pantalla del escenario y en los carteles.</p></div>
             <form class="rowbar" id="name-form"><input id="name-in" maxlength="80" class="u-minw220" /><button data-icon="check">Guardar</button></form>
           </section>
           <section class="card setting">
-            <div><h3>Idiomas</h3><p>Los que pueden elegir las salas. Agregá los que necesites y quitá los que no; después elegilos en cada sala.</p><div class="chips" id="langs-list" data-no-i18n></div></div>
+            <div><h3>Idiomas</h3><p data-help>Los que pueden elegir las salas. Agregá los que necesites y quitá los que no; después elegilos en cada sala.</p><div class="chips" id="langs-list" data-no-i18n></div></div>
             <form class="rowbar" id="lang-form"><select id="lang-add" aria-label="Idioma para agregar" class="u-minw220"></select><button data-icon="plus">Agregar</button></form>
           </section>
           <section class="card setting">
-            <div><h3>Transcripciones para el público</h3><p id="tx-access-note">Qué puede leer y descargar el público sin iniciar sesión. Pedí permiso a los oradores antes de publicar charlas anteriores.</p></div>
+            <div><h3>Transcripciones para el público</h3><p id="tx-access-note" data-help>Qué puede leer y descargar el público sin iniciar sesión. Pedí permiso a los oradores antes de publicar charlas anteriores.</p></div>
             <select id="tx-access" aria-label="Transcripciones para el público" class="u-minw220">
               <option value="current">Solo la charla en curso</option>
               <option value="all">Todas las charlas</option>
@@ -477,7 +452,7 @@
             </select>
           </section>
           <section class="card setting">
-            <div><h3>Solo para mí</h3><p>Usá OpenCaptions solo para vos: tus llamadas, videos y conversaciones en esta compu. Las salas, la agenda y las transcripciones quedan guardadas para cuando vuelvas.</p></div>
+            <div><h3>Solo para mí</h3><p data-help>Usá OpenCaptions solo para vos: tus llamadas, videos y conversaciones en esta compu. Las salas, la agenda y las transcripciones quedan guardadas para cuando vuelvas.</p></div>
             <button type="button" id="to-me" data-icon="headphones" data-setup>Pasar a Solo para mí</button>
           </section>
           <section class="card setting">
@@ -489,19 +464,19 @@
           <h3 class="set-h" id="set-h-ai">IA</h3>
           <section class="card">
             <h3 class="u-h17">IA en la nube</h3>
-            <p class="muted-note u-mb14">La API key de Gemini, la IA de Google con la que OpenCaptions subtitula en la nube. Se guarda en este servidor y nunca se muestra completa.</p>
+            <p data-help>La API key de Gemini, la IA de Google con la que OpenCaptions subtitula en la nube. Se guarda en este servidor y nunca se muestra completa.</p>
             <div id="key-panel" data-no-i18n></div>
           </section>
           <section class="card">
             <h3 class="u-h17">Modelo de voz</h3>
-            <p class="muted-note u-mb14" id="speech-note">Con qué modelo de Gemini se escucha al orador en las salas que traducen los subtítulos como texto (el modo normal).</p>
+            <p id="speech-note" data-help>Con qué modelo de Gemini se escucha al orador en las salas que traducen los subtítulos como texto (el modo normal).</p>
             <select id="speech-model" aria-label="Modelo de voz" class="u-minw220" data-setup>
               <option value="transcribe">Solo subtítulos (Transcribe Live, unos US$ 0,54 por hora de sala; recomendado)</option>
               <option value="translate">Subtítulos + voz traducida (Live Translate, unos US$ 2,2 por hora de sala)</option>
             </select>
           </section>
           <section class="card setting hidden" id="ai-setting">
-            <div><h3>IA y respaldo sin internet</h3><p id="ai-desc"></p></div>
+            <div><h3>IA y respaldo sin internet</h3><p id="ai-desc" data-help></p></div>
             <select id="ai-mode" aria-label="Motor de IA">
               <option value="auto">Automática: la nube, y esta computadora si se corta internet</option>
               <option value="cloud">Siempre en la nube</option>
@@ -513,7 +488,7 @@
           <h3 class="set-h" id="set-h-address">Dirección pública</h3>
           <section class="card">
             <h3 class="u-h17">Dirección pública</h3>
-            <p class="muted-note u-mb14">La dirección a la que apuntan los QR y los links.</p>
+            <p data-help>La dirección a la que apuntan los QR y los links.</p>
             <div id="tunnel-panel" data-no-i18n></div>
           </section>
         </section>
@@ -521,7 +496,7 @@
           <h3 class="set-h" id="set-h-security">Seguridad</h3>
           <section class="card">
             <h3 class="u-h17">Acceso</h3>
-            <p class="muted-note u-mb14">Quién puede entrar a este panel, y desde qué dispositivos.</p>
+            <p data-help>Quién puede entrar a este panel, y desde qué dispositivos.</p>
             <div id="access-panel" data-no-i18n></div>
           </section>
         </section>
@@ -529,7 +504,7 @@
           <h3 class="set-h" id="set-h-alerts">Alertas</h3>
           <section class="card">
             <h3 class="u-h17">Alertas en tu celular</h3>
-            <p class="muted-note u-mb14">Para cuando nadie está mirando el panel.</p>
+            <p data-help>Para cuando nadie está mirando el panel.</p>
             <div id="alerts-panel" data-no-i18n></div>
           </section>
         </section>
@@ -578,16 +553,16 @@
       <option value="hybrid">Híbrido (subtítulos por texto + voz traducida en todos los idiomas)</option>
     </select></label>
     <fieldset class="field u-stack8"><legend>Sonido</legend>
-      <p class="muted-note u-m0">Con un micrófono en la computadora junto al escenario, abrí ahí la página de sonido de la sala. Desde OBS o vMix, creá una dirección y pegala en el programa de streaming.</p>
+      <p data-help>Con un micrófono en la computadora junto al escenario, abrí ahí la página de sonido de la sala. Desde OBS o vMix, creá una dirección y pegala en el programa de streaming.</p>
       <div class="rowbar"><a id="edit-ingest" target="_blank" class="hidden"><button type="button" tabindex="-1" data-icon="mic">Abrir la página de sonido</button></a><button type="button" data-addr="rtmp" data-icon="link" data-setup>Dirección RTMP (OBS, vMix)</button><button type="button" data-addr="srt" data-icon="link" data-setup>Dirección SRT</button></div>
       <div id="edit-addr" class="u-stack8" data-no-i18n></div>
       <label class="field">Sonido desde un stream o un archivo (opcional)<input name="pull" aria-describedby="pull-hint" placeholder="rtmp://0.0.0.0:1935/live/sala1  ·  srt://0.0.0.0:9001?mode=listener  ·  https://…/stream.m3u8  ·  samples/charla.mp3" /></label>
-      <p class="muted-note u-m0" id="pull-hint">Dejalo vacío si el sonido llega desde la página de sonido de la sala. También acepta el enlace de un stream (SRT, RTMP, HLS) o un archivo de la carpeta samples de OpenCaptions.</p>
+      <p class="muted-note u-m0" id="pull-hint">Vacío si el sonido llega por la página de sonido de la sala.</p>
     </fieldset>
     <label class="row muted"><input type="checkbox" name="musicGuard" checked /> Pausar los subtítulos cuando suena música (entre charlas, videos)</label>
     <div class="u-stack8">
       <label class="row muted"><input type="checkbox" name="roomSound" /> El sonido de la sala en los celulares (escucha asistida)</label>
-      <p class="muted-note u-m0">Para quien usa audífonos o auriculares: escucha la sala en su celular, en Original → Escuchar. Cualquiera que tenga el enlace de la sala la escucha, aunque no esté en ella: activalo solo si lo que se dice ahí es público. El sonido no se guarda.</p>
+      <p class="muted-note u-m0">Para quien usa audífonos: escucha la sala en su celular (Original → Escuchar). Quien tenga el enlace la escucha aunque no esté en la sala: activalo solo si lo que se dice es público.</p>
       <label class="field">Máximo de personas escuchando a la vez<input name="roomSoundMax" type="number" min="1" max="5000" step="1" inputmode="numeric" placeholder="100" /></label>
     </div>
     <label class="row muted"><input type="checkbox" name="loop" /> Repetir en loop (archivos de prueba)</label>
@@ -626,7 +601,7 @@
 
   <dialog id="dlg-rec" aria-labelledby="rec-title"><form method="dialog" id="f-rec" class="u-stack12">
     <h3 class="u-m0" id="rec-title">Subtitular una grabación</h3>
-    <p class="muted-note u-m0">Un archivo de audio o video de tu computadora queda como una transcripción más de la sala, con sus subtítulos en cada idioma. Mucho más rápido que el tiempo real, y sin pasar por la sala en vivo.</p>
+    <p data-help>Un archivo de audio o video de tu computadora queda como una transcripción más de la sala, con sus subtítulos en cada idioma. Mucho más rápido que el tiempo real, y sin pasar por la sala en vivo.</p>
     <div class="recdrop" id="rec-drop">
       <span id="rec-file-label">Arrastrá el archivo acá</span>
       <b id="rec-file-name" class="hidden" data-no-i18n></b>

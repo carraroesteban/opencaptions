@@ -26,7 +26,7 @@ Automated tools find roughly a third to a half of real accessibility problems. T
 - **Reading preferences** on phones: text size, line spacing, high-legibility fonts (Atkinson Hyperlegible, Lexend), light and dark themes, and floating captions over other apps. They're remembered on the device.
 - **Who is speaking**: when the crew sets it, captions and transcripts name the speaker, and WebVTT exports carry standard voice tags.
 - **Colour is never the only signal:** room states have text ("LIVE", "NO AUDIO"), alerts have words, checklists strike through what's done.
-- **Keyboard:** every control is a real button, link or form field; focus is always visible (ink in light mode, lime in dark mode); dialogs are native `<dialog>` elements, so focus stays inside them and Esc closes them (except the sign-in screen, which must be completed).
+- **Keyboard:** every control is a real button, link or form field; focus is always visible (ink in light mode, lime in dark mode); dialogs are native `<dialog>` elements, so focus stays inside them and Esc closes them (except the sign-in screen, which must be completed). On organizer pages, ☰ hides or shows the sidebar (it says whether it's expanded; with icons only, each link keeps its name for screen readers), Back is a labelled button, the breadcrumb marks the current page, **?** lists the keyboard shortcuts, ⌘K / Ctrl+K opens a search box that works with the arrow keys, and a room's menu opens with Shift+F10 as well as a right-click.
 - **Motion:** captions don't blink or move at the end of the line: each new word fades in once, and a paragraph is never redrawn while you read it. The fade and page animations stop with the system's "reduce motion" setting.
 - **Contrast:** text meets 4.5:1 (large text 3:1) on every surface, in both themes.
 
@@ -72,7 +72,7 @@ After a stall, the phone skips the audio that arrived late instead of playing it
 
 Before a large event, ask someone who uses these tools every day to try it, and pay them for their time. A quick check you can do yourself:
 
-1. **Keyboard only:** unplug the mouse. On the audience page, choose a room and a language, open the transcript, search it, and change the text size with Tab, Shift+Tab, Enter and Space. On the dashboard, start the next talk and open Settings. You should always see where you are.
+1. **Keyboard only:** unplug the mouse. On the audience page, choose a room and a language, open the transcript, search it, and change the text size with Tab, Shift+Tab, Enter and Space. On the dashboard, start the next talk and open Settings, collapse and reopen the sidebar with ☰, jump to a room with ⌘K / Ctrl+K, and come back with Back. You should always see where you are.
 2. **Screen reader:** VoiceOver on a Mac or iPhone (Cmd+F5, or triple-click the side button if enabled), TalkBack on Android, NVDA on Windows (free). Follow live captions for a minute: each sentence should be read once, in order. Every button should say what it does.
 3. **Zoom:** at 200% browser zoom and on a phone with the largest system text, nothing should be cut off or overlap.
 4. **Projector from the back row:** stand at the back of the actual room and read the stage screen for a minute. If it's hard, make the text bigger or show fewer lines in the style editor (`/style.html`).

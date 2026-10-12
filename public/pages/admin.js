@@ -14,10 +14,15 @@ import { alertsPanel } from '/alerts-ui.js';
 import { keyPanel, tunnelPanel } from '/connect.js';
 import { localPanel } from '/local-mode.js';
 import { LANGUAGE_CATALOG } from '/languages.js';
+import { mountNav, setRooms, setCurrent, setCrumbs, home, viewCrumb, helpButton, addCommands } from '/nav.js';
 
 const $ = (id) => document.getElementById(id);
+mountNav();
 $('prefs-slot').append(prefsControls());
 mountIcons();
+const viewHelp = helpButton(); // the open view's explanation (its <p popover id="help-<view>">)
+viewHelp.classList.add('hidden');
+$('view-title').after(viewHelp);
 // Signed in with a session cookie (public/signin.js): no password is kept on this page.
 localize(); // the page behind the sign-in screen, in the right language
 const me = await ensureSignedIn();
@@ -30,6 +35,8 @@ let locked = false;
 const logs = [];
 const VIEWS = isCrew ? ['live', 'screens', 'transcripts', 'history'] : ['live', 'rooms', 'agenda', 'glossary', 'screens', 'integrations', 'transcripts', 'history'];
 let view = 'live';
+let focusRoom = '';
+const roomName = (id) => last?.stages.find((x) => x.id === id)?.name || ev.stages?.find((x) => x.id === id)?.name || id;
 let screensRoom = null;
 let txRoom = null;
 
@@ -263,6 +270,7 @@ async function toggleLock() {
   refreshView();
 }
 $('lockbtn').onclick = toggleLock;
+if (!isCrew) addCommands(() => [{ ic: 'lock', label: locked ? t.unlock : t.lockAskOk, sub: t.lockOff, run: toggleLock }]);
 $('lock2').onclick = toggleLock;
 
 // ---------- views ----------
@@ -274,10 +282,20 @@ function go() {
   } else if ($('dlg-settings').open) $('dlg-settings').close();
   if (h === 'rooms' && sub && !isCrew) openEdit(sub === 'new' ? null : decodeURIComponent(sub)); // #rooms/<room>: its panel
   view = VIEWS.includes(h) ? h : 'live';
+  focusRoom = view === 'live' && sub ? decodeURIComponent(sub) : ''; // #live/<room>: that room alone, like a channel
+  const forRoom = sub && ['screens', 'transcripts'].includes(view) ? decodeURIComponent(sub) : ''; // #screens/<room>, #transcripts/<room>
+  if (forRoom && view === 'screens') screensRoom = forRoom;
+  if (forRoom && view === 'transcripts') txRoom = forRoom;
   for (const s of document.querySelectorAll('.view')) s.classList.toggle('on', s.dataset.view === view);
-  for (const a of document.querySelectorAll('#nav a')) a.classList.toggle('on', a.dataset.view === view);
-  const link = document.querySelector(`#nav a[data-view="${view}"]`);
-  $('view-title').textContent = [...link.childNodes].filter((n) => n.nodeType === 3).map((n) => n.textContent).join('').trim(); // not the alert badge
+  document.querySelector('.view[data-view="live"]').classList.toggle('focus', !!focusRoom);
+  setCurrent(view, focusRoom);
+  const label = document.querySelector(`#nav a[data-view="${view}"] .lbl`).textContent;
+  $('view-title').textContent = focusRoom ? roomName(focusRoom) : label;
+  setCrumbs(view === 'live' && !focusRoom ? [home()] : forRoom ? [home(), viewCrumb(view), { label: roomName(forRoom) }] : [home(), { label: $('view-title').textContent }]);
+  const help = $(`help-${view}`);
+  viewHelp.classList.toggle('hidden', !help || !!focusRoom);
+  if (help) viewHelp.setAttribute('popovertarget', help.id);
+  for (const el of $('grid').querySelectorAll('.stage')) el.classList.toggle('hidden', !!focusRoom && el.dataset.id !== focusRoom);
   setLocked(locked);
   refreshView();
   window.scrollTo(0, 0);
@@ -326,14 +344,14 @@ const OB = {
     localMissing: (m) => `falta el modelo <code>${m}</code>: <code>ollama pull ${m}</code>`,
     localReady: (m) => `listo · ${m} · el audio no sale de esta computadora`,
     engineLocal: 'Motor de IA local', engineGemini: 'Conectar la IA en la nube', ready: (m) => `listo · ${m}`,
-    noKey: '<a href="#settings/ai">pegá tu API key en Ajustes</a> (unos dos minutos), o corré la IA en esta computadora con <code>npm run local</code>. Mientras tanto, los subtítulos son simulados.',
-    address: 'Dirección pública para los celulares', addressD: (u) => (u ? esc(u) : '<a href="#settings/address">creala en Ajustes</a> para que los celulares abran los subtítulos desde cualquier red (opcional si comparten el Wi-Fi)'),
+    noKey: '<a href="#settings/ai">pegar la API key</a> · por ahora, subtítulos simulados',
+    address: 'Dirección pública para los celulares', addressD: (u) => (u ? esc(u) : '<a href="#settings/address">crearla</a> (opcional con Wi-Fi compartido)'),
     rooms: 'Crear las salas', roomsD: (n) => `${n} ${n === 1 ? 'sala' : 'salas'} · <a href="#rooms">ver salas</a>`,
-    audio: 'Conectar el sonido de cada sala', audioD: (a, n, room) => `${a} de ${n} con sonido · <a href="#rooms/${room}">cómo conectarlo</a>`,
-    agenda: 'Cargar la agenda', agendaD: (n) => (n ? `${n} ${n === 1 ? 'charla cargada' : 'charlas cargadas'}` : '<a href="#agenda">pegar la agenda</a> para que las charlas tomen su título (opcional)'),
+    audio: 'Conectar el sonido de cada sala', audioD: (a, n, room) => `${a} de ${n} · <a href="#rooms/${room}">conectar</a>`,
+    agenda: 'Cargar la agenda', agendaD: (n) => (n ? `${n} ${n === 1 ? 'charla cargada' : 'charlas cargadas'}` : '<a href="#agenda">pegarla</a> (opcional)'),
     kit: 'Imprimir los QR de cada sala', kitD: '<a href="/kit.html" target="_blank" data-ob="kit">abrir el kit de QR</a>',
     sound: 'Prueba de sonido en cada sala', soundD: '<a href="/demo.html?mode=mic" target="_blank" data-ob="sound">abrir la prueba de sonido</a>',
-    lock: 'Activar el modo evento al abrir las puertas', lockD: '<a href="#settings/general">en Ajustes</a>: bloquea la configuración durante el evento',
+    lock: 'Activar el modo evento al abrir las puertas', lockD: '<a href="#settings/general">activar</a>',
   },
   en: {
     localNoAsr: (u) => `the speech server isn't responding (<code>${u}</code>): run <code>npm run local</code>`,
@@ -342,14 +360,14 @@ const OB = {
     localMissing: (m) => `model <code>${m}</code> is missing: <code>ollama pull ${m}</code>`,
     localReady: (m) => `ready · ${m} · audio never leaves this computer`,
     engineLocal: 'Local AI engine', engineGemini: 'Connect the cloud AI', ready: (m) => `ready · ${m}`,
-    noKey: '<a href="#settings/ai">paste your API key in Settings</a> (about two minutes), or run the AI on this computer with <code>npm run local</code>. Until then, captions are simulated.',
-    address: 'A public address for phones', addressD: (u) => (u ? esc(u) : '<a href="#settings/address">create one in Settings</a> so phones can open the captions from any network (optional on a shared Wi-Fi)'),
+    noKey: '<a href="#settings/ai">paste the API key</a> · simulated captions until then',
+    address: 'A public address for phones', addressD: (u) => (u ? esc(u) : '<a href="#settings/address">create it</a> (optional on a shared Wi-Fi)'),
     rooms: 'Create your rooms', roomsD: (n) => `${n} ${n === 1 ? 'room' : 'rooms'} · <a href="#rooms">see rooms</a>`,
-    audio: 'Connect each room’s sound', audioD: (a, n, room) => `${a} of ${n} with sound · <a href="#rooms/${room}">how to connect it</a>`,
-    agenda: 'Load the agenda', agendaD: (n) => (n ? `${n} ${n === 1 ? 'talk' : 'talks'} loaded` : '<a href="#agenda">paste your agenda</a> so talks get their titles (optional)'),
+    audio: 'Connect each room’s sound', audioD: (a, n, room) => `${a} of ${n} · <a href="#rooms/${room}">connect</a>`,
+    agenda: 'Load the agenda', agendaD: (n) => (n ? `${n} ${n === 1 ? 'talk' : 'talks'} loaded` : '<a href="#agenda">paste it</a> (optional)'),
     kit: 'Print each room’s QR code', kitD: '<a href="/kit.html" target="_blank" data-ob="kit">open the QR kit</a>',
     sound: 'Sound check in every room', soundD: '<a href="/demo.html?mode=mic" target="_blank" data-ob="sound">open the sound check</a>',
-    lock: 'Turn on Event mode when doors open', lockD: '<a href="#settings/general">in Settings</a>: locks the setup during the event',
+    lock: 'Turn on Event mode when doors open', lockD: '<a href="#settings/general">turn it on</a>',
   },
 };
 const ob = OB[LANG] || OB.en;
@@ -440,6 +458,8 @@ function render(s) {
   const navLive = document.querySelector('#nav a[data-view="live"]');
   navLive.querySelector('.n')?.remove();
   if (alerts) navLive.insertAdjacentHTML('beforeend', `<span class="n">${alerts}</span>`);
+  setRooms(s.stages);
+  if (focusRoom && $('view-title').textContent !== roomName(focusRoom)) go(); // the room's name arrived, or it was renamed
   renderGrid(s);
   renderMini(s);
 }
@@ -456,14 +476,15 @@ function renderGrid(s) {
       el = document.createElement('article');
       el.className = 'card stage';
       el.dataset.id = st.id;
+      el.classList.toggle('hidden', !!focusRoom && st.id !== focusRoom);
       el.innerHTML = `
         <div class="top"><h3 data-no-i18n></h3><span data-f="state"></span></div>
         <div class="talkline" data-f="talkline" data-no-i18n></div>
         <div class="next" data-f="next" data-no-i18n></div>
         <div class="meter"><i data-f="lvl"></i><b data-f="pk"></b></div>
         <div class="nosound hidden" data-f="nosound">
-          <p class="u-m0" data-f="nosound-none"><b>Todavía no llega sonido</b><span>Abrí la página de sonido de esta sala en la computadora junto al escenario.</span></p>
-          <p class="u-m0" data-f="nosound-pull"><b>Esperando el stream</b><span>Empezá a transmitir desde OBS o vMix a la dirección de esta sala.</span></p>
+          <p class="u-m0" data-f="nosound-none"><b>Todavía no llega sonido</b></p>
+          <p class="u-m0" data-f="nosound-pull"><b>Esperando el stream</b></p>
           <div class="row">
             <a href="/ingest.html?stage=${encodeURIComponent(st.id)}" target="_blank" data-f="nosound-open"><button type="button" class="primary" tabindex="-1">${icon('mic')}Abrir la página de sonido</button></a>
             <button type="button" data-a="screens" data-f="nosound-link">${icon('link')}Enlace para otra computadora</button>
@@ -797,7 +818,7 @@ fe.id.oninput = () => renderAddr();
 $('add').onclick = () => openEdit(null);
 fe.roomSound.onchange = () => { fe.roomSoundMax.disabled = !fe.roomSound.checked; };
 $('dlg-edit').addEventListener('close', async () => {
-  if (/^#rooms\//.test(location.hash)) history.replaceState(null, '', '#rooms');
+  if (/^#rooms\//.test(location.hash)) history.replaceState(history.state, '', '#rooms');
   if ($('dlg-edit').returnValue !== 'ok') return;
   const body = {
     name: fe.name.value, source: fe.source.value, translation: fe.translation.value || '', pull: fe.pull.value.trim(), loop: fe.loop.checked, musicGuard: fe.musicGuard.checked,
@@ -1413,7 +1434,7 @@ const recFromHash = () => {
   const m = /^#transcripts\?record(?:=([\w-]*))?/.exec(location.hash);
   if (!m || isCrew) return;
   if (m[1] && ev.stages.some((s) => s.id === m[1])) { txRoom = m[1]; $('tx-room').value = m[1]; }
-  history.replaceState(null, '', `${location.pathname}${location.search}#transcripts`);
+  history.replaceState(history.state, '', `${location.pathname}${location.search}#transcripts`);
   openRec();
 };
 addEventListener('hashchange', recFromHash);
@@ -1491,7 +1512,7 @@ SET.querySelector('.set-nav').onclick = (e) => {
   const a = e.target.closest('a[data-pane]');
   if (!a) return;
   e.preventDefault();
-  history.replaceState(null, '', a.getAttribute('href'));
+  history.replaceState(history.state, '', a.getAttribute('href'));
   $('set-q').value = '';
   filterSettings();
   openSettings(a.dataset.pane);
@@ -1499,12 +1520,12 @@ SET.querySelector('.set-nav').onclick = (e) => {
 };
 $('set-back').onclick = () => {
   const cur = SET.querySelector('.set-nav a[aria-current]');
-  history.replaceState(null, '', '#settings');
+  history.replaceState(history.state, '', '#settings');
   openSettings(null);
   cur?.focus();
 };
 $('set-close').onclick = () => SET.close();
-SET.addEventListener('close', () => { if (location.hash.startsWith('#settings')) history.replaceState(null, '', `#${view}`); });
+SET.addEventListener('close', () => { if (location.hash.startsWith('#settings')) history.replaceState(history.state, '', `#${view}`); });
 
 let settingsSetup = null;
 async function loadSettings() {
