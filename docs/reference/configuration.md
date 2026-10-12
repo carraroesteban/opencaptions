@@ -107,7 +107,7 @@ Speech recognition with Whisper and translation with an open model, on this mach
 | Variable | Default | Description |
 |---|---|---|
 | `LOCAL_ASR_URL` | `http://127.0.0.1:8178/inference` | Speech server. A path ending in `/inference` uses whisper.cpp's dialect (`whisper-server`, or the bundled `scripts/local-asr-server.js`); a path ending in `/v1/audio/transcriptions` uses the OpenAI dialect (speaches, LocalAI, WhisperKit). |
-| `LOCAL_ASR_API` | from the URL | Force the dialect: `whispercpp` or `openai`. |
+| `LOCAL_ASR_API` | from the URL | Force the dialect: `whispercpp` or `openai`. `apple`: no server, Apple's speech recognition and translation on a Mac with macOS 26+ (`npm run local` sets it). |
 | `LOCAL_ASR_MODEL` | `whisper-1` (OpenAI dialect) | Model name sent to OpenAI-compatible servers that serve several models, e.g. `Systran/faster-whisper-small`. Not sent to whisper.cpp. |
 | `LOCAL_ASR_LABEL` | the model name | Name shown on the dashboard and in the startup banner. |
 | `LOCAL_ASR_CONCURRENCY` | `1` | Requests sent to the speech server at once, across all rooms. Raise it only for servers that process requests in parallel (GPU servers). |

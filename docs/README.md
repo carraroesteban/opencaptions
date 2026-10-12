@@ -28,6 +28,7 @@ The docs follow the [Diátaxis](https://diataxis.fr/) framework. Each page has o
 | [Integrations](integrations.md) | How-to + reference | Send captions into Zoom, YouTube Live, Microsoft Teams or a webhook, and import the agenda from Sessionize or a calendar. |
 | [Caption a recording](recording.md) | How-to | Turn an audio or video file into a transcript with captions in each language, much faster than real time. |
 | [Local mode](local.md) | How-to + explanation | Run speech recognition and translation on your own computer: no API key, no internet, no cost per hour. |
+| [How Apple's Live Translation works](research/apple-live-translation.md) | Research | What AirPods' Live Translation does on the iPhone and in the cloud, with the evidence, and how local mode on a Mac uses the same building blocks. |
 | [Event-day runbook](operations/runbook.md) | How-to | Prepare and operate the rooms on the day. |
 | [Troubleshooting](operations/troubleshooting.md) | How-to | Fix a specific symptom quickly. |
 | [Runbook in Spanish](operations/event-day.es.md) | How-to | Hand the production crew a checklist in Spanish. |
