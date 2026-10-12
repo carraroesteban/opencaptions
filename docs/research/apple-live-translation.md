@@ -125,7 +125,7 @@ OpenCaptions' local mode on a Mac now follows the same pipeline, minus the earbu
 | AirPods' microphones | The room's sound (mixer, microphone or stream) |
 | On-device speech to text | Apple's SpeechAnalyzer, through a small helper program |
 | On-device translation | Apple's Translation framework, same model (the log shows `ai-ifp-lora`) |
-| Synthetic voice in the ear | Not built yet: phones read translated captions with their own voice. Apple's voices are the obvious next step. |
+| Synthetic voice in the ear | Apple's speech synthesis on the Mac reads each translated sentence; phones play it when people tap 🎧 |
 | The real voice turned down | Not needed: it's captions on screens and phones |
 
 Measured on this Mac against the bundled Whisper `small` ([full table](../local.md#apples-speech-recognition-compared-with-whisper)):
