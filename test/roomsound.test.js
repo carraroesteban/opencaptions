@@ -32,8 +32,9 @@ before(async () => {
   throw new Error('server did not start');
 });
 
-after(() => {
-  srv?.kill();
+after(async () => {
+  // wait for the server to exit: it may still be writing to dataDir
+  if (srv && srv.exitCode === null) await new Promise((r) => { srv.once('exit', r); srv.kill(); });
   fs.rmSync(dataDir, { recursive: true, force: true });
 });
 
