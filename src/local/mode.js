@@ -63,6 +63,7 @@ export class LocalMode extends EventEmitter {
       const speech = await this.prepareSpeech({}, this.ui);
       this.apply({ speech });
       this.#set({ state: 'ready', step: '' });
+      if (speech.api === 'apple') { this.#set({ text: 'ready' }); return this.status(); } // Apple translates too
     } catch (e) {
       this.#set({ state: 'error', error: e.message });
       return this.status();
