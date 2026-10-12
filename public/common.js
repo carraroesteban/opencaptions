@@ -329,6 +329,20 @@ export function liveHtml(text) {
   return m ? `${esc(m[1])}<span class="live-word" data-w="${esc(m[2])}">${esc(m[2])}</span>` : esc(text);
 }
 
+/** Copies text. The Clipboard API exists only on https or localhost, and some browsers refuse it without a
+ *  permission; then the old way (select a hidden text box, execCommand) still works. Rejects when neither does. */
+export async function copyText(text) {
+  if (navigator.clipboard && isSecureContext && (await navigator.clipboard.writeText(text).then(() => true, () => false))) return;
+  const ta = document.createElement('textarea');
+  ta.value = text;
+  ta.setAttribute('readonly', '');
+  ta.className = 'sr-only';
+  (document.querySelector('dialog[open]') || document.body).append(ta); // a modal dialog makes the rest inert
+  ta.select();
+  const ok = document.execCommand('copy');
+  ta.remove();
+  if (!ok) throw new Error('copy failed');
+}
 export const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 
 /** Keep the screen on (phones reading captions, projector PCs). Silently does nothing if unsupported. */
