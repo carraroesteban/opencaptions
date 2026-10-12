@@ -38,6 +38,9 @@
     .lockedbar { display: flex; gap: 12px; align-items: center; padding: 12px 16px; border-radius: 14px; background: var(--bg3); font-size: 14px; }
     .lockedbar svg.i { width: 20px; height: 20px; flex: none; }
     .lockedbar span { flex: 1; }
+    .update-note { margin: 0; font-size: 13px; color: var(--fg2); }
+    .update-note code { user-select: all; }
+    .update-note .update-btn { font-size: 13px; padding: 3px 10px; margin-left: 2px; }
     .muted-note { font-size: 13px; color: var(--fg2); }
 
     /* KPIs */
@@ -273,6 +276,7 @@
       <section class="netbar hidden" id="netbar" role="status"></section>
       <section class="card hidden" id="local-offer" data-no-i18n aria-live="polite"></section>
       <div class="lockedbar hidden" id="lockedbar"></div>
+      <p class="update-note hidden" id="update-note" role="status" data-no-i18n></p>
 
       <!-- LIVE -->
       <section class="view" data-view="live">
@@ -456,6 +460,13 @@
             <button type="button" id="to-me" data-icon="headphones" data-setup>Pasar a Solo para mí</button>
           </section>
           <section class="card setting">
+            <div><h3>Versiones nuevas</h3><p id="upd-note">Una vez por día, OpenCaptions le pregunta a GitHub si salió una versión nueva y lo avisa arriba del panel, con un botón para instalarla. No envía nada sobre vos ni instala nada sin que lo toques.</p></div>
+            <select id="upd-check" aria-label="Versiones nuevas" class="u-minw220">
+              <option value="on">Avisar</option>
+              <option value="off">No avisar</option>
+            </select>
+          </section>
+          <section class="card setting">
             <div><h3>Servidor</h3><p id="sys" data-no-i18n></p></div>
             <span></span>
           </section>
@@ -466,6 +477,11 @@
             <h3 class="u-h17">IA en la nube</h3>
             <p data-help>La API key de Gemini, la IA de Google con la que OpenCaptions subtitula en la nube. Se guarda en este servidor y nunca se muestra completa.</p>
             <div id="key-panel" data-no-i18n></div>
+          </section>
+          <section class="card">
+            <h3 class="u-h17">IA para traducir</h3>
+            <p class="muted-note u-mb14">La IA que traduce los subtítulos, resume las charlas y responde las preguntas del público. Gemini, salvo que elijas otra.</p>
+            <div id="text-api-panel" data-no-i18n></div>
           </section>
           <section class="card">
             <h3 class="u-h17">Modelo de voz</h3>

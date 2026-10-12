@@ -25,6 +25,7 @@ import { ffmpegBin } from './pull.js';
 import { rms } from './audio.js';
 import { getClient } from './genai.js';
 import { translateText } from './translate.js';
+import { textApiOn } from './textapi.js';
 import { transcribe as whisper, withAsrSlot, wavFile, isNetworkError, asrInfo } from './local/asr.js';
 import { promptLanguage } from './languages.js';
 import { CORPUS } from './engines/mock.js';
@@ -1070,7 +1071,8 @@ export class Recordings {
 
   async #translateGemini(job, texts, from, to, context, signal) {
     const onCost = (x) => { job.costUsd += x; };
-    const out = await geminiTranslateBatch({ texts, from, to, context, vocabulary: job.vocabulary, signal, onCost });
+    // Another AI service (Settings → AI) gets one sentence at a time, through translateText below.
+    const out = textApiOn() ? null : await geminiTranslateBatch({ texts, from, to, context, vocabulary: job.vocabulary, signal, onCost });
     if (out) return out;
     if (texts.length > 1) { // didn't line up: halves, and in the end one sentence at a time
       const half = Math.ceil(texts.length / 2);

@@ -66,6 +66,10 @@ function freshDir() {
 // GEMINI_API_KEY, so nobody has to edit .env. See src/aikey.js.
 const savedKey = String(readSecretsFile(dataDir).geminiApiKey || '');
 const geminiApiKey = savedKey || env.GEMINI_API_KEY || '';
+// Translations, summaries and questions on another AI service (src/textapi.js): Settings → AI (data/secrets.json, wins)
+// or TEXT_API_URL / TEXT_API_KEY / TEXT_MODEL. url '' = Gemini.
+export const textApiFromEnv = () => ({ url: env.TEXT_API_URL || '', key: env.TEXT_API_KEY || '', model: env.TEXT_API_URL ? env.TEXT_MODEL || '' : '', source: env.TEXT_API_URL ? 'env' : '' });
+const savedTextApi = (() => { try { return JSON.parse(readSecretsFile(dataDir).textApi || 'null'); } catch { return null; } })();
 // gemini (cloud) | local (Whisper + a local text model, see docs/local.md) | mock (simulated, no AI at all)
 const engine = flag('mock') ? 'mock' : flag('local') ? 'local' : (env.ENGINE || (geminiApiKey || vertex ? 'gemini' : 'mock'));
 // Settings whose default depends on the engine. Recomputed when the offline backup switches engines.
@@ -130,6 +134,7 @@ export const config = {
   // How often the in-progress sentence is re-translated as a provisional caption (ms).
   mtPartialMs: Number(env.MT_PARTIAL_MS ?? event.mtPartialMs ?? 1500),
   textModel: env.TEXT_MODEL || event.textModel || 'gemini-3.5-flash-lite',
+  textApi: savedTextApi?.url ? { url: String(savedTextApi.url), key: String(savedTextApi.key || ''), model: String(savedTextApi.model || ''), source: 'dashboard' } : textApiFromEnv(),
   // Captioning a recorded file (src/recording.js): the model that transcribes it with timestamps (the regular API, not
   // Live), the largest upload accepted, and how many pieces of it are worked on at once.
   recordingModel: env.RECORDING_MODEL || event.recordingModel || 'gemini-3.5-flash-lite',

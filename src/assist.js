@@ -9,6 +9,7 @@ import { getClient } from './genai.js';
 import { config } from './config.js';
 import { rateLimiter } from './security.js';
 import { chat as localChat } from './local/llm.js';
+import { textApiOn, textChat } from './textapi.js';
 import { promptLanguage } from './languages.js';
 
 let ai = null;
@@ -52,6 +53,11 @@ async function generate(system, prompt, maxOutputTokens = 600) {
     const r = await localChat({ system, user: prompt, json: true, maxTokens: maxOutputTokens, temperature: 0.2, timeoutMs: Math.max(config.localLlmTimeoutMs, 90_000), priority: 1 });
     assistStats.requests++;
     return r.text;
+  }
+  if (textApiOn()) {
+    const text = await textChat({ system, user: prompt, json: true, maxTokens: maxOutputTokens, temperature: 0.2, timeoutMs: 20000 });
+    assistStats.requests++;
+    return text;
   }
   const call = (withThinking) => client().models.generateContent({
     model: config.textModel,

@@ -11,7 +11,7 @@ import { icon, mountIcons } from '/illustrations.js';
 import { ensureSignedIn, signInScreen, signOut } from '/signin.js';
 import { accessPanel } from '/access.js';
 import { alertsPanel } from '/alerts-ui.js';
-import { keyPanel, tunnelPanel } from '/connect.js';
+import { keyPanel, tunnelPanel, textApiPanel } from '/connect.js';
 import { localPanel } from '/local-mode.js';
 import { LANGUAGE_CATALOG } from '/languages.js';
 import { mountNav, setRooms, setCurrent, setCrumbs, home, viewCrumb, helpButton, addCommands } from '/nav.js';
@@ -60,6 +60,11 @@ const L = {
     aiDesc: (f) => (f.mode === 'auto' ? 'Gemini en la nube, y esta computadora toma el control si se corta internet.' : f.mode === 'local' ? 'Siempre esta computadora: Whisper y un modelo local.' : 'Siempre Gemini en la nube.') + (f.localReady ? ' El respaldo local está listo.' : f.backup ? ' El respaldo local no responde: revisá que el servidor de voz Whisper y Ollama sigan abiertos.' : ''),
     localWhy: '«Esta computadora» necesita el servidor de voz Whisper y Ollama abiertos acá, y este servidor se inició sin ellos. Para tenerla, cerrá el servidor y abrilo de nuevo con: npm run local -- --fallback (Gemini, con esta computadora de respaldo) o npm run local (solo esta computadora).',
     speech: { translate: 'Subtítulos + voz traducida', transcribe: 'Solo subtítulos' },
+    upAvail: (v) => `OpenCaptions ${v} ya está disponible`, upNotes: 'Novedades', upDownload: 'Descargar', upCmd: 'Para actualizar:', upNow: 'Actualizar ahora',
+    upAsk: (v) => `¿Actualizar a OpenCaptions ${v}?`, upOk: 'Actualizar',
+    upAskBody: (live) => `OpenCaptions descarga la versión nueva y se reinicia: los subtítulos se pausan cerca de un minuto${live ? ` en ${live === 1 ? 'la sala en vivo' : `las ${live} salas en vivo`}` : ''}, y los celulares, las pantallas y las computadoras de las salas se reconectan solos. Tus ajustes y transcripciones no cambian.`,
+    upWorking: (v) => `Descargando OpenCaptions ${v}…`, upRestarting: 'Reiniciando con la versión nueva… esta página se recarga sola.',
+    upSlow: 'OpenCaptions tarda en volver. Si su ventana se cerró, abrilo de nuevo.',
     speechHint: { translate: 'Cada sala también puede ofrecer la voz traducida, y cuesta unas cuatro veces más. Elegilo solo si alguien la necesita.', transcribe: 'Recomendado si nadie necesita la voz traducida. Si el orador cambia de idioma en medio de la charla, los subtítulos lo manejan peor.' },
     speechAsk: '¿Cambiar el modelo de voz?', speechAskBody: (n) => `Hay ${n} ${n === 1 ? 'sala' : 'salas'} en vivo: los subtítulos se pausan unos segundos mientras se reconectan.`, speechOk: 'Cambiar el modelo',
     agendaNone: 'Todavía no hay agenda. Pegala abajo.', agendaPreview: (a, r, k) => `${a} ${a === 1 ? 'charla nueva' : 'charlas nuevas'} · ${r} ${r === 1 ? 'se quita' : 'se quitan'} · ${k} ${k === 1 ? 'sigue igual' : 'siguen igual'}`, agendaUnknown: (l) => `Salas que no existen: ${l}`, agendaSkipped: (n, l) => `${n} ${n === 1 ? 'fila' : 'filas'} de otras salas ${n === 1 ? 'se ignora' : 'se ignoran'} (${l})`,
@@ -126,6 +131,11 @@ const L = {
     aiDesc: (f) => (f.mode === 'auto' ? 'Gemini in the cloud, and this computer takes over if the internet goes down.' : f.mode === 'local' ? 'Always this computer: Whisper and a local model.' : 'Always Gemini in the cloud.') + (f.localReady ? ' The local backup is ready.' : f.backup ? ' The local backup isn’t answering: check that the Whisper speech server and Ollama are still open.' : ''),
     localWhy: '“This computer” needs the Whisper speech server and Ollama open here, and this server was started without them. To have it, stop the server and start it again with: npm run local -- --fallback (Gemini, with this computer as the backup) or npm run local (only this computer).',
     speech: { translate: 'Captions + translated voice', transcribe: 'Captions only' },
+    upAvail: (v) => `OpenCaptions ${v} is available`, upNotes: 'What’s new', upDownload: 'Download', upCmd: 'To update:', upNow: 'Update now',
+    upAsk: (v) => `Update to OpenCaptions ${v}?`, upOk: 'Update',
+    upAskBody: (live) => `OpenCaptions downloads the new version and restarts: captions pause for about a minute${live ? ` in ${live === 1 ? 'the live room' : `the ${live} live rooms`}` : ''}, and phones, screens and the rooms’ computers reconnect by themselves. Your settings and transcripts don’t change.`,
+    upWorking: (v) => `Downloading OpenCaptions ${v}…`, upRestarting: 'Restarting with the new version… this page reloads by itself.',
+    upSlow: 'OpenCaptions is taking a while to come back. If its window closed, open it again.',
     speechHint: { translate: 'Each room can also offer the translated voice, and it costs about four times more. Pick it only if someone needs it.', transcribe: 'Recommended when nobody needs the translated voice. Speakers who switch language mid-talk get less clever captions.' },
     speechAsk: 'Change the speech model?', speechAskBody: (n) => `${n} ${n === 1 ? 'room is' : 'rooms are'} live: captions pause for a few seconds while they reconnect.`, speechOk: 'Change the model',
     agendaNone: 'No agenda yet. Paste it below.', agendaPreview: (a, r, k) => `${a} new ${a === 1 ? 'talk' : 'talks'} · ${r} removed · ${k} unchanged`, agendaUnknown: (l) => `Rooms that don’t exist: ${l}`, agendaSkipped: (n, l) => `${n} ${n === 1 ? 'row' : 'rows'} for other rooms ${n === 1 ? 'is' : 'are'} ignored (${l})`,
@@ -405,6 +415,34 @@ $('ob-hide').onclick = () => { store.set('admin.obHidden', true); $('onboard').c
 // ---------- offline backup banner ----------
 // Commands in <code> so they read and copy right; rewritten only when they change (renderNet runs on every update).
 const aiDesc = (text) => { const el = $('ai-desc'), h = esc(text).replace(/npm run local( -- --fallback)?/g, '<code>$&</code>'); if (el.dataset.html !== h) { el.innerHTML = h; el.dataset.html = h; } };
+// A new version on GitHub (src/updates.js): one quiet line with "Update now" (it asks first; nothing is installed
+// otherwise), or the download, or for a Docker container the command to run.
+let updatingTo = '';
+function renderUpdate(up) {
+  const el = $('update-note');
+  el.classList.toggle('hidden', !up && !updatingTo);
+  if (!up || updatingTo || el.dataset.v === up.version) return; // redrawn only when it changes, so a command stays selectable
+  el.dataset.v = up.version;
+  const action = up.canUpdate ? `<button type="button" class="update-btn" id="update-now">${esc(t.upNow)}</button>`
+    : up.command ? `${esc(t.upCmd)} <code>${esc(up.command)}</code>` : `<a href="${esc(up.download)}" rel="noopener">${esc(t.upDownload)}</a>`;
+  el.innerHTML = `${esc(t.upAvail(up.version))} · <a href="${esc(up.notes)}" target="_blank" rel="noopener">${esc(t.upNotes)}</a> · ${action}`;
+  $('update-now')?.addEventListener('click', () => updateNow(up.version));
+}
+async function updateNow(v) {
+  if (!(await confirmDialog({ title: t.upAsk(v), body: t.upAskBody(last?.totals?.live || 0), ok: t.upOk }))) return;
+  const el = $('update-note');
+  updatingTo = v;
+  el.textContent = t.upWorking(v);
+  try { await api('POST', '/api/update'); } catch { updatingTo = ''; el.dataset.v = ''; renderUpdate(last?.update); return; } // the toast says why
+  el.textContent = t.upRestarting;
+  // The old server is gone within about a second; the new one answers once it has started (a minute at most, more
+  // when it installs new libraries). Then this page reloads with the new version.
+  for (let i = 0; i < 150; i++) {
+    await new Promise((r) => setTimeout(r, 2000));
+    try { if ((await fetch('/healthz', { cache: 'no-store' })).ok) return location.reload(); } catch { /* restarting */ }
+  }
+  el.textContent = t.upSlow;
+}
 function renderNet(f, engine) {
   // Started without the backup: no selector, just how to get "this computer" (npm run local starts it, not the dashboard)
   $('ai-setting').classList.toggle('hidden', !f && engine === 'local');
@@ -444,6 +482,7 @@ function render(s) {
   $('engine').title = s.engine === 'mock' ? tr('Conectar la IA en la nube en Ajustes') : s.model; // the exact model names
   $('engine').style.cursor = s.engine === 'mock' ? 'pointer' : '';
   renderNet(s.failover, s.engine);
+  renderUpdate(isCrew ? null : s.update);
   // A free Gemini key out of quota: offer this computer (public/local-mode.js), and keep it in view while it gets ready.
   const lm = localP?.status();
   const quota = s.engine === 'gemini' && s.stages.some((x) => x.alerts?.includes('ai-quota') || x.alerts?.includes('mt-throttled'));
@@ -1468,6 +1507,7 @@ const quietApi = (m, u, b) => api(m, u, b, { quiet: true });
 const askFirst = (msg) => { const i = msg.indexOf('?') + 1; return confirmDialog({ title: msg.slice(0, i) || msg, body: msg.slice(i).trim(), ok: LANG === 'es' ? 'Continuar' : 'Continue', danger: true }); };
 const keyP = keyPanel($('key-panel'), { api: quietApi, confirm: askFirst });
 const tunnelP = tunnelPanel($('tunnel-panel'), { api: quietApi, confirm: askFirst });
+const textP = textApiPanel($('text-api-panel'), { api: quietApi, confirm: askFirst });
 const localP = isCrew ? null : localPanel($('local-offer'), { api: quietApi, quota: true });
 const accessP = isCrew ? null : accessPanel($('access-panel'), { api: quietApi, confirm: askFirst, toast, me });
 const alertsP = isCrew ? null : alertsPanel($('alerts-panel'), { api: quietApi, toast });
@@ -1544,7 +1584,15 @@ async function loadSettings() {
   setLocked(!!s.locked);
   if (s.publicTranscriptsFixed) $('tx-access').disabled = true;
   renderSpeech(s);
+  textP.update(s);
+  $('upd-check').value = s.updateCheck ? 'on' : 'off';
+  $('upd-check').disabled = !!s.updateCheckFixed;
+  if (s.updateCheckFixed) $('upd-note').textContent = tr('Lo fija UPDATE_CHECK=0 en el archivo .env.');
 }
+$('upd-check').onchange = async (e) => {
+  try { await api('PUT', '/api/setup', { updateCheck: e.target.value === 'on' }); toast(t.saved); } catch { /* toast shown */ }
+  await loadSettings();
+};
 // Speech model: Live Translate (captions + translated voice) or Transcribe Live (captions only, cheaper).
 function renderSpeech(s) {
   $('speech-model').value = s.speechModel;

@@ -6,7 +6,7 @@
   "lede": "Short version: this website sets no cookies and loads nothing from other companies, and the OpenCaptions software never sends anything to us. Event organizers decide what happens to their attendees' data.",
   "pair": "privacidad",
   "legal": true,
-  "updated": "2026-10-05"
+  "updated": "2026-10-11"
 }-->
 <h2>Who we are</h2>
 <p>OpenCaptions is a free, open-source project, published at <a href="https://github.com/carraroesteban/opencaptions">github.com/carraroesteban/opencaptions</a>. We don't sell anything, and we have no accounts, newsletters or forms. To contact us, open an issue on GitHub, or use GitHub's private reporting for anything sensitive.</p>
@@ -22,7 +22,8 @@
 
 <h2>The OpenCaptions software</h2>
 <p>OpenCaptions runs on a computer or server chosen by whoever organizes the event. It has no telemetry: it never sends us usage data, transcripts, audio or anything else. We don't see who uses it.</p>
-<p>When it runs, it connects only to the services its operator sets up: the AI that makes the captions (Google's Gemini, or a model on a computer at the venue), and optionally Cloudflare for a public web address and a messaging service for alerts. Those services process data under their own terms.</p>
+<p>When it runs, it connects only to the services its operator sets up: the AI that makes the captions (Google's Gemini, or a model on a computer at the venue), and optionally another AI service for translations, Cloudflare for a public web address and a messaging service for alerts. Those services process data under their own terms.</p>
+<p>Once a day it also asks GitHub whether a new version of OpenCaptions is out, so the dashboard can say so. That request carries nothing about you, the event or the installation. The new version is downloaded from GitHub only when the operator clicks Update now. GitHub sees the server's IP address, as with any visit. The operator can turn it off in Settings or with <code>UPDATE_CHECK=0</code>.</p>
 
 <h2>If you attend an event that uses OpenCaptions</h2>
 <p>The organizer is responsible for the captions, the transcripts and your data, not the OpenCaptions project. Captions pages set no cookies and don't ask who you are. Questions about how an event handles speech, transcripts or recordings should go to its organizer.</p>

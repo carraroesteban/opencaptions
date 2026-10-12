@@ -11,12 +11,16 @@ export function llmInfo() {
   const url = config.localLlmUrl.replace(/\/+$/, '');
   let api = config.localLlmApi;
   if (!api) api = /\/v1(\/|$)/.test(new URL(url).pathname) ? 'openai' : 'ollama';
-  const endpoint = api === 'openai'
-    ? (url.endsWith('/chat/completions') ? url : `${url}/chat/completions`)
-    : `${new URL(url).origin}/api/chat`;
+  const endpoint = api === 'openai' ? chatEndpoint(url) : `${new URL(url).origin}/api/chat`;
   // mtModel: caption translation (LOCAL_MT_MODEL, defaults to the main model); model: summaries and questions.
   return { url, api, endpoint, model: config.localLlmModel, mtModel: config.localMtModel || config.localLlmModel };
 }
+
+/** An OpenAI-compatible base URL (…/v1) → its chat endpoint. */
+export const chatEndpoint = (url) => {
+  const u = String(url).replace(/\/+$/, '');
+  return u.endsWith('/chat/completions') ? u : `${u}/chat/completions`;
+};
 
 // ---------- concurrency: a local model serves one request at a time well ----------
 // Priority: final caption translations (2) > audience assistant (1). Provisional translations don't queue at
@@ -37,7 +41,6 @@ function release() {
   slots.waiters.shift()?.resolve();
 }
 
-let jsonModeOk = true; // OpenAI dialect: some servers reject response_format → retried without it once
 let thinkOff = true; // Ollama: `think: false` makes reasoning models (qwen3, deepseek-r1…) answer directly
 
 /**
@@ -60,7 +63,7 @@ export async function chat({ system = '', user, history = [], json = false, mode
     const { api } = llmInfo();
     const messages = [...(system ? [{ role: 'system', content: system }] : []), ...history, { role: 'user', content: user }];
     const out = api === 'openai'
-      ? await openaiChat({ model, messages, json, maxTokens, temperature, timeoutMs })
+      ? await openaiChat({ endpoint: llmInfo().endpoint, key: process.env.LOCAL_LLM_KEY, model, messages, json, maxTokens, temperature, timeoutMs })
       : await ollamaChat({ model, messages, json, maxTokens, temperature, timeoutMs });
     return { ...out, text: stripThinking(out.text), ms: Date.now() - t0 };
   } finally {
@@ -69,17 +72,17 @@ export async function chat({ system = '', user, history = [], json = false, mode
 }
 
 // Some OpenAI-compatible servers (vLLM with --api-key, LM Studio with auth on) want a key.
-const auth = () => (process.env.LOCAL_LLM_KEY ? { authorization: `Bearer ${process.env.LOCAL_LLM_KEY}` } : {});
+const auth = (key = process.env.LOCAL_LLM_KEY) => (key ? { authorization: `Bearer ${key}` } : {});
 
-async function post(url, body, timeoutMs) {
+async function post(url, body, timeoutMs, key) {
   const res = await fetch(url, {
     method: 'POST',
-    headers: { 'content-type': 'application/json', ...auth() },
+    headers: { 'content-type': 'application/json', ...auth(key) },
     body: JSON.stringify(body),
     signal: AbortSignal.timeout(timeoutMs),
   });
   const text = await res.text();
-  if (!res.ok) throw Object.assign(new Error(`local model HTTP ${res.status}: ${text.slice(0, 200)}`), { status: res.status, body: text });
+  if (!res.ok) throw Object.assign(new Error(`text model HTTP ${res.status}: ${text.slice(0, 200)}`), { status: res.status, body: text });
   return JSON.parse(text);
 }
 
@@ -108,27 +111,37 @@ async function ollamaChat({ model, messages, json, maxTokens, temperature, timeo
   return { text: String(j.message?.content ?? ''), promptTokens: j.prompt_eval_count || 0, outputTokens: j.eval_count || 0 };
 }
 
-async function openaiChat({ model, messages, json, maxTokens, temperature, timeoutMs }) {
-  const { endpoint } = llmInfo();
-  const body = {
-    model,
-    stream: false,
-    temperature,
-    max_tokens: maxTokens,
-    messages,
-    ...(json && jsonModeOk ? { response_format: { type: 'json_object' } } : {}),
-  };
-  let j;
-  try {
-    j = await post(endpoint, body, timeoutMs);
-  } catch (e) {
-    if (!body.response_format || e.status !== 400) throw e;
-    jsonModeOk = false; // JSON is also requested in the prompt; the reply is parsed leniently
-    delete body.response_format;
-    j = await post(endpoint, body, timeoutMs);
+// What each server turned down, so it isn't asked again: JSON mode (some local servers), and max_tokens or a custom
+// temperature (OpenAI's reasoning models want max_completion_tokens and their own temperature).
+const refused = new Map(); // endpoint → Set of body fields
+
+/**
+ * One chat request in OpenAI's dialect: a local server (LOCAL_LLM_URL …/v1) or a cloud service (src/textapi.js).
+ * A 400 that names a field we sent drops (or renames) it and tries again; with no field named, JSON mode goes.
+ */
+export async function openaiChat({ endpoint, key, model, messages, json = false, maxTokens, temperature, timeoutMs }) {
+  if (!refused.has(endpoint)) refused.set(endpoint, new Set());
+  const skip = refused.get(endpoint);
+  for (;;) {
+    const body = {
+      model,
+      stream: false,
+      messages,
+      ...(skip.has('temperature') ? {} : { temperature }),
+      ...(skip.has('max_tokens') ? { max_completion_tokens: maxTokens } : { max_tokens: maxTokens }),
+      ...(json && !skip.has('response_format') ? { response_format: { type: 'json_object' } } : {}), // JSON is also asked for in the prompt
+    };
+    try {
+      const j = await post(endpoint, body, timeoutMs, key);
+      const u = j.usage || {};
+      return { text: String(j.choices?.[0]?.message?.content ?? ''), promptTokens: u.prompt_tokens || 0, outputTokens: u.completion_tokens || 0 };
+    } catch (e) {
+      if (e.status !== 400) throw e;
+      const field = ['max_tokens', 'temperature', 'response_format'].find((f) => f in body && String(e.body || '').includes(f)) ?? ('response_format' in body ? 'response_format' : null);
+      if (!field) throw e;
+      skip.add(field);
+    }
   }
-  const u = j.usage || {};
-  return { text: String(j.choices?.[0]?.message?.content ?? ''), promptTokens: u.prompt_tokens || 0, outputTokens: u.completion_tokens || 0 };
 }
 
 /** Reasoning models may wrap their thoughts in <think>…</think>: captions only want the answer. */

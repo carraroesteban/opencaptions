@@ -10,6 +10,7 @@ import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { APP_FILES, APP_DIRS } from '../src/updates.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const DESK = path.join(ROOT, 'deploy', 'desktop');
@@ -18,10 +19,9 @@ const exeArg = process.argv.indexOf('--exe');
 const exe = exeArg > 0 ? path.resolve(process.argv[exeArg + 1]) : '';
 const version = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8')).version;
 
-// What the app needs at run time: files git would publish (nothing ignored: no .env, data/ or local/).
-const RUNTIME_SCRIPTS = ['start', 'setup', 'local', 'local-asr-server', 'check-gemini', 'check-local', 'feed', 'agent', 'subtitle'].map((s) => `scripts/${s}.js`);
-const FILES = ['package.json', 'package-lock.json', 'LICENSE', 'README.md', 'CHANGELOG.md', '.env.example', ...RUNTIME_SCRIPTS];
-const DIRS = ['src/', 'public/', 'config/', 'samples/'];
+// What the app needs at run time (the same list "Update now" copies): files git would publish (nothing ignored: no
+// .env, data/ or local/).
+const FILES = APP_FILES, DIRS = APP_DIRS;
 const tracked = execFileSync('git', ['ls-files', '--cached', '--others', '--exclude-standard'], { cwd: ROOT, encoding: 'utf8' }).split('\n').filter(Boolean);
 const appFiles = tracked.filter((f) => FILES.includes(f) || DIRS.some((d) => f.startsWith(d)));
 for (const f of FILES) if (!appFiles.includes(f)) throw new Error(`missing from git: ${f}`);
