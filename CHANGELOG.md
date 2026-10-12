@@ -4,6 +4,10 @@ All notable changes to this project are documented in this file. The format foll
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-10-12
+
+Free captions on any computer with one click (Apple's built-in speech on Macs), an easier dashboard with one page per room, settings in a window, and nothing else to install.
+
 ### Added
 
 - **Use another AI for translations.** Translations, talk summaries and the audience's questions can use OpenAI, OpenRouter, Groq, Mistral or any service compatible with OpenAI's API, instead of Gemini. In **Settings → AI → AI for translations**, type the service's address, API key and model name: OpenCaptions asks it one tiny question before saving, keeps the key with the other secrets and never shows it again. Or set `TEXT_API_URL`, `TEXT_API_KEY` and `TEXT_MODEL` in `.env`. Gemini stays the default, and the speech model doesn't change. [How](docs/reference/configuration.md#use-another-ai-for-translations)
