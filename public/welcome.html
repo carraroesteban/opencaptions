@@ -12,9 +12,7 @@
   <link rel="stylesheet" href="/style.css" />
   <style>
     body { min-height: 100dvh; display: grid; grid-template-rows: auto 1fr; }
-    header { display: flex; align-items: center; gap: 16px; padding: 18px 28px; }
-    header .spacer { flex: 1; }
-    header .brand { font-size: 18px; }
+    header.crumbbar { padding: 14px 28px 0 18px; }
     .wiz { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr); gap: 56px; align-items: center; max-width: 1240px; width: 100%; margin: 0 auto; padding: 12px 28px 48px; }
     @media (max-width: 900px) { .wiz { grid-template-columns: 1fr; gap: 24px; padding-top: 0; } .art { order: -1; max-width: 520px; } .art img { aspect-ratio: 2 / 1; object-fit: contain; } }
 
@@ -108,11 +106,7 @@
   </style>
 </head>
 <body>
-  <header>
-    <div class="brand">OpenCaptions</div>
-    <span class="spacer"></span>
-    <span id="prefs-slot"></span>
-  </header>
+  <header class="crumbbar" id="crumbbar"><span id="prefs-slot"></span></header>
   <main class="wiz" data-no-i18n>
     <section>
       <div class="progress" id="progress" aria-hidden="true"></div>

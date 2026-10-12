@@ -276,3 +276,98 @@ p[data-spk]::before { content: attr(data-spk); display: block; margin-bottom: .1
 /* Text for screen readers only (a page's heading where the design shows none) */
 .sr-only { position: absolute !important; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
 .fix-row { width: 100%; box-sizing: border-box; resize: vertical; font: inherit; line-height: 1.4; } /* dashboard: live caption corrections */
+
+/* ---- organizer pages: the shared navigation (public/nav.js, docs/adr/0012) ---- */
+body.has-side { display: grid; grid-template-columns: auto minmax(0, 1fr); min-height: 100dvh; }
+body.has-side > :not(.side) { grid-column: 2; min-width: 0; }
+.side { grid-column: 1; grid-row: 1 / -1; align-self: start; position: sticky; top: 0; height: 100dvh; width: 248px; box-sizing: border-box; display: flex; flex-direction: column; gap: 4px; padding: 18px 14px; border-right: 1px solid var(--line); background: var(--bg2); overflow-y: auto; }
+.side > .brand { font-size: 15px; padding: 2px 8px 0; }
+.side-main { display: grid; gap: 4px; }
+.side-jump { display: flex; align-items: center; gap: 10px; width: 100%; margin: 8px 0 6px; padding: 8px 10px; border-radius: 10px; background: var(--bg); color: var(--fg2); box-shadow: none; font-size: 14px; text-align: left; }
+.side-jump kbd { margin-left: auto; font: 12px var(--font); }
+.side nav { display: grid; gap: 2px; align-content: start; }
+.side nav a { position: relative; display: flex; align-items: center; gap: 10px; padding: 9px 10px; border-radius: 10px; color: var(--fg2); text-decoration: none; font-size: 15px; min-width: 0; }
+.side nav a:hover { background: var(--bg3); color: var(--fg); }
+.side nav a[aria-current] { background: var(--primary-bg); color: var(--primary-fg); font-weight: 700; }
+.side nav a svg.i { width: 18px; height: 18px; }
+.side .lbl { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.side nav a .n { margin-left: auto; font-size: 12px; font-weight: 700; padding: 0 7px; border-radius: 99px; background: var(--bad); color: #fff; }
+.side nav .sep { height: 1px; background: var(--line); margin: 8px 6px; }
+.side-h { font: 700 12px var(--font); letter-spacing: .06em; text-transform: uppercase; color: var(--fg2); margin: 16px 10px 4px; }
+.side-rooms { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+.side-rooms a { padding: 7px 10px; font-size: 14px; }
+.side .ini { position: relative; flex: none; display: grid; place-items: center; width: 22px; height: 22px; border-radius: 7px; background: color-mix(in srgb, currentColor 13%, transparent); font-size: 10px; font-weight: 800; letter-spacing: 0; }
+.side .ini .dot { position: absolute; right: -4px; bottom: -4px; width: 11px; height: 11px; border: 2px solid var(--bg2); box-sizing: border-box; }
+.dot.off { background: var(--bg2); box-shadow: inset 0 0 0 1.5px var(--fg2); }
+.dot.bad { background: var(--warn); }
+.side .foot { margin-top: auto; display: grid; gap: 10px; padding: 8px 4px 0; }
+/* Icons only (☰ on a laptop): the labels stay for screen readers, and show as tooltips */
+@media (min-width: 901px) {
+  body.rail .side { width: 68px; padding-inline: 10px; }
+  body.rail .side .lbl, body.rail .side-h { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  body.rail .side > .brand { font-size: 0; padding: 2px 0 0 6px; }
+  body.rail .side > .brand::before { width: 30px; height: 23px; }
+  body.rail .side nav a, body.rail .side-jump { justify-content: center; padding-inline: 0; }
+  body.rail .side-jump kbd, body.rail .side .event, body.rail .side .me { display: none; }
+  body.rail .side nav a .n { position: absolute; top: 2px; right: 2px; padding: 0 5px; font-size: 11px; }
+  body.rail .side-rooms { border-top: 1px solid var(--line); padding-top: 8px; margin-top: 8px; }
+  body.rail .side .foot { padding-inline: 0; justify-items: center; }
+  body.rail .side .prefs { flex-direction: column; }
+}
+.side .side-close { display: none; } /* phone only (beats .nav-btn's display) */
+@media (max-width: 900px) { .side .side-close { display: grid; } }
+/* A phone: the sidebar is a menu that ☰ opens above the page */
+@media (max-width: 900px) {
+  body.has-side { display: block; }
+  .side { display: none; position: static; width: auto; height: auto; border-right: 0; border-bottom: 1px solid var(--line); padding: 12px 16px 16px; }
+  body.nav-open .side { display: flex; }
+  .side { position: relative; }
+  .side-jump kbd { display: none; }
+  .side-close { position: absolute; top: 8px; right: 10px; }
+}
+/* The header row: ☰, back, where you are */
+.crumbbar { display: flex; align-items: center; gap: 4px 6px; min-height: 40px; flex-wrap: wrap; }
+.crumbbar .spacer { flex: 1; }
+.nav-btn { display: grid; place-items: center; width: 38px; height: 38px; padding: 0; border-radius: var(--pill); border: 0; background: transparent; box-shadow: none; color: var(--fg2); flex: none; }
+.nav-btn:hover { background: var(--bg3); color: var(--fg); }
+.nav-btn svg.i { width: 20px; height: 20px; }
+.crumbs { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; list-style: none; margin: 0 0 0 4px; padding: 0; font-size: 14px; color: var(--fg2); min-width: 0; }
+.crumbs li { min-width: 0; overflow-wrap: anywhere; }
+.crumbs li + li::before { content: '›' / ''; margin-right: 4px; }
+.crumbs a { text-decoration: none; }
+.crumbs a:hover { color: var(--fg); text-decoration: underline; }
+.crumbs [aria-current] { color: var(--fg); font-weight: 700; }
+/* "?": the explanation of a control, one click away (a native popover) */
+.help-q { display: inline-grid; place-items: center; width: 24px; height: 24px; padding: 0; margin-left: 8px; border-radius: 50%; border: 0; box-shadow: none; background: var(--bg3); color: var(--fg2); font: 700 13px/1 var(--font); letter-spacing: 0; vertical-align: middle; flex: none; }
+.help-q:hover { color: var(--fg); background: color-mix(in srgb, var(--fg) 12%, var(--bg3)); }
+[popover].help-pop { max-width: min(360px, calc(100vw - 32px)); margin: auto; padding: 12px 14px; border: 1px solid var(--line-strong); border-radius: 12px; background: var(--bg2); color: var(--fg); box-shadow: var(--shadow-lg); font: 400 14px/1.5 var(--font); letter-spacing: 0; text-transform: none; text-align: left; }
+@supports (position-area: bottom) { [popover].help-pop { margin: 6px 0; position-area: bottom span-right; position-try-fallbacks: flip-block, flip-inline, flip-block flip-inline; } }
+/* ⌘K: go anywhere */
+dialog.jump { margin: 12vh auto auto; padding: 10px; max-width: min(560px, calc(100vw - 32px)); }
+.jump input { width: 100%; font-size: 16px; padding-block: 12px; border-radius: 12px; }
+.jump ul { list-style: none; margin: 8px 0 0; padding: 0; max-height: min(420px, 60dvh); overflow: auto; display: grid; gap: 2px; }
+.jump li { display: flex; align-items: center; gap: 10px; padding: 9px 10px; border-radius: 10px; cursor: pointer; font-size: 15px; }
+.jump li:hover { background: var(--bg3); }
+.jump li small { margin-left: auto; padding-left: 12px; color: var(--fg2); font-size: 12px; text-align: right; }
+.jump li[aria-selected='true'] { background: var(--primary-bg); color: var(--primary-fg); }
+.jump li[aria-selected='true'] small { color: inherit; }
+@media print { .side, .crumbbar .nav-btn, .help-q { display: none !important; } body.has-side { display: block; } }
+.jump li .dot { flex: none; }
+.jump li.jump-h { cursor: default; padding: 6px 10px 2px; font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--fg2); }
+.jump li.jump-sep { cursor: default; padding: 0; height: 1px; margin: 6px 4px; background: var(--line); }
+.jump-foot { display: flex; flex-wrap: wrap; gap: 4px 16px; margin: 8px 4px 2px; font-size: 12px; color: var(--fg2); }
+kbd { display: inline-block; min-width: 1.6em; padding: 1px 6px; border: 1px solid var(--line-strong); border-bottom-width: 2px; border-radius: 6px; background: var(--bg); color: var(--fg); font: 600 12px/1.4 var(--font); text-align: center; }
+.side-jump kbd { border: 0; background: none; color: var(--fg2); padding: 0; min-width: 0; font-weight: 400; }
+/* A room's right-click menu */
+[popover].ctx { position: fixed; inset: auto; margin: 0; padding: 6px; min-width: 220px; border: 1px solid var(--line-strong); border-radius: 12px; background: var(--bg2); color: var(--fg); box-shadow: var(--shadow-lg); }
+.ctx a { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 8px; text-decoration: none; font-size: 14px; }
+.ctx a:hover, .ctx a:focus-visible { background: var(--bg3); outline: none; }
+.ctx a:focus-visible { box-shadow: inset 0 0 0 2px var(--focus); }
+/* The keyboard cheat sheet */
+dialog.keys { max-width: min(460px, calc(100vw - 32px)); }
+.keys-head { display: flex; align-items: center; gap: 10px; }
+.keys-head h2 { flex: 1; margin: 0; font-size: 20px; }
+.keys dl { margin: 12px 0 0; display: grid; }
+.keys dl div { display: grid; grid-template-columns: 9em minmax(0, 1fr); gap: 12px; align-items: center; padding: 8px 0; border-top: 1px solid var(--line); }
+.keys dt { white-space: nowrap; }
+.keys dd { margin: 0; font-size: 14px; }

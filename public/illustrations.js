@@ -61,6 +61,8 @@ const ICONS = {
   chat: '<path d="M4 5.5h16v10.5H9.5L4 20z"/><path d="M8 9.5h8M8 12.5h5"/>',
   sparkle: '<path d="M12 3.5l1.9 5.1 5.1 1.9-5.1 1.9L12 17.5l-1.9-5.1-5.1-1.9 5.1-1.9z"/><path d="M19 16v4M17 18h4"/>',
   x: '<path d="M6 6l12 12M18 6L6 18"/>',
+  menu: '<path d="M4 7h16M4 12h16M4 17h16"/>',
+  back: '<path d="M19 12H5M11 6l-6 6 6 6"/>',
   stop: '<rect x="6" y="6" width="12" height="12" rx="2"/>',
   pause: '<circle cx="12" cy="12" r="9"/><path d="M10 9v6M14 9v6"/>',
   music: '<path d="M9 17.5V6l10-2v11.5"/><circle cx="6.5" cy="17.5" r="2.5"/><circle cx="16.5" cy="15.5" r="2.5"/>',

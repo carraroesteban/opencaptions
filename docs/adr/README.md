@@ -17,3 +17,4 @@ The format is a short version of [MADR](https://adr.github.io/madr/). Copy [temp
 | [0009](0009-local-engine-with-whisper-and-ollama.md) | A local engine: streaming Whisper and a local text model, behind HTTP | Accepted |
 | [0010](0010-sessions-roles-and-company-sign-in.md) | Sessions, an admin and a crew role, and company sign-in (extends 0005) | Accepted |
 | [0011](0011-desktop-launchers.md) | A Mac app and a Windows launcher that run the same server | Accepted |
+| [0012](0012-navigation-borrowed-from-familiar-apps.md) | Navigate like the apps organizers already use: a collapsible sidebar, back and breadcrumb, ⌘K, rooms as channels, "?" help | Accepted |

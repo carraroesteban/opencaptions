@@ -6,26 +6,28 @@ import { ensureSignedIn, signInScreen } from '/signin.js';
 import { keyPanel, tunnelPanel } from '/connect.js';
 import { localPanel } from '/local-mode.js';
 import { LANGUAGE_CATALOG } from '/languages.js';
+import { mountNav, home } from '/nav.js';
 const $ = (id) => document.getElementById(id);
 $('prefs-slot').append(prefsControls());
+mountNav({ crumbs: [home(), { label: LANG === 'es' ? 'Configurar el evento' : 'Set up the event' }] });
 document.documentElement.lang = LANG;
 
 // Written per language (not through the page translator): this page is mostly sentences.
 const T = {
   en: {
     title: 'Welcome · OpenCaptions',
-    k0: 'Welcome', welcomeH: 'What do you want captions for?', welcomeP: 'Pick one. You can change everything later, and switch from one to the other.',
-    forEvent: 'For an event', forEventD: 'Conferences, classes, public meetings: captions on every phone, the screen beside the stage and the livestream. A few questions, about two minutes.',
-    meBtn: 'Just for me', meD: 'Your calls, videos and conversations, on this computer: captions in your language, in big text or a window that floats over everything.',
+    k0: 'Welcome', welcomeH: 'What do you want captions for?', welcomeP: 'You can switch later.',
+    forEvent: 'For an event', forEventD: 'Phones, the stage screen and the livestream. About two minutes.',
+    meBtn: 'Just for me', meD: 'Your calls and videos, on this computer.',
     skipAll: 'Skip setup, I’ll do it later', back: 'Back', next: 'Continue',
-    k1: 'Step 1 of 7 · Your event', nameH: 'What’s your event called?', namePh: 'e.g. City Design Week 2026', nameHint: 'It appears on the audience’s phones, on the projector screen and on the QR posters.', skipName: 'Skip, decide later',
-    k2: 'Step 2 of 7 · Rooms', roomsH: 'Where will people speak?', roomsP: 'One stage or many. Each room gets its own captions link and QR code.', addRoom: '+ Add a room', skipRooms: 'Skip, keep these rooms', roomPh: (i) => `Room ${i}`, remove: 'Remove room',
+    k1: 'Step 1 of 7 · Your event', nameH: 'What’s your event called?', namePh: 'e.g. City Design Week 2026', nameHint: 'Shown on phones, the stage screen and the QR posters.', skipName: 'Skip, decide later',
+    k2: 'Step 2 of 7 · Rooms', roomsH: 'Where will people speak?', roomsP: 'Each room gets its own captions link and QR code.', addRoom: '+ Add a room', skipRooms: 'Skip, keep these rooms', roomPh: (i) => `Room ${i}`, remove: 'Remove room',
     presets: [['One room', ['Main Stage']], ['Two rooms', ['Main Stage', 'Room A']], ['Main stage + 3 rooms', ['Main Stage', 'Room A', 'Room B', 'Room C']]],
-    k3: 'Step 3 of 7 · Languages', langsH: 'Which languages?', spokenQ: 'What language will the talks be in?', auto: 'Detect automatically', captionsQ: 'Which captions can the audience choose?', langsHint: 'Not sure? Leave “Detect automatically”: OpenCaptions recognises the language as people speak, even when they switch.', notSure: 'I’m not sure, skip',
+    k3: 'Step 3 of 7 · Languages', langsH: 'Which languages?', spokenQ: 'What language will the talks be in?', auto: 'Detect automatically', captionsQ: 'Which captions can the audience choose?', langsHint: 'Not sure? “Detect automatically” follows the speaker, even when they switch.', notSure: 'I’m not sure, skip',
     aiLedeForced: 'OpenCaptions was started in demo mode, so captions are simulated even though a key is saved. Start it normally to use Gemini.',
     k4: 'Step 5 of 7 · The AI', aiLedeMock: 'Right now captions are simulated. To caption real talks, connect Google’s Gemini with an API key: it takes about two minutes.', aiLedeOn: 'Captions come from Google’s Gemini, in the cloud.',
     kS: 'Step 6 of 7 · Phones', shareH: 'How will phones reach the captions?', sAddr: 'Address',
-    kR: 'Step 4 of 7 · Review', reviewH: 'Check before anything changes', reviewP: 'Nothing has changed yet. Untick anything you don’t want.', apply: 'Apply changes', skipReview: 'Skip, change nothing',
+    kR: 'Step 4 of 7 · Review', reviewH: 'Check before anything changes', reviewP: 'Nothing has changed yet. Untick what you don’t want.', apply: 'Apply changes', skipReview: 'Skip, change nothing',
     noChanges: 'Nothing to change: your event already looks like this.',
     lockedMsg: 'Event mode is on, so the setup is locked. Turn it off in the dashboard’s Settings to apply changes.',
     opTz: (z) => `Use your time zone for the agenda (${z})`, opTzNote: 'So 10:00 in the agenda means 10:00 where you are. The server runs in another one.',
@@ -40,7 +42,7 @@ const T = {
     mockGemini: 'Cloud (best quality): add a Gemini API key', mockLocal: 'On this computer, no account needed:',
     backupOn: 'Offline backup is ready', backupOnD: 'If the internet goes down, captions keep running on this computer and switch back when it returns.',
     backupOff: 'Optional: an offline backup', backupOffD: 'Start the server with this command and captions keep running on this computer if the venue loses internet:',
-    k5: 'Step 7 of 7 · Sound', audioH: 'Connect the sound', audioP: 'OpenCaptions listens to each room’s sound. Pick how the sound gets here; you can try it right now.',
+    k5: 'Step 7 of 7 · Sound', audioH: 'Connect the sound', audioP: 'Pick how each room’s sound gets here.',
     whichRoom: 'Which room?',
     mic: 'A microphone or the sound desk, into a computer', micD: 'A computer next to the stage gets the sound by cable and sends it from a browser page.',
     micSteps: ['Plug a microphone into that computer, or a spare output of the sound desk (ask the sound technician for an “aux” output), straight in or through a USB sound card.',
@@ -71,14 +73,14 @@ const T = {
   },
   es: {
     title: 'Bienvenida · OpenCaptions',
-    k0: 'Bienvenida', welcomeH: '¿Para qué querés subtítulos?', welcomeP: 'Elegí una. Podés cambiar todo después, y pasar de una a la otra.',
-    forEvent: 'Para un evento', forEventD: 'Congresos, clases, sesiones públicas: subtítulos en cada celular, en la pantalla junto al escenario y en el streaming. Unas preguntas, unos dos minutos.',
-    meBtn: 'Solo para mí', meD: 'Tus llamadas, videos y conversaciones, en esta compu: subtítulos en tu idioma, con letra grande o en una ventana que flota sobre todo.',
+    k0: 'Bienvenida', welcomeH: '¿Para qué querés subtítulos?', welcomeP: 'Podés cambiar después.',
+    forEvent: 'Para un evento', forEventD: 'Celulares, la pantalla del escenario y el streaming. Unos dos minutos.',
+    meBtn: 'Solo para mí', meD: 'Tus llamadas y videos, en esta compu.',
     skipAll: 'Saltar, lo hago después', back: 'Atrás', next: 'Continuar',
-    k1: 'Paso 1 de 7 · Tu evento', nameH: '¿Cómo se llama tu evento?', namePh: 'Ej: Semana del Diseño 2026', nameHint: 'Aparece en los celulares del público, en la pantalla del proyector y en los carteles con QR.', skipName: 'Saltar, lo decido después',
-    k2: 'Paso 2 de 7 · Salas', roomsH: '¿Dónde va a hablar la gente?', roomsP: 'Un escenario o varios. Cada sala tiene su propio link de subtítulos y su QR.', addRoom: '+ Agregar una sala', skipRooms: 'Saltar, dejar estas salas', roomPh: (i) => `Sala ${i}`, remove: 'Quitar sala',
+    k1: 'Paso 1 de 7 · Tu evento', nameH: '¿Cómo se llama tu evento?', namePh: 'Ej: Semana del Diseño 2026', nameHint: 'Aparece en los celulares, la pantalla del escenario y los carteles con QR.', skipName: 'Saltar, lo decido después',
+    k2: 'Paso 2 de 7 · Salas', roomsH: '¿Dónde va a hablar la gente?', roomsP: 'Cada sala tiene su link de subtítulos y su QR.', addRoom: '+ Agregar una sala', skipRooms: 'Saltar, dejar estas salas', roomPh: (i) => `Sala ${i}`, remove: 'Quitar sala',
     presets: [['Una sala', ['Escenario principal']], ['Dos salas', ['Escenario principal', 'Sala A']], ['Principal + 3 salas', ['Escenario principal', 'Sala A', 'Sala B', 'Sala C']]],
-    k3: 'Paso 3 de 7 · Idiomas', langsH: '¿Qué idiomas?', spokenQ: '¿En qué idioma van a ser las charlas?', auto: 'Detectar automáticamente', captionsQ: '¿Qué subtítulos puede elegir el público?', langsHint: '¿No sabés? Dejá “Detectar automáticamente”: OpenCaptions reconoce el idioma mientras hablan, aunque cambien.', notSure: 'No sé, saltar',
+    k3: 'Paso 3 de 7 · Idiomas', langsH: '¿Qué idiomas?', spokenQ: '¿En qué idioma van a ser las charlas?', auto: 'Detectar automáticamente', captionsQ: '¿Qué subtítulos puede elegir el público?', langsHint: '¿No sabés? “Detectar automáticamente” sigue al orador, aunque cambie de idioma.', notSure: 'No sé, saltar',
     aiLedeForced: 'OpenCaptions se inició en modo demo, así que los subtítulos son simulados aunque haya una key guardada. Inicialo normalmente para usar Gemini.',
     k4: 'Paso 5 de 7 · La IA', aiLedeMock: 'Por ahora los subtítulos son simulados. Para subtitular charlas reales, conectá Gemini de Google con una API key: son unos dos minutos.', aiLedeOn: 'Los subtítulos vienen de Gemini de Google, en la nube.',
     kS: 'Paso 6 de 7 · Celulares', shareH: '¿Cómo llegan los celulares a los subtítulos?', sAddr: 'Dirección',
@@ -97,7 +99,7 @@ const T = {
     mockGemini: 'En la nube (mejor calidad): agregá una API key de Gemini', mockLocal: 'En esta computadora, sin cuenta:',
     backupOn: 'Respaldo sin internet listo', backupOnD: 'Si se corta internet, los subtítulos siguen en esta computadora y vuelven a la nube cuando regresa.',
     backupOff: 'Opcional: un respaldo sin internet', backupOffD: 'Iniciá el servidor con este comando y los subtítulos siguen en esta computadora si el lugar se queda sin internet:',
-    k5: 'Paso 7 de 7 · Sonido', audioH: 'Conectá el sonido', audioP: 'OpenCaptions escucha el sonido de cada sala. Elegí cómo llega el sonido; podés probarlo ahora mismo.',
+    k5: 'Paso 7 de 7 · Sonido', audioH: 'Conectá el sonido', audioP: 'Elegí cómo llega el sonido de cada sala.',
     whichRoom: '¿Qué sala?',
     mic: 'Un micrófono o la consola, a una computadora', micD: 'Una computadora junto al escenario recibe el sonido por cable y lo envía desde una página del navegador.',
     micSteps: ['Conectá a esa computadora un micrófono, o una salida libre de la consola (pedile a quien maneja el sonido una salida “aux”), directo o con una placa de sonido USB.',
