@@ -67,6 +67,14 @@ if (running?.ok) {
 }
 
 tty.info(`Keep this window open while you use OpenCaptions. To stop it, close the window ${tty.c.gray('(or press Ctrl+C)')}.`);
-const server = spawn(process.execPath, [path.join(ROOT, 'src', 'server.js'), '--open', ...process.argv.slice(2)], { cwd: ROOT, stdio: 'inherit' });
+// OC_SUPERVISED: the dashboard's "Update now" may replace the files and exit with 75, and this starts the new version
+// (its own start.js, which installs new libraries first). After an update the dashboard is already open: no new tab.
+const restarted = !!process.env.OC_UPDATED;
+const server = spawn(process.execPath, [path.join(ROOT, 'src', 'server.js'), ...(restarted ? [] : ['--open']), ...process.argv.slice(2)], { cwd: ROOT, stdio: 'inherit', env: { ...process.env, OC_SUPERVISED: '1' } });
 for (const sig of ['SIGINT', 'SIGTERM']) process.on(sig, () => server.kill(/** @type {NodeJS.Signals} */ (sig)));
-server.on('exit', (code) => process.exit(code ?? 0));
+server.on('exit', (code) => {
+  if (code !== 75) process.exit(code ?? 0);
+  tty.info('Starting the new version of OpenCaptions…');
+  spawn(process.execPath, [path.join(ROOT, 'scripts', 'start.js'), ...process.argv.slice(2)], { cwd: ROOT, stdio: 'inherit', env: { ...process.env, OC_UPDATED: '1' } })
+    .on('exit', (c) => process.exit(c ?? 0));
+});

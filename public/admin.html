@@ -54,6 +54,7 @@
     .lockedbar span { flex: 1; }
     .update-note { margin: 0; font-size: 13px; color: var(--fg2); }
     .update-note code { user-select: all; }
+    .update-note .update-btn { font-size: 13px; padding: 3px 10px; margin-left: 2px; }
     .muted-note { font-size: 13px; color: var(--fg2); }
 
     /* KPIs */
@@ -484,7 +485,7 @@
             <button type="button" id="to-me" data-icon="headphones" data-setup>Pasar a Solo para mí</button>
           </section>
           <section class="card setting">
-            <div><h3>Versiones nuevas</h3><p id="upd-note">Una vez por día, OpenCaptions le pregunta a GitHub si salió una versión nueva y lo avisa arriba del panel. No envía nada sobre vos ni instala nada solo.</p></div>
+            <div><h3>Versiones nuevas</h3><p id="upd-note">Una vez por día, OpenCaptions le pregunta a GitHub si salió una versión nueva y lo avisa arriba del panel, con un botón para instalarla. No envía nada sobre vos ni instala nada sin que lo toques.</p></div>
             <select id="upd-check" aria-label="Versiones nuevas" class="u-minw220">
               <option value="on">Avisar</option>
               <option value="off">No avisar</option>

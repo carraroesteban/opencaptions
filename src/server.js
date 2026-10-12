@@ -16,7 +16,7 @@ import { Failover } from './failover.js';
 import { LocalMode } from './local/mode.js';
 import { checkKey, saveKey, keyInfo, looksLikeKey, readSecret, saveSecret } from './aikey.js';
 import { textApiOn, textApiInfo, checkTextApi, saveTextApi, looksLikeUrl } from './textapi.js';
-import { startChecks, checkNow, updateInfo } from './updates.js';
+import { startChecks, checkNow, updateInfo, installUpdate, RESTART } from './updates.js';
 import { Tunnel, tunnelOrigin } from './tunnel.js';
 import * as tty from './tty.js';
 import { Alerts, publicConfig, mergeChannels } from './alerts.js';
@@ -1208,6 +1208,26 @@ app.delete('/api/ai/text', admin, (req, res) => {
 const updateCheckEnv = !/^(0|false|no|off)$/i.test(process.env.UPDATE_CHECK || '');
 const updatesOn = () => updateCheckEnv && setup.updateCheck !== false;
 startChecks(updatesOn);
+// "Update now": the new files go over this copy, then the server stops with RESTART and scripts/start.js starts the
+// new version. Phones, screens and room computers reconnect by themselves. Not in Event mode.
+let updating = false;
+app.post('/api/update', admin, unlocked, async (req, res) => {
+  const up = updateInfo();
+  if (!up?.canUpdate) return res.status(409).json({ error: 'this installation can\'t update itself: download the new version' });
+  if (updating) return res.status(409).json({ error: 'already updating' });
+  updating = true;
+  try {
+    await installUpdate();
+  } catch (e) {
+    updating = false;
+    console.error('✗ update:', e.message);
+    return res.status(502).json({ error: `The update didn't finish: ${e.stderr?.trim() || e.message}` });
+  }
+  recordChange({ kind: 'app.update', summary: `OpenCaptions updated to ${up.version}: restarting` });
+  console.log(`\n${tty.sym.ok} OpenCaptions ${up.version} is in place. Restarting…`);
+  res.json({ ok: true, version: up.version });
+  setTimeout(() => shutdown(RESTART), 300); // the answer goes out first
+});
 const speechSummary = (m) => (m === 'transcribe' ? 'Speech model: captions only (Transcribe Live)' : 'Speech model: captions + translated voice (Live Translate)');
 /** Switch the speech model (Settings): saved, and text-mode Gemini rooms reconnect with it like useKeyChange does. */
 function useSpeechModel(m) {
@@ -1776,21 +1796,21 @@ process.on('uncaughtException', (e) => console.error('✗ uncaught exception (se
 // Every socket hears 1012 "server restarting", never 4000 ("another source took your room"), so room computers and
 // phones reconnect by themselves once the server is back. The close frames get up to a second to go out; a second
 // Ctrl+C quits at once.
-function shutdown() {
-  if (stopping) process.exit(0);
+function shutdown(code = 0) {
+  if (stopping) process.exit(code);
   stopping = true;
   tunnel.stop();
   switchers?.stop();
   for (const id of [...stages.keys()]) removeStage(id, 'server restarting');
   let open = wss.clients.size;
-  if (!open) process.exit(0);
+  if (!open) process.exit(code);
   for (const ws of wss.clients) {
-    ws.once('close', () => { if (--open === 0) process.exit(0); });
+    ws.once('close', () => { if (--open === 0) process.exit(code); });
     ws.close(1012, 'server restarting'); // the dashboards (the rooms' sockets are closing already)
   }
-  setTimeout(() => process.exit(0), 1000);
+  setTimeout(() => process.exit(code), 1000);
 }
-for (const sig of ['SIGINT', 'SIGTERM', 'SIGHUP']) process.on(sig, shutdown);
+for (const sig of ['SIGINT', 'SIGTERM', 'SIGHUP']) process.on(sig, () => shutdown());
 // A program that started the server with an IPC channel can stop it the same way with child.send('shutdown'). On
 // Windows that's the only way: child.kill() there ends the process at once, whatever the signal, and nothing above runs.
 if (process.send) process.on('message', (m) => { if (m === 'shutdown') shutdown(); });
