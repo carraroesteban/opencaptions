@@ -72,6 +72,7 @@ const ICONS = {
   dashboard: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18M8 13v4M12 12v5M16 14v3"/>',
   lock: '<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/>',
   arrowdown: '<path d="M12 5v14M6 13l6 6 6-6"/>',
+  arrowup: '<path d="M12 19V5M6 11l6-6 6 6"/>',
   next: '<path d="M5 6l7 6-7 6zM13 6l7 6-7 6z"/>',
   alert: '<path d="M12 3l9.5 17h-19z"/><path d="M12 10v4M12 17h.01"/>',
   eye: '<path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',

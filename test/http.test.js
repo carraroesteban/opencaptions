@@ -250,3 +250,21 @@ test('“just for me” mode: captions and transcripts only on this computer (or
 test('deleting a transcript that doesn’t exist says so', async () => {
   assert.equal((await fetch(`${base}/api/stages/main/talks/not-a-talk`, { method: 'DELETE' })).status, 404);
 });
+
+test('rooms can be put in any order, saved for everyone, and the order can be undone', async () => {
+  const json = { 'content-type': 'application/json' };
+  for (const id of ['hall-b', 'hall-c']) assert.equal((await fetch(`${base}/api/stages`, { method: 'POST', headers: json, body: JSON.stringify({ id, name: id, targets: ['en'] }) })).status, 200);
+  const order = async () => (await (await fetch(`${base}/api/status`)).json()).stages.map((s) => s.id);
+  const was = await order();
+  const wanted = [...was].reverse();
+  const r = await (await fetch(`${base}/api/stages/order`, { method: 'PUT', headers: json, body: JSON.stringify({ ids: wanted }) })).json();
+  assert.deepEqual(await order(), wanted);
+  assert.deepEqual(JSON.parse(fs.readFileSync(path.join(dataDir, 'stages.json'), 'utf8')).map((d) => d.id), wanted, 'kept across restarts');
+  assert.ok(r.change, 'recorded in the History');
+  assert.equal((await fetch(`${base}/api/history/${r.change}/undo`, { method: 'POST' })).status, 200);
+  assert.deepEqual(await order(), was);
+  // Rooms it doesn't name keep their place after the named ones; anything but a list of ids is refused.
+  await fetch(`${base}/api/stages/order`, { method: 'PUT', headers: json, body: JSON.stringify({ ids: ['hall-c', 'nope'] }) });
+  assert.deepEqual(await order(), ['hall-c', ...was.filter((id) => id !== 'hall-c')]);
+  assert.equal((await fetch(`${base}/api/stages/order`, { method: 'PUT', headers: json, body: JSON.stringify({ ids: 'hall-c' }) })).status, 400);
+});
