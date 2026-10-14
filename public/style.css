@@ -317,6 +317,16 @@ body.has-side > :not(.side) { grid-column: 2; min-width: 0; }
 .side-h { font: 700 12px var(--font); letter-spacing: .06em; text-transform: uppercase; color: var(--fg2); margin: 10px 10px 4px; }
 .side-rooms { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
 .side-rooms a { padding: 7px 10px; font-size: 14px; }
+.side nav .side-h a { display: inline; padding: 0; font: inherit; color: inherit; text-decoration: none; } /* "Rooms": all of them, in a gallery or a list; a heading like the others */
+.side nav .side-h a:hover, .side nav .side-h a[aria-current] { background: none; color: var(--fg); }
+.side nav a.side-new { color: var(--fg2); font-size: 14px; }
+.side nav a.side-new svg.i { width: 16px; height: 16px; margin: 0 3px; }
+/* Dragging a room to reorder: a line where it will land */
+.side-rooms li[draggable] { cursor: grab; }
+.side-rooms li.dragging { opacity: .4; }
+.side-rooms li.drop-before { box-shadow: inset 0 2px 0 var(--fg); border-radius: 2px; }
+.side-rooms li.drop-after { box-shadow: inset 0 -2px 0 var(--fg); border-radius: 2px; }
+.ctx-sep { display: block; height: 1px; margin: 4px 6px; background: var(--line); }
 .side .ini { position: relative; flex: none; display: grid; place-items: center; width: 22px; height: 22px; border-radius: 7px; background: color-mix(in srgb, currentColor 13%, transparent); font-size: 10px; font-weight: 800; letter-spacing: 0; }
 .side .ini .dot { position: absolute; right: -4px; bottom: -4px; width: 11px; height: 11px; border: 2px solid var(--bg2); box-sizing: border-box; }
 .dot.off { background: var(--bg2); box-shadow: inset 0 0 0 1.5px var(--fg2); }

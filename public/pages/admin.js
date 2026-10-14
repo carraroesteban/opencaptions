@@ -14,10 +14,14 @@ import { alertsPanel } from '/alerts-ui.js';
 import { keyPanel, tunnelPanel, textApiPanel } from '/connect.js';
 import { localPanel } from '/local-mode.js';
 import { LANGUAGE_CATALOG } from '/languages.js';
-import { mountNav, setRooms, setCurrent, setCrumbs, home, viewCrumb, helpButton, addCommands, stateOf, stateLabel } from '/nav.js';
+import { mountNav, setRooms, setCurrent, setCrumbs, home, viewCrumb, helpButton, addCommands, stateOf, stateLabel, onReorder } from '/nav.js';
 
 const $ = (id) => document.getElementById(id);
 mountNav();
+// Rooms dragged in the sidebar (or Move up / down in a room's menu): saved for everyone, and undoable.
+onReorder(async (ids) => {
+  try { const r = await api('PUT', '/api/stages/order', { ids }); if (r.change) toast(t.saved, { undo: r.change, ms: 4000 }); } catch { /* the toast says why; the next update puts the order back */ }
+});
 $('prefs-slot').append(prefsControls());
 mountIcons();
 const viewHelp = helpButton(); // the open view's explanation (its <p popover id="help-<view>">)
@@ -539,6 +543,9 @@ function render(s) {
 
 function renderGrid(s) {
   const grid = $('grid');
+  // Same order as the rooms (dragged in the sidebar): move cards only when it changed, so nothing jumps every second.
+  const order = s.stages.map((x) => x.id).join('\n');
+  if ([...grid.children].map((el) => el.dataset.id).filter(Boolean).join('\n') !== order) for (const st of s.stages) { const el = grid.querySelector(`[data-id="${CSS.escape(st.id)}"]`); if (el) grid.append(el); }
   const ids = new Set(s.stages.map((x) => x.id));
   for (const el of [...grid.children]) if (el.dataset.id && !ids.has(el.dataset.id)) el.remove();
   if (!s.stages.length && !grid.querySelector('.empty-rooms')) grid.innerHTML = `<div class="empty-rooms"><img src="/art/waiting.webp" alt="" /><h3>${esc(tr('Todavía no hay salas'))}</h3><p class="muted u-m0">${esc(tr('Creá una sala por cada escenario o aula: cada una tiene su QR, su pantalla y su overlay.'))}</p><a href="#rooms"><button class="primary" tabindex="-1">${icon('plus')}${esc(tr('Nueva sala'))}</button></a></div>`;

@@ -112,6 +112,14 @@ function startPull(st, url, loop, opts = {}) {
   pulls.set(st.id, pull);
 }
 
+/** Put the rooms in this order (the dashboard's drag and drop); rooms it doesn't name keep their order, after it. */
+function orderStages(ids) {
+  const named = ids.filter((id, i) => stages.has(id) && ids.indexOf(id) === i);
+  const entries = [...named, ...[...stages.keys()].filter((id) => !named.includes(id))].map((id) => [id, stages.get(id)]);
+  stages.clear();
+  for (const [id, st] of entries) stages.set(id, st);
+}
+
 function stopPull(id) {
   pulls.get(id)?.stop();
   pulls.delete(id);
@@ -261,6 +269,18 @@ app.get('/api/event', (req, res) => {
 });
 
 app.get('/api/status', crew, (req, res) => res.json(req.who.role === 'admin' ? snapshot() : forCrew(snapshot())));
+
+// The rooms' order everywhere: the dashboard, the audience's list of rooms, the QR kit.
+app.put('/api/stages/order', admin, unlocked, (req, res) => {
+  const ids = req.body?.ids;
+  if (!Array.isArray(ids) || ids.length > MAX_STAGES || !ids.every((id) => typeof id === 'string')) return res.status(400).json({ error: 'ids: the rooms\' ids, in their new order' });
+  const before = [...stages.keys()];
+  orderStages(ids);
+  const after = [...stages.keys()];
+  if (before.join() === after.join()) return res.json({ ok: true, change: null });
+  persistStages();
+  res.json({ ok: true, change: recordChange({ kind: 'rooms.order', summary: 'Rooms reordered', before, after }).id });
+});
 
 app.post('/api/stages', admin, unlocked, async (req, res) => {
   try {
@@ -1098,6 +1118,11 @@ app.post('/api/history/:id/undo', admin, unlocked, async (req, res) => {
       if ((def.pull || '') !== (old.pull || '') || !!def.loop !== !!old.loop) { if (def.pull) startPull(st, def.pull, def.loop); else stopPull(st.id); }
       persistStages();
       recordChange({ kind: 'room.update', target: st.id, summary: `Room "${def.name}" put back as before`, before: old, after: clone(def), ...undo });
+    } else if (c.kind === 'rooms.order') {
+      const before = [...stages.keys()];
+      orderStages(c.before);
+      persistStages();
+      recordChange({ kind: 'rooms.order', summary: 'Rooms put back in their order', before, after: [...stages.keys()], ...undo });
     } else if (c.kind === 'agenda.set') {
       const before = schedule.entries.map((e) => ({ ...e }));
       schedule.set(c.before || []);
