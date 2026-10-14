@@ -1,9 +1,4 @@
 {
   "vocabulary": [],
-  "replacements": [
-    {
-      "from": "piano",
-      "to": "pianno"
-    }
-  ]
+  "replacements": []
 }
