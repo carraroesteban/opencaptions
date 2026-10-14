@@ -11,8 +11,10 @@
   <key>CFBundleShortVersionString</key><string>%VERSION%</string>
   <key>CFBundleVersion</key><string>%VERSION%</string>
   <key>LSMinimumSystemVersion</key><string>11.0</string>
+  <key>LSMinimumSystemVersionByArchitecture</key><dict><key>arm64</key><string>11.0</string><key>x86_64</key><string>13.0</string></dict>
   <key>LSApplicationCategoryType</key><string>public.app-category.productivity</string>
   <key>NSHumanReadableCopyright</key><string>MIT License · github.com/carraroesteban/opencaptions</string>
-  <key>NSAppleEventsUsageDescription</key><string>OpenCaptions opens a Terminal window to run, so you can see what it's doing and close it to stop.</string>
+  <key>NSHighResolutionCapable</key><true/>
+  <key>NSSpeechRecognitionUsageDescription</key><string>OpenCaptions turns what's said in the room into captions with the speech recognition built into this Mac. Nothing leaves this computer.</string>
 </dict>
 </plist>

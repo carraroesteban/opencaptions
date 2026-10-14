@@ -51,7 +51,14 @@ if (process.platform === 'darwin') {
   fs.mkdirSync(path.join(contents, 'MacOS'), { recursive: true });
   fs.mkdirSync(path.join(contents, 'Resources'), { recursive: true });
   fs.writeFileSync(path.join(contents, 'Info.plist'), fs.readFileSync(path.join(DESK, 'macos', 'Info.plist'), 'utf8').replaceAll('%VERSION%', version));
-  execFileSync('clang', ['-arch', 'arm64', '-arch', 'x86_64', '-mmacosx-version-min=11.0', '-O2', '-o', path.join(contents, 'MacOS', 'OpenCaptions'), path.join(DESK, 'macos', 'launcher.c')]);
+  // The app's window (OpenCaptions.swift), for Apple and Intel chips.
+  const program = path.join(contents, 'MacOS', 'OpenCaptions');
+  // Intel: macOS 13 or later (current Swift toolchains no longer ship the Intel libraries that older systems need;
+  // Info.plist says so per architecture, so an older Intel Mac gets macOS's own "needs a newer version" message).
+  const minOS = { arm64: '11.0', x86_64: '13.0' };
+  for (const arch of ['arm64', 'x86_64']) execFileSync('xcrun', ['swiftc', '-parse-as-library', '-O', '-target', `${arch}-apple-macos${minOS[arch]}`, path.join(DESK, 'macos', 'OpenCaptions.swift'), '-o', `${program}-${arch}`]);
+  execFileSync('lipo', ['-create', `${program}-arm64`, `${program}-x86_64`, '-output', program]);
+  for (const arch of ['arm64', 'x86_64']) fs.rmSync(`${program}-${arch}`);
   fs.copyFileSync(path.join(DESK, 'macos', 'launch.sh'), path.join(contents, 'Resources', 'launch.sh'));
   fs.chmodSync(path.join(contents, 'Resources', 'launch.sh'), 0o755);
   fs.copyFileSync(path.join(DESK, 'OpenCaptions.icns'), path.join(contents, 'Resources', 'OpenCaptions.icns'));

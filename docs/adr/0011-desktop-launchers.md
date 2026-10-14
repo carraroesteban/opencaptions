@@ -25,3 +25,7 @@ Option 3. The Mac app carries the app files inside the bundle, copies them to `~
 - Bad: Node.js is a separate install, and the first launch shows the systems' warning for unsigned apps. Signing is on the roadmap.
 - Bad: the libraries install on the first start, which needs internet once (they include a platform-specific ffmpeg, so they can't be bundled for every Mac).
 - Follow-ups: CI compiles the launcher and packages both downloads on every push, so a broken launcher shows up before a release.
+
+## Update (2026-10-14): a native window instead of Terminal
+
+The Mac app's program is now a small AppKit window (`deploy/desktop/macos/OpenCaptions.swift`) instead of `launcher.c` opening Terminal. It runs the same launcher script and `scripts/start.js` and shows their progress (starting, installing the first time, running), with **Open Dashboard**, the output under **Details**, and a confirmation before **Quit** stops the captions. It removes the "control Terminal" permission prompt (declining it used to make the app do nothing), and macOS's own prompts now name OpenCaptions. The window holds the other end of the starter's stdin, so the server stops with the app however it ends (quit, force quit, a crash). Current Swift toolchains link Intel builds for macOS 13 or later only, so Intel Macs need macOS 13 (`LSMinimumSystemVersionByArchitecture`); Apple-chip Macs keep macOS 11.
