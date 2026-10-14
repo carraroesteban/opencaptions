@@ -22,8 +22,9 @@ button:hover { background: var(--fill-hover); }
 button:active { transform: scale(.97); }
 button.primary { background: var(--primary-bg); border-color: var(--primary-bg); color: var(--primary-fg); font-weight: 700; }
 button.primary:hover { background: color-mix(in srgb, var(--primary-bg) 88%, var(--fg)); border-color: color-mix(in srgb, var(--primary-bg) 88%, var(--fg)); }
-button.danger { background: color-mix(in srgb, var(--bad) 10%, transparent); color: var(--bad); }
-button.danger:hover { background: color-mix(in srgb, var(--bad) 17%, transparent); }
+/* Destructive: red words, no fill (red on a red tint falls under 4.5:1); the tint only while pointed at */
+button.danger { background: none; color: var(--bad); }
+button.danger:hover { background: color-mix(in srgb, var(--bad) 8%, transparent); }
 /* Plain: text only, for secondary actions next to a real button ("See details", "Hide") */
 button.plain { background: none; color: var(--fg2); }
 button.plain:hover { background: var(--fill); color: var(--fg); }
