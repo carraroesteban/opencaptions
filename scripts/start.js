@@ -56,7 +56,7 @@ if (!fs.existsSync(installed) || (fs.existsSync(lock) && fs.statSync(lock).mtime
 const envFile = path.join(ROOT, '.env');
 const fromEnvFile = fs.existsSync(envFile) ? fs.readFileSync(envFile, 'utf8').match(/^PORT=(\d+)/m)?.[1] : '';
 let port = Number(process.env.PORT || fromEnvFile || 8080);
-let dashboard = `http://localhost:${port}/admin.html`;
+const dashboard = `http://localhost:${port}/admin.html`;
 
 // Started twice? Just show the dashboard of the one already running.
 /** @type {any} */
@@ -86,7 +86,6 @@ if (!(await usable(port))) {
   }
   tty.warn(`Another program is using port ${port}: OpenCaptions uses ${free} instead.`);
   port = free;
-  dashboard = `http://localhost:${port}/admin.html`;
 }
 process.env.PORT = String(port); // the server inherits it
 
