@@ -351,12 +351,12 @@ const hm = (ms) => new Date(ms).toLocaleTimeString(LANG, { hour: '2-digit', minu
 const when = (ms) => new Date(ms).toLocaleString(LANG, { weekday: 'short', hour: '2-digit', minute: '2-digit' });
 const langsOf = (st) => `${st.source === 'auto' || !st.source ? 'auto' : st.source} → ${(st.targets || []).filter((x) => x !== st.source).join(', ') || '—'}`;
 const stateChip = (s) => {
-  if (s.brk) return `<span class="chip warn">${icon('pause')} ${esc(tr('PAUSA'))}${s.brk.by === 'agenda' ? ` · ${esc(tr('agenda'))}` : s.brk.by === 'switcher' ? ' · vMix/OBS' : s.brk.by === 'room' ? ` · ${esc(tr('desde la sala'))}` : ''}</span>`;
-  if (s.music) return `<span class="chip warn">${icon('music')} ${esc(tr('MÚSICA · en pausa'))}</span>`;
-  if (!s.ingest) return `<span class="chip">${esc(tr(s.pull ? 'ESPERANDO EL STREAM' : 'SIN SONIDO'))}</span>`;
-  if (s.engines.length && !s.gated) return `<span class="chip bad"><span class="dot live"></span> ${esc(tr('EN VIVO'))}</span>`;
-  if (s.engines.length) return `<span class="chip warn">${esc(tr('EN PAUSA · silencio'))}</span>`;
-  return `<span class="chip">${esc(tr('ESPERANDO VOZ'))}</span>`;
+  if (s.brk) return `<span class="chip warn">${icon('pause')} ${esc(tr('Pausa'))}${s.brk.by === 'agenda' ? ` · ${esc(tr('agenda'))}` : s.brk.by === 'switcher' ? ' · vMix/OBS' : s.brk.by === 'room' ? ` · ${esc(tr('desde la sala'))}` : ''}</span>`;
+  if (s.music) return `<span class="chip warn">${icon('music')} ${esc(tr('Música · en pausa'))}</span>`;
+  if (!s.ingest) return `<span class="chip">${esc(tr(s.pull ? 'Esperando el stream' : 'Todavía no llega sonido'))}</span>`;
+  if (s.engines.length && !s.gated) return `<span class="chip live"><span class="dot live"></span> ${esc(tr('En vivo'))}</span>`;
+  if (s.engines.length) return `<span class="chip">${esc(tr('En pausa · silencio'))}</span>`;
+  return `<span class="chip">${esc(tr('Esperando voz'))}</span>`;
 };
 const engChip = (e) => {
   const cls = e.state === 'live' ? 'ok' : e.state === 'reconnecting' || e.state === 'resuming' || e.state === 'connecting' ? 'warn' : e.state === 'idle' ? '' : 'bad';
@@ -376,7 +376,8 @@ const OB = {
     localNoLlm: (u) => `no responde el modelo de traducción (<code>${u}</code>): corré <code>npm run local</code> o abrí Ollama`,
     localMissing: (m) => `falta el modelo <code>${m}</code>: <code>ollama pull ${m}</code>`,
     localReady: (m) => `listo · ${m} · el audio no sale de esta computadora`,
-    engineLocal: 'Motor de IA local', engineGemini: 'Conectar la IA en la nube', ready: (m) => `listo · ${m}`,
+    engineLocal: 'Motor de IA local', engineGemini: 'Conectar la IA en la nube', ready: () => 'listo',
+    count: (a, n) => `${a} de ${n}`, all: 'Ver todos los pasos', fewer: 'Ver solo el siguiente',
     noKey: '<a href="#settings/ai">pegar la API key</a> · por ahora, subtítulos simulados',
     address: 'Dirección pública para los celulares', addressD: (u) => (u ? esc(u) : '<a href="#settings/address">crearla</a> (opcional con Wi-Fi compartido)'),
     rooms: 'Crear las salas', roomsD: (n) => `${n} ${n === 1 ? 'sala' : 'salas'} · <a href="#rooms">ver salas</a>`,
@@ -392,7 +393,8 @@ const OB = {
     localNoLlm: (u) => `the translation model isn't responding (<code>${u}</code>): run <code>npm run local</code> or open Ollama`,
     localMissing: (m) => `model <code>${m}</code> is missing: <code>ollama pull ${m}</code>`,
     localReady: (m) => `ready · ${m} · audio never leaves this computer`,
-    engineLocal: 'Local AI engine', engineGemini: 'Connect the cloud AI', ready: (m) => `ready · ${m}`,
+    engineLocal: 'Local AI engine', engineGemini: 'Connect the cloud AI', ready: () => 'ready',
+    count: (a, n) => `${a} of ${n}`, all: 'See all steps', fewer: 'Only the next step',
     noKey: '<a href="#settings/ai">paste the API key</a> · simulated captions until then',
     address: 'A public address for phones', addressD: (u) => (u ? esc(u) : '<a href="#settings/address">create it</a> (optional on a shared Wi-Fi)'),
     rooms: 'Create your rooms', roomsD: (n) => `${n} ${n === 1 ? 'room' : 'rooms'} · <a href="#rooms">see rooms</a>`,
@@ -425,9 +427,16 @@ function renderOnboard(s) {
     [store.get('admin.soundDone', false), ob.sound, ob.soundD],
     [s.locked, ob.lock, ob.lockD],
   ];
-  $('ob-steps').innerHTML = steps.map(([ok, title, detail]) => `<li class="${ok ? 'done' : ''}"><span class="ck${ok ? ' on' : ''}" role="img" aria-label="${ok ? '✓' : '·'}"></span><span><b>${title}</b> <span class="muted">— ${detail}</span></span></li>`).join('');
+  const next = steps.findIndex(([ok]) => !ok), done = steps.filter(([ok]) => ok).length;
+  $('ob-steps').innerHTML = steps.map(([ok, title, detail], i) => `<li class="${ok ? 'done' : ''}${i === next ? ' next' : ''}"><span class="ck${ok ? ' on' : ''}" role="img" aria-label="${ok ? '✓' : '·'}"></span><span><b>${title}</b> <span class="muted">— ${detail}</span></span></li>`).join('');
+  $('ob-count').textContent = ob.count(done, steps.length);
+  $('ob-bar').style.width = `${(done / steps.length) * 100}%`;
+  const all = $('onboard').classList.contains('all');
+  $('ob-all').textContent = all ? ob.fewer : ob.all;
+  $('ob-all').setAttribute('aria-expanded', all);
   $('onboard').classList.toggle('hidden', steps.every(([ok]) => ok));
 }
+$('ob-all').onclick = () => { $('onboard').classList.toggle('all'); if (last) renderOnboard(last); };
 $('ob-steps').onclick = (e) => {
   const a = e.target.closest('[data-ob]');
   if (a?.dataset.ob === 'kit') store.set('admin.kitDone', true);
@@ -498,6 +507,7 @@ function render(s) {
   last = s;
   if (s.locked !== locked) setLocked(!!s.locked);
   $('event').textContent = s.event;
+  $('event').classList.toggle('hidden', !s.event || s.event === 'OpenCaptions'); // no event name yet: not the logo twice
   document.title = t.title(s.event);
   renderOnboard(s);
   $('engine').textContent = s.engine === 'gemini' ? `Gemini · ${t.speech[s.speechModel]}` : s.engine === 'local' ? `Local · ${s.model}` : tr('Modo simulado (sin API key)');
@@ -549,8 +559,8 @@ function renderGrid(s) {
           <p class="u-m0" data-f="nosound-none"><b>Todavía no llega sonido</b></p>
           <p class="u-m0" data-f="nosound-pull"><b>Esperando el stream</b></p>
           <div class="row">
-            <a href="/ingest.html?stage=${encodeURIComponent(st.id)}" target="_blank" data-f="nosound-open"><button type="button" class="primary" tabindex="-1">${icon('mic')}Abrir la página de sonido</button></a>
-            <a href="#room/${encodeURIComponent(st.id)}/sound" data-f="nosound-link"><button type="button" tabindex="-1">${icon('link')}Enlace para otra computadora</button></a>
+            <a href="/ingest.html?stage=${encodeURIComponent(st.id)}" target="_blank" data-f="nosound-open"><button type="button" tabindex="-1">${icon('mic')}Abrir la página de sonido</button></a>
+            <a href="#room/${encodeURIComponent(st.id)}/sound" data-f="nosound-link"><button type="button" class="plain" tabindex="-1">${icon('link')}Enlace para otra computadora</button></a>
             <a href="#room/${encodeURIComponent(st.id)}/sound" data-f="nosound-addr" data-setup><button type="button" tabindex="-1">${icon('link')}Ver la dirección</button></a>
           </div>
         </div>
@@ -563,7 +573,7 @@ function renderGrid(s) {
           <a href="#room/${encodeURIComponent(st.id)}/screens" class="on-live"><button type="button" tabindex="-1">${icon('qr')}Pantallas y QR</button></a>
           <button data-a="break" data-f="brk">${icon('pause')}<span>Pausa</span></button>
           <button data-a="next">${icon('next')}Siguiente charla</button>
-          <button data-a="details" class="more" aria-expanded="false"><span>Ver detalles</span>${icon('chevron')}</button>
+          <button data-a="details" class="more plain" aria-expanded="false" title="${esc(tr('Ver detalles'))}"><span>Ver detalles</span>${icon('chevron')}</button>
         </div>
         <div class="details">
           <div class="sub" data-f="sub" data-no-i18n></div>
@@ -610,6 +620,7 @@ function renderGrid(s) {
     f('lvl').style.width = pct + '%';
     f('pk').style.left = pk + '%';
     f('nosound').classList.toggle('hidden', !!st.ingest);
+    el.classList.toggle('idle', !st.ingest); // nothing to show or pause yet: the card says what to do instead
     for (const [k, on] of [['none', !st.pull], ['open', !st.pull], ['link', !st.pull], ['pull', !!st.pull], ['addr', !!st.pull]]) f(`nosound-${k}`).classList.toggle('hidden', !on);
     f('ingest').textContent = (st.ingest ? `${t.kinds[st.ingest.kind] || st.ingest.kind}${st.ingest.label ? ` · ${st.ingest.label}` : ''} · ${tr('hace')} ${ago(st.ingest.since)}` : st.pull ? `${tr('sonido desde')} ${st.pull}` : tr('Todavía no llega sonido.'))
       + (st.backup ? ` · ${tr(st.backup.active ? 'RESPALDO AL AIRE' : 'respaldo en espera')}: ${st.backup.kind}${st.backup.label ? ` · ${st.backup.label}` : ''}` : '');
@@ -664,7 +675,7 @@ $('grid').onclick = async (e) => {
   if (a === 'details') {
     const card = b.closest('.stage'), open = card.classList.toggle('open');
     b.setAttribute('aria-expanded', open);
-    b.querySelector('span').textContent = tr(open ? 'Ocultar detalles' : 'Ver detalles');
+    b.querySelector('span').textContent = b.title = tr(open ? 'Ocultar detalles' : 'Ver detalles');
   } else if (a === 'break') {
     await api('POST', `/api/stages/${id}/break`, { on: !st.brk });
     toast(tr(st.brk ? 'Subtítulos reanudados.' : 'Pausa: las pantallas y los celulares lo muestran.'), { ms: 3000 });

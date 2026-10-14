@@ -66,7 +66,7 @@ async function load() {
     <div class="wrap"><table>
       <thead><tr>${t.th.map((h, i) => `<th${i > 1 ? ' class="n"' : ''}>${esc(h)}</th>`).join('')}</tr></thead>
       <tbody>${room.talks.map((x) => `<tr>
-        <td><b>${esc(x.title || t.untitled)}</b>${x.current ? ` <span class="chip bad">${esc(t.live)}</span>` : ''}<div class="who">${esc((x.speakers.length ? x.speakers : [x.speaker]).filter(Boolean).join(', '))}${x.languages.length ? ` · ${esc(x.languages.join(', ').toUpperCase())}` : ''}</div></td>
+        <td><b>${esc(x.title || t.untitled)}</b>${x.current ? ` <span class="chip live"><span class="dot live"></span> ${esc(t.live)}</span>` : ''}<div class="who">${esc((x.speakers.length ? x.speakers : [x.speaker]).filter(Boolean).join(', '))}${x.languages.length ? ` · ${esc(x.languages.join(', ').toUpperCase())}` : ''}</div></td>
         <td>${esc(new Date(x.startedAt).toLocaleString(LANG, { weekday: 'short', hour: '2-digit', minute: '2-digit' }))}</td>
         <td class="n">${esc(dur(x.durationMs))}</td><td class="n">${esc(num(x.words))}</td><td class="n">${esc(num(x.peakViewers))}</td>
         <td class="n">${esc(num(x.viewerMinutes))}</td><td class="n">${esc(money(x.costUsd))}</td></tr>`).join('')}</tbody>

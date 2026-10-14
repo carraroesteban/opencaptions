@@ -37,7 +37,7 @@ function render() {
     const langs = x.channels.filter((c) => c !== 'orig').map((c) => `<span class="chip">${esc(langLabel(c, ev.languages))}</span>`).join('');
     return `${head}<a class="card talk" href="/talk.html?stage=${encodeURIComponent(x.stage)}&talk=${encodeURIComponent(x.id)}">
       <h2>${esc(x.title || t('untitled'))}</h2>
-      ${x.live ? `<span class="chip bad"><span class="dot live"></span> ${esc(t('live'))}</span>` : '<span></span>'}
+      ${x.live ? `<span class="chip live"><span class="dot live"></span> ${esc(t('live'))}</span>` : '<span></span>'}
       <div class="m">${x.speaker ? `<b>${esc(x.speaker)}</b>·` : ''}<span>${esc(x.stageName)}</span>·<span>${d.toLocaleTimeString(UI, { hour: '2-digit', minute: '2-digit' })}</span>·<span>${Math.max(1, Math.round(x.durationMs / 60000))} min</span> ${langs}</div>
     </a>`;
   }).join('');
