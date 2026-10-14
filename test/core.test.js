@@ -169,3 +169,10 @@ test('a caption that can\'t be saved is reported until saving works again', () =
     assert.equal(store.saveError, '');
   } finally { fs.rmSync(dir, { recursive: true, force: true }); }
 });
+
+test('glossary: a correction is written as typed, "$&" and "$1" included', async () => {
+  const { Glossary } = await import('../src/glossary.js');
+  const g = Object.create(Glossary.prototype); // without the constructor's file watcher
+  g.load({ replacements: [{ from: 'rnd', to: 'R$&D' }, { from: 'tee', to: 'T$1' }] });
+  assert.equal(g.apply('our rnd team and tee', 'orig'), 'our R$&D team and T$1');
+});

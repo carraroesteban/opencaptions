@@ -764,6 +764,9 @@ export class Stage extends EventEmitter {
     if (this.store.saveError) alerts.add('not-saving');
     if (Object.values(this.mtQ || {}).some((q) => q.degraded() || q.stats.quotaErrors > (q._qe ?? 0))) alerts.add('mt-throttled');
     for (const q of Object.values(this.mtQ || {})) q._qe = q.stats.quotaErrors;
+    // The AI answers with errors other than its quota (a wrong key or model, a broken local server): words or
+    // translations are being lost while the room still looks live.
+    if ([...this.engines.values(), ...Object.values(this.mtQ || {})].some((x) => now - (x.stats?.failedAt || 0) < 30000)) alerts.add('ai-errors');
     this.alerts = alerts;
   }
 

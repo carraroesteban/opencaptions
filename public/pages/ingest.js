@@ -46,7 +46,7 @@ $('channel').onchange = () => store.set('ingest.channel', $('channel').value);
 // Can this browser send sound as it is? (The server computer, a room link or a signed-in dashboard need nothing; a
 // different computer needs the room's link or the room-computer password.) Only then is the password box shown.
 async function checkAccess() {
-  const ok = !!(await ingestTicket($('token').value));
+  const ok = !!(await ingestTicket($('token').value).catch(() => ''));
   $('f-token').classList.toggle('hidden', ok);
   if (linkProblem) $('token-title').textContent = tr(linkProblem);
   return ok;
@@ -184,7 +184,7 @@ document.addEventListener('keydown', (e) => {
 
 // The AI's state and the room's alerts, in words (Spanish source, translated by tr like the rest of the page).
 const STATE = { live: 'en vivo', idle: 'en espera', connecting: 'conectando…', reconnecting: 'reconectando…', resuming: 'retomando…', error: 'error' };
-const ALERT = { 'no-audio': 'no llega audio', 'muted?': '¿mic muteado? (60s sin señal)', reconnecting: 'reconectando IA', 'high-latency': 'latencia alta', 'mt-throttled': 'traducción limitada por cuota → usando Live', 'voice-in-break': 'hay alguien hablando durante la pausa', 'on-backup': 'usando el audio de respaldo', 'not-saving': 'no se guardan las transcripciones (¿disco lleno?)' };
+const ALERT = { 'no-audio': 'no llega audio', 'muted?': '¿mic muteado? (60s sin señal)', reconnecting: 'reconectando IA', 'high-latency': 'latencia alta', 'mt-throttled': 'traducción limitada por cuota → usando Live', 'voice-in-break': 'hay alguien hablando durante la pausa', 'on-backup': 'usando el audio de respaldo', 'not-saving': 'no se guardan las transcripciones (¿disco lleno?)', 'ai-errors': 'la IA está dando errores (ver el registro)' };
 function onStatus(m) {
   if (m.type !== 'status') return;
   onBreak = !!m.brk;

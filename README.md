@@ -161,7 +161,7 @@ docker run -d --pull always --name opencaptions --restart unless-stopped -p 127.
 docker logs opencaptions | grep "Open the dashboard"
 ```
 
-The second command prints a link that opens the dashboard already signed in; the wizard does the rest, API key and public address included.
+The second command prints a link that opens the dashboard already signed in; the wizard does the rest, API key and public address included. The link works once, within 30 minutes: restart the container for a new one (the newest line is the one that works). The passwords never go to the logs; they are in **Settings → Security**.
 
 ### For developers
 
@@ -244,7 +244,7 @@ docker compose up -d --build
 docker compose logs opencaptions | grep "Open the dashboard"
 ```
 
-The last command prints a link that opens the dashboard already signed in. In Docker, even your own browser counts as another device, so the dashboard asks for that password otherwise.
+The last command prints a link that opens the dashboard already signed in. In Docker, even your own browser counts as another device, so the dashboard asks for a password otherwise. The link works once, within 30 minutes: restart the container for a new one (the newest line is the one that works). The passwords never go to the logs; they are in **Settings → Security**.
 
 To skip the build, use the published image `ghcr.io/carraroesteban/opencaptions` (see [Quick start](#with-docker-without-downloading-the-code)). Public HTTPS: **Dashboard → Settings → Public address**, or add `--profile tunnel` and a `TUNNEL_TOKEN`. The image runs as a non-root user on a read-only filesystem.
 

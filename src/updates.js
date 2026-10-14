@@ -92,6 +92,7 @@ export async function installUpdate({ root = ROOT, version = latest, git = isGit
   }
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'oc-update-'));
   try {
+    // shortcut: trusts GitHub's tag over HTTPS (releases carry no signature to check); verify one if releases get signed.
     const r = await fetch(`https://codeload.github.com/${REPO}/tar.gz/refs/tags/v${version}`, { signal: AbortSignal.timeout(180_000) });
     if (!r.ok) throw new Error(`GitHub answered ${r.status}`);
     fs.writeFileSync(path.join(tmp, 'release.tar.gz'), Buffer.from(await r.arrayBuffer()));
@@ -113,7 +114,8 @@ export async function installUpdate({ root = ROOT, version = latest, git = isGit
     // swap whole folders if that ever happens in practice.
     for (const f of [...APP_FILES, ...files]) {
       const from = path.join(src, f), to = path.join(root, f);
-      if (!fs.existsSync(from) || (f.startsWith('config/') && fs.existsSync(to))) continue;
+      // Plain files only: a link in the download would copy whatever it points to on this computer into the app.
+      if (!fs.existsSync(from) || !fs.lstatSync(from).isFile() || (f.startsWith('config/') && fs.existsSync(to))) continue;
       const data = fs.readFileSync(from);
       // Unchanged files keep their date: start.js reinstalls the libraries only when package-lock.json changed.
       if (fs.existsSync(to) && data.equals(fs.readFileSync(to))) continue;

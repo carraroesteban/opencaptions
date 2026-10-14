@@ -73,11 +73,3 @@ export async function capture({ source, deviceId = '', raw = false, channel = 'm
     };
   } catch (e) { ctx.close(); throw e; }
 }
-
-/** Level of one PCM16 chunk in dBFS (-∞…0), for a meter. */
-export function levelDb(buf) {
-  const i16 = new Int16Array(buf);
-  let sum = 0;
-  for (let i = 0; i < i16.length; i++) sum += (i16[i] / 32768) ** 2;
-  return 20 * Math.log10(Math.sqrt(sum / i16.length) || 1e-6);
-}

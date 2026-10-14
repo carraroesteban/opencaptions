@@ -30,7 +30,7 @@ const RANK = { ingest: 0, crew: 1, admin: 2 };
 
 /**
  * @typedef {{ role: 'admin' | 'crew' | 'ingest', via: 'off' | 'local' | 'session' | 'token', label: string, session?: Session }} Identity
- * @typedef {{ hash: string, pid: string, role: 'admin' | 'crew' | 'ingest', device: string, via: string, createdAt: number, lastSeen: number, expiresAt: number, ip: string }} Session
+ * @typedef {{ hash: string, pid: string, role: 'admin' | 'crew' | 'ingest', device: string, via: string, createdAt: number, lastSeen: number, expiresAt: number, ip: string, stage?: string }} Session
  */
 
 // ---------------------------------------------------------------- sessions
@@ -56,14 +56,14 @@ export const cleanDevice = (s) => String(s || '').replace(/[\p{Cc}<>]/gu, '').tr
 
 /**
  * Start a session and return the Set-Cookie value.
- * @param {{ role: 'admin' | 'crew' | 'ingest', device: string, via: string }} who
+ * @param {{ role: 'admin' | 'crew' | 'ingest', device: string, via: string, stage?: string }} who  stage: a room link's session sends audio to that room only
  * @param {import('express').Request} req
  */
 export function createSession(who, req) {
   const id = crypto.randomBytes(32).toString('base64url');
   const now = Date.now();
   /** @type {Session} */
-  const s = { hash: sha(id), pid: crypto.randomBytes(6).toString('hex'), role: who.role, device: cleanDevice(who.device), via: who.via, createdAt: now, lastSeen: now, expiresAt: now + SESSION_HOURS * 3600_000, ip: String(req.ip || '') };
+  const s = { hash: sha(id), pid: crypto.randomBytes(6).toString('hex'), role: who.role, device: cleanDevice(who.device), via: who.via, createdAt: now, lastSeen: now, expiresAt: now + SESSION_HOURS * 3600_000, ip: String(req.ip || ''), stage: who.stage };
   sessions.set(s.hash, s);
   save(true);
   return { session: s, cookie: cookieFor(id, req, SESSION_HOURS * 3600) };
@@ -148,8 +148,19 @@ export const actor = new AsyncLocalStorage();
 export function roleFor(password) {
   if (password && safeEqual(password, tokens.admin)) return 'admin';
   if (password && safeEqual(password, tokens.crew)) return 'crew';
+  if (password && startup && startup.until > Date.now() && safeEqual(password, startup.code)) return 'admin';
   return null;
 }
+
+// Server output that goes to a log (Docker, Fly, Render) gets a sign-in link that works once for 30 minutes,
+// instead of the admin password, which would then sit in the platform's logs.
+let startup = null;
+export function startupSignIn() {
+  startup = { code: crypto.randomBytes(18).toString('base64url'), until: Date.now() + 30 * 60_000 };
+  return startup.code;
+}
+/** Signed in with the startup link: it's used up. */
+export function spendStartupCode(password) { if (startup && safeEqual(password, startup.code)) startup = null; }
 
 const ENV_NAME = { admin: 'ADMIN_TOKEN', crew: 'CREW_TOKEN', ingest: 'INGEST_TOKEN' };
 /** A password set in .env can only be changed there. */

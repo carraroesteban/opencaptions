@@ -115,7 +115,8 @@ class Sender {
     if (type === 'webhook') {
       const body = JSON.stringify(p);
       const sig = crypto.createHmac('sha256', this.def.secret).update(body).digest('hex');
-      return [u.href, { method: 'POST', headers: { 'content-type': 'application/json', 'x-opencaptions-signature': `sha256=${sig}` }, body, signal }];
+      // No redirects: the address was checked to be public, where it points to next wasn't.
+      return [u.href, { method: 'POST', headers: { 'content-type': 'application/json', 'x-opencaptions-signature': `sha256=${sig}` }, body, signal, redirect: 'error' }];
     }
     if (type !== 'teams') u.searchParams.set('seq', String(this.seq)); // Teams: the CART link is used as it is
     if (type === 'zoom' && REGION[p.lang]) u.searchParams.set('lang', REGION[p.lang]);
@@ -140,6 +141,7 @@ export class Integrations {
     this.fetchImpl = fetchImpl;
     this.senders = new Map(); // id → Sender
     this.hooked = new Map(); // stage id → detach()
+    this.talks = new Map(); // stage id → the talk being counted for talk.ended (outlives a re-subscribe)
     let saved = [];
     try { saved = JSON.parse(readSecret('integrations') || '[]'); } catch { /* none */ }
     this.defs = Array.isArray(saved) ? saved : [];
@@ -200,7 +202,10 @@ export class Integrations {
     for (const st of this.stages.values()) {
       const mine = this.defs.filter((d) => d.stage === st.id);
       if (!mine.length) continue;
-      let talk = { id: st.talk.id, title: st.talk.title, startedAt: st.talk.startedAt, captions: 0, channels: new Set(['orig']) };
+      const fresh = () => ({ id: st.talk.id, title: st.talk.title, startedAt: st.talk.startedAt, captions: 0, channels: new Set(['orig']) });
+      // Another room or connector changing re-subscribes every room: keep counting the talk that's on.
+      let talk = this.talks.get(st.id)?.id === st.talk.id ? this.talks.get(st.id) : fresh();
+      this.talks.set(st.id, talk);
       const onCaption = (seg) => {
         if (!seg.final || !seg.text || seg.edited) return; // a correction: Zoom, YouTube and Teams already showed it
         talk.captions++;
@@ -221,7 +226,8 @@ export class Integrations {
       };
       const onTalk = () => {
         const ended = talk;
-        talk = { id: st.talk.id, title: st.talk.title, startedAt: st.talk.startedAt, captions: 0, channels: new Set(['orig']) };
+        talk = fresh();
+        this.talks.set(st.id, talk);
         if (!ended.captions) return;
         const files = Object.fromEntries([...ended.channels].map((ch) => [ch, Object.fromEntries(['srt', 'vtt', 'txt'].map((f) => [f, this.exportUrl(st.id, ended.id, ch, f)]))]));
         for (const d of mine.filter((x) => x.type === 'webhook' && x.events.includes('talk.ended'))) {

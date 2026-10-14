@@ -146,11 +146,13 @@ export function wsUrl(path, params = {}) {
  * A one-minute, single-use ticket to send a room's audio (POST /api/ingest/ticket), so the ingest password never
  * travels in a WebSocket URL (where proxies log it). The password goes in a header; on the server computer, or
  * with a dashboard session, none is needed. '' when the server refuses it: the socket then closes with 4001.
+ * Any other failure (a restart, a proxy's 502) throws, so Socket tries again instead of stopping the room's sound.
  * @param {string} [password]
  */
 export async function ingestTicket(password = '') {
   const r = await fetch('/api/ingest/ticket', { method: 'POST', headers: password ? { authorization: `Bearer ${password}` } : {} });
-  if (!r.ok) return '';
+  if (r.status === 401 || r.status === 403 || r.status === 429) return '';
+  if (!r.ok) throw new Error(`ticket: HTTP ${r.status}`);
   return (await r.json()).ticket || '';
 }
 

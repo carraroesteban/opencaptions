@@ -51,12 +51,10 @@ export class Failover extends EventEmitter {
   }
 
   start() {
-    this.timer = setInterval(() => this.check().catch(() => {}), this.intervalMs);
+    this.timer = setInterval(() => this.check().catch((e) => console.warn(`  failover check: ${e.message}`)), this.intervalMs);
     this.timer.unref?.();
     return this.check();
   }
-
-  stop() { clearInterval(this.timer); }
 
   async check() {
     const [online, local] = await Promise.all([this.probe(), this.localReady().catch(() => false)]);

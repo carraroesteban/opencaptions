@@ -362,7 +362,7 @@ const engChip = (e) => {
   const cls = e.state === 'live' ? 'ok' : e.state === 'reconnecting' || e.state === 'resuming' || e.state === 'connecting' ? 'warn' : e.state === 'idle' ? '' : 'bad';
   return `<span class="chip ${cls}" title="${esc(e.lastError || '')}">${esc(e.target)} · ${esc(e.state)}${e.reconnects ? ` · ${e.reconnects}×` : ''}</span>`;
 };
-const alertText = (a) => tr(({ 'no-audio': 'no llega audio', 'muted?': '¿mic muteado? (60s sin señal)', reconnecting: 'reconectando IA', 'high-latency': 'latencia alta', 'mt-throttled': 'traducción limitada por cuota → usando Live', 'ai-quota': 'la key de Gemini llegó a su límite', 'voice-in-break': 'hay alguien hablando durante la pausa', 'on-backup': 'usando el audio de respaldo', 'not-saving': 'no se guardan las transcripciones (¿disco lleno?)' })[a] || a);
+const alertText = (a) => tr(({ 'no-audio': 'no llega audio', 'muted?': '¿mic muteado? (60s sin señal)', reconnecting: 'reconectando IA', 'high-latency': 'latencia alta', 'mt-throttled': 'traducción limitada por cuota → usando Live', 'ai-quota': 'la key de Gemini llegó a su límite', 'voice-in-break': 'hay alguien hablando durante la pausa', 'on-backup': 'usando el audio de respaldo', 'not-saving': 'no se guardan las transcripciones (¿disco lleno?)', 'ai-errors': 'la IA está dando errores (ver el registro)' })[a] || a);
 
 // ---------- first-run guide (Live view, until everything is done) ----------
 let scheduleCount = null;
@@ -1082,11 +1082,11 @@ async function loadGlossary() {
 }
 function markGloss() { glossDirty = true; $('gloss-save').innerHTML = `${icon('check')} ${esc(tr('Guardar glosario'))} · ${esc(t.unsaved)}`; }
 function renderGlossary() {
-  $('terms').innerHTML = gloss.vocabulary.map((v, i) => `<span class="chip">${esc(v)}<button type="button" data-term="${i}" data-setup aria-label="${esc(tr('Quitar'))}">×</button></span>`).join('');
+  $('terms').innerHTML = gloss.vocabulary.map((v, i) => `<span class="chip">${esc(v)}<button type="button" class="x" data-term="${i}" data-setup aria-label="${esc(tr('Quitar'))} ${esc(v)}">${icon('x')}</button></span>`).join('');
   const langs = [['', t.anyLang], ...Object.entries(ev.languages), ['orig', 'Original']];
   $('reps').innerHTML = gloss.replacements.map((r, i) => `<tr data-i="${i}"><td><input data-k="from" value="${esc(r.from)}" data-setup /></td><td><input data-k="to" value="${esc(r.to)}" data-setup /></td>
     <td class="hide-sm"><select data-k="lang" data-setup>${langs.map(([k, n]) => `<option value="${esc(k)}" ${(r.lang || '') === k ? 'selected' : ''}>${esc(n)}</option>`).join('')}</select></td>
-    <td class="r"><button type="button" data-rep="${i}" data-setup aria-label="${esc(tr('Quitar'))}">×</button></td></tr>`).join('');
+    <td class="r"><button type="button" class="x" data-rep="${i}" data-setup aria-label="${esc(tr('Quitar'))} ${esc(r.from)}">${icon('x')}</button></td></tr>`).join('');
   setLocked(locked);
 }
 $('terms').onclick = (e) => { const i = e.target.closest('[data-term]')?.dataset.term; if (i != null) { gloss.vocabulary.splice(+i, 1); markGloss(); renderGlossary(); } };
@@ -1648,7 +1648,7 @@ $('name-form').onsubmit = async (e) => {
 // Languages: any of them can be removed while no room uses it (the server says which room does), and added back.
 function renderLanguages(s) {
   const many = Object.keys(s.languages).length > 1;
-  $('langs-list').innerHTML = Object.entries(s.languages).map(([c, n]) => `<span class="chip">${esc(n)} <code>${esc(c)}</code>${many ? `<button type="button" class="x" data-lang-del="${esc(c)}" data-setup aria-label="${esc(tr('Quitar'))} ${esc(n)}">×</button>` : ''}</span>`).join('');
+  $('langs-list').innerHTML = Object.entries(s.languages).map(([c, n]) => `<span class="chip">${esc(n)} <code>${esc(c)}</code>${many ? `<button type="button" class="x" data-lang-del="${esc(c)}" data-setup aria-label="${esc(tr('Quitar'))} ${esc(n)}">${icon('x')}</button>` : ''}</span>`).join('');
   const free = Object.entries(LANGUAGE_CATALOG).filter(([c]) => !(c in s.languages)).sort((a, b) => a[1].localeCompare(b[1]));
   $('lang-add').innerHTML = free.map(([c, n]) => `<option value="${c}">${esc(n)} (${c})</option>`).join('');
   setLocked(locked);

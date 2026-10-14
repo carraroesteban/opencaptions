@@ -53,6 +53,12 @@ test('no sound, a muted mic, a failing AI: each after its own wait, in Spanish',
   assert.deepEqual(sent.map((m) => m.title).sort(), ['Main Stage: sin sonido', 'Sala B: ¿micrófono silenciado?', 'Sala C: los subtítulos fallan'].sort());
 });
 
+test('the AI answering with errors (not reconnecting): one alert after a minute', () => {
+  const { a, sent } = setup();
+  for (let s = 0; s <= 90; s += 5) a.observe({ stages: [room({ alerts: ['ai-errors'] })] }, s * 1000);
+  assert.deepEqual(sent.map((m) => m.title), ['Main Stage: the AI keeps returning errors']);
+});
+
 test('a talk running over: one alert when it\'s 5 minutes late', () => {
   const { a, sent } = setup();
   const start = 10 * 60_000;
