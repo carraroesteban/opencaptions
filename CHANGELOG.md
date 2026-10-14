@@ -4,6 +4,40 @@ All notable changes to this project are documented in this file. The format foll
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-10-14
+
+A calmer, more polished app: the Mac app is a real Mac window instead of Terminal, rooms go in your own order, the sidebar is grouped by purpose, and the dashboard, the Sound page and every button were redesigned. Plus the fixes from a full security and reliability review.
+
+### Added
+
+- **The Mac app is a real Mac app.** A small OpenCaptions window shows it starting, installing what it needs the first time, and running, with **Open Dashboard**, the details for when something goes wrong, and a question before **Quit** stops the captions in every room. No Terminal window and no permission to control Terminal, and macOS's own prompts name OpenCaptions. If the app is force-quit or crashes, OpenCaptions stops with it instead of running on with no window. **Breaking:** Macs with an Intel chip need macOS 13 (Ventura) or later; Macs with an Apple chip still need macOS 11.
+- **Rooms in your own order.** Drag them in the sidebar, or use **Move up** and **Move down** in a room's menu (right-click). The order is the same everywhere: the dashboard, the audience's list of rooms and the QR kit. Each reorder is in the History and can be undone.
+- **An "AI errors" alert.** When the AI answers with errors other than its quota (a wrong key or model, a local speech server that's broken), the room says so on the dashboard and, after a minute, on the organizer's phone. Before, captions or translations could stop while the room still looked live.
+- **Opening it the first time, step by step**, in English and Spanish: [docs/first-launch.md](docs/first-launch.md) ("Open Anyway" on each macOS, "Run anyway" on Windows), linked from the README, the website and the "Read me" files.
+
+### Changed
+
+- **A calmer, more consistent look.** Buttons are quiet fills instead of outlined boxes, with one main button per screen. One status badge with the same words everywhere ("Live", "No sound yet", "Break"); "live" is a red dot, and red alone now means a problem. Destructive actions are red words, apart from the everyday ones.
+- **The dashboard puts the rooms first.** The four totals are one strip; Getting started is a progress bar and the next step (every step one click away); a room without sound shows one next step, a live room Break and Next talk, and the rest sits behind a chevron. A room's own page leads with what's being said, large, with every language, the AI's sessions and the room's tools below.
+- **The sidebar is grouped by purpose:** Live; your rooms (the **Rooms** heading opens all of them), then **+ New room**; **Event** (Agenda, Glossary, Integrations); **Archive** (Transcripts, History); Settings.
+- **The Sound page is a tool, not a form:** the room, where the sound comes from and the input, one big **Start**, and the level, large. Channel, volume, backup and autostart are under **More options**.
+- **No passwords in logs.** Started in Docker or on a cloud platform (output to a log, not a terminal), OpenCaptions prints a sign-in link that works once within 30 minutes instead of the passwords. In a terminal it shows them as before.
+- **A room's link sends sound to its own room only.** A browser signed in with a room link (and its tickets) can't send audio to another room.
+
+### Fixed
+
+- **Cloud deploys trust their proxy.** `TRUST_PROXY=1` (Fly.io, Render) was read as an address and trusted nothing: every visitor shared one address for the rate limits (one person could lock everyone out of signing in), cookies weren't marked secure and links used `http://`.
+- **A busy port no longer stops the app.** When another program uses 8080, OpenCaptions takes the next free port and says so, instead of quitting with "port in use".
+- **A room's sound keeps going after a server hiccup.** A 502 from a tunnel or proxy used to stop the room computer with "missing link or password".
+- **The projector's QR card no longer covers the original-language line.** On phones, older lines fade under the header instead of being cut by it.
+- Close buttons' icons are centred, and remove (×) buttons are big enough to tap.
+- `/samples` serves only the bundled test talks, not any recording copied there to play.
+- AI summaries that fell back to highlights (the AI busy or failing) are asked for again after 30 seconds, not a day later.
+- Webhook connectors keep counting a talk when another room or connector changes, and webhooks don't follow redirects.
+- Failover switches each room separately and logs what went wrong; dashboard connections that went quiet are dropped; no leftover helper processes (Apple speech, cloudflared, yt-dlp); interrupted recording uploads close their file.
+- A glossary correction with `$&` in it is written as typed.
+- The default glossary is empty: it shipped a test rule that wrote "pianno" whenever someone said "piano".
+
 ## [0.7.0] - 2026-10-12
 
 Free captions on any computer with one click (Apple's built-in speech on Macs), an easier dashboard with one page per room, settings in a window, and nothing else to install.
