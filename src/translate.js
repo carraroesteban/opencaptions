@@ -316,7 +316,7 @@ export class SentenceTranslator {
       } catch (e) {
         this.stats.errors++;
         const wait = isQuota(e) ? 2000 * 2 ** quotaHits++ : 500;
-        if (isQuota(e)) { this.stats.quotaErrors++; limiter.backoff(wait); }
+        if (isQuota(e)) { this.stats.quotaErrors++; limiter.backoff(wait); } else this.stats.failedAt = Date.now(); // the room's 'ai-errors' alert
         if (isQuota(e) && this.#degrade(45000)) {
           this.onError?.(`rate limited → using Live Translate captions for ${this.to} for 45 s`);
           this.finals = [];
@@ -357,6 +357,7 @@ export class SentenceTranslator {
       if (out && id === this.openId && this.buf.trim().startsWith(text.slice(0, 10))) { this.shown = { id, len: out.length }; this.onPartial(out, id); }
     } catch (e) {
       this.stats.errors++;
+      // No 'ai-errors' alert for a provisional translation: the sentence's final translation still comes (or alerts).
       if (isQuota(e)) { this.stats.quotaErrors++; limiter.backoff(10000); this.#degrade(45000); }
     } finally {
       this.partialInFlight = false;

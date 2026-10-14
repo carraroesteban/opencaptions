@@ -313,6 +313,7 @@ async function start() {
   $('call').classList.add('hidden');
   try {
     if (!cap) await openSound();
+    if (!running) { cap?.stop(); cap = null; return; } // Stop was clicked while the browser asked what to share
     ingest = new Socket(() => wsUrl('/ws/ingest', { stage: ROOM, kind: 'personal', label: source }), {
       open() { while (pending.length && ingest?.ready) ingest.send(pending.shift()); },
       message(m) {

@@ -289,7 +289,7 @@ $('open-audience').onclick = () => window.open('/', '_blank');
 
 // ---------- rooms ----------
 function renderRooms() {
-  $('rooms').innerHTML = A.rooms.map((r, i) => `<div class="room"><input value="${esc(r.name)}" placeholder="${esc(t.roomPh(i + 1))}" maxlength="80" data-i="${i}" aria-label="${esc(t.roomPh(i + 1))}" /><button type="button" data-rm="${i}" title="${esc(t.remove)}" aria-label="${esc(t.remove)}" ${A.rooms.length < 2 ? 'disabled' : ''}>×</button></div>`).join('');
+  $('rooms').innerHTML = A.rooms.map((r, i) => `<div class="room"><input value="${esc(r.name)}" placeholder="${esc(t.roomPh(i + 1))}" maxlength="80" data-i="${i}" aria-label="${esc(t.roomPh(i + 1))}" /><button type="button" data-rm="${i}" title="${esc(t.remove)}" aria-label="${esc(t.remove)}" ${A.rooms.length < 2 ? 'disabled' : ''}>${icon('x')}</button></div>`).join('');
 }
 $('rooms').addEventListener('input', (e) => { if (e.target.dataset.i) A.rooms[+e.target.dataset.i].name = e.target.value; });
 $('rooms').addEventListener('click', (e) => { const i = e.target.closest('[data-rm]')?.dataset.rm; if (i != null) { A.rooms.splice(+i, 1); renderRooms(); } });

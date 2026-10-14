@@ -105,8 +105,9 @@ function service(mode) {
   const waiting = new Map();
   let nextId = 0;
   return async (req, each, timeoutMs) => {
-    if (!proc) {
-      const p = spawn(await appleHelper(), [mode], { stdio: ['pipe', 'pipe', 'ignore'] });
+    const bin = proc ? null : await appleHelper();
+    if (!proc) { // checked again after the await: two first requests at once must share one helper
+      const p = spawn(bin, [mode], { stdio: ['pipe', 'pipe', 'ignore'] });
       proc = p;
       jsonLines(p.stdout, (o) => { if (waiting.get(o.id)?.(o)) waiting.delete(o.id); });
       p.stdin.on('error', () => {});

@@ -217,6 +217,8 @@ function ipKind(ip) {
  *  • local files: only inside samples/ or MEDIA_DIR
  *  • srt/rtmp/rtsp/udp: allowed (typical venue LAN sources), except cloud metadata / link-local addresses
  *  • http(s): public hosts only, unless PULL_ALLOW_PRIVATE=1
+ * shortcut: checks the address as typed; ffmpeg then follows redirects and HLS playlists by itself, so a URL an admin
+ * pastes can still lead to the LAN. Pin the resolved address or fetch through a checking proxy if non-admins ever add pulls.
  */
 export async function checkPullUrl(input, { httpOnly = false } = {}) {
   const s = String(input || '').trim();

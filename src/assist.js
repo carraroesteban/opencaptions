@@ -127,14 +127,16 @@ export async function summarize({ segs, key, lang, scope = 'full', live = true, 
   const ck = `${key}|${lang}|${scope}`;
   const ttl = live ? (scope === 'recent' ? 45_000 : 120_000) : 24 * 3600_000;
   const hit = cache.get(ck);
-  if (hit && (hit.pending || now - hit.at < ttl)) { assistStats.cacheHits++; return hit.pending || hit.value; }
+  if (hit && (hit.pending || now < hit.until)) { assistStats.cacheHits++; return hit.pending || hit.value; }
 
   const { text, list } = pickText(segs, lang, { sinceMs });
   const base = { scope, lang, generatedAt: now, fromMs: sinceMs, toMs: lastEnd, segments: list.length };
   if (!list.length) return { ...base, ai: false, bullets: [], text: '' };
 
+  let retrySoon = false; // the AI failed or was busy: highlights for now, not for the whole day
   const run = (async () => {
-    if (!audienceAiEnabled || config.engine === 'mock' || config.localLlmOff || !globalSummary('all')) return { ...base, ai: false, ...extractiveSummary(list) };
+    if (!audienceAiEnabled || config.engine === 'mock' || config.localLlmOff) return { ...base, ai: false, ...extractiveSummary(list) };
+    if (!globalSummary('all')) { retrySoon = true; return { ...base, ai: false, ...extractiveSummary(list) }; }
     const system = [
       `You summarize a live talk or session for the people attending it, writing in ${langName(lang)}.`,
       'Use ONLY the transcript. Never invent facts, numbers, names or links. Keep names and specialist terms exactly as written.',
@@ -151,12 +153,13 @@ export async function summarize({ segs, key, lang, scope = 'full', live = true, 
       return { ...base, ai: true, headline: String(j.headline || ''), bullets, terms: (j.terms || []).map(String).slice(0, 8) };
     } catch (e) {
       assistStats.errors++;
+      retrySoon = true;
       return { ...base, ai: false, error: 'ai-unavailable', ...extractiveSummary(list) };
     }
   })();
-  cache.set(ck, { at: now, pending: run });
+  cache.set(ck, { pending: run });
   const value = await run;
-  cache.set(ck, { at: Date.now(), value });
+  cache.set(ck, { until: Date.now() + (retrySoon ? Math.min(ttl, 30_000) : ttl), value });
   if (cache.size > 2000) cache.delete(cache.keys().next().value);
   return value;
 }

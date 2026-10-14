@@ -25,6 +25,8 @@ const M = {
     aiOk: (r) => [`${r}: captions are back`, `The AI connection for ${r} is working again.`],
     mt: (r) => [`${r}: translations throttled`, `Translations for ${r} are being slowed down by the AI's quota. Check the plan or billing in AI Studio.`],
     mtOk: (r) => [`${r}: translations are back`, `Translations for ${r} are running normally again.`],
+    errors: (r) => [`${r}: the AI keeps returning errors`, `The AI for ${r} answers with errors (a wrong key or model, a broken local server). Words or translations are being lost: see the dashboard's log.`],
+    errorsOk: (r) => [`${r}: the AI works again`, `The AI for ${r} is answering normally again.`],
     saving: (r) => [`${r}: transcripts not being saved`, `Captions in ${r} are still shown but can't be saved (is the disk full?). Free some space now, or the transcript will have gaps.`],
     savingOk: (r) => [`${r}: transcripts saved again`, `Captions in ${r} are being saved again.`],
     late: (r) => [`${r}: captions running late`, `Captions in ${r} have been more than 6 seconds behind for a few minutes.`],
@@ -51,6 +53,8 @@ const M = {
     aiOk: (r) => [`${r}: volvieron los subtítulos`, `La conexión con la IA de ${r} funciona de nuevo.`],
     mt: (r) => [`${r}: traducciones limitadas`, `Las traducciones de ${r} se están frenando por la cuota de la IA. Revisá el plan o la facturación en AI Studio.`],
     mtOk: (r) => [`${r}: volvieron las traducciones`, `Las traducciones de ${r} funcionan normalmente.`],
+    errors: (r) => [`${r}: la IA da errores`, `La IA de ${r} responde con errores (una key o un modelo equivocado, un servidor local roto). Se están perdiendo palabras o traducciones: mirá el registro del panel.`],
+    errorsOk: (r) => [`${r}: la IA funciona de nuevo`, `La IA de ${r} vuelve a responder normalmente.`],
     saving: (r) => [`${r}: no se guardan las transcripciones`, `Los subtítulos de ${r} se siguen viendo pero no se pueden guardar (¿disco lleno?). Liberá espacio ya o la transcripción va a tener huecos.`],
     savingOk: (r) => [`${r}: se guardan otra vez`, `Los subtítulos de ${r} se vuelven a guardar.`],
     late: (r) => [`${r}: subtítulos atrasados`, `Los subtítulos de ${r} llevan unos minutos más de 6 segundos atrás.`],
@@ -69,7 +73,7 @@ const M = {
 };
 
 // How long a problem must last before it's worth a message (most fix themselves in seconds).
-const AFTER = { lost: 60_000, silent: 60_000, muted: 120_000, ai: 60_000, mt: 120_000, late: 180_000, saving: 0, offline: 30_000, tunnel: 30_000 };
+const AFTER = { lost: 60_000, silent: 60_000, muted: 120_000, ai: 60_000, mt: 120_000, errors: 60_000, late: 180_000, saving: 0, offline: 30_000, tunnel: 30_000 };
 
 export function loadConfig() {
   try { return { lang: 'en', channels: [], snoozeUntil: 0, ...JSON.parse(readSecret('alerts') || '{}') }; } catch { return { lang: 'en', channels: [], snoozeUntil: 0 }; }
@@ -177,6 +181,7 @@ export class Alerts {
       on(st.alerts.includes('muted?'), 'muted', t.muted(st.name), t.mutedOk(st.name));
       on(st.alerts.includes('reconnecting'), 'ai', t.ai(st.name), t.aiOk(st.name));
       on(st.alerts.includes('mt-throttled'), 'mt', t.mt(st.name), t.mtOk(st.name));
+      on(st.alerts.includes('ai-errors'), 'errors', t.errors(st.name), t.errorsOk(st.name));
       on(st.alerts.includes('high-latency'), 'late', t.late(st.name), t.lateOk(st.name));
       on(st.alerts.includes('not-saving'), 'saving', t.saving(st.name), t.savingOk(st.name));
       if (st.dueTalk) {

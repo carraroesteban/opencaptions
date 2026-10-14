@@ -230,7 +230,12 @@ export class LocalEngine extends EventEmitter {
   #queueFinal(u) {
     u.final = true;
     this.finals.push(u);
-    if (this.finals.length > MAX_BACKLOG) { this.finals.shift(); this.stats.dropped++; }
+    if (this.finals.length > MAX_BACKLOG) {
+      this.finals.shift();
+      this.stats.dropped++;
+      this.stats.failedAt = Date.now();
+      this.emit('error', `speech server too far behind: dropped the oldest utterance (${this.stats.dropped} so far)`);
+    }
     // A provisional pass in flight only delays this final one: cancel it (whisper.cpp stops working on it too).
     if (this.inflight && !this.inflight.final) this.inflight.ctrl.abort();
     this.#pump();
@@ -285,13 +290,11 @@ export class LocalEngine extends EventEmitter {
         if (this.state === 'live') this.emit('log', `speech server connection lost (${e.cause?.code || e.message}); retrying`);
         this.#setState('reconnecting');
         this.#retryLater();
-      } else if (final && !u.retried) {
-        u.retried = true;
-        this.finals.unshift(u); // one retry (timeout, a 500)
-        this.emit('error', `speech server: ${e.message}`);
       } else {
+        this.stats.failedAt = Date.now(); // the room's 'ai-errors' alert: the server answers, but with errors
         this.emit('error', `speech server: ${e.message}`);
-        if (final) this.#commit(u, [], true, u.lang); // give up on this utterance but close the caption
+        if (final && !u.retried) { u.retried = true; this.finals.unshift(u); } // one retry (timeout, a 500)
+        else if (final) this.#commit(u, [], true, u.lang); // give up on this utterance but close the caption
       }
     } finally {
       this.busy = false;

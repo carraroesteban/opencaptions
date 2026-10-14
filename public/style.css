@@ -43,8 +43,11 @@ button:focus-visible, a:focus-visible, summary:focus-visible { outline: 2px soli
 }
 .pill[aria-pressed='true'] { background: var(--primary-bg); border-color: var(--primary-bg); color: var(--primary-fg); font-weight: 700; }
 .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
-.chip .x { border: 0; background: none; padding: 0 0 0 2px; min-height: 0; font-size: 14px; line-height: 1; color: var(--fg2); cursor: pointer; }
-.chip .x:hover { color: var(--fg); }
+/* Remove (x) in a chip or a row: the same x icon as every close button, on a round target of at least 24 px
+   (negative margins keep the chip as small as before). */
+button.x { display: inline-grid; place-items: center; width: 24px; height: 24px; margin: -4px -7px -4px -2px; padding: 0; min-height: 0; border: 0; border-radius: var(--pill); background: none; box-shadow: none; color: var(--fg2); }
+button.x:hover { background: color-mix(in srgb, var(--fg) 12%, transparent); color: var(--fg); }
+button.x svg.i { width: 14px; height: 14px; }
 .chip { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; padding: 2px 9px; border-radius: var(--pill); background: var(--bg3); border: 1px solid transparent; line-height: 1.5; }
 .chip.ok { color: var(--ok); background: color-mix(in srgb, var(--ok) 11%, var(--bg2)); border-color: color-mix(in srgb, var(--ok) 28%, transparent); }
 .chip.warn { color: var(--warn); background: color-mix(in srgb, var(--warn) 11%, var(--bg2)); border-color: color-mix(in srgb, var(--warn) 30%, transparent); }
@@ -105,7 +108,7 @@ dialog.sheet[open] { animation: oc-sheet .28s var(--ease); }
 @keyframes oc-sheet { from { transform: translateY(24px); opacity: .4; } }
 dialog.sheet .sheet-head { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
 dialog.sheet .sheet-head h2 { font-size: 21px; margin: 0; flex: 1; }
-dialog.sheet .sheet-head button { border-radius: var(--pill); width: 36px; height: 36px; padding: 0; box-shadow: none; border: 0; background: var(--bg3); }
+dialog.sheet .sheet-head button { display: grid; place-items: center; border-radius: var(--pill); width: 36px; height: 36px; padding: 0; box-shadow: none; border: 0; background: var(--bg3); }
 .seg { display: inline-flex; background: var(--bg3); border-radius: 12px; padding: 3px; gap: 3px; }
 .seg button { border: 0; background: transparent; padding: 6px 12px; border-radius: 9px; font-size: 14px; box-shadow: none; }
 .seg button[aria-pressed='true'] { background: var(--bg2); box-shadow: var(--shadow-sm); font-weight: 700; }
@@ -130,7 +133,9 @@ mark { background: var(--hl); color: var(--hl-ink); border-radius: 3px; padding:
   * { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
 }
 svg.i { width: 16px; height: 16px; flex: none; vertical-align: -3px; }
-button:has(> svg.i), .btn-i { display: inline-flex; align-items: center; gap: 7px; }
+/* :where() keeps the button part at zero specificity: a component's own layout (a round close button, a 38 px nav
+   button) must win over this default, or its icon slides to the left edge. */
+:where(button:has(> svg.i)), .btn-i { display: inline-flex; align-items: center; gap: 7px; }
 /* Side by side, a button with an icon (flex) and one without would sit on different baselines: line up their middles. */
 button, .btn-i { vertical-align: middle; }
 
