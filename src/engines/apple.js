@@ -94,13 +94,15 @@ export class AppleEngine extends EventEmitter {
   async #connect() {
     clearTimeout(this.retryTimer);
     this.#setState(this.stats.connectedAt ? 'reconnecting' : 'connecting');
+    const gen = (this.gen = (this.gen || 0) + 1); // a restart while this one starts: only the newest helper stays
     let p;
     try {
       p = await this.listen({ lang: this.lang, vocabulary: this.vocabulary });
     } catch (e) {
-      return this.#failed(e.message);
+      if (gen === this.gen) this.#failed(e.message);
+      return;
     }
-    if (this.stopped) { p.kill(); return; }
+    if (this.stopped || gen !== this.gen) { p.kill(); return; }
     this.proc = p;
     let lastError = '';
     p.stdin.on('error', () => {}); // it exited: 'close' below restarts it

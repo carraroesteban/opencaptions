@@ -20,7 +20,7 @@ import { startChecks, checkNow, updateInfo, installUpdate, RESTART } from './upd
 import { Tunnel, tunnelOrigin } from './tunnel.js';
 import * as tty from './tty.js';
 import { Alerts, publicConfig, mergeChannels } from './alerts.js';
-import { identify, allows, sameOrigin, isSessionActive, actor, roleFor, createSession, clearCookie, cookieValue, listSessions, endSessions, changePassword, passwordFromEnv, twoFactorOn, twoFactorSecret, checkCode, startTwoFactor, confirmTwoFactor, disableTwoFactor, cleanDevice } from './auth.js';
+import { identify, allows, sameOrigin, isSessionActive, actor, roleFor, startupSignIn, spendStartupCode, createSession, clearCookie, cookieValue, listSessions, endSessions, changePassword, passwordFromEnv, twoFactorOn, twoFactorSecret, checkCode, startTwoFactor, confirmTwoFactor, disableTwoFactor, cleanDevice } from './auth.js';
 import { oidc, oidcEnabled, roleForEmail, startFlow, finishFlow, redirectFor } from './oidc.js';
 import { resetClient } from './genai.js';
 import { Glossary } from './glossary.js';
@@ -112,6 +112,14 @@ function startPull(st, url, loop, opts = {}) {
   pulls.set(st.id, pull);
 }
 
+/** Put the rooms in this order (the dashboard's drag and drop); rooms it doesn't name keep their order, after it. */
+function orderStages(ids) {
+  const named = ids.filter((id, i) => stages.has(id) && ids.indexOf(id) === i);
+  const entries = [...named, ...[...stages.keys()].filter((id) => !named.includes(id))].map((id) => [id, stages.get(id)]);
+  stages.clear();
+  for (const [id, st] of entries) stages.set(id, st);
+}
+
 function stopPull(id) {
   pulls.get(id)?.stop();
   pulls.delete(id);
@@ -170,7 +178,9 @@ const recordChange = (c) => { const e = history.record({ ...c, by: actor.getStor
 const app = express();
 app.disable('x-powered-by');
 // Behind a tunnel / reverse proxy on this machine, trust its X-Forwarded-* headers (for req.secure / req.ip).
-app.set('trust proxy', process.env.TRUST_PROXY || 'loopback');
+// A hop count must be a number: Express reads the string "1" (fly.toml, render.yaml) as an address and trusts nothing.
+const trustProxy = process.env.TRUST_PROXY || 'loopback';
+app.set('trust proxy', /^\d+$/.test(trustProxy) ? Number(trustProxy) : trustProxy);
 setTrustProxy(app.get('trust proxy fn')); // the WebSocket and rate limits judge addresses the same way
 app.use(securityHeaders);
 // Which data folder this server runs on (a fresh start, FRESH=1, makes a new one every time). Pages compare it with
@@ -259,6 +269,18 @@ app.get('/api/event', (req, res) => {
 });
 
 app.get('/api/status', crew, (req, res) => res.json(req.who.role === 'admin' ? snapshot() : forCrew(snapshot())));
+
+// The rooms' order everywhere: the dashboard, the audience's list of rooms, the QR kit.
+app.put('/api/stages/order', admin, unlocked, (req, res) => {
+  const ids = req.body?.ids;
+  if (!Array.isArray(ids) || ids.length > MAX_STAGES || !ids.every((id) => typeof id === 'string')) return res.status(400).json({ error: 'ids: the rooms\' ids, in their new order' });
+  const before = [...stages.keys()];
+  orderStages(ids);
+  const after = [...stages.keys()];
+  if (before.join() === after.join()) return res.json({ ok: true, change: null });
+  persistStages();
+  res.json({ ok: true, change: recordChange({ kind: 'rooms.order', summary: 'Rooms reordered', before, after }).id });
+});
 
 app.post('/api/stages', admin, unlocked, async (req, res) => {
   try {
@@ -398,7 +420,8 @@ function sendSound(st, chunk) {
 const eventName = () => (personal() ? 'OpenCaptions' : config.event.name || 'OpenCaptions');
 const isCurrent = (st, talkId) => !talkId || talkId === st.talk.id;
 const canReadTalk = (req, st, talkId) => (!isPrivate(st.id) && (PUBLIC_TRANSCRIPTS === 'all' || (PUBLIC_TRANSCRIPTS === 'current' && isCurrent(st, talkId)))) || allows(identify(req, reqUrl(req)), 'crew');
-const talkAccess = (req, res, next) => (canReadTalk(req, req.stage, req.query.talk || req.params.talk) ? next() : crew(req, res, next));
+// The talk the handler reads: /talks/:talk, else ?talk= (checking ?talk= on /talks/:talk let one talk unlock another).
+const talkAccess = (req, res, next) => (canReadTalk(req, req.stage, req.params.talk ?? req.query.talk) ? next() : crew(req, res, next));
 const listAccess = (req, res, next) => (PUBLIC_TRANSCRIPTS === 'all' && !isPrivate(req.params.id) ? next() : crew(req, res, next));
 
 /** All final segments of a talk: from disk, or from memory when STORE_TRANSCRIPTS=false (current talk only). */
@@ -703,7 +726,7 @@ const recordings = new Recordings({
 mountRecordings(app, { admin, recordings });
 
 // ---- audience AI: "what did I miss?" summaries and questions about the talk (see src/assist.js) ----
-const LANG_OK = (l) => /^[a-z]{2,3}(-[A-Za-z0-9]{2,8})?$/.test(l || '');
+const LANG_OK = (l) => LANG_RE.test(l || '');
 app.get('/api/stages/:id/summary', getStage, talkAccess, async (req, res) => {
   const st = req.stage;
   const talkId = req.query.talk || st.talk.id;
@@ -733,14 +756,16 @@ app.post('/api/stages/:id/ask', getStage, async (req, res) => {
 // Agenda: names talks automatically (see src/schedule.js). Public read = the event's program.
 // Room computers in a browser get a one-minute, single-use ticket for the audio socket (the password goes in this
 // request's header, never in the WebSocket URL, where proxies log it). The native agent sends its header directly.
-const tickets = new Map();
-setInterval(() => { for (const [k, v] of tickets) if (v < Date.now()) tickets.delete(k); }, 60_000).unref();
+const tickets = new Map(); // ticket → { until, stage } (stage: the one room a room link's browser may send to)
+setInterval(() => { for (const [k, v] of tickets) if (v.until < Date.now()) tickets.delete(k); }, 60_000).unref();
 app.post('/api/ingest/ticket', need('ingest'), (req, res) => {
   const ticket = crypto.randomBytes(24).toString('base64url');
-  tickets.set(ticket, Date.now() + 60_000);
+  tickets.set(ticket, { until: Date.now() + 60_000, stage: roomOf(req.who) });
   res.json({ ticket, expiresIn: 60 });
 });
-const useTicket = (t) => { const ok = !!t && (tickets.get(t) || 0) > Date.now(); tickets.delete(t); return ok; };
+const useTicket = (t, stage) => { const v = t && tickets.get(t); tickets.delete(t); return !!v && v.until > Date.now() && (!v.stage || v.stage === stage); };
+/** The room a room link signed this browser in for (it sends audio there and nowhere else); undefined: any room. */
+const roomOf = (who) => (who?.role === 'ingest' ? who.session?.stage : undefined);
 // A room link (a room's Sound section, the setup wizard): /ingest.html?stage=…&link=<code>. Opening it signs that one browser
 // in to send audio and nothing else (an 'ingest' session, listed in Settings → Security), so nobody has to find the
 // room-computer password. The code works once, for 30 minutes, and only its hash is kept. A browser that can already
@@ -759,15 +784,16 @@ app.post('/api/ingest/link', admin, (req, res) => {
 });
 app.post('/api/ingest/link/use', (req, res) => {
   if (!originAllowed(req)) return res.status(403).json({ error: 'refused: this request came from another website' });
-  if (allows(identify(req, reqUrl(req)), 'ingest')) return res.json({ ok: true, already: true });
+  const who = identify(req, reqUrl(req));
   const h = linkHash(req.body?.link || ''), l = roomLinks.get(h);
+  if (allows(who, 'ingest') && (!roomOf(who) || roomOf(who) === l?.stage)) return res.json({ ok: true, already: true });
   roomLinks.delete(h);
   if (!l || l.expires < Date.now()) {
     if (!noteAuthFailure(req)) return res.set('Retry-After', '600').status(429).json({ error: 'too many failed attempts: wait 10 minutes' });
     return res.status(401).json({ error: 'This link was already used or is more than 30 minutes old. Make a new one in the dashboard: the room → Sound.' });
   }
   const name = stages.get(l.stage)?.def.name || l.stage;
-  const { cookie } = createSession({ role: 'ingest', device: `Room computer · ${name}`, via: 'link' }, req);
+  const { cookie } = createSession({ role: 'ingest', device: `Room computer · ${name}`, via: 'link', stage: l.stage }, req);
   res.set('Set-Cookie', cookie).json({ ok: true, stage: l.stage });
 });
 
@@ -854,6 +880,7 @@ app.post('/api/auth/login', (req, res) => {
     if (!b.code) return res.status(401).json({ need: 'code' });
     if (!checkCode(twoFactorSecret(), b.code)) return failed({ need: 'code', error: 'wrong code' });
   }
+  spendStartupCode(String(b.password));
   const { session, cookie } = createSession({ role, device: String(b.device || ''), via: 'password' }, req);
   res.set('Set-Cookie', cookie).json({ ok: true, role, device: session.device });
 });
@@ -1091,6 +1118,11 @@ app.post('/api/history/:id/undo', admin, unlocked, async (req, res) => {
       if ((def.pull || '') !== (old.pull || '') || !!def.loop !== !!old.loop) { if (def.pull) startPull(st, def.pull, def.loop); else stopPull(st.id); }
       persistStages();
       recordChange({ kind: 'room.update', target: st.id, summary: `Room "${def.name}" put back as before`, before: old, after: clone(def), ...undo });
+    } else if (c.kind === 'rooms.order') {
+      const before = [...stages.keys()];
+      orderStages(c.before);
+      persistStages();
+      recordChange({ kind: 'rooms.order', summary: 'Rooms put back in their order', before, after: [...stages.keys()], ...undo });
     } else if (c.kind === 'agenda.set') {
       const before = schedule.entries.map((e) => ({ ...e }));
       schedule.set(c.before || []);
@@ -1403,7 +1435,8 @@ app.get(['/', '/index', '/index.html', '/watch', '/watch.html', '/talk', '/talk.
   } catch { next(); }
 });
 app.use(express.static(path.join(ROOT, 'public'), { extensions: ['html'] }));
-app.use('/samples', express.static(path.join(ROOT, 'samples')));
+// Only the bundled test talks (the room page's "test talk"): recordings organizers copy into samples/ to pull stay private.
+for (const f of ['talk-en.wav', 'talk-es.wav']) app.get(`/samples/${f}`, (req, res) => res.sendFile(path.join(ROOT, 'samples', f)));
 app.use('/api', (req, res) => res.status(404).json({ error: 'not found' }));
 // Never leak stack traces or internals to clients.
 app.use((err, req, res, next) => { // eslint-disable-line no-unused-vars
@@ -1436,7 +1469,8 @@ const failover = config.primaryEngine === 'gemini' ? new Failover({
     setEngine(engine);
     for (const st of stages.values()) {
       st.log('warn', engine === 'local' ? `${reason}: captions now run on this computer` : `${reason}: back to Gemini`);
-      st.reconfigure(st.def);
+      // One room failing to switch must not leave the others on the dead engine, nor go unnoticed.
+      try { st.reconfigure(st.def); } catch (e) { st.log('error', `couldn't switch to ${engine}: ${e.message}`); }
     }
     console.log(`  ${engine === 'local' ? '⚠' : '✓'} ${reason} → engine: ${engine}`);
   },
@@ -1445,7 +1479,7 @@ const failover = config.primaryEngine === 'gemini' ? new Failover({
 function failoverStatus() { return failover ? { ...failover.status(), backup: config.fallback === 'local' } : null; }
 if (failover) {
   failover.on('change', () => broadcastAdmin({ type: 'failover', ...failoverStatus() }));
-  failover.start().catch(() => {});
+  failover.start().catch((e) => console.warn(`  failover check: ${e.message}`));
 }
 
 // The crew password goes to volunteers: audio addresses can hold a stream key or an SRT passphrase
@@ -1541,7 +1575,8 @@ server.on('upgrade', (req, socket, head) => {
   const noQuery = new URL(url);
   noQuery.searchParams.delete('token');
   const who = kind === 'view' ? null : identify(req, noQuery);
-  const ok = kind === 'ingest' ? useTicket(url.searchParams.get('ticket')) || allows(who, 'ingest')
+  const stage = url.searchParams.get('stage') || '';
+  const ok = kind === 'ingest' ? useTicket(url.searchParams.get('ticket'), stage) || (allows(who, 'ingest') && (!roomOf(who) || roomOf(who) === stage))
     : kind === 'admin' ? allows(who, 'crew') : true;
   if (!ok && !noteAuthFailure(req)) return reject(socket, 429, 'Too Many Requests');
   wss.handleUpgrade(req, socket, head, (ws) => {
@@ -1708,7 +1743,15 @@ function onAdmin(ws, who) {
   ws.crew = who?.role !== 'admin'; // gets audio addresses without their keys
   admins.add(ws);
   sendJson(ws, { type: 'logs', logs: visibleStages().flatMap((s) => s.logs).sort((a, b) => a.t - b.t).slice(-150) });
-  ws.on('close', () => admins.delete(ws));
+  // Heartbeat, like the viewers': a laptop that slept or lost the Wi-Fi without closing is dropped after ~50 s.
+  let alive = true;
+  ws.on('pong', () => { alive = true; });
+  const ping = setInterval(() => {
+    if (!alive) return ws.terminate();
+    alive = false;
+    if (ws.readyState === 1) ws.ping();
+  }, 25000);
+  ws.on('close', () => { clearInterval(ping); admins.delete(ws); });
 }
 
 function broadcastAdmin(obj) {
@@ -1768,15 +1811,17 @@ server.listen(config.port, config.host, () => {
   console.log('');
   if (authMode === 'off') {
     tty.warn(tty.c.yellow('AUTH=off — anyone who can reach this server can run the dashboard and send audio. Lab use only.'));
-  } else {
+  } else if (tty.isTTY) {
     console.log(`  ${tty.c.bold('Passwords')} ${tty.c.gray(authMode === 'auto' ? '· this computer needs none; other devices do' : '· required on every device, this one too')}`);
     tty.table([
       ['Admin token', `${tokens.admin}  ${tty.c.gray(`dashboard, everything${twoFactorOn() ? ' · plus a two-factor code' : ''}${tokens.adminGenerated ? ` · generated, kept in ${config.fresh ? 'the temporary folder' : 'data/secrets.json'}` : ''}`)}`],
       ['Crew token', `${tokens.crew}  ${tty.c.gray('dashboard, live controls only: for the crew')}`],
       ['Ingest token', `${tokens.ingest}  ${tty.c.gray('room computers sending audio · easier: a one-time link from Dashboard → the room → Sound')}`],
     ]);
-    // Docker: the browser on the host counts as another device, so hand over a link that signs in directly.
-    if (process.env.OC_DOCKER) console.log(`\n${tty.sym.arrow} Open the dashboard: ${config.publicUrl || 'http://localhost:8080'}/admin.html?token=${tokens.admin}`);
+  } else {
+    // A log (Docker, a cloud platform): no passwords in it. The browser there counts as another device, so hand over
+    // a link that signs in once; the passwords are in Dashboard → Settings → Security and in data/secrets.json.
+    console.log(`${tty.sym.arrow} Open the dashboard (this link signs in once, within 30 minutes; restart for a new one): ${config.publicUrl || `http://localhost:${config.port}`}/admin.html?token=${startupSignIn()}`);
   }
   if (!tls && !config.publicUrl && config.host !== '127.0.0.1' && config.host !== 'localhost') {
     console.log(`\n  ${tty.c.gray('Plain HTTP: fine on the venue Wi-Fi. For phones on any network, turn on Dashboard → Settings → Public address.')}`);

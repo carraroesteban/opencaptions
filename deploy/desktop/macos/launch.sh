@@ -3,10 +3,10 @@
 # version runs, they're copied to ~/Library/Application Support/OpenCaptions/app-<version>: macOS may run a
 # downloaded app from a read-only place ("App Translocation"), and the app needs to install its libraries. Settings,
 # passwords and transcripts live in .../OpenCaptions/data, and the free local AI's downloads in .../OpenCaptions/local,
-# so they survive updates. Then a Terminal window runs
-# OpenCaptions (scripts/start.js), which opens the dashboard; closing the window stops it. No Node.js on this Mac
-# (or older than 20): the official one is downloaded once into .../OpenCaptions/node.
-# Run by the app's program (launcher.c); both are put in the app by scripts/package-desktop.js.
+# so they survive updates. Then it runs OpenCaptions (scripts/start.js), which opens the dashboard. No Node.js on this
+# Mac (or older than 20): the official one is downloaded once into .../OpenCaptions/node.
+# Run by the app's program (OpenCaptions.swift), whose window shows what this prints; both are put in the app by
+# scripts/package-desktop.js.
 CONTENTS="$(cd "$(dirname "$0")/.." && pwd)" # OpenCaptions.app/Contents
 SRC="$CONTENTS/Resources/app"
 SUPPORT="$HOME/Library/Application Support/OpenCaptions"
@@ -60,16 +60,7 @@ if [ ! -f "$DEST/.complete" ]; then
   for old in "$SUPPORT"/app-*; do [ "$old" != "$DEST" ] && rm -rf "$old"; done
 fi
 
-# A Terminal window running the starter. The first time, macOS asks to let OpenCaptions control Terminal.
-osascript - "$DEST" "$SUPPORT/data" "$(dirname "$NODE")" <<'APPLESCRIPT'
-on run argv
-  set appDir to item 1 of argv
-  set dataDir to item 2 of argv
-  set nodeBin to item 3 of argv
-  set cmd to "export PATH=" & quoted form of nodeBin & ":\"$PATH\"; cd " & quoted form of appDir & " && clear && DATA_DIR=" & quoted form of dataDir & " LOCAL_DIR=" & quoted form of (dataDir & "/../local") & " GLOSSARY=" & quoted form of (dataDir & "/glossary.json") & " SCHEDULE=" & quoted form of (dataDir & "/schedule.json") & " node scripts/start.js; exit"
-  tell application "Terminal"
-    activate
-    do script cmd
-  end tell
-end run
-APPLESCRIPT
+# OpenCaptions itself. The app's window (OpenCaptions.swift) shows this output and stops it when the person quits.
+cd "$DEST" || exit 1
+export PATH="$(dirname "$NODE"):$PATH" DATA_DIR="$SUPPORT/data" LOCAL_DIR="$SUPPORT/local" GLOSSARY="$SUPPORT/data/glossary.json" SCHEDULE="$SUPPORT/data/schedule.json"
+exec node scripts/start.js

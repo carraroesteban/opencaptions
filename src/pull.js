@@ -42,34 +42,29 @@ export function ffmpegArgs(input, { realtime = false, loop = false, start = 0 } 
   return args;
 }
 
-/** Parse a WAV header; returns { offset, length } of PCM data if it is 16 kHz mono s16, else null. */
-function wavPcm16k(path) {
-  if (!/\.wav$/i.test(path)) return null;
-  const fd = fs.openSync(path, 'r');
+/** A WAV that is already 16 kHz mono 16-bit (read without ffmpeg): where its samples are. */
+export function wavInfo(file) {
+  let fd;
   try {
+    fd = fs.openSync(file, 'r');
     const head = Buffer.alloc(4096);
     const n = fs.readSync(fd, head, 0, head.length, 0);
     if (head.toString('ascii', 0, 4) !== 'RIFF' || head.toString('ascii', 8, 12) !== 'WAVE') return null;
     let p = 12, fmt = null;
     while (p + 8 <= n) {
-      const id = head.toString('ascii', p, p + 4);
-      const size = head.readUInt32LE(p + 4);
+      const id = head.toString('ascii', p, p + 4), size = head.readUInt32LE(p + 4);
       if (id === 'fmt ') fmt = { format: head.readUInt16LE(p + 8), channels: head.readUInt16LE(p + 10), rate: head.readUInt32LE(p + 12), bits: head.readUInt16LE(p + 22) };
       if (id === 'data') {
-        if (!fmt || fmt.format !== 1 || fmt.channels !== 1 || fmt.rate !== 16000 || fmt.bits !== 16) return null;
-        const total = fs.statSync(path).size;
-        return { offset: p + 8, length: Math.min(size || total, total - p - 8) };
+        const total = fs.fstatSync(fd).size;
+        const ok = fmt && fmt.format === 1 && fmt.channels === 1 && fmt.rate === 16000 && fmt.bits === 16;
+        return ok ? { offset: p + 8, length: Math.min(size || total, total - p - 8) & ~1 } : null;
       }
       p += 8 + size + (size & 1);
     }
     return null;
-  } finally { fs.closeSync(fd); }
+  } catch { return null; } finally { if (fd !== undefined) fs.closeSync(fd); }
 }
 
-/**
- * Open any input as a real-time paced PCM stream.
- * @returns {PassThrough & { stopAudio(): void }} emits 'data' (PCM16LE 16 kHz mono), 'end', 'error'
- */
 /**
  * Pace a fast PCM source at 1× in Node (100 ms chunks), with backpressure on the source.
  * Used for inputs that download faster than real time (e.g. yt-dlp), so seeking is instant and exact.
@@ -121,7 +116,7 @@ export function openAudio(input, { realtime = true, loop = false, start = 0, via
     return out;
   }
 
-  const wav = file ? wavPcm16k(path) : null;
+  const wav = file && /\.wav$/i.test(path) ? wavInfo(path) : null;
   if (wav) {
     const data = fs.readFileSync(path).subarray(wav.offset, wav.offset + wav.length);
     let pos = Math.min(data.length, Math.floor((start * 16000)) * 2);
@@ -260,7 +255,8 @@ export class PullSource {
       this.timer = setTimeout(() => this.#open(), this.backoff);
       this.backoff = Math.min(this.backoff * 2, 30000);
     };
-    src.on('error', (e) => { this.stage.log('error', `pull: ${e.message}`); again('failed'); });
+    // Stop what's left of the failed pipeline first (yt-dlp outlives its ffmpeg), or every retry leaves a process behind.
+    src.on('error', (e) => { this.stage.log('error', `pull: ${e.message}`); src.stopAudio?.(); again('failed'); });
     src.on('end', () => again('ended'));
   }
 

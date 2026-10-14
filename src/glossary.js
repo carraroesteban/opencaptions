@@ -59,7 +59,7 @@ export class Glossary {
     let out = text;
     for (const r of this.rules) {
       if (r.lang && r.lang !== channel && r.lang !== lang) continue;
-      out = out.replace(r.re, r.to);
+      out = out.replace(r.re, () => r.to); // a function: "$&" or "$1" typed in a correction stays literal
     }
     return out;
   }

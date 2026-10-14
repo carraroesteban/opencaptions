@@ -33,6 +33,7 @@
   --pill: 999px;
   --ease: cubic-bezier(.2, .7, .2, 1);
   --dur: .18s;
+  --dur-fast: .15s; /* hover and press: quick enough to feel direct */
   --sweep: .32s; /* highlighter sweep on the live word */
 
   /* ---- semantic: light (default) ---- */
@@ -43,6 +44,9 @@
   --fg2: #5C5A63;              /* secondary text (≥ 5:1 on paper) */
   --line: #E3DFD5;
   --line-strong: #CFCAC0;
+  /* Quiet fills for buttons, chips and wells: translucent, so they read the same on the page and on a card. */
+  --fill: rgba(17, 16, 20, .06);
+  --fill-hover: rgba(17, 16, 20, .1);
   --translation: var(--graphite); /* second-language caption lines: a muted tone, not a second accent */
   --accent: var(--lime);       /* events may override with their own colour (config/event.json → accent) */
   --on-accent: var(--ink);
@@ -70,7 +74,7 @@
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) {
     --bg: var(--ink); --bg2: #19181D; --bg3: var(--graphite); --fg: var(--paper); --fg2: #A8A5AE;
-    --line: #2A2930; --line-strong: #3B3A42; --translation: var(--fog);
+    --line: #2A2930; --line-strong: #3B3A42; --fill: rgba(250, 248, 243, .08); --fill-hover: rgba(250, 248, 243, .13); --translation: var(--fog);
     --accent-fg: var(--lime); --primary-bg: var(--lime); --primary-fg: var(--ink); --logo-o: var(--paper); --logo-line: var(--lime);
     --ok: #5BD68A; --warn: #F5B544; --bad: #FF7A66; --focus: var(--lime);
     --shadow-sm: 0 1px 2px rgba(0, 0, 0, .4); --shadow: 0 1px 2px rgba(0, 0, 0, .4), 0 10px 30px -10px rgba(0, 0, 0, .6);
@@ -84,7 +88,7 @@
    Pure black and white, nothing dimmed: older lines stay white, the original text is yellow, lines are visible. */
 :root[data-theme='contrast'] {
   --bg: #000; --bg2: #000; --bg3: #1F1F1F; --fg: #FFF; --fg2: #FFF;
-  --line: #FFF; --line-strong: #FFF; --translation: #FFE14D;
+  --line: #FFF; --line-strong: #FFF; --fill: #1F1F1F; --fill-hover: #333; --translation: #FFE14D;
   --accent-fg: #FFE14D; --primary-bg: #FFE14D; --primary-fg: #000; --logo-o: #FFF; --logo-line: #FFE14D;
   --ok: #7CFFAE; --warn: #FFE14D; --bad: #FF9B8A; --focus: #FFE14D; --hl: #FFE14D; --hl-ink: #000;
   --shadow-sm: none; --shadow: none; --shadow-lg: none; --scrim: rgba(0, 0, 0, .8);
@@ -94,7 +98,7 @@
 }
 :root[data-theme='dark'] {
   --bg: var(--ink); --bg2: #19181D; --bg3: var(--graphite); --fg: var(--paper); --fg2: #A8A5AE;
-  --line: #2A2930; --line-strong: #3B3A42; --translation: var(--fog);
+  --line: #2A2930; --line-strong: #3B3A42; --fill: rgba(250, 248, 243, .08); --fill-hover: rgba(250, 248, 243, .13); --translation: var(--fog);
   --accent-fg: var(--lime); --primary-bg: var(--lime); --primary-fg: var(--ink); --logo-o: var(--paper); --logo-line: var(--lime);
   --ok: #5BD68A; --warn: #F5B544; --bad: #FF7A66; --focus: var(--lime);
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, .4); --shadow: 0 1px 2px rgba(0, 0, 0, .4), 0 10px 30px -10px rgba(0, 0, 0, .6);

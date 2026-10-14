@@ -12,25 +12,51 @@
   <title>Sonido de la sala · OpenCaptions</title>
   <link rel="stylesheet" href="/style.css" />
   <style>
-    main { max-width: 980px; margin: 0 auto; padding: 22px 20px 64px; display: grid; gap: 18px; }
-    h1 { margin: 14px 0 0; font-size: 30px; }
-    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
-    .seg { display: flex; gap: 6px; flex-wrap: wrap; }
-    #go { font-size: 18px; padding: 14px 28px; border-radius: 14px; }
-    .big-meter { height: 18px; border-radius: 9px; }
-    .preview { display: grid; gap: 10px; }
-    .preview div { background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; min-height: 2.8em; font-size: 17px; }
+    /* A tool, not a form: where the sound comes from, one big Start, and the level, large. The rest folds away. */
+    main { max-width: 760px; margin: 0 auto; padding: 18px 20px 64px; display: grid; gap: 20px; }
+    .ig-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+    .ig-title h1 { margin: 6px 0 6px; font-size: 32px; }
+    .ig-title p { margin: 0; max-width: 60ch; }
+    .ig-main { display: grid; gap: 20px; padding: 22px; }
+    .ig-status { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .ig-status #conn { font-size: 13px; padding: 4px 12px; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; }
+    .ig-go { display: flex; gap: 10px; flex-wrap: wrap; }
+    #go { font-size: 18px; padding: 15px 30px; border-radius: 14px; flex: 1 1 260px; justify-content: center; }
+    #conn:empty { display: none; }
+    #brk { padding: 15px 22px; border-radius: 14px; }
+    .ig-level { display: grid; gap: 8px; }
+    .ig-level .row { font-size: 13px; color: var(--fg2); }
+    #db { font-variant-numeric: tabular-nums; }
+    .big-meter { height: 14px; border-radius: 7px; background: var(--fill); }
+    .big-meter > i { border-radius: 7px; }
+    .ig-more { border-top: 1px solid var(--line); padding-top: 14px; }
+    .ig-more summary { cursor: pointer; list-style: none; display: inline-flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 600; color: var(--fg2); }
+    .ig-more summary::-webkit-details-marker { display: none; }
+    .ig-more summary::after { content: ''; width: 10px; height: 7px; background: var(--chevron) center / contain no-repeat; transition: rotate var(--dur) var(--ease); }
+    .ig-more[open] summary::after { rotate: 180deg; }
+    .ig-more summary:hover { color: var(--fg); }
+    .ig-more > div { display: grid; gap: 14px; margin-top: 14px; }
+    .ig-checks { display: grid; gap: 10px; }
+    .ig-checks label { align-items: flex-start; flex-wrap: nowrap; }
+    .ig-checks input { margin-top: 3px; }
+    .preview { display: grid; gap: 12px; }
+    .preview:empty { display: none; } /* nothing said yet: no empty box */
+    .preview div { font-size: 18px; line-height: 1.45; min-height: 1.45em; }
     .preview div + div { color: var(--translation); }
-    .preview b { display: block; font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--fg2); margin-bottom: 4px; }
-    .links a { font-size: 14px; }
+    .preview b { display: block; font-size: 12px; font-weight: 600; color: var(--fg2); margin-bottom: 2px; }
+    #links { display: flex; flex-wrap: wrap; gap: 4px; }
+    #links a { display: inline-flex; align-items: center; gap: 8px; padding: 7px 12px; border-radius: 10px; color: var(--fg2); text-decoration: none; font-size: 14px; }
+    #links a:hover { background: var(--fill); color: var(--fg); }
     .hint { font-size: 13px; }
   </style>
 </head>
 <body>
   <main>
-    <div class="row u-between">
-      <div><a class="brand u-fs16" href="/admin.html" title="Panel de producción">OpenCaptions</a><h1>Enviar el sonido de esta sala</h1><p class="muted u-m0">Abrí esta página en la computadora que recibe el sonido del escenario: un micrófono, o una salida de la consola.</p></div>
-      <span class="chip" id="conn">desconectado</span>
+    <div class="ig-head"><a class="brand u-fs16" href="/admin.html" title="Panel de producción">OpenCaptions</a><span id="prefs-slot"></span></div>
+    <div class="ig-title">
+      <h1>Enviar el sonido de esta sala</h1>
+      <p class="muted">Abrí esta página en la computadora que recibe el sonido del escenario: un micrófono, o una salida de la consola.</p>
     </div>
 
     <div id="securewarn" class="card hidden u-danger-outline">⚠ Esta página no está en un contexto seguro: el navegador <b>no va a dejar usar el micrófono</b>. Abrila por <b>HTTPS</b> o en <b>localhost</b> (ver docs/deployment.md → HTTPS).</div>
@@ -39,7 +65,9 @@
       <p class="muted hint u-m0" id="token-hint">Abrí el enlace de esta sala que te pasó quien organiza (está en el panel: la sala → Sonido). Sin enlace, escribí la contraseña de las computadoras de sala: el servidor la muestra al iniciar, y en Ajustes → Seguridad se puede crear una nueva. En la computadora del servidor no hace falta nada de esto.</p>
       <label class="field">Contraseña de las computadoras de sala<input id="token" type="password" autocomplete="off" aria-describedby="token-hint" /></label>
     </div></section>
-    <section class="card u-stack14">
+
+    <section class="card ig-main">
+      <div class="ig-status"><span class="chip" id="conn" data-no-i18n></span><div class="row" id="engines"></div></div>
       <div class="grid">
         <label class="field">Sala<select id="stage"></select></label>
         <label class="field">¿De dónde viene el sonido?
@@ -51,29 +79,36 @@
           </select>
         </label>
         <label class="field" id="f-device">Entrada<select id="device"><option value="">(predeterminado)</option></select></label>
-        <label class="field" id="f-channel">Canal<select id="channel"><option value="mix">Mono (mezcla L+R)</option><option value="left">Solo izquierdo</option><option value="right">Solo derecho</option></select></label>
         <label class="field hidden" id="f-file">Grabación<input type="file" id="file" accept="audio/*,video/*" /></label>
         <label class="field hidden" id="f-sample">Charla de prueba<select id="sample"><option value="/samples/talk-en.wav">Charla en inglés (EN → ES)</option><option value="/samples/talk-es.wav">Charla en español (ES → EN)</option></select></label>
-        <label class="field">Volumen <input type="range" id="gain" min="0.5" max="4" step="0.1" value="1" /></label>
       </div>
-      <div class="row">
+      <div class="ig-go">
         <button id="go" class="primary">Empezar a transcribir</button>
         <button id="brk" class="hidden" title="Pausa (intervalo, publicidad): los subtítulos se detienen y las pantallas muestran la pausa. Tecla B.">Pausa (B)</button>
-        <label class="row muted hint"><input type="checkbox" id="monitor" /> Escucharla también en esta computadora (grabación o prueba)</label>
-        <label class="row muted hint"><input type="checkbox" id="auto" /> Empezar solo al abrir esta página</label>
-        <label class="row muted hint" title="Otra computadora (u otra salida de la consola) para la misma sala: queda en espera y entra sola si la principal se corta o se queda muda."><input type="checkbox" id="backup" /> Es el respaldo de la sala</label>
       </div>
-      <div>
-        <div class="row muted hint u-between"><span>Nivel de entrada</span><span id="db">–∞ dB</span></div>
+      <div class="ig-level">
+        <div class="row u-between"><span>Nivel de entrada</span><span id="db">–∞ dB</span></div>
         <div class="meter big-meter"><i id="lvl"></i><b id="pk" class="u-left0"></b></div>
       </div>
-      <div class="row" id="engines"></div>
+      <details class="ig-more"><summary>Más opciones</summary>
+        <div>
+          <div class="grid">
+            <label class="field" id="f-channel">Canal<select id="channel"><option value="mix">Mono (mezcla L+R)</option><option value="left">Solo izquierdo</option><option value="right">Solo derecho</option></select></label>
+            <label class="field">Volumen <input type="range" id="gain" min="0.5" max="4" step="0.1" value="1" /></label>
+          </div>
+          <div class="ig-checks">
+            <label class="row muted hint"><input type="checkbox" id="monitor" /> Escucharla también en esta computadora (grabación o prueba)</label>
+            <label class="row muted hint"><input type="checkbox" id="auto" /> Empezar solo al abrir esta página</label>
+            <label class="row muted hint" title="Otra computadora (u otra salida de la consola) para la misma sala: queda en espera y entra sola si la principal se corta o se queda muda."><input type="checkbox" id="backup" /> Es el respaldo de la sala</label>
+          </div>
+        </div>
+      </details>
       <p class="muted hint u-m0">Una vez que empieza, no necesita a nadie: si hay silencio un rato deja de enviar (sin costo) y sigue solo cuando alguien habla. Si se corta la red, se vuelve a conectar y manda lo que quedó pendiente.</p>
     </section>
 
     <section class="card preview" id="preview" data-no-i18n></section>
 
-    <section class="card links row" id="links"></section>
+    <nav id="links" aria-label="Más páginas de esta sala"></nav>
   </main>
   <script type="module" src="/pages/ingest.js"></script>
 </body>

@@ -67,8 +67,9 @@ before(async () => {
       ADMIN_TOKEN: ADMIN, CREW_TOKEN: '', INGEST_TOKEN: 'ingest-password-for-tests', PUBLIC_URL: '', FALLBACK: '', TUNNEL: '',
       OIDC_ISSUER: issuer, OIDC_CLIENT_ID: 'oc-test', OIDC_CLIENT_SECRET: 'oc-secret', OIDC_ADMINS: 'ana@example.org', OIDC_CREW: '@crew.example.org', OIDC_LABEL: 'Test ID',
     },
-    stdio: 'ignore',
+    stdio: ['ignore', 'pipe', 'ignore'], // a pipe, like Docker's or a platform's log: what it prints is checked below
   });
+  srv.stdout.on('data', (b) => { out += b; });
   for (let i = 0; i < 100; i++) {
     try { if ((await fetch(`${base}/healthz`)).ok) break; } catch { /* starting */ }
     await new Promise((r) => setTimeout(r, 100));
@@ -78,6 +79,7 @@ before(async () => {
 });
 after(() => { srv?.kill(); idp?.close(); fs.rmSync(dataDir, { recursive: true, force: true }); });
 let crewPassword = CREW;
+let out = ''; // the server's output
 
 /** A browser: keeps its cookies between requests, like the dashboard does. */
 function browser() {
@@ -224,6 +226,21 @@ test('company sign-in: an allowed account gets in, with its role; others are tur
   audience = 'oc-test';
 });
 
+test('a log gets a sign-in link that works once, never the passwords', async () => {
+  for (let i = 0; i < 50 && !/admin\.html\?token=/.test(out); i++) await new Promise((r) => setTimeout(r, 100));
+  assert.ok(![ADMIN, crewPassword, 'ingest-password-for-tests'].some((p) => out.includes(p)), 'no password in the output');
+  const code = new URL(out.match(/https?:\/\/\S+\/admin\.html\?token=\S+/)[0]).searchParams.get('token');
+  const a = browser(), b = browser();
+  assert.equal((await a.call('POST', '/api/auth/login', { password: code, device: 'Docker host' })).body.role, 'admin');
+  assert.equal((await a.call('GET', '/api/auth/me')).body.role, 'admin');
+  assert.equal((await b.call('POST', '/api/auth/login', { password: code })).status, 401, 'once');
+});
+
+test('samples/: the bundled test talks are public, anything else copied there is not', async () => {
+  assert.equal((await fetch(`${base}/samples/talk-en.wav`, { method: 'HEAD' })).status, 200);
+  assert.equal((await fetch(`${base}/samples/talk-en.txt`)).status, 404);
+});
+
 test('room computers: a password in the socket URL is refused; a one-minute ticket works, once', async () => {
   const INGEST = 'ingest-password-for-tests';
   const ws = (q, headers = {}) => new Promise((resolve) => {
@@ -262,6 +279,18 @@ test('a room link signs one browser in to send audio only, works once, and never
   assert.equal((await other.call('POST', '/api/ingest/link/use', { link: 'made-up' }, { origin: base })).status, 401);
   // Sound only: a ticket for the audio socket, but not the dashboard, the status or the setup.
   assert.equal((await stagePc.call('POST', '/api/ingest/ticket', null, { origin: base })).status, 200);
+  // And only for its own room: another room's socket is refused (4001), before the room is even looked up (4004).
+  const sock = (stage, q = '') => new Promise((resolve) => {
+    const s = new WebSocket(`ws://127.0.0.1:${PORT}/ws/ingest?stage=${stage}&kind=test${q}`, { headers: { cookie: `oc_session=${stagePc.jar.get('oc_session')}`, origin: base } });
+    s.on('message', () => { resolve('open'); s.close(); });
+    s.on('close', (code) => resolve(code));
+    s.on('error', () => resolve('error'));
+  });
+  assert.equal(await sock('main'), 'open');
+  assert.equal(await sock('elsewhere'), 4001);
+  const { ticket } = (await stagePc.call('POST', '/api/ingest/ticket', null, { origin: base })).body;
+  assert.equal(await sock('elsewhere', `&ticket=${ticket}`), 4001, 'its tickets too');
+  assert.deepEqual((await stagePc.call('POST', '/api/ingest/link/use', { link: 'made-up' }, { origin: base })).body?.already, undefined, 'a link for another room isn’t "already" covered');
   assert.equal((await stagePc.call('GET', '/api/status')).status, 403);
   assert.equal((await stagePc.call('GET', '/api/setup')).status, 403);
   assert.equal((await stagePc.call('GET', '/api/auth/me')).body.role, null);
