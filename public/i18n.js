@@ -193,7 +193,7 @@ const DICTS = {
     'Si no vuelve en unos segundos, los subtítulos pasan a esta computadora.': 'If it isn’t back in a few seconds, captions move to this computer.',
     'Hay un respaldo listo en esta computadora: elegí «IA automática» o «Siempre esta computadora».': 'A backup is ready on this computer: choose “Automatic AI” or “Always this computer”.',
     'No hay respaldo local. La próxima vez iniciá con: npm run local -- --fallback': 'No local backup. Next time, start with: npm run local -- --fallback',
-    'SIN SONIDO': 'NO SOUND YET', 'ESPERANDO EL STREAM': 'WAITING FOR THE STREAM', 'EN VIVO': 'LIVE', 'EN PAUSA · silencio': 'PAUSED · silence', 'ESPERANDO VOZ': 'WAITING FOR SPEECH',
+    'SIN SONIDO': 'NO SOUND YET', 'ESPERANDO EL STREAM': 'WAITING FOR THE STREAM', 'EN VIVO': 'LIVE', 'Más opciones': 'More options', 'Más páginas de esta sala': 'More pages for this room', 'Música · en pausa': 'Music · paused', 'En pausa · silencio': 'Paused · silence', 'Esperando voz': 'Waiting for a voice', 'EN PAUSA · silencio': 'PAUSED · silence', 'ESPERANDO VOZ': 'WAITING FOR SPEECH',
     'sesiones cerradas (0 costo)': 'sessions closed (no cost)', 'Latencia orig.': 'Latency orig.', 'Latencia trad.': 'Latency transl.',
     'Público': 'Audience', 'Min · US$': 'Min · US$',
     'Todavía no llega sonido.': 'No sound yet.', 'sonido desde': 'sound from',

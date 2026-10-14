@@ -33,6 +33,7 @@
     .band .clip { display: flex; flex-direction: column; justify-content: flex-end; overflow: hidden; }
     .band.main .clip { font-size: var(--main, 6.4vh); }
     .fixed-lines .band.main .clip { height: calc(var(--main, 6.4vh) * 1.22 * var(--lines, 3)); }
+    .band.sub { flex: none; } /* its two lines keep their room: the main band gives way, or they'd run into the QR card */
     .band.sub .clip { font-size: 3.6vh; height: calc(3.6vh * 1.22 * 2); color: var(--fog); font-weight: 400; } /* translation tone */
     .band .lbl { font-family: var(--font); font-size: 1.6vh; letter-spacing: .14em; text-transform: uppercase; color: var(--accent); margin-bottom: .8vh; font-weight: 700; }
     .foot { display: flex; justify-content: space-between; align-items: flex-end; gap: 2vw; }

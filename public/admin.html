@@ -32,6 +32,7 @@
     .topbar h1 { font-size: 30px; margin: 0; min-width: 0; }
     .topbar .help-q { margin: 0; }
     .topbar #engine { margin-left: auto; }
+    #engine:empty, .side .event:empty { display: none; } /* until the first update: nothing, not an empty pill */
     .view { display: none; gap: 20px; align-content: start; min-width: 0; }
     .view.on { display: grid; }
     h2.sec { font-size: 20px; margin: 6px 0 -6px; }
@@ -44,55 +45,82 @@
     .muted-note { font-size: 13px; color: var(--fg2); }
 
     /* KPIs */
-    .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; }
-    .kpi { background: var(--bg2); border: 1px solid var(--line); border-radius: 14px; padding: 14px 16px; display: grid; gap: 4px; font-size: 12px; font-weight: 700; color: var(--fg2); box-shadow: var(--shadow-sm); }
-    .kpi b { font-family: var(--font-display); font-weight: 800; font-size: 26px; color: var(--fg); letter-spacing: -.02em; font-variant-numeric: tabular-nums; line-height: 1.1; }
+    /* KPIs: one quiet strip, not four boxes */
+    .kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); background: var(--bg2); border: 1px solid var(--line); border-radius: 18px; box-shadow: var(--shadow-sm); }
+    .kpi { padding: 14px 20px; display: grid; gap: 2px; font-size: 12px; font-weight: 600; color: var(--fg2); min-width: 0; }
+    .kpi + .kpi { border-left: 1px solid var(--line); }
+    .kpi b { font-family: var(--font-display); font-weight: 800; font-size: 24px; color: var(--fg); letter-spacing: -.02em; font-variant-numeric: tabular-nums; line-height: 1.15; }
+    @media (max-width: 640px) { .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } .kpi:nth-child(3) { border-left: 0; } .kpi:nth-child(n + 3) { border-top: 1px solid var(--line); } .kpi { padding: 12px 16px; } }
 
     /* Live room cards */
     .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)); gap: 16px; }
     @media (max-width: 400px) { .grid { grid-template-columns: minmax(0, 1fr); } }
-    .stage { display: grid; gap: 12px; align-content: start; padding: 20px; min-width: 0; }
-    .stage.alert { border-color: color-mix(in srgb, var(--bad) 55%, var(--line)); box-shadow: 0 0 0 3px color-mix(in srgb, var(--bad) 12%, transparent); }
-    .stage.over { border-color: color-mix(in srgb, var(--warn) 60%, var(--line)); }
+    /* A room: its name and state, what's being said, and the few controls a live room needs */
+    .stage { display: grid; gap: 14px; align-content: start; padding: 20px; min-width: 0; }
+    .stage.alert { border-color: color-mix(in srgb, var(--bad) 45%, var(--line)); }
+    .stage.over { border-color: color-mix(in srgb, var(--warn) 55%, var(--line)); }
     .stage .top { display: flex; gap: 10px; align-items: center; }
-    .stage h3 { margin: 0; font-size: 21px; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .stage .talkline { font-size: 15px; font-weight: 700; margin-top: -6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .stage h3 { margin: 0; font: 700 18px/1.25 var(--font); letter-spacing: -.005em; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .stage h3 a { text-decoration: none; }
+    .stage h3 a:hover { text-decoration: underline; }
+    .stage .talkline { font-size: 15px; font-weight: 600; margin-top: -10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .stage .talkline.none { font-weight: 400; color: var(--fg2); }
-    .stage .next { font-size: 13px; color: var(--fg2); }
+    .stage .next { font-size: 13px; color: var(--fg2); margin-top: -8px; }
+    .stage .next:empty { display: none; }
     .stage .next.over { font-weight: 700; color: var(--warn); }
-    .stage .said { font-size: 15px; line-height: 1.45; background: var(--bg); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; min-height: 2.9em; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    /* What's being said: plain text, the newest at the bottom */
+    .stage .said { font-size: 16px; line-height: 1.5; min-height: 4.5em; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
     .stage .said:empty::before { content: '…'; color: var(--fg2); }
-    .stage .meter { height: 6px; border-radius: 6px; background: var(--bg3); position: relative; overflow: hidden; }
-    .stage .meter i { position: absolute; inset: 0 auto 0 0; background: var(--fg); border-radius: 6px; transition: width .2s; }
+    .stage .meter { height: 4px; border-radius: 4px; background: var(--fill); position: relative; overflow: hidden; }
+    .stage .meter i { position: absolute; inset: 0 auto 0 0; background: var(--ok); border-radius: 4px; transition: width .2s; }
     .stage .meter b { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--fg2); }
-    /* No sound yet: what to do, right on the card */
-    .stage .nosound { display: grid; gap: 10px; padding: 12px 14px; border-radius: 12px; background: var(--bg3); font-size: 14px; line-height: 1.45; }
+    /* No sound yet: one next step, right on the card */
+    .stage .nosound { display: grid; gap: 12px; font-size: 14px; line-height: 1.45; color: var(--fg2); }
+    .stage .nosound b { color: var(--fg); font-weight: 600; }
     .stage .nosound .row { gap: 8px; flex-wrap: wrap; }
+    .stage.idle .said, .stage.idle .speakers, .stage.idle .meter, .stage.idle .stats, .stage.idle [data-a="break"] { display: none; }
+    .stage .nosound > p { display: none; } /* the state badge already says it */
+    .stage:not(.idle) .on-live { display: none; } /* on air, Break and Next talk matter; Screens & QR is on the room's page */
+    .stage .nosound button { color: var(--fg); }
+    .stage .nosound button.plain { color: var(--fg2); }
     .stage .stats { display: flex; gap: 6px 16px; flex-wrap: wrap; font-size: 13px; color: var(--fg2); }
     .stage .stats span { display: inline-flex; align-items: center; gap: 6px; }
-    .stage .stats b { color: var(--fg); font-variant-numeric: tabular-nums; }
-    .stage .actions { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
-    .stage .actions button { padding: 6px 11px; font-size: 13px; }
-    .stage .actions .more { margin-left: auto; box-shadow: none; border-color: transparent; background: transparent; color: var(--fg2); }
-    .stage .actions .more:hover { color: var(--fg); background: var(--bg3); }
+    .stage .stats b { color: var(--fg); font-variant-numeric: tabular-nums; font-weight: 600; }
+    .stage .row[data-f="alerts"]:empty { display: none; }
+    .stage .actions { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; padding-top: 2px; }
+    .stage .actions button { padding: 6px 12px; font-size: 13px; }
+    /* See details: a round chevron (its words stay for screen readers and as the tooltip) */
+    .stage .actions .more { margin-left: auto; width: 32px; height: 32px; padding: 0; display: grid; place-items: center; border-radius: var(--pill); background: transparent; color: var(--fg2); }
+    .stage .actions .more span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+    .stage .actions .more:hover { color: var(--fg); background: var(--fill); }
     .stage .actions .more svg { transition: transform var(--dur) var(--ease); }
     .stage.open .actions .more svg { transform: rotate(180deg); }
     .stage .details { display: none; gap: 12px; border-top: 1px solid var(--line); padding-top: 14px; }
     .stage.open .details { display: grid; }
     .stage .sub { font-size: 13px; color: var(--fg2); }
     .stage .metrics { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
-    .stage .metrics div { background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 7px 9px; font-size: 11px; color: var(--fg2); min-width: 0; }
+    .stage .metrics div { background: var(--fill); border-radius: 10px; padding: 7px 10px; font-size: 11px; color: var(--fg2); min-width: 0; }
     .stage .metrics b { display: block; font-size: 15px; color: var(--fg); font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .stage .preview { display: grid; gap: 5px; font-size: 13px; }
     .stage .preview div { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .stage .preview div + div { color: var(--translation); }
     .stage .preview span.l { display: inline-block; min-width: 38px; font-size: 10px; font-weight: 700; color: var(--fg2); letter-spacing: .06em; text-transform: uppercase; }
-    #room-live .grid { grid-template-columns: minmax(0, 1fr); max-width: 820px; } /* a room's page: only its card */
+    #room-live .grid { grid-template-columns: minmax(0, 1fr); max-width: 900px; } /* a room's page: only its card */
     #room-live .on-live { display: none; }
+    /* On its own page the room's name is the page title: the card leads with what's being said, large. */
+    #room-live .stage h3 { visibility: hidden; }
+    #room-live .stage .said { font-size: 22px; line-height: 1.45; -webkit-line-clamp: 4; min-height: 2.9em; letter-spacing: -.005em; }
+    /* …and everything about the room open below it: every language, the AI sessions, corrections and exports */
+    #room-live .stage .details { display: grid; }
+    #room-live .stage .actions .more { display: none; }
+    #room-live .stage .preview { font-size: 15px; gap: 8px; }
     .empty-rooms { grid-column: 1 / -1; display: grid; justify-items: center; gap: 14px; text-align: center; padding: 30px 20px 40px; }
     .empty-rooms img { width: 220px; border-radius: 20px; }
     .empty-rooms h3 { font-size: 22px; margin: 0; }
-    details.log summary { cursor: pointer; font-weight: 700; }
+    details.log summary { cursor: pointer; font-weight: 700; list-style: none; display: flex; align-items: center; gap: 8px; }
+    details.log summary::-webkit-details-marker { display: none; }
+    details.log summary::after { content: ''; width: 10px; height: 7px; margin-left: auto; background: var(--chevron) center / contain no-repeat; transition: rotate var(--dur) var(--ease); }
+    details.log[open] summary::after { rotate: 180deg; }
     #logs { font-family: var(--mono); font-size: 12px; max-height: 280px; overflow: auto; display: grid; gap: 2px; margin-top: 10px; }
     #logs .warn { color: var(--warn); } #logs .error { color: var(--bad); }
 
@@ -104,6 +132,8 @@
     .table td.r { text-align: right; white-space: nowrap; }
     .table td.r button:not(.x) { padding: 6px 11px; font-size: 13px; }
     .table button.x { width: 36px; height: 36px; margin: 0; }
+    .table button.danger { background: none; } /* one per row: available, not shouting */
+    .table button.danger:hover { background: color-mix(in srgb, var(--bad) 12%, transparent); }
     .table td.r > a { display: inline-block; vertical-align: middle; }
     .table .chip { margin: 2px 2px 2px 0; }
     .card.flush { padding: 0; overflow: hidden; }
@@ -133,7 +163,7 @@
     .qrrow img { width: 140px; background: #fff; border-radius: 10px; padding: 4px; border: 1px solid var(--line); }
     @media (max-width: 600px) { .qrrow { grid-template-columns: minmax(0, 1fr); } }
     .tools { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
-    .tool { display: grid; gap: 4px; text-decoration: none; color: inherit; font: inherit; }
+    .tool { display: grid; gap: 4px; align-content: start; text-decoration: none; color: inherit; font: inherit; } /* buttons centre their content: tiles in a row line up at the top */
     .tool b { display: flex; align-items: center; gap: 8px; }
     .tool span { font-size: 13px; color: var(--fg2); font-weight: 400; }
 
@@ -149,7 +179,7 @@
     /* settings */
     .role-crew [data-admin], .role-crew [data-setup] { display: none !important; }
     .stage .speakers { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; font-size: 13px; color: var(--fg2); }
-    .stage .speakers .pill { font-size: 13px; padding: 4px 10px; }
+    .stage .speakers .pill { font-size: 13px; padding: 4px 11px; }
     .me { grid-column: 1 / -1; display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 14px; background: var(--bg3); font-size: 13px; }
     .me svg { width: 18px; height: 18px; flex: none; }
     .me span { flex: 1; min-width: 0; display: grid; }
@@ -162,13 +192,20 @@
     @media (max-width: 700px) { .setting { grid-template-columns: minmax(0, 1fr); } }
 
     /* first-run guide */
-    #onboard { padding: 0; overflow: hidden; display: grid; grid-template-columns: minmax(0, 1fr) minmax(260px, 40%); }
-    #onboard .ob-body { padding: 22px 24px; }
-    #onboard .ob-art { background: #FAF8F3 center / contain no-repeat; border-left: 1px solid var(--line); min-height: 200px; }
-    @media (max-width: 900px) { #onboard { grid-template-columns: minmax(0, 1fr); } #onboard .ob-art { border-left: 0; border-top: 1px solid var(--line); min-height: 150px; order: -1; } }
-    #onboard h2 { font-size: 22px; margin: 0; }
-    #onboard ol { list-style: none; padding: 0; margin: 14px 0 0; display: grid; gap: 2px; font-size: 14px; }
-    #onboard li { display: flex; gap: 10px; align-items: baseline; padding: 6px 0; }
+    /* Getting started: how far along, and the next step; every step one click away */
+    #onboard { display: grid; gap: 12px; padding: 18px 20px; }
+    .ob-head { display: flex; align-items: center; gap: 6px; }
+    .ob-progress { display: flex; align-items: center; gap: 12px; }
+    .ob-progress .ob-bar { flex: 1; }
+    #onboard h2 { font: 700 17px/1.3 var(--font); letter-spacing: 0; margin: 0; white-space: nowrap; }
+    .ob-count { font-size: 13px; color: var(--fg2); font-variant-numeric: tabular-nums; }
+    .ob-head .spacer { flex: 1; }
+    .ob-head button { padding: 5px 11px; font-size: 13px; }
+    .ob-bar { height: 4px; border-radius: 4px; background: var(--fill); overflow: hidden; }
+    .ob-bar i { display: block; height: 100%; width: 0; border-radius: 4px; background: var(--ok); transition: width .4s var(--ease); }
+    #onboard ol { list-style: none; padding: 0; margin: 0; display: grid; gap: 2px; font-size: 14px; }
+    #onboard li { display: flex; gap: 10px; align-items: baseline; padding: 5px 0; }
+    #onboard:not(.all) li:not(.next) { display: none; }
     #onboard li.done, #onboard li.done .muted, #onboard li.done a { color: var(--fg2); } /* faded, but readable (WCAG contrast) */
     #onboard li.done b { text-decoration: line-through; text-decoration-thickness: 1px; }
     #onboard a { color: inherit; font-weight: 700; }
@@ -271,6 +308,7 @@
     .rooms-list a:hover b { text-decoration: underline; }
     .tools-btn { margin-left: auto; }
     .topbar #engine + .tools-btn { margin-left: 0; }
+    .topbar #engine:empty + .tools-btn { margin-left: auto; }
     .ctx button { display: flex; align-items: center; gap: 10px; width: 100%; padding: 8px 10px; border: 0; border-radius: 8px; background: none; box-shadow: none; font-size: 14px; text-align: left; }
     .ctx button:hover { background: var(--bg3); }
   </style>
@@ -278,7 +316,7 @@
 <body>
   <aside class="side" id="side">
     <a class="brand" href="#live">OpenCaptions</a>
-    <div class="event" id="event" data-no-i18n>…</div>
+    <div class="event" id="event" data-no-i18n></div>
     <div class="foot">
       <div class="me" id="me" data-no-i18n></div>
       <button type="button" class="lockbtn" id="lockbtn" data-admin></button>
@@ -310,11 +348,10 @@
           <div class="kpi">Sesiones IA<b id="k-sessions">–</b></div>
         </div>
         <section class="card hidden" id="onboard">
-          <div class="ob-body">
-            <div class="row u-between"><h2>Primeros pasos</h2><button id="ob-hide" class="muted u-btn-sm">Ocultar</button></div>
-            <ol id="ob-steps" data-no-i18n></ol>
-          </div>
-          <div class="ob-art u-bg-setup" aria-hidden="true"></div>
+          <div class="ob-head"><h2>Primeros pasos</h2><span class="spacer"></span>
+            <button type="button" class="plain" id="ob-all" aria-expanded="false" aria-controls="ob-steps" data-no-i18n></button><button type="button" class="plain" id="ob-hide">Ocultar</button></div>
+          <div class="ob-progress"><div class="ob-bar" aria-hidden="true"><i id="ob-bar"></i></div><span class="ob-count" id="ob-count" data-no-i18n></span></div>
+          <ol id="ob-steps" data-no-i18n></ol>
         </section>
         <div class="grid" id="grid"></div>
         <details class="card log"><summary>Registro de eventos</summary>

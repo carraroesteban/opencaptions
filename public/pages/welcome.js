@@ -164,13 +164,16 @@ $('name').value = A.name;
 // ---------- steps ----------
 const steps = [...document.querySelectorAll('.step')];
 let cur = 0;
-$('progress').innerHTML = steps.map(() => '<span></span>').join('');
+// The bar shows the numbered steps ("Step 2 of 7"), not the welcome and closing screens around them.
+const numbered = steps.filter((s) => !['welcome', 'done'].includes(s.dataset.step));
+$('progress').innerHTML = numbered.map(() => '<span></span>').join('');
 function show(i) {
   $('err').textContent = '';
   cur = Math.max(0, Math.min(steps.length - 1, i));
   steps.forEach((s, k) => s.classList.toggle('on', k === cur));
   document.querySelector('.wiz').classList.toggle('choosing', steps[cur].dataset.step === 'welcome');
-  [...$('progress').children].forEach((p, k) => p.classList.toggle('on', k <= cur));
+  const at = steps[cur].dataset.step === 'done' ? numbered.length : numbered.indexOf(steps[cur]);
+  [...$('progress').children].forEach((p, k) => p.classList.toggle('on', k <= at));
   const img = $('art'), src = `/art/${steps[cur].dataset.art}.webp`;
   if (!img.src.endsWith(src)) { img.classList.add('fade'); setTimeout(() => { img.src = src; img.onload = () => img.classList.remove('fade'); }, 150); }
   if (steps[cur].dataset.step === 'done') renderSummary();
