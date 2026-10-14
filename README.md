@@ -132,16 +132,16 @@ Conferences and summits · universities and schools · places of worship · town
 1. Download **[OpenCaptions for Mac](https://github.com/carraroesteban/opencaptions/releases/latest/download/OpenCaptions-mac.zip)** or **[OpenCaptions for Windows](https://github.com/carraroesteban/opencaptions/releases/latest/download/OpenCaptions-windows.zip)**.
 2. **Mac:** unzip it, drag **OpenCaptions** to Applications and open it. **Windows:** extract the ZIP and double-click **Start OpenCaptions**.
 
-The first time, it installs what it needs (about a minute, and Node.js too if this computer doesn't have it), then opens the dashboard in your browser. The welcome wizard asks for the event name, rooms and languages, connects Gemini with your API key, and can create a public HTTPS address for the QR codes with one click. A window shows OpenCaptions running: keep it open during the event, and close it to stop. Your settings and transcripts are kept outside the app, so they survive updates.
+The first time, it installs what it needs (about a minute, and Node.js too if this computer doesn't have it), then opens the dashboard in your browser. The welcome wizard asks for the event name, rooms and languages, connects Gemini with your API key, and can create a public HTTPS address for the QR codes with one click. A small OpenCaptions window shows it running: keep it open during the event, and quit it to stop. Your settings and transcripts are kept outside the app, so they survive updates.
 
 No Gemini key, or your free key ran out mid-event? Click **Run it on this computer (free, slower)** in the wizard, on the **Just for me** page or on the dashboard's banner. It downloads a free speech model once (about 670 MB, about a minute) and captions start; translations also need the free [Ollama](https://ollama.com/download) app, and the page shows how to add it. No terminal. Details in [Local mode](docs/local.md#without-a-terminal-one-button).
 
 <details>
 <summary>The computer warns about the app the first time</summary>
 
-The launchers aren't signed with a paid Apple or Microsoft certificate yet, so the first launch asks you to confirm:
+The launchers aren't signed with a paid Apple or Microsoft certificate yet, so the first launch asks you to confirm, once. [Step by step, in English and Spanish](docs/first-launch.md).
 
-- **Mac, "Apple could not verify…":** click **Done**, then open **System Settings → Privacy & Security**, scroll down and click **Open Anyway** next to OpenCaptions. Then allow it to control Terminal (that's the window that shows it running). You only do this once.
+- **Mac, "Apple could not verify…":** click **Done**, then open **System Settings → Privacy & Security**, scroll down and click **Open Anyway** next to OpenCaptions.
 - **Windows, "Windows protected your PC":** click **More info → Run anyway**. If an antivirus blocks the launcher, open the `app` folder and double-click `Start OpenCaptions.bat`.
 
 </details>

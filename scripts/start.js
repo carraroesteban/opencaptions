@@ -96,6 +96,9 @@ tty.info(`Keep this window open while you use OpenCaptions. To stop it, close th
 const restarted = !!process.env.OC_UPDATED;
 const server = spawn(process.execPath, [path.join(ROOT, 'src', 'server.js'), ...(restarted ? [] : ['--open']), ...process.argv.slice(2)], { cwd: ROOT, stdio: 'inherit', env: { ...process.env, OC_SUPERVISED: '1' } });
 for (const sig of ['SIGINT', 'SIGTERM']) process.on(sig, () => server.kill(/** @type {NodeJS.Signals} */ (sig)));
+// The Mac app's window holds the other end of stdin: if the app ends any way at all (quit, force quit, a crash), the
+// pipe closes and the server stops with it, instead of running on with no window to stop it.
+if (process.env.OC_STOP_WITH_STDIN) { process.stdin.on('end', () => server.kill('SIGTERM')); process.stdin.resume(); }
 server.on('exit', (code) => {
   if (code !== 75) process.exit(code ?? 0);
   tty.info('Starting the new version of OpenCaptions…');
