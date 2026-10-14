@@ -6,6 +6,7 @@
 //
 //   node scripts/start.js            (also: npm run app)
 import fs from 'node:fs';
+import net from 'node:net';
 import path from 'node:path';
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
@@ -54,8 +55,8 @@ if (!fs.existsSync(installed) || (fs.existsSync(lock) && fs.statSync(lock).mtime
 // The port: PORT in the environment or in .env, else 8080.
 const envFile = path.join(ROOT, '.env');
 const fromEnvFile = fs.existsSync(envFile) ? fs.readFileSync(envFile, 'utf8').match(/^PORT=(\d+)/m)?.[1] : '';
-const port = Number(process.env.PORT || fromEnvFile || 8080);
-const dashboard = `http://localhost:${port}/admin.html`;
+let port = Number(process.env.PORT || fromEnvFile || 8080);
+let dashboard = `http://localhost:${port}/admin.html`;
 
 // Started twice? Just show the dashboard of the one already running.
 /** @type {any} */
@@ -65,6 +66,29 @@ if (running?.ok) {
   openUrl(dashboard);
   process.exit(0);
 }
+
+// Another program on that port: stopping with "port in use" leaves a double-click with nothing to do, and on a Mac a
+// program on 127.0.0.1 only would even answer the dashboard's address. Take the next free port instead, and say so.
+const answers = (p) => new Promise((resolve) => {
+  const s = net.connect({ port: p, host: '127.0.0.1' });
+  s.setTimeout(800, () => { s.destroy(); resolve(false); });
+  s.once('connect', () => { s.destroy(); resolve(true); });
+  s.once('error', () => resolve(false));
+});
+const bindable = (p) => new Promise((resolve) => { const srv = net.createServer().once('error', () => resolve(false)).listen(p, () => srv.close(() => resolve(true))); });
+const usable = async (p) => !(await answers(p)) && (await bindable(p));
+if (!(await usable(port))) {
+  let free = 0;
+  for (let p = port + 1; p <= port + 20 && !free; p++) if (await usable(p)) free = p;
+  if (!free) {
+    tty.fail(`Another program is using port ${port} (and the next 20). Close it, or set PORT=… in OpenCaptions' .env file.`);
+    process.exit(1);
+  }
+  tty.warn(`Another program is using port ${port}: OpenCaptions uses ${free} instead.`);
+  port = free;
+  dashboard = `http://localhost:${port}/admin.html`;
+}
+process.env.PORT = String(port); // the server inherits it
 
 tty.info(`Keep this window open while you use OpenCaptions. To stop it, close the window ${tty.c.gray('(or press Ctrl+C)')}.`);
 // OC_SUPERVISED: the dashboard's "Update now" may replace the files and exit with 75, and this starts the new version

@@ -73,3 +73,9 @@ on run argv
   end tell
 end run
 APPLESCRIPT
+# "Don't Allow" when macOS asked to let OpenCaptions control Terminal: nothing would happen, and nothing would say why.
+if [ $? -ne 0 ]; then
+  answer=$(dialog "$(say "OpenCaptions runs in a Terminal window, and macOS didn't allow it to open one. Turn on Terminal for OpenCaptions in System Settings → Privacy & Security → Automation, then open OpenCaptions again." 'OpenCaptions funciona en una ventana de Terminal, y macOS no le permitió abrirla. Activá Terminal para OpenCaptions en Ajustes del Sistema → Privacidad y seguridad → Automatización, y volvé a abrir OpenCaptions.')" "$(say Cancel Cancelar)" "$(say 'Open Settings' 'Abrir Ajustes')")
+  [ -n "$answer" ] && [ "$answer" != "$(say Cancel Cancelar)" ] && open "x-apple.systempreferences:com.apple.preference.security?Privacy_Automation"
+  exit 1
+fi
