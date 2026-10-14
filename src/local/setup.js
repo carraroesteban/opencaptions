@@ -71,7 +71,8 @@ function start(ui, name, cmd, args, extraEnv = {}) {
   const p = spawn(cmd, args, { cwd: ROOT, env: { ...env, ...extraEnv }, stdio: ['ignore', out, out], windowsHide: true });
   fs.closeSync(out); // the child has its own copy
   // Failures while starting are reported by the caller; this is for a server that stops later.
-  p.on('exit', (code) => { if (code && !p.killed && p.ready) ui.warn(`${name} stopped (code ${code}) — see ${rel(file)}:\n${logTail(file)}`); });
+  // A signal (the OOM killer, kill -9) gives no exit code: that's a stop too.
+  p.on('exit', (code, signal) => { if ((code || signal) && !p.killed && p.ready) ui.warn(`${name} stopped (${signal || `code ${code}`}) — see ${rel(file)}:\n${logTail(file)}`); });
   p.on('error', () => { /* reported by waitFor's timeout */ });
   children.push(p);
   return { process: p, log: file };
@@ -106,13 +107,17 @@ async function download(ui, url, dest, label) {
     if (!res.ok || !res.body) throw new Error(`HTTP ${res.status}`);
     const total = Number(res.headers.get('content-length')) || 0;
     f = fs.createWriteStream(tmp);
+    let failed = null; // a full disk: 'drain' would never come
+    f.on('error', (e) => { failed = e; f.emit('drain'); });
     let got = 0;
     for await (const chunk of res.body) {
       got += chunk.length;
       if (!f.write(chunk)) await new Promise((r) => f.once('drain', r));
+      if (failed) throw failed;
       bar.update(got, total);
     }
     await new Promise((r) => f.end(r));
+    if (failed) throw failed;
     if (total && fs.statSync(tmp).size !== total) throw new Error('incomplete download');
     bar.succeed(`Downloaded ${label}`);
   } catch (e) {

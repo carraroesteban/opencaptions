@@ -82,8 +82,9 @@ See [Local mode → Troubleshooting](../local.md#troubleshooting) for the speech
 
 | Symptom | Cause | Fix |
 |---|---|---|
-| Mac: "Apple could not verify…" | The app isn't signed yet | **System Settings → Privacy & Security** → **Open Anyway** next to OpenCaptions (once) |
-| Mac: nothing happens after opening it | Permission to control Terminal was denied | **System Settings → Privacy & Security → Automation** → allow OpenCaptions to control Terminal, then open it again |
+| Mac: "Apple could not verify…" | The app isn't signed yet | **System Settings → Privacy & Security** → **Open Anyway** next to OpenCaptions (once). [Step by step](../first-launch.md) |
+| Mac: the OpenCaptions window says it stopped | Something went wrong while starting | The window's **Details** show the last lines; **Start Again** retries. A busy port is handled by itself (it takes the next one) |
+| Mac: "You can't use this version of OpenCaptions with this version of macOS" | A Mac with an Intel chip on macOS 12 or earlier | Update macOS to 13 (Ventura) or later, or run OpenCaptions with Docker or `npm run app` |
 | Mac or Windows: "OpenCaptions couldn't download Node.js" | No internet on the first start (it downloads Node.js when the computer doesn't have it) | Connect and open OpenCaptions again, or install the LTS version from nodejs.org |
 | Mac: "To open OpenCaptions you need to install Rosetta" | A version older than 0.7 on a Mac with an Apple chip | Download the latest version; or click Install, which also works |
 | Windows: "Extract the ZIP first" | The launcher was opened from inside the ZIP | Right-click the ZIP → **Extract All**, and open it from the extracted folder |

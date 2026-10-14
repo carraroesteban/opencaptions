@@ -132,16 +132,16 @@ Conferences and summits · universities and schools · places of worship · town
 1. Download **[OpenCaptions for Mac](https://github.com/carraroesteban/opencaptions/releases/latest/download/OpenCaptions-mac.zip)** or **[OpenCaptions for Windows](https://github.com/carraroesteban/opencaptions/releases/latest/download/OpenCaptions-windows.zip)**.
 2. **Mac:** unzip it, drag **OpenCaptions** to Applications and open it. **Windows:** extract the ZIP and double-click **Start OpenCaptions**.
 
-The first time, it installs what it needs (about a minute, and Node.js too if this computer doesn't have it), then opens the dashboard in your browser. The welcome wizard asks for the event name, rooms and languages, connects Gemini with your API key, and can create a public HTTPS address for the QR codes with one click. A window shows OpenCaptions running: keep it open during the event, and close it to stop. Your settings and transcripts are kept outside the app, so they survive updates.
+The first time, it installs what it needs (about a minute, and Node.js too if this computer doesn't have it), then opens the dashboard in your browser. The welcome wizard asks for the event name, rooms and languages, connects Gemini with your API key, and can create a public HTTPS address for the QR codes with one click. A small OpenCaptions window shows it running: keep it open during the event, and quit it to stop. Your settings and transcripts are kept outside the app, so they survive updates.
 
 No Gemini key, or your free key ran out mid-event? Click **Run it on this computer (free, slower)** in the wizard, on the **Just for me** page or on the dashboard's banner. It downloads a free speech model once (about 670 MB, about a minute) and captions start; translations also need the free [Ollama](https://ollama.com/download) app, and the page shows how to add it. No terminal. Details in [Local mode](docs/local.md#without-a-terminal-one-button).
 
 <details>
 <summary>The computer warns about the app the first time</summary>
 
-The launchers aren't signed with a paid Apple or Microsoft certificate yet, so the first launch asks you to confirm:
+The launchers aren't signed with a paid Apple or Microsoft certificate yet, so the first launch asks you to confirm, once. [Step by step, in English and Spanish](docs/first-launch.md).
 
-- **Mac, "Apple could not verify…":** click **Done**, then open **System Settings → Privacy & Security**, scroll down and click **Open Anyway** next to OpenCaptions. Then allow it to control Terminal (that's the window that shows it running). You only do this once.
+- **Mac, "Apple could not verify…":** click **Done**, then open **System Settings → Privacy & Security**, scroll down and click **Open Anyway** next to OpenCaptions.
 - **Windows, "Windows protected your PC":** click **More info → Run anyway**. If an antivirus blocks the launcher, open the `app` folder and double-click `Start OpenCaptions.bat`.
 
 </details>
@@ -161,7 +161,7 @@ docker run -d --pull always --name opencaptions --restart unless-stopped -p 127.
 docker logs opencaptions | grep "Open the dashboard"
 ```
 
-The second command prints a link that opens the dashboard already signed in; the wizard does the rest, API key and public address included.
+The second command prints a link that opens the dashboard already signed in; the wizard does the rest, API key and public address included. The link works once, within 30 minutes: restart the container for a new one (the newest line is the one that works). The passwords never go to the logs; they are in **Settings → Security**.
 
 ### For developers
 
@@ -244,7 +244,7 @@ docker compose up -d --build
 docker compose logs opencaptions | grep "Open the dashboard"
 ```
 
-The last command prints a link that opens the dashboard already signed in. In Docker, even your own browser counts as another device, so the dashboard asks for that password otherwise.
+The last command prints a link that opens the dashboard already signed in. In Docker, even your own browser counts as another device, so the dashboard asks for a password otherwise. The link works once, within 30 minutes: restart the container for a new one (the newest line is the one that works). The passwords never go to the logs; they are in **Settings → Security**.
 
 To skip the build, use the published image `ghcr.io/carraroesteban/opencaptions` (see [Quick start](#with-docker-without-downloading-the-code)). Public HTTPS: **Dashboard → Settings → Public address**, or add `--profile tunnel` and a `TUNNEL_TOKEN`. The image runs as a non-root user on a read-only filesystem.
 

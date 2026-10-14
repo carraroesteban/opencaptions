@@ -4,7 +4,7 @@ import { localize, prefsControls, tr } from '/i18n.js';
 import { icon } from '/illustrations.js';
 import { openMic, openScreenAudio } from '/capture.js';
 const goLabel = (on, again = false) => { $('go').innerHTML = on ? `${icon('stop')} <span>Detener</span>` : `${icon('play')} <span>${again ? 'Empezar de nuevo' : 'Empezar a transcribir'}</span>`; };
-document.getElementById('conn').before(prefsControls());
+document.getElementById('prefs-slot').append(prefsControls());
 const $ = (id) => document.getElementById(id);
 goLabel(false);
 localize(); // before anything waits on the network: the page and its tab title are never shown in the wrong language
@@ -46,7 +46,7 @@ $('channel').onchange = () => store.set('ingest.channel', $('channel').value);
 // Can this browser send sound as it is? (The server computer, a room link or a signed-in dashboard need nothing; a
 // different computer needs the room's link or the room-computer password.) Only then is the password box shown.
 async function checkAccess() {
-  const ok = !!(await ingestTicket($('token').value));
+  const ok = !!(await ingestTicket($('token').value).catch(() => ''));
   $('f-token').classList.toggle('hidden', ok);
   if (linkProblem) $('token-title').textContent = tr(linkProblem);
   return ok;
@@ -184,7 +184,7 @@ document.addEventListener('keydown', (e) => {
 
 // The AI's state and the room's alerts, in words (Spanish source, translated by tr like the rest of the page).
 const STATE = { live: 'en vivo', idle: 'en espera', connecting: 'conectando…', reconnecting: 'reconectando…', resuming: 'retomando…', error: 'error' };
-const ALERT = { 'no-audio': 'no llega audio', 'muted?': '¿mic muteado? (60s sin señal)', reconnecting: 'reconectando IA', 'high-latency': 'latencia alta', 'mt-throttled': 'traducción limitada por cuota → usando Live', 'voice-in-break': 'hay alguien hablando durante la pausa', 'on-backup': 'usando el audio de respaldo', 'not-saving': 'no se guardan las transcripciones (¿disco lleno?)' };
+const ALERT = { 'no-audio': 'no llega audio', 'muted?': '¿mic muteado? (60s sin señal)', reconnecting: 'reconectando IA', 'high-latency': 'latencia alta', 'mt-throttled': 'traducción limitada por cuota → usando Live', 'voice-in-break': 'hay alguien hablando durante la pausa', 'on-backup': 'usando el audio de respaldo', 'not-saving': 'no se guardan las transcripciones (¿disco lleno?)', 'ai-errors': 'la IA está dando errores (ver el registro)' };
 function onStatus(m) {
   if (m.type !== 'status') return;
   onBreak = !!m.brk;
@@ -203,7 +203,8 @@ function onStatus(m) {
   $('preview').innerHTML = Object.entries(m.preview).map(([ch, txt]) => `<div><b>${esc(langLabel(ch, ev.languages))}</b>${esc(txt) || '<span class="muted">…</span>'}</div>`).join('');
 }
 
-function setConn(txt, cls) { $('conn').textContent = txt; $('conn').className = 'chip ' + cls; }
+// Sentence case, after translating (the dictionary's keys are the lowercase phrases).
+function setConn(txt, cls) { const s = tr(txt); $('conn').textContent = s.charAt(0).toUpperCase() + s.slice(1); $('conn').className = 'chip ' + cls; }
 function alertBox(msg) { const d = document.createElement('div'); d.className = 'toast'; d.textContent = msg; document.body.append(d); setTimeout(() => d.remove(), 5000); }
 
 function links() {
@@ -214,4 +215,5 @@ function links() {
     <a href="/s/${s}" target="_blank">${icon('phone')} <span>Vista del público</span></a>
     <a href="/admin.html" target="_blank">${icon('dashboard')} <span>Panel de producción</span></a>`;
 }
+setConn('desconectado', '');
 if ($('auto').checked || qs.get('autostart') === '1') start();

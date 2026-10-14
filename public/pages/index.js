@@ -16,7 +16,7 @@ async function render() {
   document.getElementById('stages').innerHTML = ev.stages.map((s) => `
     <a class="card stage" href="/watch.html?stage=${encodeURIComponent(s.id)}">
       <h2>${esc(s.name)}</h2>
-      <span class="chip ${s.live ? 'bad' : ''}">${s.live ? `<span class="dot live"></span> ${t('live')}` : t('offline')}</span>
+      <span class="chip ${s.live ? 'live' : ''}">${s.live ? `<span class="dot live"></span> ${t('live')}` : t('offline')}</span>
       ${s.title ? `<div class="title">${esc(s.title)}${s.speaker ? ` · <span class="muted">${esc(s.speaker)}</span>` : ''}</div>` : ''}
       ${s.next ? `<div class="title next">${esc(t('next'))}: ${esc(s.next.title)} · ${new Date(s.next.start).toLocaleTimeString(UI, { hour: '2-digit', minute: '2-digit' })}</div>` : ''}
       <div class="langs row">${s.languages.map((l) => `<span class="chip">${esc(langLabel(l, ev.languages))}</span>`).join('')}</div>

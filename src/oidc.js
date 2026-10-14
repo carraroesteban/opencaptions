@@ -71,6 +71,8 @@ export async function startFlow(redirectUri, device) {
   const nonce = b64(crypto.randomBytes(24));
   const verifier = b64(crypto.randomBytes(48));
   const binding = b64(crypto.randomBytes(24));
+  // /auth/oidc/start needs no sign-in: a flood must not grow memory without end (the oldest unfinished ones go).
+  if (flows.size >= 1000) flows.delete(flows.keys().next().value);
   flows.set(state, { nonce, verifier, binding, redirectUri, device, until: Date.now() + 10 * 60_000 });
   const u = new URL(m.authorization_endpoint);
   for (const [k, v] of Object.entries({

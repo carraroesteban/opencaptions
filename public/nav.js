@@ -12,6 +12,7 @@ const T = {
     panes: { general: 'General', ai: 'IA', address: 'Dirección pública', security: 'Seguridad', alerts: 'Alertas' },
     pages: [['dashboard', 'Informe del evento', '/report.html'], ['wand', 'Configurar el evento', '/welcome.html'], ['book', 'Biblioteca de transcripciones', '/talks.html'], ['qr', 'Kit de QR', '/kit.html'], ['palette', 'Estilo de subtítulos', '/style.html'], ['mic', 'Prueba de sonido', '/demo.html?mode=mic']],
     state: { live: 'en vivo', pause: 'en pausa', off: 'sin sonido', bad: 'necesita atención' },
+    groups: { event: 'Evento', archive: 'Archivo' }, allRooms: 'Todas las salas', moveUp: 'Mover arriba', moveDown: 'Mover abajo', drag: 'Arrastrá para ordenar',
     home: 'Panel', sections: 'Secciones', rooms: 'Salas', menu: 'Menú', back: 'Atrás', here: 'Estás en', help: 'Ayuda',
     search: 'Buscar', jump: 'Ir a', jumpPh: 'Una sala, una página o un ajuste', page: 'Página', roomSet: 'Ajustes de la sala', roomTabs: { live: 'En vivo', screens: 'Pantallas y QR', sound: 'Sonido', settings: 'Ajustes' }, room: 'Abrir la sala', recent: 'Recientes',
     sound: 'Página de sonido', screen: 'Pantalla del escenario', audience: 'Subtítulos en el celular', qr: 'Cartel con QR', newRoom: 'Nueva sala',
@@ -23,6 +24,7 @@ const T = {
     panes: { general: 'General', ai: 'AI', address: 'Public address', security: 'Security', alerts: 'Alerts' },
     pages: [['dashboard', 'Event report', '/report.html'], ['wand', 'Set up the event', '/welcome.html'], ['book', 'Transcript library', '/talks.html'], ['qr', 'QR kit', '/kit.html'], ['palette', 'Caption style', '/style.html'], ['mic', 'Sound check', '/demo.html?mode=mic']],
     state: { live: 'live', pause: 'paused', off: 'no sound', bad: 'needs attention' },
+    groups: { event: 'Event', archive: 'Archive' }, allRooms: 'All rooms', moveUp: 'Move up', moveDown: 'Move down', drag: 'Drag to reorder',
     home: 'Dashboard', sections: 'Sections', rooms: 'Rooms', menu: 'Menu', back: 'Back', here: 'You are here', help: 'Help',
     search: 'Search', jump: 'Go to', jumpPh: 'A room, a page or a setting', page: 'Page', roomSet: 'Room settings', roomTabs: { live: 'Live', screens: 'Screens & QR', sound: 'Sound', settings: 'Settings' }, room: 'Open the room', recent: 'Recent',
     sound: 'Sound page', screen: 'Stage screen', audience: 'Captions on phones', qr: 'QR poster', newRoom: 'New room',
@@ -44,6 +46,9 @@ const $ = (id) => document.getElementById(id);
 const crew = () => document.body.classList.contains('role-crew');
 
 const link = (v) => `<a href="${to(`#${v[0]}`)}" data-view="${v[0]}"${v[2] ? ' data-admin' : ''}>${icon(v[1])}<span class="lbl">${L.views[v[0]]}</span></a>`;
+const VIEW = Object.fromEntries(VIEWS.map((v) => [v[0], v]));
+/** A titled group of views; its title hides with them when they're all admin-only and a crew member is signed in. */
+const group = (key, ids) => `<h2 class="side-h"${ids.every((v) => VIEW[v][2]) ? ' data-admin' : ''}>${L.groups[key]}</h2>${ids.map((v) => link(VIEW[v])).join('')}`;
 let crumbs = [];
 let rooms = [];
 let currentRoom = '';
@@ -69,8 +74,10 @@ export function mountNav({ current = '', crumbs: c = [] } = {}) {
   block.className = 'side-main';
   block.dataset.noI18n = '';
   block.innerHTML = `<button type="button" class="side-jump" id="side-jump" aria-keyshortcuts="${MAC ? 'Meta+K' : 'Control+K'}">${icon('search')}<span class="lbl">${L.search}</span><kbd aria-hidden="true">${MAC ? '⌘K' : 'Ctrl K'}</kbd></button>
-    <nav id="nav" aria-label="${L.sections}"><h2 class="side-h hidden" id="side-rooms-h">${L.rooms}</h2><ul class="side-rooms" id="side-rooms" aria-labelledby="side-rooms-h"></ul>
-      <span class="sep"></span>${VIEWS.map(link).join('')}</nav>`;
+    <nav id="nav" aria-label="${L.sections}">${link(VIEW.live)}
+      <h2 class="side-h" id="side-rooms-h"><a href="${to('#rooms')}" data-view="rooms" title="${L.allRooms}">${L.rooms}</a></h2><ul class="side-rooms" id="side-rooms" aria-labelledby="side-rooms-h"></ul>
+      <a href="${to('#room/new')}" class="side-new" data-admin data-setup>${icon('plus')}<span class="lbl">${L.newRoom}</span></a>
+      ${group('event', ['agenda', 'glossary', 'integrations'])}${group('archive', ['transcripts', 'history'])}</nav>`;
   side.querySelector('.foot') ? side.querySelector('.foot').before(block) : side.append(block);
   side.insertAdjacentHTML('beforeend', `<nav class="side-last" aria-label="${L.views.settings}">${link(SETTINGS)}</nav>`);
   setCurrent(current);
@@ -93,6 +100,7 @@ export function mountNav({ current = '', crumbs: c = [] } = {}) {
   $('side-jump').onclick = openJump;
   addEventListener('keydown', onKey);
   mountRoomMenu();
+  mountDrag();
   side.addEventListener('click', (e) => remember(e.target.closest('#side nav a')?.getAttribute('href')));
   // Other pages ask for the rooms once; the dashboard passes them in on every update (setRooms).
   if (!onAdmin) fetch('/api/status').then((r) => (r.ok ? r.json() : null)).then((s) => s && setRooms(s.stages)).catch(() => {});
@@ -150,8 +158,8 @@ export function setRooms(stages = []) {
   const ul = $('side-rooms');
   if (!ul) return;
   const had = document.activeElement?.closest('#side-rooms a')?.dataset.room;
-  $('side-rooms-h').classList.toggle('hidden', !rooms.length);
-  ul.innerHTML = rooms.map((r) => `<li><a href="${to(`#room/${encodeURIComponent(r.id)}`)}" data-room="${esc(r.id)}"><span class="ini" aria-hidden="true">${esc(initials(r.name))}<i class="dot ${r.state}"></i></span><span class="lbl">${esc(r.name)}<span class="sr-only">, ${L.state[r.state]}</span></span>${r.state === 'bad' ? '<span class="n" aria-hidden="true">!</span>' : ''}</a></li>`).join('');
+  const drag = canReorder();
+  ul.innerHTML = rooms.map((r) => `<li${drag ? ` draggable="true" title="${L.drag}"` : ''}><a href="${to(`#room/${encodeURIComponent(r.id)}`)}" data-room="${esc(r.id)}"${drag ? ' draggable="false"' : ''}><span class="ini" aria-hidden="true">${esc(initials(r.name))}<i class="dot ${r.state}"></i></span><span class="lbl">${esc(r.name)}<span class="sr-only">, ${L.state[r.state]}</span></span>${r.state === 'bad' ? '<span class="n" aria-hidden="true">!</span>' : ''}</a></li>`).join('');
   setCurrent(document.querySelector('#side a[data-view][aria-current]')?.dataset.view || '', currentRoom);
   syncMenu();
   if (had) ul.querySelector(`a[data-room="${CSS.escape(had)}"]`)?.focus();
@@ -203,7 +211,10 @@ function roomMenu(a, x, y) {
   if (!r) return;
   const m = $('room-menu');
   m.setAttribute('aria-label', r.name);
-  m.innerHTML = roomActions(r).map((it) => `<a role="menuitem" href="${esc(it.href)}"${it.blank ? ' target="_blank"' : ''}>${icon(it.ic)}${esc(it.label)}</a>`).join('');
+  const i = rooms.indexOf(r);
+  const moves = canReorder() ? [[-1, 'arrowup', L.moveUp, i > 0], [1, 'arrowdown', L.moveDown, i < rooms.length - 1]].filter((x) => x[3]) : [];
+  m.innerHTML = roomActions(r).map((it) => `<a role="menuitem" href="${esc(it.href)}"${it.blank ? ' target="_blank"' : ''}>${icon(it.ic)}${esc(it.label)}</a>`).join('')
+    + (moves.length ? `<span class="ctx-sep" role="separator"></span>${moves.map(([d, ic, label]) => `<a role="menuitem" href="#" data-move="${d}" data-room="${esc(r.id)}">${icon(ic)}${esc(label)}</a>`).join('')}` : '');
   m.showPopover();
   const w = m.offsetWidth, h = m.offsetHeight;
   m.style.left = `${Math.min(x, innerWidth - w - 8)}px`;
@@ -226,7 +237,12 @@ function mountRoomMenu() {
     else if (e.key === 'Home' || e.key === 'End') { e.preventDefault(); all.at(e.key === 'Home' ? 0 : -1).focus(); }
     else if (e.key === 'Tab') m.hidePopover();
   });
-  m.addEventListener('click', (e) => { if (e.target.closest('a')) { remember(e.target.closest('a').getAttribute('href')); m.hidePopover(); } });
+  m.addEventListener('click', (e) => {
+    const a = e.target.closest('a');
+    if (!a) return;
+    if (a.dataset.move) { e.preventDefault(); moveRoom(a.dataset.room, Number(a.dataset.move)); } else remember(a.getAttribute('href'));
+    m.hidePopover();
+  });
   m.addEventListener('toggle', (e) => { if (e.newState === 'closed' && m.contains(document.activeElement)) menuFrom?.focus(); });
   // Right-click on a room, or the keyboard's menu key / Shift+F10 on it
   $('side-rooms').addEventListener('contextmenu', (e) => {
@@ -236,6 +252,56 @@ function mountRoomMenu() {
     const box = a.getBoundingClientRect();
     roomMenu(a, e.clientX || box.left + 24, e.clientY || box.bottom);
   });
+}
+
+// ---------- the rooms' order: drag in the sidebar, or Move up / Move down in a room's menu ----------
+let reorder = null;
+const canReorder = () => !!reorder && !crew() && !document.body.classList.contains('locked');
+/** The dashboard saves an order with this (PUT /api/stages/order); without it the rooms' order is read-only. */
+export function onReorder(fn) { reorder = fn; roomsKey = ''; } // the dashboard's next update redraws the rooms, draggable
+function saveOrder(ids) {
+  // Right away on screen; the next update from the server confirms it (or puts it back if it was refused).
+  rooms.sort((a, b) => ids.indexOf(a.id) - ids.indexOf(b.id));
+  const ul = $('side-rooms');
+  for (const id of ids) { const li = ul.querySelector(`a[data-room="${CSS.escape(id)}"]`)?.parentElement; if (li) ul.append(li); }
+  reorder?.(ids);
+}
+function moveRoom(id, d) {
+  const ids = rooms.map((r) => r.id), i = ids.indexOf(id);
+  if (i < 0 || i + d < 0 || i + d >= ids.length) return;
+  ids.splice(i + d, 0, ...ids.splice(i, 1));
+  saveOrder(ids);
+  $('side-rooms').querySelector(`a[data-room="${CSS.escape(id)}"]`)?.focus();
+}
+function mountDrag() {
+  const ul = $('side-rooms');
+  let dragged = null;
+  const clear = () => ul.querySelectorAll('.drop-before, .drop-after').forEach((li) => li.classList.remove('drop-before', 'drop-after'));
+  ul.addEventListener('dragstart', (e) => {
+    const li = e.target.closest('li[draggable]');
+    if (!li) return;
+    dragged = li;
+    li.classList.add('dragging');
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', li.querySelector('a').dataset.room);
+  });
+  ul.addEventListener('dragover', (e) => {
+    const li = e.target.closest('li');
+    if (!dragged || !li || li === dragged) return;
+    e.preventDefault();
+    const box = li.getBoundingClientRect(), after = e.clientY > box.top + box.height / 2;
+    clear();
+    li.classList.add(after ? 'drop-after' : 'drop-before');
+  });
+  ul.addEventListener('drop', (e) => {
+    const li = e.target.closest('li');
+    if (!dragged || !li || li === dragged) return;
+    e.preventDefault();
+    const after = li.classList.contains('drop-after');
+    li[after ? 'after' : 'before'](dragged);
+    saveOrder([...ul.querySelectorAll('a[data-room]')].map((a) => a.dataset.room));
+  });
+  ul.addEventListener('dragend', () => { dragged?.classList.remove('dragging'); dragged = null; clear(); });
 }
 
 // ---------- ⌘K quick switcher ----------

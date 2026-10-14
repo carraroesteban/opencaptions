@@ -28,11 +28,6 @@ export class CaptionTrack extends EventEmitter {
     this.timer = null;
   }
 
-  reset() {
-    this.flush('reset');
-    this.finals = [];
-  }
-
   /** Low-latency provisional text (replaced when the confirmed transcription arrives). */
   interim(text, { lang = null } = {}) {
     if (!text) return;

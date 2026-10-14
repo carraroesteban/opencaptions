@@ -21,7 +21,7 @@ import crypto from 'node:crypto';
 import { spawn } from 'node:child_process';
 import { Type, createPartFromUri } from '@google/genai';
 import { config } from './config.js';
-import { ffmpegBin } from './pull.js';
+import { ffmpegBin, wavInfo } from './pull.js';
 import { rms } from './audio.js';
 import { getClient } from './genai.js';
 import { translateText } from './translate.js';
@@ -99,29 +99,6 @@ function run(bin, args, { timeoutMs = 30_000, signal } = {}) {
   });
 }
 
-/** A WAV that is already 16 kHz mono 16-bit (read without ffmpeg): where its samples are. */
-export function wavInfo(file) {
-  let fd;
-  try {
-    fd = fs.openSync(file, 'r');
-    const head = Buffer.alloc(4096);
-    const n = fs.readSync(fd, head, 0, head.length, 0);
-    if (head.toString('ascii', 0, 4) !== 'RIFF' || head.toString('ascii', 8, 12) !== 'WAVE') return null;
-    let p = 12, fmt = null;
-    while (p + 8 <= n) {
-      const id = head.toString('ascii', p, p + 4), size = head.readUInt32LE(p + 4);
-      if (id === 'fmt ') fmt = { format: head.readUInt16LE(p + 8), channels: head.readUInt16LE(p + 10), rate: head.readUInt32LE(p + 12), bits: head.readUInt16LE(p + 22) };
-      if (id === 'data') {
-        const total = fs.fstatSync(fd).size;
-        const ok = fmt && fmt.format === 1 && fmt.channels === 1 && fmt.rate === 16000 && fmt.bits === 16;
-        return ok ? { offset: p + 8, length: Math.min(size || total, total - p - 8) & ~1 } : null;
-      }
-      p += 8 + size + (size & 1);
-    }
-    return null;
-  } catch { return null; } finally { if (fd !== undefined) fs.closeSync(fd); }
-}
-
 /**
  * Is this an audio or video file, and how long is it? ffmpeg reads its header (only the containers in FORMATS, only
  * from a file). Without ffmpeg, only 16 kHz mono WAV files can be read.
@@ -189,16 +166,18 @@ export function decode(input, pcmPath, { signal, onProgress = () => {}, duration
       signal?.addEventListener('abort', stop, { once: true });
       proc.on('close', (code) => {
         signal?.removeEventListener('abort', stop);
-        if (code && !signal?.aborted) fail(new RecordingError(422, 'decode', `ffmpeg couldn’t read the sound: ${err.trim().split('\n').pop() || `exit ${code}`}`));
+        // code null: killed by a signal (out of memory), also a failure.
+        if (code !== 0 && !signal?.aborted) fail(new RecordingError(422, 'decode', `ffmpeg couldn’t read the sound: ${err.trim().split('\n').pop() || `exit ${code}`}`));
+        else finish(); // not at the end of its output: only 'close' says whether ffmpeg read the whole file
       });
       src = proc.stdout;
     } else if (wav) {
       src = fs.createReadStream(input, { start: wav.offset, end: wav.offset + wav.length - 1 });
       signal?.addEventListener('abort', () => src.destroy(), { once: true });
       src.on('error', fail);
+      src.on('end', finish);
     } else return fail(new RecordingError(503, 'no-ffmpeg', 'Reading this file needs ffmpeg.'));
     src.on('data', onData);
-    src.on('end', finish);
     src.on('close', () => { if (signal?.aborted) finish(); });
     src.pipe(out);
   });
@@ -750,9 +729,11 @@ export class Recordings {
             reject(new RecordingError(413, 'too-big', 'This piece goes past the size the upload announced.'));
           }
         };
+        // A piece that breaks off closes its file too (an open handle per retry; on Windows the folder can't be deleted).
+        const broke = (e) => { out.destroy(); reject(e); };
         body.on('data', onData);
-        body.on('error', reject);
-        body.on('close', () => { if (!over && !(/** @type {any} */ (body)).complete) reject(new RecordingError(400, 'aborted', 'the upload was interrupted')); });
+        body.on('error', broke);
+        body.on('close', () => { if (!over && !(/** @type {any} */ (body)).complete) broke(new RecordingError(400, 'aborted', 'the upload was interrupted')); });
         out.on('error', reject);
         out.on('finish', () => { if (!over) resolve(got); });
         body.pipe(out);

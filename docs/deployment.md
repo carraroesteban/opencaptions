@@ -213,7 +213,7 @@ To keep it running after you close the terminal:
 
 The repository has ready-made settings for three hosting platforms. Each runs the Docker image with a **persistent disk** for `data/` (settings, passwords, transcripts, and here also the glossary and agenda), HTTPS, and **never sleeps**: a server that sleeps when idle would cut the captions in the middle of a talk. That rules out free plans that sleep or have no disk.
 
-On all three, OpenCaptions finds its public address by itself (QR codes and links use it), and trusts the platform's proxy (`TRUST_PROXY=1`). Every device needs the admin password: the first start prints **Open the dashboard** with a link that signs you in, in the platform's logs. Paste the Gemini key in the dashboard, or set `GEMINI_API_KEY` in the platform's environment.
+On all three, OpenCaptions finds its public address by itself (QR codes and links use it), and trusts the platform's proxy (`TRUST_PROXY=1`). Every device needs the admin password: each start prints **Open the dashboard** in the platform's logs, with a link that signs you in once, within 30 minutes (restart for a new one). The passwords themselves never go to the logs: they are in **Settings → Security**. Paste the Gemini key in the dashboard, or set `GEMINI_API_KEY` in the platform's environment.
 
 ### Render
 
@@ -274,7 +274,7 @@ Without a public address, QR codes use the address the dashboard was opened with
 
 Tunnels and reverse proxies all support WebSockets without extra configuration. With your own proxy, set `PUBLIC_URL` to the final HTTPS address so QR codes point to it.
 
-When the proxy runs on the same host as the server, OpenCaptions trusts its `X-Forwarded-*` headers (`TRUST_PROXY=loopback`, or `uniquelocal` in Docker Compose). Requests that come through a proxy are **never** treated as local, so they always need sign-in.
+When the proxy runs on the same host as the server, OpenCaptions trusts its `X-Forwarded-*` headers (`TRUST_PROXY=loopback`, or `uniquelocal` in Docker Compose). Requests that come through a proxy are **never** treated as local, so they always need sign-in. OpenCaptions tells them apart by the `X-Forwarded-For` header, which Caddy adds by itself but **nginx doesn't**: add `proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;` and `proxy_set_header X-Forwarded-Proto $scheme;` to its `location`, or set `AUTH=token`. Without that header every visitor would look like this computer, which needs no password.
 
 ## Cloud VM example (Google Compute Engine)
 
@@ -299,7 +299,7 @@ This is topology B on Google Cloud.
 
    Then run `sudo systemctl reload caddy`.
 
-6. Open `https://subs.example.com/admin.html` and sign in with the admin password (`docker compose logs opencaptions | grep "Admin token"`). Then turn on two-factor sign-in in **Settings → Security**.
+6. Open `https://subs.example.com/admin.html` and sign in with the link from `docker compose logs opencaptions | grep "Open the dashboard"` (it works once, within 30 minutes). Then turn on two-factor sign-in in **Settings → Security**.
 
 **Cloud Run and other serverless platforms** aren't recommended. OpenCaptions keeps room state in memory and holds long-lived WebSockets. Serverless platforms cap request duration and can start extra instances that don't share state. If you must use one, set minimum and maximum instances to 1 and allocate CPU always. Clients reconnect automatically when a socket is cut.
 

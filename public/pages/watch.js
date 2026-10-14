@@ -192,14 +192,16 @@ function scrollEnd() { if (follow) requestAnimationFrame(() => { $('scroll').scr
 // ---- status ----
 let last = 0;
 function pulse() { last = Date.now(); }
-setInterval(() => {
+function showStatus() {
   const brk = !!pauseNow?.brk;
   const live = sock.ready && !brk && Date.now() - last < 15000;
   const el = $('status');
-  el.className = 'chip' + (live ? ' bad' : brk ? ' warn' : '');
+  el.className = 'chip' + (live ? ' live' : brk ? ' warn' : '');
   el.querySelector('.dot').className = 'dot' + (live ? ' live' : '');
   el.querySelector('span:last-child').textContent = !sock.ready ? t('connecting') : brk ? t('brk') : live ? t('live') : t('paused');
-}, 1000);
+}
+showStatus();
+setInterval(showStatus, 1000);
 
 // ---- controls ----
 $('langs').onclick = (e) => {

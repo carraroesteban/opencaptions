@@ -28,7 +28,7 @@ document.title = `${title} · ${info.stageName} · ${ev.name}`;
 $('title').textContent = title;
 $('back').textContent = `‹ ${t('allTalks')}`;
 const started = new Date(info.startedAt);
-$('meta').innerHTML = `${info.speaker ? `<b>${esc(info.speaker)}</b> · ` : ''}<span>${esc(info.stageName)}</span> · <span>${started.toLocaleDateString(UI, { weekday: 'short', day: 'numeric', month: 'short' })} ${started.toLocaleTimeString(UI, { hour: '2-digit', minute: '2-digit' })}</span> · <span>${Math.max(1, Math.round(info.durationMs / 60000))} min</span>${info.current ? ` · <span class="chip bad"><span class="dot live"></span> ${esc(t('liveNow'))}</span>` : ''}`;
+$('meta').innerHTML = `${info.speaker ? `<b>${esc(info.speaker)}</b> · ` : ''}<span>${esc(info.stageName)}</span> · <span>${started.toLocaleDateString(UI, { weekday: 'short', day: 'numeric', month: 'short' })} ${started.toLocaleTimeString(UI, { hour: '2-digit', minute: '2-digit' })}</span> · <span>${Math.max(1, Math.round(info.durationMs / 60000))} min</span>${info.current ? ` · <span class="chip live"><span class="dot live"></span> ${esc(t('liveNow'))}</span>` : ''}`;
 
 // languages present in this transcript
 const chans = [...new Set(all.map((s) => s.channel))];

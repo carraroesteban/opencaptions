@@ -36,6 +36,18 @@ test('summary falls back to transcript highlights when the model fails', async (
   assert.ok(s.bullets.every((b) => segs.some((x) => x.text === b)), 'extractive bullets are real transcript lines');
 });
 
+test('a summary that fell back to highlights is asked again soon, not kept for the day', async () => {
+  config.engine = 'gemini';
+  assist._setClient({ models: { generateContent: async () => { throw new Error('503 unavailable'); } } });
+  assert.equal((await assist.summarize({ segs, key: 'k-retry', lang: 'es', scope: 'full', live: false })).ai, false);
+  assist._setClient({ models: { generateContent: async () => ({ text: '{"headline":"Atención a distancia","bullets":["Una tablet"],"terms":[]}', usageMetadata: {} }) } });
+  const realNow = Date.now;
+  Date.now = () => realNow() + 31_000;
+  try {
+    assert.equal((await assist.summarize({ segs, key: 'k-retry', lang: 'es', scope: 'full', live: false })).ai, true);
+  } finally { Date.now = realNow; }
+});
+
 test('ask is grounded, rate-limited per client and validates input', async () => {
   config.engine = 'gemini';
   assist._setClient({ models: { generateContent: async ({ contents }) => {

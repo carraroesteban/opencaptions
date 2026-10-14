@@ -136,12 +136,14 @@ export class Tunnel extends EventEmitter {
   }
 
   async #launch() {
-    const { mode, token, host } = this.opts;
+    const opts = this.opts;
+    const { mode, token, host } = opts;
     let bin = this.find();
     if (!bin) {
       this.#set({ state: 'installing' });
       try { bin = await this.install(); this.installed = true; } catch (e) { return this.#set({ state: 'error', error: e.message }); }
-      if (this.mode === 'off') return; // stopped while downloading
+      // Stopped, or stopped and started again (that start launches its own), while downloading.
+      if (this.mode === 'off' || this.opts !== opts) return;
       this.#set({ state: 'starting' });
     }
     const args = mode === 'quick'

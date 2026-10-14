@@ -130,6 +130,23 @@ test('webhooks: signed JSON for each caption and for each finished talk', async 
   assert.equal(p.calls[0].init.headers['x-opencaptions-signature'], `sha256=${sig}`);
 });
 
+test('a room added mid-talk doesn’t reset the other rooms’ talk.ended count; webhooks don’t follow redirects', async () => {
+  const st = room();
+  const p = platform();
+  const stages = new Map([['main', st]]);
+  const ints = new Integrations({ stages, fetchImpl: p.fetchImpl });
+  await ints.add({ type: 'webhook', stage: 'main', url: 'https://93.184.215.14/hook' });
+  caption(st, 'Hello.');
+  stages.set('b', room('b'));
+  ints.attachAll(); // what the server does when a room is added or removed
+  st.talk = { id: 't2', title: 'Next', startedAt: 2 };
+  st.emit('talk');
+  await settle();
+  const ended = p.calls.map((x) => JSON.parse(x.init.body)).find((b) => b.event === 'talk.ended');
+  assert.equal(ended?.captions, 1);
+  assert.ok(p.calls.every((x) => x.init.redirect === 'error'));
+});
+
 test('links are kept as secrets and shown masked; removing stops sending', async () => {
   const st = room();
   const p = platform();
