@@ -20,101 +20,59 @@
   <meta name="twitter:card" content="summary_large_image" />
   <title>Transcripción</title>
   <link rel="stylesheet" href="/style.css" />
-  <style>
-    body { min-height: 100dvh; }
-    /* Correcting (admins): each sentence is editable; it's saved when you leave it. */
-    .edit-seg { border-radius: 4px; box-shadow: 0 0 0 1px var(--line); padding: 0 2px; transition: background .4s; }
-    .edit-seg:focus { outline: 2px solid var(--accent); box-shadow: none; }
-    .edit-seg.saved { background: color-mix(in srgb, var(--ok) 25%, transparent); }
-    #fix[aria-pressed='true'] { background: var(--primary-bg); border-color: var(--primary-bg); color: var(--primary-fg); }
-    .wrap { max-width: 1180px; margin: 0 auto; padding: 22px 20px 64px; }
-    .top { display: flex; align-items: center; gap: 10px; justify-content: space-between; flex-wrap: wrap; }
-    .top a { text-decoration: none; }
-    #back { font-size: 14px; } #back:hover { color: var(--fg); }
-    h1 { font-size: clamp(28px, 5vw, 44px); line-height: 1.08; margin: 36px 0 10px; max-width: 900px; }
-    .meta { color: var(--fg2); font-size: 14px; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
-    .toolbar { position: sticky; top: 0; z-index: 5; background: color-mix(in srgb, var(--bg) 92%, transparent); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); padding: 12px 0; margin-top: 18px; border-bottom: 1px solid var(--line); display: grid; gap: 10px; }
-    .toolbar .langs { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; }
-    .toolbar .search { display: flex; gap: 8px; align-items: center; }
-    .toolbar .search input { flex: 1; font-size: 16px; padding: 10px 14px 10px 42px; border-radius: 12px; }
-    .grid { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 40px; margin-top: 28px; align-items: start; }
-    aside { position: sticky; top: 118px; }
-    aside .card h2 { font-size: 19px; margin: 0 0 10px; }
-    #doc { font-family: var(--read-font, var(--font)); font-size: var(--size, 19px); line-height: var(--read-lh, 1.6); max-width: 760px; }
-    #doc .para { display: grid; grid-template-columns: 58px 1fr; gap: 10px; margin: 0 0 18px; }
-    #doc .ts { font-family: var(--mono); font-size: 12px; color: var(--fg2); padding-top: .45em; text-decoration: none; }
-    #doc .ts:hover { color: var(--fg); }
-    #doc p { margin: 0; }
-    #doc .para.flash { animation: flash 1.6s; border-radius: 8px; }
-    @keyframes flash { 0% { background: color-mix(in srgb, var(--hl) 45%, transparent); } 100% { background: transparent; } }
-    .empty { color: var(--fg2); padding: 40px 0; text-align: center; }
-    .actions { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
-    .actions #del { margin-left: auto; } /* destructive: apart from the everyday actions */
-    .actions > * { flex: none; }
-    .actions button, details.dl summary { display: inline-flex; align-items: center; gap: 7px; white-space: nowrap; }
-    .actions a { text-decoration: none; }
-    details.dl { position: relative; }
-    details.dl summary { list-style: none; cursor: pointer; background: var(--fill); border: 1px solid transparent; border-radius: 10px; padding: 8px 14px; font-weight: 600; transition: background-color var(--dur-fast) var(--ease); } /* looks like the buttons beside it */
-    details.dl summary:hover, details.dl[open] summary { background: var(--fill-hover); }
-    details.dl summary::-webkit-details-marker { display: none; }
-    details.dl .menu { position: absolute; z-index: 10; top: calc(100% + 6px); left: 0; background: var(--bg2); border: 1px solid var(--line); border-radius: 12px; padding: 6px; display: grid; min-width: 180px; box-shadow: var(--shadow-lg); }
-    details.dl .menu a { padding: 8px 10px; border-radius: 8px; text-decoration: none; }
-    details.dl .menu a:hover { background: var(--fill); }
-    #count { font-size: 13px; color: var(--fg2); white-space: nowrap; }
-    @media (max-width: 900px) {
-      .grid { grid-template-columns: minmax(0, 1fr); } aside { position: static; order: -1; min-width: 0; } #doc .para { grid-template-columns: 1fr; gap: 2px; }
-      .toolbar { position: static; } .actions .lbl { display: none; } #live .live-lbl { display: none; }
-    }
-    @media print {
-      .toolbar, aside, .top .prefs, .actions, #follow { display: none !important; }
-      .grid { display: block; } body { background: #fff; color: #000; } #doc { font-size: 12pt; max-width: none; }
-    }
-  </style>
+  <link rel="preload" href="/tokens.css" as="style" /><link rel="preload" href="/fonts/brand.css" as="style" /><!-- style.css @imports them: fetched together, not one after another -->
+  <link rel="stylesheet" href="/audience.css" />
 </head>
 <body>
-  <main class="wrap">
-    <div class="top">
+  <main class="tk">
+    <div class="au-bar">
       <a class="brand u-fs17" href="/">OpenCaptions</a>
-      <span class="row u-gap14"><a href="/talks.html" id="back" class="muted">‹ …</a><span id="prefs-slot"></span></span>
+      <span class="row u-gap14"><a href="/talks.html" id="back" class="au-back" data-icon="back"></a><span id="prefs-slot"></span></span>
     </div>
-    <h1 id="title">…</h1>
-    <div class="meta" id="meta"></div>
-
-    <div class="toolbar">
-      <div class="langs" id="langs" role="group"></div>
-      <div class="search has-icon">
-        <input id="q" type="search" autocomplete="off" />
-        <span id="count"></span>
-        <span id="fix-hint" class="hidden" role="status"></span>
-      </div>
-      <div class="actions">
-        <a id="live" class="hidden"><button><span class="dot live"></span> <span class="live-lbl"></span></button></a>
-        <details class="dl"><summary data-icon="download"><span class="lbl" id="dl-lbl"></span></summary>
+    <header class="tk-head">
+      <p class="au-eyebrow" id="eyebrow"></p>
+      <h1 id="title">…</h1>
+      <div class="tk-meta" id="meta"></div>
+      <div class="tk-actions">
+        <a id="live" class="au-btn hidden"><span class="dot live"></span><span class="live-lbl"></span></a>
+        <details class="dl"><summary class="au-btn" data-icon="download"><span class="lbl" id="dl-lbl"></span></summary>
           <div class="menu"><a id="dl-txt">TXT</a><a id="dl-srt">SRT</a><a id="dl-vtt">VTT</a></div>
         </details>
-        <button id="copy" data-icon="link"><span class="lbl"></span></button>
-        <button id="print" data-icon="print"><span class="lbl"></span></button>
-        <button id="settings">Aa</button>
-        <button id="fix" class="hidden" data-icon="wand" aria-pressed="false"><span class="lbl"></span></button>
-        <button id="del" class="danger hidden" data-icon="x"><span class="lbl"></span></button>
+        <button id="copy" class="au-btn" data-icon="link"><span class="lbl"></span></button>
+        <button id="print" class="au-btn" data-icon="print"><span class="lbl"></span></button>
+        <button id="fix" class="au-btn hidden" data-icon="wand" aria-pressed="false"><span class="lbl"></span></button>
+        <button id="del" class="au-btn danger hidden" data-icon="x"><span class="lbl"></span></button>
       </div>
+    </header>
+
+    <div class="tk-bar" id="toolbar">
+      <div class="tk-bar-in">
+        <div class="tk-langs" id="langs" role="group"></div>
+        <div class="tk-search has-icon au-search"><input id="q" type="search" autocomplete="off" /><span id="count" aria-live="polite"></span></div>
+        <button id="settings" class="au-btn au-aa" aria-haspopup="dialog">Aa</button>
+      </div>
+      <span id="fix-hint" class="hidden" role="status"></span>
     </div>
 
-    <div class="grid">
+    <div class="tk-grid">
       <article id="doc" aria-live="polite"><div class="empty">…</div></article>
-      <aside>
-        <div class="card"><h2 id="sum-title"></h2><div id="assistant"></div></div>
-      </aside>
+      <aside><div class="tk-ai"><h2 id="sum-title" class="as-title"></h2><div id="assistant"></div></div></aside>
     </div>
-    <button id="follow" class="primary hidden u-fixed-bottom"></button>
+    <footer class="tl-foot hidden" id="credit"></footer>
+    <button id="follow" class="primary tk-follow hidden"></button>
   </main>
 
-  <dialog id="dlg-set" class="sheet" aria-labelledby="set-title">
+  <dialog id="dlg-del" class="tk-del" aria-labelledby="del-title"><form method="dialog">
+    <h2 id="del-title"></h2>
+    <div class="tk-del-acts"><button value="cancel" id="del-no"></button><button value="ok" class="danger" id="del-ok"></button></div>
+  </form></dialog>
+
+  <dialog id="dlg-set" class="sheet au-set" aria-labelledby="set-title">
     <div class="sheet-head"><h2 id="set-title"></h2><button id="set-close" data-icon="x"></button></div>
-    <div class="set-row"><span id="l-size"></span><span class="row"><button id="smaller">A−</button><b id="size-val" class="u-num"></b><button id="bigger">A+</button></span></div>
-    <div class="set-row"><span id="l-font"></span><span class="row" id="font-opts"></span></div>
-    <div class="set-row"><span id="l-lh"></span><span class="row" id="lh-opts"></span></div>
-    <div class="set-row"><span id="l-theme"></span><span class="row" id="theme-opts"></span></div>
+    <div class="au-row inline"><span class="au-lbl" id="l-size"></span><span class="au-stepper"><button id="smaller" class="a-sm">A</button><b id="size-val"></b><button id="bigger" class="a-lg">A</button></span></div>
+    <div class="au-row"><span class="au-lbl" id="l-theme"></span><div id="theme-opts" class="au-themes"></div></div>
+    <div class="au-row"><span class="au-lbl" id="l-font"></span><div id="font-opts"></div></div>
+    <div class="au-row"><span class="au-lbl" id="l-lh"></span><div id="lh-opts"></div></div>
   </dialog>
 
   <script type="module" src="/pages/talk.js"></script>

@@ -11,8 +11,13 @@ const { config } = await import('../src/config.js');
 const { billedTokens, pct } = await import('../scripts/compare-transcribe.js');
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
+const HELLO = [
+  { interimInputTranscription: { text: 'Hello every', languageCode: 'en-US' } },
+  { inputTranscription: { text: 'Hello everyone.', finished: true, languageCode: 'en-US' } },
+];
+
 /** A fake Live API: records each connect, says setupComplete, and answers audio with a transcript. */
-function fakeLive(connects, sent = []) {
+function fakeLive(connects, sent = [], script = HELLO) {
   return {
     live: {
       connect: async ({ model, config: cfg, callbacks }) => {
@@ -26,8 +31,7 @@ function fakeLive(connects, sent = []) {
             if (said) return;
             said = true;
             setTimeout(() => {
-              callbacks.onmessage({ serverContent: { interimInputTranscription: { text: 'Hello every', languageCode: 'en-US' } } });
-              callbacks.onmessage({ serverContent: { inputTranscription: { text: 'Hello everyone.', finished: true, languageCode: 'en-US' } }, usageMetadata: { promptTokenCount: 25, responseTokenCount: 4, totalTokenCount: 29 } });
+              for (const sc of script) callbacks.onmessage({ serverContent: sc, ...(sc.inputTranscription ? { usageMetadata: { promptTokenCount: 25, responseTokenCount: 4, totalTokenCount: 29 } } : {}) });
             }, 5);
           },
         };
@@ -60,6 +64,31 @@ test('a transcribe-only session asks for text from the transcribe model, with th
   assert.deepEqual(got.input, [{ text: ' Hello everyone.', finished: true, lang: 'en' }], 'a space before each finished sentence');
   assert.deepEqual(got.interim, [{ text: 'Hello every', lang: 'en' }]);
   assert.equal(got.usage[0].promptTokenCount, 25);
+});
+
+test('provisional words never repeat what Transcribe Live already confirmed', async () => {
+  // As recorded (samples/talk-en.wav): after a sentence is confirmed, the next provisional text can start with it again.
+  _setClient(fakeLive([], [], [
+    { interimInputTranscription: { text: 'We gave each clinic a simple' } },
+    { inputTranscription: { text: 'We gave each clinic a simple tablet.' } },
+    { interimInputTranscription: { text: 'We gave each clinic a simple tablet.a good' } },
+    { interimInputTranscription: { text: 'We gave each clinic a simple tablet.a good microphone and' } },
+    { inputTranscription: { text: 'a good microphone and a short training.' } },
+    { interimInputTranscription: { text: 'Then' } },
+    { inputTranscription: { text: 'Then start small, measure what people feel.' } },
+    { interimInputTranscription: { text: 'Then start small,measure what people feel.Thank you' } },
+  ]));
+  config.transcribeModel = 'gemini-3.5-transcribe-live';
+  const e = new GeminiEngine({ label: 't', target: 'es', transcribeOnly: true });
+  const interims = [];
+  e.on('interim', ({ text }) => interims.push(text));
+  e.on('error', () => {});
+  e.start();
+  await sleep(30);
+  e.sendAudio(speech);
+  await sleep(40);
+  e.stop();
+  assert.deepEqual(interims, ['We gave each clinic a simple', 'a good', 'a good microphone and', 'Then', 'Thank you'], 'also when spaces and commas differ');
 });
 
 test('Transcribe Live is told the speaker stopped at each short pause (hybrid VAD)', async () => {

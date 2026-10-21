@@ -11,6 +11,7 @@ import { rateLimiter } from './security.js';
 import { chat as localChat } from './local/llm.js';
 import { textApiOn, textChat } from './textapi.js';
 import { promptLanguage } from './languages.js';
+import { spend, overBudget, BudgetError } from './budget.js';
 
 let ai = null;
 const client = () => ai ?? getClient(); // tests can inject their own (_setClient)
@@ -59,6 +60,7 @@ async function generate(system, prompt, maxOutputTokens = 600) {
     assistStats.requests++;
     return text;
   }
+  if (overBudget()) throw new BudgetError(); // the AI-free answer instead
   const call = (withThinking) => client().models.generateContent({
     model: config.textModel,
     contents: prompt,
@@ -75,7 +77,9 @@ async function generate(system, prompt, maxOutputTokens = 600) {
   }
   const u = res.usageMetadata || {};
   assistStats.requests++;
-  assistStats.usd += (u.promptTokenCount || 0) * USD_IN + ((u.candidatesTokenCount || 0) + (u.thoughtsTokenCount || 0)) * USD_OUT;
+  const usd = (u.promptTokenCount || 0) * USD_IN + ((u.candidatesTokenCount || 0) + (u.thoughtsTokenCount || 0)) * USD_OUT;
+  assistStats.usd += usd;
+  spend(usd);
   return (res.text || '').trim();
 }
 
@@ -171,7 +175,10 @@ export async function ask({ segs, lang, question, clientKey, ip = clientKey, tit
   if (!perIpAsk(ip) || !perClientAsk(clientKey) || !globalAsk('all')) throw Object.assign(new Error('too many questions right now, try again in a minute'), { status: 429 });
   const { text, list } = pickText(segs, 'orig');
   if (!list.length) return { ai: false, found: false, answer: '', quotes: [] };
-  if (!audienceAiEnabled || config.engine === 'mock' || config.localLlmOff) return { ai: false, ...extractiveAnswer(list, question) };
+  // Without the AI, the quotes come from the reader's own language when the room has it: the question's words match
+  // there, and they can read the answer.
+  const mine = pickText(segs, lang).list;
+  if (!audienceAiEnabled || config.engine === 'mock' || config.localLlmOff) return { ai: false, ...extractiveAnswer(mine, question) };
   const system = [
     'You answer questions from attendees about a live talk or session, using ONLY the transcript provided.',
     `Answer in ${langName(lang)}, in 1-3 short sentences. Quote timestamps like [12:34] when helpful.`,
@@ -186,6 +193,6 @@ export async function ask({ segs, lang, question, clientKey, ip = clientKey, tit
     return { ai: true, found: !!j.found, answer: String(j.answer || ''), quotes: (j.quotes || []).slice(0, 2).map((q) => ({ at: String(q.at || ''), text: String(q.text || '') })) };
   } catch (e) {
     assistStats.errors++;
-    return { ai: false, error: 'ai-unavailable', ...extractiveAnswer(list, question) };
+    return { ai: false, error: 'ai-unavailable', ...extractiveAnswer(mine, question) };
   }
 }

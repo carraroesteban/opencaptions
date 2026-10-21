@@ -1,33 +1,30 @@
 // welcome.html: page script (kept out of the HTML so the Content-Security-Policy can forbid inline scripts).
 import { esc, store, LISTEN, listenPort, freeListenPort, serverHost, copyText } from '/common.js';
-import { prefsControls, LANG } from '/i18n.js';
+import { prefsControls, LANG } from '/prefs.js';
 import { icon } from '/illustrations.js';
 import { ensureSignedIn, signInScreen } from '/signin.js';
 import { keyPanel, tunnelPanel } from '/connect.js';
 import { localPanel } from '/local-mode.js';
 import { LANGUAGE_CATALOG } from '/languages.js';
-import { mountNav, home } from '/nav.js';
 const $ = (id) => document.getElementById(id);
 $('prefs-slot').append(prefsControls());
-mountNav({ crumbs: [home(), { label: LANG === 'es' ? 'Configurar el evento' : 'Set up the event' }] });
 document.documentElement.lang = LANG;
 
 // Written per language (not through the page translator): this page is mostly sentences.
 const T = {
   en: {
     title: 'Welcome · OpenCaptions',
-    k0: 'Welcome', welcomeH: 'What do you want captions for?', welcomeP: 'You can switch later.',
-    forEvent: 'For an event', forEventD: 'Phones, the stage screen and the livestream. About two minutes.',
+    welcomeH: 'What do you want captions for?', welcomeP: 'You can switch later.',
+    forEvent: 'For an event', forEventD: 'Phones, the stage screen and the livestream: name the event and its rooms, the rest has good defaults.',
     meBtn: 'Just for me', meD: 'Your calls and videos, on this computer.',
     skipAll: 'Skip setup, I’ll do it later', back: 'Back', next: 'Continue',
-    k1: 'Step 1 of 7 · Your event', nameH: 'What’s your event called?', namePh: 'e.g. City Design Week 2026', nameHint: 'Shown on phones, the stage screen and the QR posters.', skipName: 'Skip, decide later',
-    k2: 'Step 2 of 7 · Rooms', roomsH: 'Where will people speak?', roomsP: 'Each room gets its own captions link and QR code.', addRoom: '+ Add a room', skipRooms: 'Skip, keep these rooms', roomPh: (i) => `Room ${i}`, remove: 'Remove room',
+    k1: 'Your event', nameH: 'What’s your event called?', namePh: 'e.g. City Design Week 2026', nameHint: 'Shown on phones, the stage screen and the QR posters.', skipName: 'Skip, decide later',
+    k2: 'Rooms', roomsH: 'Where will people speak?', roomsP: 'Each room gets its own captions link and QR code.', addRoom: 'Add a room', skipRooms: 'Skip, keep these rooms', roomPh: (i) => `Room ${i}`, remove: 'Remove room',
     presets: [['One room', ['Main Stage']], ['Two rooms', ['Main Stage', 'Room A']], ['Main stage + 3 rooms', ['Main Stage', 'Room A', 'Room B', 'Room C']]],
-    k3: 'Step 3 of 7 · Languages', langsH: 'Which languages?', spokenQ: 'What language will the talks be in?', auto: 'Detect automatically', captionsQ: 'Which captions can the audience choose?', langsHint: 'Not sure? “Detect automatically” follows the speaker, even when they switch.', notSure: 'I’m not sure, skip',
-    aiLedeForced: 'OpenCaptions was started in demo mode, so captions are simulated even though a key is saved. Start it normally to use Gemini.',
-    k4: 'Step 5 of 7 · The AI', aiLedeMock: 'Right now captions are simulated. To caption real talks, connect Google’s Gemini with an API key: it takes about two minutes.', aiLedeOn: 'Captions come from Google’s Gemini, in the cloud.',
-    kS: 'Step 6 of 7 · Phones', shareH: 'How will phones reach the captions?', sAddr: 'Address',
-    kR: 'Step 4 of 7 · Review', reviewH: 'Check before anything changes', reviewP: 'Nothing has changed yet. Untick what you don’t want.', apply: 'Apply changes', skipReview: 'Skip, change nothing',
+    k3: 'Languages', langsH: 'Which languages?', spokenQ: 'What language will the talks be in?', auto: 'Detect automatically', captionsQ: 'Which captions can the audience choose?', langsHint: 'Not sure? “Detect automatically” follows the speaker, even when they switch.', notSure: 'I’m not sure, skip',
+    k4: 'The AI', aiLedeMock: 'Right now captions are simulated. To caption real talks, connect Google’s Gemini with an API key: it takes about two minutes.', aiLedeOn: 'Captions come from Google’s Gemini, in the cloud.',
+    kS: 'Phones', shareH: 'How will phones reach the captions?', sAddr: 'Address',
+    kR: 'Review', reviewH: 'Check before anything changes', reviewP: 'Nothing has changed yet. Switch off what you don’t want.', apply: 'Apply changes', skipReview: 'Skip, change nothing',
     noChanges: 'Nothing to change: your event already looks like this.',
     lockedMsg: 'Event mode is on, so the setup is locked. Turn it off in the dashboard’s Settings to apply changes.',
     opTz: (z) => `Use your time zone for the agenda (${z})`, opTzNote: 'So 10:00 in the agenda means 10:00 where you are. The server runs in another one.',
@@ -35,14 +32,14 @@ const T = {
     moreLang: 'Another language…', moreLangAdd: 'Add', opLangsAdd: (l) => `Add the languages: ${l}`,
     opRename: (n) => `Rename the event to “${n}”`, opCreate: (n) => `Add the room “${n}”`, opRenameRoom: (a, b) => `Rename “${a}” to “${b}”`,
     opDelete: (n) => `Remove “${n}”`, opDeleteNote: (k) => (k ? `It has ${k} transcript${k === 1 ? '' : 's'}: they’re kept, and the room can be restored from History.` : 'You can restore it from History.'),
-    opLangs: (n, a, b) => `Change “${n}” from ${a} to ${b}`, opCustom: 'This room has its own language setup: tick to change it too.', aiH: 'How captions are made', later: 'Skip for now',
+    opLangs: (n, a, b) => `Change “${n}” from ${a} to ${b}`, opCustom: 'This room has its own language setup: switch it on to change it too.', aiH: 'How captions are made', later: 'Skip for now',
     gemini: 'Connected to the cloud AI', geminiD: 'Captions and translations come from Google’s Gemini, in the cloud. About 3 seconds behind the speaker.',
     local: 'Running on this computer', localD: 'Speech recognition and translation run here. The audio never leaves the building, and it works without internet.',
     mock: 'Demo mode: captions are simulated', mockD: 'Everything works so you can explore, but the words are made up. To caption real talks, pick one of these and restart:',
     mockGemini: 'Cloud (best quality): add a Gemini API key', mockLocal: 'On this computer, no account needed:',
     backupOn: 'Offline backup is ready', backupOnD: 'If the internet goes down, captions keep running on this computer and switch back when it returns.',
     backupOff: 'Optional: an offline backup', backupOffD: 'Start the server with this command and captions keep running on this computer if the venue loses internet:',
-    k5: 'Step 7 of 7 · Sound', audioH: 'Connect the sound', audioP: 'Pick how each room’s sound gets here.',
+    k5: 'Sound', audioH: 'Connect the sound', audioP: 'Pick how each room’s sound gets here.',
     whichRoom: 'Which room?',
     mic: 'A microphone or the sound desk, into a computer', micD: 'A computer next to the stage gets the sound by cable and sends it from a browser page.',
     micSteps: ['Plug a microphone into that computer, or a spare output of the sound desk (ask the sound technician for an “aux” output), straight in or through a USB sound card.',
@@ -67,24 +64,24 @@ const T = {
     rec: 'A recording', recD: 'A video or audio file of a talk: OpenCaptions captions it in minutes and keeps the transcript with the room’s others.', recOpen: 'Choose the recording',
     test: 'Just try it first', testD: 'Talk into your microphone and watch the captions appear.',
     more: 'More details: every way to connect the sound, in the guide',
-    k6: 'All set', doneH: 'You’re ready.', sEvent: 'Event', sRooms: 'Rooms', sLangs: 'Captions', sAI: 'AI',
+    k6: 'All set', doneH: 'You’re ready.', doneP: 'Open the dashboard to start captioning, or print the QR codes for the rooms.',
+    stepOf: (n, m) => `Step ${n} of ${m}`, close: 'Close setup', sEvent: 'Event', sRooms: 'Rooms', sLangs: 'Captions', sAI: 'AI',
     openDash: 'Open the dashboard', printQr: 'Print the QR codes', seeAudience: 'See what the audience sees', autoL: 'auto-detected',
     aiG: 'In the cloud', aiL: 'This computer', aiM: 'Demo mode', withBackup: ' + offline backup',
   },
   es: {
     title: 'Bienvenida · OpenCaptions',
-    k0: 'Bienvenida', welcomeH: '¿Para qué querés subtítulos?', welcomeP: 'Podés cambiar después.',
-    forEvent: 'Para un evento', forEventD: 'Celulares, la pantalla del escenario y el streaming. Unos dos minutos.',
+    welcomeH: '¿Para qué querés subtítulos?', welcomeP: 'Podés cambiar después.',
+    forEvent: 'Para un evento', forEventD: 'Celulares, la pantalla del escenario y el streaming: nombrás el evento y sus salas, el resto ya viene bien configurado.',
     meBtn: 'Solo para mí', meD: 'Tus llamadas y videos, en esta compu.',
     skipAll: 'Saltar, lo hago después', back: 'Atrás', next: 'Continuar',
-    k1: 'Paso 1 de 7 · Tu evento', nameH: '¿Cómo se llama tu evento?', namePh: 'Ej: Semana del Diseño 2026', nameHint: 'Aparece en los celulares, la pantalla del escenario y los carteles con QR.', skipName: 'Saltar, lo decido después',
-    k2: 'Paso 2 de 7 · Salas', roomsH: '¿Dónde va a hablar la gente?', roomsP: 'Cada sala tiene su link de subtítulos y su QR.', addRoom: '+ Agregar una sala', skipRooms: 'Saltar, dejar estas salas', roomPh: (i) => `Sala ${i}`, remove: 'Quitar sala',
+    k1: 'Tu evento', nameH: '¿Cómo se llama tu evento?', namePh: 'Ej: Semana del Diseño 2026', nameHint: 'Aparece en los celulares, la pantalla del escenario y los carteles con QR.', skipName: 'Saltar, lo decido después',
+    k2: 'Salas', roomsH: '¿Dónde va a hablar la gente?', roomsP: 'Cada sala tiene su link de subtítulos y su QR.', addRoom: 'Agregar una sala', skipRooms: 'Saltar, dejar estas salas', roomPh: (i) => `Sala ${i}`, remove: 'Quitar sala',
     presets: [['Una sala', ['Escenario principal']], ['Dos salas', ['Escenario principal', 'Sala A']], ['Principal + 3 salas', ['Escenario principal', 'Sala A', 'Sala B', 'Sala C']]],
-    k3: 'Paso 3 de 7 · Idiomas', langsH: '¿Qué idiomas?', spokenQ: '¿En qué idioma van a ser las charlas?', auto: 'Detectar automáticamente', captionsQ: '¿Qué subtítulos puede elegir el público?', langsHint: '¿No sabés? “Detectar automáticamente” sigue al orador, aunque cambie de idioma.', notSure: 'No sé, saltar',
-    aiLedeForced: 'OpenCaptions se inició en modo demo, así que los subtítulos son simulados aunque haya una key guardada. Inicialo normalmente para usar Gemini.',
-    k4: 'Paso 5 de 7 · La IA', aiLedeMock: 'Por ahora los subtítulos son simulados. Para subtitular charlas reales, conectá Gemini de Google con una API key: son unos dos minutos.', aiLedeOn: 'Los subtítulos vienen de Gemini de Google, en la nube.',
-    kS: 'Paso 6 de 7 · Celulares', shareH: '¿Cómo llegan los celulares a los subtítulos?', sAddr: 'Dirección',
-    kR: 'Paso 4 de 7 · Revisión', reviewH: 'Revisá antes de cambiar nada', reviewP: 'Todavía no cambió nada. Destildá lo que no quieras.', apply: 'Aplicar cambios', skipReview: 'Saltar, no cambiar nada',
+    k3: 'Idiomas', langsH: '¿Qué idiomas?', spokenQ: '¿En qué idioma van a ser las charlas?', auto: 'Detectar automáticamente', captionsQ: '¿Qué subtítulos puede elegir el público?', langsHint: '¿No sabés? “Detectar automáticamente” sigue al orador, aunque cambie de idioma.', notSure: 'No sé, saltar',
+    k4: 'La IA', aiLedeMock: 'Por ahora los subtítulos son simulados. Para subtitular charlas reales, conectá Gemini de Google con una API key: son unos dos minutos.', aiLedeOn: 'Los subtítulos vienen de Gemini de Google, en la nube.',
+    kS: 'Celulares', shareH: '¿Cómo llegan los celulares a los subtítulos?', sAddr: 'Dirección',
+    kR: 'Revisión', reviewH: 'Revisá antes de cambiar nada', reviewP: 'Todavía no cambió nada. Apagá lo que no quieras.', apply: 'Aplicar cambios', skipReview: 'Saltar, no cambiar nada',
     noChanges: 'No hay nada que cambiar: tu evento ya está así.',
     lockedMsg: 'El modo evento está activado, así que la configuración está bloqueada. Desactivalo en Ajustes del panel para aplicar cambios.',
     opTz: (z) => `Usar tu zona horaria para la agenda (${z})`, opTzNote: 'Así las 10:00 de la agenda son las 10:00 donde estás. El servidor está en otra.',
@@ -92,14 +89,14 @@ const T = {
     moreLang: 'Otro idioma…', moreLangAdd: 'Agregar', opLangsAdd: (l) => `Agregar los idiomas: ${l}`,
     opRename: (n) => `Renombrar el evento a “${n}”`, opCreate: (n) => `Agregar la sala “${n}”`, opRenameRoom: (a, b) => `Renombrar “${a}” a “${b}”`,
     opDelete: (n) => `Quitar “${n}”`, opDeleteNote: (k) => (k ? `Tiene ${k} ${k === 1 ? 'transcripción' : 'transcripciones'}: se conservan, y la sala se puede recuperar desde el Historial.` : 'Podés recuperarla desde el Historial.'),
-    opLangs: (n, a, b) => `Cambiar “${n}” de ${a} a ${b}`, opCustom: 'Esta sala tiene su propia configuración de idiomas: tildala para cambiarla también.', aiH: 'Cómo se generan los subtítulos', later: 'Saltar por ahora',
+    opLangs: (n, a, b) => `Cambiar “${n}” de ${a} a ${b}`, opCustom: 'Esta sala tiene su propia configuración de idiomas: activala para cambiarla también.', aiH: 'Cómo se generan los subtítulos', later: 'Saltar por ahora',
     gemini: 'Conectado a la IA en la nube', geminiD: 'Los subtítulos y traducciones vienen de Gemini de Google, en la nube. Unos 3 segundos detrás de quien habla.',
     local: 'Funcionando en esta computadora', localD: 'El reconocimiento de voz y la traducción corren acá. El audio no sale del lugar y funciona sin internet.',
     mock: 'Modo demo: los subtítulos son simulados', mockD: 'Todo funciona para que lo recorras, pero las palabras son inventadas. Para subtitular charlas reales, elegí una opción y reiniciá:',
     mockGemini: 'En la nube (mejor calidad): agregá una API key de Gemini', mockLocal: 'En esta computadora, sin cuenta:',
     backupOn: 'Respaldo sin internet listo', backupOnD: 'Si se corta internet, los subtítulos siguen en esta computadora y vuelven a la nube cuando regresa.',
     backupOff: 'Opcional: un respaldo sin internet', backupOffD: 'Iniciá el servidor con este comando y los subtítulos siguen en esta computadora si el lugar se queda sin internet:',
-    k5: 'Paso 7 de 7 · Sonido', audioH: 'Conectá el sonido', audioP: 'Elegí cómo llega el sonido de cada sala.',
+    k5: 'Sonido', audioH: 'Conectá el sonido', audioP: 'Elegí cómo llega el sonido de cada sala.',
     whichRoom: '¿Qué sala?',
     mic: 'Un micrófono o la consola, a una computadora', micD: 'Una computadora junto al escenario recibe el sonido por cable y lo envía desde una página del navegador.',
     micSteps: ['Conectá a esa computadora un micrófono, o una salida libre de la consola (pedile a quien maneja el sonido una salida “aux”), directo o con una placa de sonido USB.',
@@ -124,7 +121,8 @@ const T = {
     rec: 'Una grabación', recD: 'Un archivo de video o audio de una charla: OpenCaptions lo subtitula en minutos y guarda la transcripción con las demás de la sala.', recOpen: 'Elegir la grabación',
     test: 'Probarlo primero', testD: 'Hablá al micrófono y mirá cómo aparecen los subtítulos.',
     more: 'Más detalles: todas las formas de conectar el sonido, en la guía',
-    k6: 'Listo', doneH: 'Ya está todo.', sEvent: 'Evento', sRooms: 'Salas', sLangs: 'Subtítulos', sAI: 'IA',
+    k6: 'Listo', doneH: 'Ya está todo.', doneP: 'Abrí el panel para empezar a subtitular, o imprimí los QR de las salas.',
+    stepOf: (n, m) => `Paso ${n} de ${m}`, close: 'Cerrar la configuración', sEvent: 'Evento', sRooms: 'Salas', sLangs: 'Subtítulos', sAI: 'IA',
     openDash: 'Abrir el panel', printQr: 'Imprimir los QR', seeAudience: 'Ver lo que ve el público', autoL: 'detección automática',
     aiG: 'En la nube', aiL: 'Esta computadora', aiM: 'Modo demo', withBackup: ' + respaldo sin internet',
   },
@@ -133,6 +131,15 @@ const t = T[LANG] || T.en;
 document.title = t.title;
 for (const el of document.querySelectorAll('[data-t]')) el.textContent = t[el.dataset.t];
 $('name').placeholder = t.namePh;
+const ARROW = '<svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>';
+for (const b of document.querySelectorAll('.actions [data-next], #apply')) b.insertAdjacentHTML('beforeend', ARROW);
+for (const b of document.querySelectorAll('[data-back]')) b.insertAdjacentHTML('afterbegin', icon('back'));
+for (const el of document.querySelectorAll('[data-arrow]')) el.innerHTML = ARROW;
+document.querySelector('[data-check]').innerHTML = icon('check');
+$('add-room').innerHTML = `${icon('plus')}<span>${esc(t.addRoom)}</span>`;
+$('close').innerHTML = icon('x');
+$('close').setAttribute('aria-label', t.close);
+$('close').title = t.close;
 
 // ---------- server ----------
 // The wizard changes the setup: admins only (the crew goes to the live dashboard).
@@ -167,22 +174,50 @@ let cur = 0;
 // The bar shows the numbered steps ("Step 2 of 7"), not the welcome and closing screens around them.
 const numbered = steps.filter((s) => !['welcome', 'done'].includes(s.dataset.step));
 $('progress').innerHTML = numbered.map(() => '<span></span>').join('');
-function show(i) {
-  $('err').textContent = '';
-  cur = Math.max(0, Math.min(steps.length - 1, i));
-  steps.forEach((s, k) => s.classList.toggle('on', k === cur));
-  document.querySelector('.wiz').classList.toggle('choosing', steps[cur].dataset.step === 'welcome');
-  const at = steps[cur].dataset.step === 'done' ? numbered.length : numbered.indexOf(steps[cur]);
-  [...$('progress').children].forEach((p, k) => p.classList.toggle('on', k <= at));
-  const img = $('art'), src = `/art/${steps[cur].dataset.art}.webp`;
-  if (!img.src.endsWith(src)) { img.classList.add('fade'); setTimeout(() => { img.src = src; img.onload = () => img.classList.remove('fade'); }, 150); }
-  if (steps[cur].dataset.step === 'done') renderSummary();
-  if (steps[cur].dataset.step === 'review') buildPlan().catch(fail);
-  if (steps[cur].dataset.step === 'audio') renderSound();
-  steps[cur].querySelector('input, .primary')?.focus({ preventScroll: true });
-  history.replaceState(null, '', `#${steps[cur].dataset.step}`);
-  store.set('welcome.at', { step: steps[cur].dataset.step, t: Date.now() });
+const still = matchMedia('(prefers-reduced-motion: reduce)');
+/**
+ * Go to step i: the old step slides out and the new one in (backwards when going back), the picture crossfades.
+ * @param {boolean} [push]  a new step is a new entry in the browser's history, so its Back button goes back a step
+ */
+function show(i, push = true) {
+  const next = Math.max(0, Math.min(steps.length - 1, i));
+  const first = !steps[cur].classList.contains('on');
+  document.documentElement.dataset.dir = next < cur ? 'back' : 'fwd';
+  const swap = () => go(next, push);
+  if (first || next === cur || still.matches) return swap();
+  if (!document.startViewTransition) { swap(); steps[cur].classList.add('enter'); return; }
+  document.startViewTransition(swap);
 }
+async function go(next, push) {
+  $('err').textContent = '';
+  const was = steps[cur]?.dataset.step;
+  steps.forEach((s) => s.classList.remove('enter'));
+  cur = next;
+  const step = steps[cur].dataset.step;
+  steps.forEach((s, k) => s.classList.toggle('on', k === cur));
+  document.querySelector('.wiz').classList.toggle('choosing', step === 'welcome');
+  const at = step === 'done' ? numbered.length : numbered.indexOf(steps[cur]);
+  [...$('progress').children].forEach((p, k) => p.classList.toggle('on', k <= at));
+  $('prog').hidden = step === 'welcome';
+  $('prog-l').textContent = step === 'done' ? t.k6 : t.stepOf(at + 1, numbered.length);
+  if (step === 'done') renderSummary();
+  if (step === 'review') buildPlan().catch(fail);
+  if (step === 'audio') renderSound();
+  steps[cur].querySelector('input, .primary')?.focus({ preventScroll: true });
+  const hash = `#${step}`;
+  if (push && was && was !== step && location.hash !== hash) history.pushState(null, '', hash);
+  else history.replaceState(null, '', hash);
+  store.set('welcome.at', { step, t: Date.now() });
+  // The picture: swapped once it's decoded, so the crossfade never shows an empty frame
+  const img = $('art'), src = `/art/${steps[cur].dataset.art}.webp`;
+  if (!img.src.endsWith(src)) {
+    const pic = new Image();
+    pic.src = src;
+    await pic.decode().catch(() => {});
+    img.src = src;
+  }
+}
+addEventListener('popstate', () => { const k = steps.findIndex((x) => `#${x.dataset.step}` === location.hash); if (k >= 0) show(k, false); });
 // Where to start: the step in the address, else where this browser left off today (the dashboard sends an unfinished
 // setup back here, and opening the room's sound page from step 7 must not mean starting over from step 1).
 const left = store.get('welcome.at', null);
@@ -239,7 +274,7 @@ async function buildPlan() {
   $('locknote').classList.toggle('hidden', !S.locked);
   $('apply').disabled = !!S.locked || !ops.length;
   $('ops').innerHTML = ops.length
-    ? ops.map((o, i) => `<label class="op${o.danger ? ' danger' : ''}"><input type="checkbox" data-op="${i}" ${o.on ? 'checked' : ''} ${S.locked ? 'disabled' : ''} /><span>${esc(o.label)}${o.note ? `<small>${esc(o.note)}</small>` : ''}</span></label>`).join('')
+    ? ops.map((o, i) => `<label class="op${o.danger ? ' danger' : ''}"><span>${esc(o.label)}${o.note ? `<small>${esc(o.note)}</small>` : ''}</span><input type="checkbox" data-op="${i}" ${o.on ? 'checked' : ''} ${S.locked ? 'disabled' : ''} /></label>`).join('')
     : `<p class="hint">${esc(t.noChanges)}</p>`;
 }
 $('ops').addEventListener('change', (e) => { const i = e.target.dataset.op; if (i != null) ops[+i].on = e.target.checked; });
@@ -291,12 +326,12 @@ $('open-kit').onclick = () => window.open('/kit.html', '_blank');
 $('open-audience').onclick = () => window.open('/', '_blank');
 
 // ---------- rooms ----------
-function renderRooms() {
-  $('rooms').innerHTML = A.rooms.map((r, i) => `<div class="room"><input value="${esc(r.name)}" placeholder="${esc(t.roomPh(i + 1))}" maxlength="80" data-i="${i}" aria-label="${esc(t.roomPh(i + 1))}" /><button type="button" data-rm="${i}" title="${esc(t.remove)}" aria-label="${esc(t.remove)}" ${A.rooms.length < 2 ? 'disabled' : ''}>${icon('x')}</button></div>`).join('');
+function renderRooms(added = -1) {
+  $('rooms').innerHTML = A.rooms.map((r, i) => `<div class="room${i === added ? ' new' : ''}"><span class="n" aria-hidden="true">${i + 1}</span><input value="${esc(r.name)}" placeholder="${esc(t.roomPh(i + 1))}" maxlength="80" data-i="${i}" aria-label="${esc(t.roomPh(i + 1))}" /><button type="button" data-rm="${i}" title="${esc(t.remove)}" aria-label="${esc(t.remove)}" ${A.rooms.length < 2 ? 'disabled' : ''}>${icon('x')}</button></div>`).join('');
 }
 $('rooms').addEventListener('input', (e) => { if (e.target.dataset.i) A.rooms[+e.target.dataset.i].name = e.target.value; });
 $('rooms').addEventListener('click', (e) => { const i = e.target.closest('[data-rm]')?.dataset.rm; if (i != null) { A.rooms.splice(+i, 1); renderRooms(); } });
-$('add-room').onclick = () => { A.rooms.push({ name: '' }); renderRooms(); $('rooms').lastElementChild.querySelector('input').focus(); };
+$('add-room').onclick = () => { A.rooms.push({ name: '' }); renderRooms(A.rooms.length - 1); $('rooms').lastElementChild.querySelector('input').focus(); };
 $('presets').innerHTML = t.presets.map(([label], i) => `<button type="button" class="pill" data-preset="${i}">${esc(label)}</button>`).join('');
 $('presets').onclick = (e) => {
   const i = e.target.closest('[data-preset]')?.dataset.preset;
@@ -342,8 +377,8 @@ const keyP = keyPanel($('ai-key'), { api, onChange: (s) => { S = { ...S, ...s, p
 function renderAi() {
   const f = S.failover;
   let html = '';
-  // Started in demo mode on purpose (--mock) although a key is saved: say so instead of "connect a key".
-  $('ai-lede').textContent = S.primaryEngine === 'mock' ? (S.ai?.set ? t.aiLedeForced : t.aiLedeMock) : S.primaryEngine === 'gemini' ? t.aiLedeOn : '';
+  // Started in demo mode on purpose (--mock) although a key is saved: the key panel says so, no need to say it twice.
+  $('ai-lede').textContent = S.primaryEngine === 'mock' ? (S.ai?.set ? '' : t.aiLedeMock) : S.primaryEngine === 'gemini' ? t.aiLedeOn : '';
   $('ai-key').classList.toggle('hidden', S.primaryEngine === 'local');
   keyP.update(S);
   if (S.primaryEngine === 'gemini') {
@@ -443,17 +478,17 @@ function renderSummary() {
   const langs = (st?.targets || []).map((k) => langNames[k] || k).join(', ');
   const addr = S.tunnel?.state === 'on' && S.tunnel.url ? S.tunnel.url : S.publicUrl;
   $('summary').innerHTML = [
-    [t.sEvent, S.name],
-    [t.sRooms, S.stages.map((s) => s.name).join(', ')],
-    [t.sLangs, `${langs}${st?.source === 'auto' ? ` · ${t.autoL}` : ''}`],
-    [t.sAI, ai],
-    [t.sAddr, addr],
-  ].map(([k, v]) => `<div><b>${esc(k)}</b><span>${esc(v)}</span></div>`).join('')
+    ['spark', t.sEvent, S.name],
+    ['dashboard', t.sRooms, S.stages.map((s) => s.name).join(', ')],
+    ['chat', t.sLangs, `${langs}${st?.source === 'auto' ? ` · ${t.autoL}` : ''}`],
+    ['sparkle', t.sAI, ai],
+    ['link', t.sAddr, addr],
+  ].map(([ic, k, v]) => `<div>${icon(ic)}<b>${esc(k)}</b><span>${esc(v)}</span></div>`).join('')
     // Phones can't open "localhost": say so before anyone prints QR codes with it.
     + (/\/\/(localhost|127\.0\.0\.1|\[::1\])\b/.test(addr) ? `<p class="err">${esc(t.localAddr)}</p>` : '');
 }
 
-show(start >= 0 ? start : 0);
+show(start >= 0 ? start : 0, false); // where it starts replaces the entry it was opened with
 
 // "Just for me": personal captions on this computer (me.html) instead of an event. The dashboard opens it from now on;
 // finishing this wizard later switches back to event mode.

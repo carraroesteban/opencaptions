@@ -3,8 +3,9 @@
 //
 //   opencaptions-apple check [--lang en] [--to es,fr]   what this Mac can do (languages installed, downloadable)
 //   opencaptions-apple listen --lang en [--vocab '["Name"]']
-//       stdin: 16 kHz mono PCM16LE. stdout: {"partial":…} while a sentence is spoken, {"final":…,"start":s,"end":s}
-//       when it is settled. SIGUSR1 = the room went quiet: settle what was heard. End of stdin: settle and exit.
+//       stdin: 16 kHz mono PCM16LE. stdout: {"partial":…,"w":…} while a sentence is spoken, {"final":…,"start":s,"end":s,"w":…}
+//       when it is settled (w: each word and when it was said, [[text, start, end], …]). SIGUSR1 = the room went quiet:
+//       settle what was heard. End of stdin: settle and exit.
 //   opencaptions-apple translate
 //       stdin: {"id":1,"text":…,"from":"en","to":"es"} per line. stdout: {"id":1,"text":…} or {"id":1,"error":…}
 //   opencaptions-apple speak
@@ -62,6 +63,20 @@ func check() async {
 }
 
 // ---------- listen ----------
+/// Each piece of the text with its own time range (about a word) and when it was said: [[text, start, end], …] in
+/// seconds of the sound sent. Lets two helpers listening to the same sound hand over at an exact moment.
+@available(macOS 26, *)
+func timedWords(_ text: AttributedString) -> [[Any]] {
+  var out: [[Any]] = []
+  for run in text.runs {
+    guard let range = run[AttributeScopes.SpeechAttributes.TimeRangeAttribute.self] else { continue }
+    let piece = String(text[run.range].characters)
+    if piece.trimmingCharacters(in: .whitespaces).isEmpty { continue }
+    out.append([piece, range.start.seconds, range.end.seconds])
+  }
+  return out
+}
+
 @available(macOS 26, *)
 func listen() async throws {
   let lang = arg("lang") ?? "en"
@@ -85,11 +100,12 @@ func listen() async throws {
   let results = Task {
     for try await r in transcriber.results {
       let text = String(r.text.characters).trimmingCharacters(in: .whitespaces)
+      let words = timedWords(r.text)
       if r.isFinal {
-        if !text.isEmpty { emit(["final": text, "start": r.range.start.seconds, "end": r.range.end.seconds]) }
+        if !text.isEmpty { emit(["final": text, "start": r.range.start.seconds, "end": r.range.end.seconds, "w": words]) }
         continue
       }
-      emit(["partial": text])
+      emit(["partial": text, "w": words])
     }
   }
   try await analyzer.start(inputSequence: inputs)

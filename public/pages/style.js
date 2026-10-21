@@ -9,12 +9,12 @@ const ev = await getEvent();
 let target = store.get('style.target', 'overlay');
 
 const DEFAULTS = {
-  overlay: { font: 'atkinsonnext', size: 46, weight: 700, lines: 2, align: 'center', color: '#ffffff', style: 'box', box: '#000000', alpha: 78, upper: false, pos: 'bottom', width: 78, bgmode: 'transparent', also: '' },
+  overlay: { font: 'atkinsonnext', size: 46, weight: 700, lines: 2, align: 'left', color: '#ffffff', style: 'box', box: '#000000', alpha: 78, upper: false, pos: 'bottom', width: 78, bgmode: 'transparent', also: '' },
   screen: { font: 'atkinsonnext', size: 6.4, weight: 700, lines: 0, align: 'left', color: '#ffffff', style: 'none', box: '#000000', alpha: 0, upper: false, sbg: '#111014', accent: (ev.accent || '#d4ff3a').toLowerCase(), orig: true, qr: true },
 };
 const PRESETS = {
-  'OpenCaptions': { font: 'atkinsonnext', weight: 700, color: '#faf8f3', style: 'box', box: '#111014', alpha: 88, upper: false, align: 'center', accent: '#d4ff3a', sbg: '#111014' },
-  'TV clásico': { font: 'roboto', weight: 500, color: '#ffffff', style: 'box', box: '#000000', alpha: 80, upper: false, align: 'center' },
+  'OpenCaptions': { font: 'atkinsonnext', weight: 700, color: '#faf8f3', style: 'box', box: '#111014', alpha: 88, upper: false, align: 'left', accent: '#d4ff3a', sbg: '#111014' },
+  'TV clásico': { font: 'roboto', weight: 500, color: '#ffffff', style: 'box', box: '#000000', alpha: 80, upper: false, align: 'left' },
   'Alto contraste': { font: 'atkinson', weight: 700, color: '#ffe600', style: 'box', box: '#000000', alpha: 100, sbg: '#000000' },
   'Minimal': { font: 'inter', weight: 700, color: '#ffffff', style: 'outline', box: '#000000', alpha: 0 },
   'Lower third': { font: 'montserrat', weight: 800, color: '#111014', style: 'box', box: '#d4ff3a', alpha: 100, align: 'left', upper: true, lines: 1 },
@@ -57,7 +57,7 @@ function params(v, preview) {
   else p.set('langs', v.orig && $('lang').value !== 'orig' ? `${$('lang').value},orig` : $('lang').value);
   const add = (k, val, def) => { if (String(val) !== String(def)) p.set(k, val); };
   add('font', v.font, 'atkinsonnext'); add('size', v.size, d.size); add('weight', v.weight, 700); add('lines', v.lines, d.lines);
-  add('align', v.align, target === 'overlay' ? 'center' : 'left');
+  add('align', v.align, 'left');
   add('color', hex(v.color), 'ffffff'); add('style', v.style, target === 'overlay' ? 'box' : 'none');
   add('box', hex(v.box), '000000'); add('alpha', v.alpha, 78); if (v.upper) p.set('upper', '1');
   if (target === 'overlay') {

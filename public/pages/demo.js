@@ -1,12 +1,22 @@
 /* global YT */ // the YouTube IFrame API, loaded below
 // demo.html: page script (kept out of the HTML so the Content-Security-Policy can forbid inline scripts).
 import { qs, esc, store, wsUrl, Socket, CaptionState, getEvent, langLabel, liveText, liveHtml, ingestTicket } from '/common.js';
-import { localize, prefsControls, tr } from '/i18n.js';
-import { mountIcons } from '/illustrations.js';
+import { localize, prefsControls, tr, LANG } from '/i18n.js';
+import { mountIcons, icon } from '/illustrations.js';
 mountIcons();
 document.querySelector('header').append(prefsControls());
-localize();
 const $ = (id) => document.getElementById(id);
+// This page's newer words (the older ones are Spanish source text that i18n.js translates).
+const L = {
+  es: { tap: 'Empezar la prueba de sonido', onair: 'En vivo', empty: 'Lo que se dice aparece acá, frase por frase.' },
+  en: { tap: 'Start the sound check', onair: 'Live', empty: 'What’s said shows up here, sentence by sentence.' },
+}[LANG === 'es' ? 'es' : 'en'];
+$('mic-go').innerHTML = icon('mic');
+$('mic-go').setAttribute('aria-label', L.tap);
+$('mic-go').title = L.tap;
+$('onair-l').textContent = L.onair;
+$('transcript').dataset.empty = L.empty;
+localize();
 const ev = await getEvent();
 // Admin calls (the YouTube demo) ride on the dashboard's session cookie, or need none on the server itself.
 const headers = { 'content-type': 'application/json' };
@@ -72,7 +82,7 @@ async function startAt(t) {
     player.playVideo();
     anchor = { t, at: Date.now() };
     running = true;
-    setState('en vivo', 'bad');
+    setState('en vivo', 'live');
   } catch (e) {
     setState('error', 'bad');
     alert(tr('No se pudo iniciar: ') + tr(e.message));
@@ -155,7 +165,7 @@ async function micStart() {
     };
     mic = { ctx, stream, sock };
     $('micidle').classList.add('hidden');
-    setState('en vivo', 'bad');
+    setState('en vivo', 'live');
   } catch (e) {
     alert(tr('No se pudo abrir el micrófono: ') + e.message);
   }
@@ -167,6 +177,7 @@ function micStop(reset = true) {
   mic.ctx.close();
   mic = null;
   $('miclvl').style.width = '0';
+  $('micidle').classList.remove('hidden');
   if (reset) setState('detenido', '');
 }
 
@@ -177,7 +188,13 @@ $('go').onclick = () => {
 };
 $('stop').onclick = () => { if (mode === 'mic') return micStop(); player?.pauseVideo(); stopPull(); };
 window.addEventListener('pagehide', () => { if (running) fetch(`/api/stages/${stageId()}/pull/stop`, { method: 'POST', headers, keepalive: true }).catch(() => {}); });
-function setState(t, cls) { $('state').textContent = t; $('state').className = 'chip ' + cls; }
+function setState(t, cls) {
+  $('state').innerHTML = cls === 'live' ? '<span class="dot live"></span>' : '';
+  $('state').append(t);
+  $('state').className = 'chip ' + cls;
+  document.body.classList.toggle('live', cls === 'live');
+}
+$('mic-go').onclick = () => micStart();
 
 // ---------- captions ----------
 const main = new CaptionState(), orig = new CaptionState();

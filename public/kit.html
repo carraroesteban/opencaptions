@@ -11,11 +11,28 @@
   <link rel="manifest" href="/manifest.webmanifest" />
   <title>Kit de QR</title>
   <link rel="stylesheet" href="/style.css" />
+  <link rel="preload" href="/tokens.css" as="style" /><link rel="preload" href="/fonts/brand.css" as="style" /><!-- style.css @imports them: fetched together, not one after another -->
   <style>
-    .bar { max-width: 900px; margin: 0 auto; padding: 22px 20px; display: grid; gap: 12px; }
-    .bar h1 { margin: 18px 0 0; font-size: 32px; }
-    .warn { border-color: color-mix(in srgb, var(--warn) 45%, var(--line)); color: var(--warn); }
-    .sheets { display: grid; gap: 28px; justify-content: center; padding: 8px 16px 48px; }
+    /* On screen: the posters as a print preview, side by side, with one bar of controls. On paper: one A4 per room. */
+    .page { width: 100%; max-width: 1180px; margin: 0 auto; padding: 18px 28px 64px; }
+    .head h1 { margin: 34px 0 8px; font-size: clamp(32px, 4vw, 44px); }
+    .head p { margin: 0; max-width: 64ch; color: var(--fg2); }
+    .warn { margin-top: 18px; border-color: color-mix(in srgb, var(--warn) 45%, var(--line)); background: color-mix(in srgb, var(--warn) 8%, var(--bg2)); color: var(--fg); font-size: 15px; }
+    .warn b { color: var(--warn); }
+    /* The controls stay in reach while scrolling through the posters */
+    .tools { position: sticky; top: 10px; z-index: 4; display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; margin: 24px 0 26px; padding: 10px 10px 10px 18px; border-radius: 18px;
+      border: 1px solid color-mix(in srgb, var(--line-strong) 70%, transparent); background: color-mix(in srgb, var(--bg2) 82%, transparent);
+      -webkit-backdrop-filter: blur(18px) saturate(1.4); backdrop-filter: blur(18px) saturate(1.4); box-shadow: var(--shadow); }
+    .tools label { display: flex; align-items: center; gap: 10px; font-size: 14px; font-weight: 600; color: var(--fg2); }
+    .tools select { color: var(--fg); }
+    #count { font-size: 14px; color: var(--fg2); }
+    #print { margin-left: auto; min-height: 44px; padding: 0 20px; border-radius: var(--pill); }
+    .sheets { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 1fr)); gap: 28px 24px; justify-items: center; }
+    .sheet { display: grid; gap: 10px; justify-items: center; margin: 0; }
+    .sheet > a { display: block; border-radius: 8px; text-decoration: none; color: inherit; }
+    .sheet > a:focus-visible { outline-offset: 4px; }
+    .sheet figcaption { font-size: 14px; color: var(--fg2); display: flex; gap: 8px; align-items: center; }
+    .sheet figcaption b { color: var(--fg); }
     /* A4 poster: printed on white paper, so it's always the light identity (all-ink logo, ink on lime). */
     .poster {
       --paper-w: #FFFFFF;
@@ -23,6 +40,14 @@
       padding: 20mm 16mm 14mm; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 7mm; font-family: var(--font);
       print-color-adjust: exact; -webkit-print-color-adjust: exact;
     }
+    @media screen {
+      .poster { zoom: .42; border-radius: 16px; outline: 1px solid rgb(17 16 20 / .06); transition: transform var(--dur-slow) var(--ease-out), box-shadow var(--dur-slow) var(--ease-out); }
+      .sheet > a:hover .poster { transform: translateY(-10px); box-shadow: 0 40px 90px -24px rgb(17 16 20 / .4); }
+    }
+    /* The event's own logo (Settings › General) on top: the rest tightens a little so the poster stays one A4 page */
+    .poster .ev-logo { width: auto; height: 22mm; max-width: 150mm; object-fit: contain; border: 0; padding: 0; border-radius: 0; image-rendering: auto; }
+    .poster:has(.ev-logo) { padding-top: 14mm; gap: 5mm; }
+    .poster:has(.ev-logo) > img:not(.ev-logo) { width: 96mm; height: 96mm; }
     .poster .ev { font-size: 15pt; font-weight: 700; color: var(--graphite); letter-spacing: .08em; text-transform: uppercase; }
     .poster h2 { font-family: var(--font-display); font-weight: 800; font-size: 50pt; margin: 0; line-height: 1; letter-spacing: -.03em; }
     .poster .lead { font-size: 24pt; font-weight: 700; margin: 0; }
@@ -39,31 +64,37 @@
     .poster .how .extra { margin: 0; }
     .poster .foot { margin-top: auto; font-size: 10pt; color: #6A6870; display: flex; gap: 2mm; align-items: center; }
     .poster .foot img { width: 7mm; height: auto; border: 0; padding: 0; border-radius: 0; image-rendering: auto; }
-    /* Small screens: show the A4 posters scaled down (printing still uses the real size). */
-    @media screen and (max-width: 860px) { .poster { zoom: .5; } }
-    @media screen and (max-width: 520px) { .poster { zoom: .42; } }
+    @media (max-width: 600px) { .page { padding: 12px 16px 48px; } .tools { position: static; padding-left: 14px; } #print { margin-left: 0; width: 100%; justify-content: center; } }
     @media print {
       @page { size: A4; margin: 0; }
+      * { animation: none !important; transition: none !important; }
       body { background: #fff; }
-      .bar { display: none; }
-      .sheets { padding: 0; gap: 0; display: block; }
-      .poster { box-shadow: none; border-radius: 0; page-break-after: always; break-after: page; }
+      .page { padding: 0; max-width: none; }
+      .crumbbar, .head, .tools, .sheet figcaption { display: none !important; }
+      .sheets { display: block; }
+      .sheet { display: block; }
+      .poster { box-shadow: none; border-radius: 0; outline: 0; page-break-after: always; break-after: page; }
     }
   </style>
 </head>
 <body>
-  <header class="bar" data-no-i18n>
-    <a class="brand u-fs16" href="/admin.html" id="home">OpenCaptions</a>
-    <h1 id="h"></h1>
-    <p class="muted u-m0" id="intro"></p>
-    <div class="card warn hidden" id="localwarn"></div>
-    <div class="row">
-      <label class="row"><span id="l-rooms"></span> <select id="which"><option value="" id="o-all"></option></select></label>
-      <label class="row"><input type="checkbox" id="bilingual" checked /> <span id="l-bi"></span></label>
+  <div class="page">
+    <header class="crumbbar" id="crumbbar"><span id="prefs-slot"></span></header>
+    <main>
+    <div class="head rise" data-no-i18n>
+      <h1 id="h"></h1>
+      <p id="intro"></p>
+      <div class="card warn hidden" id="localwarn"></div>
+    </div>
+    <div class="tools" data-no-i18n>
+      <label><span id="l-rooms"></span><select id="which"><option value="" id="o-all"></option></select></label>
+      <label><input type="checkbox" id="bilingual" checked /><span id="l-bi"></span></label>
+      <span id="count"></span>
       <button class="primary" id="print"></button>
     </div>
-  </header>
-  <main class="sheets" id="sheets" data-no-i18n></main>
+    <div class="sheets stagger" id="sheets" data-no-i18n></div>
+    </main>
+  </div>
   <script type="module" src="/pages/kit.js"></script>
 </body>
 </html>

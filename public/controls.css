@@ -1,0 +1,130 @@
+/* App-drawn form controls: dropdowns (public/select.js), radios, sliders and file pickers. Nothing here looks like the
+   operating system's. Checkboxes are switches (style.css). Imported by style.css, so every page with it gets these. */
+
+/* ---------- dropdown: the button that replaces a <select> ---------- */
+select[data-oc-select] { display: none !important; } /* still in the form, still the source of truth */
+.oc-select {
+  display: inline-flex; align-items: center; gap: 10px; min-width: 0; max-width: 100%; vertical-align: middle;
+  padding: 8px 12px 8px 10px; border: 1px solid var(--line-strong); border-radius: 10px;
+  background: var(--bg2); color: var(--fg); font-weight: 400; text-align: start; line-height: inherit; cursor: pointer;
+  transition: border-color var(--dur) var(--ease), box-shadow var(--dur) var(--ease), background-color var(--dur-fast) var(--ease);
+}
+.oc-select:hover { background-color: var(--bg2); border-color: color-mix(in srgb, var(--fg) 28%, var(--line-strong)); }
+.oc-select:active { transform: none; }
+.oc-select:focus-visible, .oc-select[aria-expanded='true'] { outline: none; border-color: var(--focus); box-shadow: 0 0 0 3px color-mix(in srgb, var(--focus) 18%, transparent); }
+.oc-select::after { content: ''; flex: none; width: 11px; height: 8px; margin-left: auto; background: var(--chevron) center / 11px 8px no-repeat; transition: rotate var(--dur) var(--ease-out); }
+.oc-select[aria-expanded='true']::after { rotate: 180deg; }
+/* The chosen label, over every label stacked invisibly: the button is as wide as the longest, like a native select */
+.oc-val { display: grid; flex: 1 1 auto; min-width: 0; }
+.oc-val > *, .oc-sz > * { grid-area: 1 / 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.oc-sz { display: grid; visibility: hidden; }
+.oc-fit .oc-sz { display: none; } /* the page sizes it to the chosen option (field-sizing: content) */
+
+/* The pages' own rules for their selects, for the button */
+.prefs .oc-select { padding: 5px 10px; font-size: 13px; border-radius: 9px; gap: 8px; }
+.me .prefs .oc-select { padding: 3px 7px; font-size: 12px; border-radius: 8px; gap: 6px; }
+.me .prefs .oc-select::after { width: 9px; height: 6px; background-size: 9px 6px; }
+.dock .oc-select { border-radius: var(--pill); }
+header .oc-select { border-radius: var(--pill); font-size: 14px; } /* demo.html: header select */
+.reps .oc-select { width: 100%; }
+.srow .oc-select { width: 260px; font-size: 14px; }
+.room-form .field > .oc-select { font-size: 15px; padding: 10px 12px; }
+.selchip .oc-select { border: 0; background-color: transparent; padding: 10px 16px 10px 7px; font-size: 15px; font-weight: 700; max-width: 230px; box-shadow: none; }
+.selchip .oc-select:focus-visible, .selchip .oc-select[aria-expanded='true'] { box-shadow: none; }
+.selchip:has(.oc-select:focus-visible) { outline: 2px solid var(--focus); outline-offset: 2px; }
+#dock .selchip .oc-select { height: 44px; padding: 0 12px 0 8px; font-weight: 600; max-width: 180px; }
+@media (max-width: 640px) {
+  .srow .oc-select { width: 100%; }
+  .selchip .oc-select { max-width: 200px; }
+  #dock .selchip .oc-select { width: 100%; max-width: none; }
+}
+
+/* ---------- dropdown: the floating list (one per page, in the top layer) ---------- */
+.oc-pop[popover] {
+  position: fixed; inset: auto; margin: 0; padding: 0; border: 0; background: none; overflow: visible; color: var(--fg);
+  opacity: 0; transform: scale(.97);
+  transition: opacity var(--dur) var(--ease-out), transform var(--dur) var(--ease-out), overlay var(--dur) allow-discrete, display var(--dur) allow-discrete;
+}
+.oc-pop[popover]:popover-open { opacity: 1; transform: none; }
+@starting-style { .oc-pop[popover]:popover-open { opacity: 0; transform: scale(.97); } }
+.oc-card {
+  display: flex; flex-direction: column; gap: 6px; box-sizing: border-box; max-width: min(420px, calc(100vw - 16px)); max-height: 380px;
+  padding: 6px; border: 1px solid var(--line-strong); border-radius: 12px; background: var(--bg2); box-shadow: var(--shadow-lg);
+  font: 400 15px/1.35 var(--font); letter-spacing: normal; text-transform: none; text-align: start;
+}
+.oc-find { flex: none; width: 100%; padding: 7px 10px; font-size: 15px; border-radius: 8px; }
+.oc-list { position: relative; flex: 1 1 auto; min-height: 0; overflow: auto; overscroll-behavior: contain; outline: none; scrollbar-width: thin; scrollbar-color: var(--line-strong) transparent; }
+.oc-opt { position: relative; padding: 8px 34px 8px 10px; border-radius: 8px; cursor: pointer; overflow-wrap: anywhere; user-select: none; }
+.oc-opt.oc-on { background: var(--fill-hover); }
+.oc-opt:active { background: color-mix(in srgb, var(--fg) 16%, transparent); }
+.oc-opt[aria-selected='true'] { font-weight: 700; }
+.oc-opt[aria-selected='true']::after {
+  content: ''; position: absolute; right: 10px; top: 50%; width: 16px; height: 16px; translate: 0 -50%; background: var(--accent-fg);
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 8.5l3.2 3.2L13 4.8'/%3E%3C/svg%3E") center / contain no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 8.5l3.2 3.2L13 4.8'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+.oc-opt[aria-disabled='true'] { opacity: .45; cursor: default; }
+.oc-group { padding: 8px 10px 4px; font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--fg2); }
+.oc-empty { padding: 10px; color: var(--fg2); }
+:root[data-theme='contrast'] .oc-opt.oc-on { outline: 2px solid var(--focus); outline-offset: -2px; }
+
+/* Phones: a sheet from the bottom over a dimmed page */
+.oc-pop.oc-sheet { inset: 0; width: auto; height: auto; max-width: none; max-height: none; background: var(--scrim); transform: none; touch-action: none; }
+.oc-pop.oc-sheet:popover-open { display: flex; align-items: flex-end; justify-content: center; }
+@starting-style { .oc-pop.oc-sheet:popover-open { opacity: 0; transform: none; } }
+.oc-sheet .oc-card {
+  width: 100%; max-width: 560px; max-height: min(75dvh, 560px); padding: 18px 8px calc(8px + env(safe-area-inset-bottom));
+  border-width: 1px 0 0; border-radius: var(--radius-lg) var(--radius-lg) 0 0; position: relative; touch-action: pan-y;
+  transform: translateY(100%); transition: transform .3s var(--ease-out);
+}
+.oc-sheet:popover-open .oc-card { transform: none; }
+@starting-style { .oc-sheet:popover-open .oc-card { transform: translateY(100%); } }
+.oc-sheet .oc-card::before { content: ''; position: absolute; top: 7px; left: 50%; width: 36px; height: 4px; translate: -50% 0; border-radius: var(--pill); background: var(--line-strong); }
+.oc-sheet .oc-opt { padding-block: 13px; font-size: 16px; }
+.oc-sheet .oc-find { font-size: 16px; padding-block: 10px; } /* 16 px: iOS doesn't zoom in */
+
+/* ---------- radios: a ring, and a dot that springs in (ink on paper, lime on ink, like the switches) ---------- */
+input[type='radio'] {
+  -webkit-appearance: none; appearance: none; flex: none; display: inline-grid; place-content: center; width: 20px; height: 20px; margin: 0; padding: 0;
+  border: 2px solid var(--line-strong); border-radius: 50%; background: var(--bg2); cursor: pointer; vertical-align: middle;
+  transition: border-color var(--dur) var(--ease-out), background-color var(--dur) var(--ease-out);
+}
+input[type='radio']::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: var(--primary-fg); scale: 0; transition: scale .3s var(--spring); }
+input[type='radio']:hover { border-color: color-mix(in srgb, var(--fg) 40%, var(--line-strong)); }
+input[type='radio']:checked { border-color: var(--primary-bg); background: var(--primary-bg); }
+input[type='radio']:checked::before { scale: 1; }
+input[type='radio']:focus { box-shadow: none; }
+input[type='radio']:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+input[type='radio']:disabled { opacity: .45; cursor: default; }
+
+/* ---------- sliders: a thin track and a round knob ---------- */
+input[type='range'] { -webkit-appearance: none; appearance: none; height: 24px; margin: 0; padding: 0; border: 0; border-radius: 0; background: transparent; cursor: pointer; }
+input[type='range']:focus { box-shadow: none; }
+input[type='range']::-webkit-slider-runnable-track { height: 4px; border-radius: var(--pill); background: var(--line-strong); }
+input[type='range']::-moz-range-track { height: 4px; border-radius: var(--pill); background: var(--line-strong); }
+input[type='range']::-moz-range-progress { height: 4px; border-radius: var(--pill); background: var(--primary-bg); }
+input[type='range']::-webkit-slider-thumb {
+  -webkit-appearance: none; appearance: none; width: 20px; height: 20px; margin-top: -8px; border: 3px solid var(--bg2); border-radius: 50%;
+  background: var(--primary-bg); box-shadow: 0 0 0 1px var(--line-strong), 0 1px 3px rgb(0 0 0 / .25); transition: scale var(--dur-fast) var(--ease-out), box-shadow var(--dur) var(--ease-out);
+}
+input[type='range']::-moz-range-thumb {
+  box-sizing: border-box; width: 20px; height: 20px; border: 3px solid var(--bg2); border-radius: 50%;
+  background: var(--primary-bg); box-shadow: 0 0 0 1px var(--line-strong), 0 1px 3px rgb(0 0 0 / .25); transition: scale var(--dur-fast) var(--ease-out), box-shadow var(--dur) var(--ease-out);
+}
+input[type='range']:hover::-webkit-slider-thumb { scale: 1.1; }
+input[type='range']:hover::-moz-range-thumb { scale: 1.1; }
+input[type='range']:active::-webkit-slider-thumb { scale: 1.2; }
+input[type='range']:active::-moz-range-thumb { scale: 1.2; }
+input[type='range']:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 1px var(--line-strong), 0 0 0 5px color-mix(in srgb, var(--focus) 30%, transparent); }
+input[type='range']:focus-visible::-moz-range-thumb { box-shadow: 0 0 0 1px var(--line-strong), 0 0 0 5px color-mix(in srgb, var(--focus) 30%, transparent); }
+input[type='range']:focus-visible { outline: none; }
+input[type='range']:disabled { opacity: .45; cursor: default; }
+
+/* ---------- file pickers: the app's button, then the file name ---------- */
+input[type='file'] { max-width: 100%; padding: 5px; font-size: 14px; color: var(--fg2); cursor: pointer; }
+input[type='file']::file-selector-button {
+  margin-right: 10px; padding: 6px 12px; border: 0; border-radius: 8px; background: var(--fill); color: var(--fg);
+  font: 600 14px/1.4 var(--font); cursor: pointer; transition: background-color var(--dur-fast) var(--ease);
+}
+input[type='file']:hover::file-selector-button { background: var(--fill-hover); }
+input[type='file']:active::file-selector-button { transform: scale(.97); }

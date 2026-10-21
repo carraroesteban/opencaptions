@@ -10,8 +10,10 @@ import { MockEngine } from './engines/mock.js';
 import { LocalEngine } from './engines/local.js';
 import { AppleEngine } from './engines/apple.js';
 import { appleVoice } from './local/apple.js';
-import { SentenceTranslator } from './translate.js';
+import { SentenceTranslator, translateText } from './translate.js';
+import { guessLang } from './langid.js';
 import { VoiceDetector } from './voice.js';
+import { spend, overBudget } from './budget.js';
 
 const PREROLL_CHUNKS = 6; // 600 ms kept while gated, so the first words aren't clipped
 const PREROLL_MUSIC = 40; // after music: telling a voice from music takes a few seconds, so keep 4 s and send them
@@ -97,17 +99,29 @@ export class Stage extends EventEmitter {
     this.aliases = {};
     this.languages = ['orig', ...this.transTargets];
     this.route = {}; // per caption language: 'pass' (speaker talks it) or 'mt' (translated)
-    if (this.tracks) this.#buildTracks();
+    if (this.tracks) this.#buildTracks(true);
   }
 
   /** Change languages / source at runtime (from the dashboard). */
   reconfigure(def) {
     const running = this.engines.size > 0;
+    const had = new Set(Object.keys(this.tracks || {}));
     this.#stopEngines('reconfigure');
     this.applyDef(def);
     this.mtQ = {};
     if (running) this.#ensureEngines();
     this.emit('config');
+    for (const ch of this.transTargets) if (!had.has(ch)) this.#backfill(ch);
+  }
+
+  /** A caption language added mid-talk starts with the last sentences already said, translated: not a blank screen. */
+  async #backfill(ch) {
+    const track = this.tracks[ch], recent = this.tracks.orig.history(3);
+    if (!recent.length) return;
+    const out = await Promise.all(recent.map((s) => (s.lang === ch ? s.text
+      : translateText({ text: s.text, from: s.lang === 'orig' ? this.source : s.lang, to: ch, vocabulary: this.#vocabulary() }).catch(() => ''))));
+    if (this.tracks[ch] !== track) return; // reconfigured again, or a new talk, meanwhile
+    recent.forEach((s, i) => track.addFinal({ id: `${ch}-${s.id}`, text: out[i], start: s.start, end: s.end, lang: ch }));
   }
 
   /** How many phones may play the room's sound at once. */
@@ -300,6 +314,7 @@ export class Stage extends EventEmitter {
   // ---------- engines ----------
   #ensureEngines() {
     if (this.engines.size || this.destroyed) return;
+    if (config.engine === 'gemini' && overBudget()) return; // the 'budget' alert says why
     if (this.idleClosed && this.talkSegments > 0) this.#newTalk('', true);
     this.idleClosed = false;
     const glossaryVocab = this.#vocabulary();
@@ -319,7 +334,7 @@ export class Stage extends EventEmitter {
         transcribeOnly: this.transcribeOnly,
       };
       const e = config.engine === 'gemini' ? new GeminiEngine(opts)
-        : config.engine === 'local' && config.localAsrApi === 'apple' ? new AppleEngine(opts)
+        : config.engine === 'local' && config.localAsrApi === 'apple' ? new AppleEngine({ ...opts, languages: [...new Set([...this.transTargets, ...Object.keys(config.event.languages)])], heard: this.heardLang })
         : config.engine === 'local' ? new LocalEngine({ ...opts, languages: [...new Set([...this.transTargets, this.source, ...Object.keys(config.event.languages)])] })
           : new MockEngine(opts);
       e.on('input', (t) => primary && this.#onInput(t));
@@ -335,6 +350,7 @@ export class Stage extends EventEmitter {
       });
       e.on('state', (s) => { this.log(s === 'live' ? 'info' : 'debug', `${target}: ${s}`); this.emit('engine'); });
       e.on('log', (m) => this.log('warn', `${target}: ${m}`));
+      e.on('heard', (l) => { this.heardLang = l; this.emit('heard', l); }); // Apple on "auto": the next session starts there
       e.on('error', (m) => this.log('error', `${target}: ${m}`));
       this.engines.set(target, e);
       e.start();
@@ -362,6 +378,9 @@ export class Stage extends EventEmitter {
   }
 
   #onInput({ text, finished, lang }) {
+    // Transcribe Live names no language: in an "auto" room, tell it from the words, so the speaker's own language
+    // is shown as spoken rather than translated into itself (src/langid.js).
+    if (!lang && !this.source) lang = guessLang(text, this.transTargets) || undefined;
     const now = Date.now();
     this.speechMsNoInput = 0;
     if (this.onset?.asr && text.trim()) {
@@ -502,6 +521,13 @@ export class Stage extends EventEmitter {
       this.onset.asr = false;
     }
     this.tracks.orig.interim(text, { lang: lang || this.source });
+    // The speaker's own language gets the words as they come too, as smooth as the original. Not while a switch
+    // to another language is being confirmed, nor when these words already read as another one.
+    const said = lang || guessLang(text, this.transTargets);
+    const spoken = this.curLang || this.source || said; // a talk's first words: from these words themselves
+    if (!spoken || this.pendingLang || this.route[spoken] === 'mt' || (said && said !== spoken)) return;
+    this.#markLatency(spoken, text);
+    this.tracks[spoken]?.interim(text, { lang: spoken });
   }
 
   #onOutput(target, { text, finished }) {
@@ -514,8 +540,10 @@ export class Stage extends EventEmitter {
   }
 
   // ---------- captions ----------
-  #buildTracks() {
+  /** @param {boolean} [keep]  same talk, new languages: what was already said stays on screens and in history */
+  #buildTracks(keep = false) {
     this.#flushTracks(false);
+    const old = keep ? this.tracks || {} : {};
     this.tracks = {};
     const talk = this.talk;
     // Cue times = when the words were spoken, not when the model returned them: subtract the measured delay.
@@ -531,6 +559,7 @@ export class Stage extends EventEmitter {
         this.lastCaptionAt = Date.now();
         this.emit('caption', seg);
       });
+      if (old[ch]) tr.finals = old[ch].finals;
       this.tracks[ch] = tr;
     }
   }
@@ -714,7 +743,12 @@ export class Stage extends EventEmitter {
     if (this.ticks++ % 15 === 0) this.#applySchedule(now);
     this.#countTalk(now);
     // Cost: every open session is billed for streamed audio (input + generated output).
-    if (this.engines.size && !this.gated && config.engine !== 'local') this.costUsd += (USD_PER_SESSION_MIN[this.transcribeOnly ? 'transcribe' : 'translate'] / 60) * this.engines.size;
+    if (this.engines.size && !this.gated && config.engine !== 'local') {
+      const usd = (USD_PER_SESSION_MIN[this.transcribeOnly ? 'transcribe' : 'translate'] / 60) * this.engines.size;
+      this.costUsd += usd;
+      if (config.engine === 'gemini') spend(usd);
+    }
+    if (this.engines.size && config.engine === 'gemini' && overBudget()) this.#stopEngines('the weekly AI budget is used up');
 
     // Stall watchdog: people are talking but a session produced nothing for a while → reconnect it.
     const primary = this.engines.get(this.sessionTargets[0]);
@@ -760,6 +794,7 @@ export class Stage extends EventEmitter {
       // Gemini refuses the key's requests (a free key's daily limit): the dashboard offers this computer instead.
       if (e.state !== 'live' && /429|quota|RESOURCE_EXHAUSTED/i.test(e.stats?.lastError || '')) alerts.add('ai-quota');
     }
+    if (config.engine === 'gemini' && overBudget()) alerts.add('budget');
     if (this.lat.asr > 6000) alerts.add('high-latency');
     if (this.store.saveError) alerts.add('not-saving');
     if (Object.values(this.mtQ || {}).some((q) => q.degraded() || q.stats.quotaErrors > (q._qe ?? 0))) alerts.add('mt-throttled');
@@ -823,6 +858,8 @@ export class Stage extends EventEmitter {
       costLiveUsd: +this.costUsd.toFixed(3),
       alerts: [...this.alerts],
       preview: Object.fromEntries(Object.keys(this.tracks).map((ch) => [ch, (this.partial(ch) || this.history(ch, 1)[0] || {}).text || ''])),
+      // What's being said, for the dashboard's card: the last two sentences and the one in progress.
+      said: [...this.history('orig', 2), this.partial('orig')].filter(Boolean).map((x) => x.text).join(' ').slice(-400),
     };
   }
 

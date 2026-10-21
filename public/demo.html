@@ -11,39 +11,67 @@
   <link rel="manifest" href="/manifest.webmanifest" />
   <title>Demo · OpenCaptions</title>
   <link rel="stylesheet" href="/style.css" />
+  <link rel="preload" href="/tokens.css" as="style" /><link rel="preload" href="/fonts/brand.css" as="style" /><!-- style.css @imports them: fetched together, not one after another -->
   <style>
     /* Play-along demo: the browser plays a YouTube talk while the server transcribes/translates the same
-       audio in real time → compare speech and captions side by side (and record the demo video). */
+       audio in real time → compare speech and captions side by side (and record the demo video).
+       Sound check (?mode=mic): one big microphone button on the stage, captions right where they'll be seen. */
     body { min-height: 100vh; }
-    header { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; padding: 14px 24px; border-bottom: 1px solid var(--line); }
-    header input[type=text] { flex: 1 1 320px; }
+    header { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; padding: 12px 24px; border-bottom: 1px solid var(--line); background: color-mix(in srgb, var(--bg2) 60%, transparent); }
+    header .brand { margin-right: 6px; }
+    header select, header input, header button { border-radius: var(--pill); font-size: 14px; }
+    header input[type=text] { flex: 1 1 180px; }
     header input[type=number] { width: 80px; }
-    main { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 20px; padding: 24px; }
+    header label { font-size: 13px; }
+    header .spacer { flex: 1; }
+    main { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 22px; padding: 24px; max-width: 1500px; margin: 0 auto; }
     @media (max-width: 1000px) { main { grid-template-columns: 1fr; } }
-    .stagewrap { position: relative; width: 100%; aspect-ratio: 16 / 9; background: var(--ink); border-radius: 16px; overflow: hidden; box-shadow: var(--shadow); }
+    .stagewrap { position: relative; width: 100%; aspect-ratio: 16 / 9; background: var(--ink); border-radius: 22px; overflow: hidden; border: 1px solid var(--line); box-shadow: var(--shadow-lg); }
     #player, .stagewrap iframe { position: absolute; inset: 0; width: 100%; height: 100%; }
     .ov { position: absolute; left: 0; right: 0; bottom: 6%; display: flex; justify-content: center; pointer-events: none; padding: 0 5%; }
     .ov .box { max-width: 88%; background: rgba(17, 16, 20, .84); color: var(--paper); font-weight: 700; text-align: center; border-radius: .25em; --hl: var(--lime); --hl-ink: var(--ink);
-      padding: .2em .6em; font-size: clamp(16px, 2.6vw, 34px); line-height: 1.25; transition: opacity .5s; }
+      padding: .2em .6em; font-size: clamp(16px, 2.6vw, 34px); line-height: 1.25; transition: opacity .5s var(--ease-out); }
     .ov .clip { display: flex; flex-direction: column; justify-content: flex-end; overflow: hidden; max-height: calc(1.25em * 2); }
     .ov .box.idle { opacity: 0; }
-    .orig { margin-top: 12px; background: var(--bg2); border: 1px solid var(--line); border-radius: 14px; padding: 12px 16px; min-height: 3.4em; color: var(--translation); font-size: 17px; }
+    .onair { position: absolute; top: 16px; left: 16px; display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px; border-radius: var(--pill); background: rgb(17 16 20 / .7); color: var(--paper); font-size: 13px; font-weight: 700; opacity: 0; transform: translateY(-6px); transition: opacity var(--dur) var(--ease-out), transform var(--dur) var(--ease-out); }
+    body.live .onair { opacity: 1; transform: none; }
+    .orig { margin-top: 14px; background: var(--bg2); border: 1px solid var(--line); border-radius: 16px; padding: 14px 18px; min-height: 3.4em; color: var(--translation); font-size: 17px; }
     .orig b { color: var(--fg2); font-size: 11px; letter-spacing: .1em; text-transform: uppercase; margin-right: 8px; }
-    aside { display: grid; gap: 12px; align-content: start; }
+    aside { display: grid; gap: 14px; align-content: start; }
+    aside .card { border-radius: 20px; }
     .stats { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-    .stats div { background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; font-size: 11px; color: var(--fg2); }
+    .stats div { background: var(--fill); border-radius: 12px; padding: 10px 12px; font-size: 12px; color: var(--fg2); }
     aside .card > .row b, aside .card > b { font-family: var(--font-display); font-weight: 800; letter-spacing: -.01em; }
-    .stats b { display: block; font-size: 20px; color: var(--fg); font-variant-numeric: tabular-nums; }
-    #transcript { max-height: 46vh; overflow: auto; font-size: 15px; line-height: 1.45; }
+    .stats b { display: block; margin-top: 2px; font-size: 22px; color: var(--fg); font-variant-numeric: tabular-nums; }
+    #transcript { max-height: 46vh; overflow: auto; font-size: 15px; line-height: 1.5; }
     #transcript p { margin: 0 0 .5em; }
+    #transcript:empty::before { content: attr(data-empty); color: var(--fg2); }
+    .dl { display: flex; flex-wrap: wrap; gap: 6px; }
+    .dl a { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: var(--pill); background: var(--fill); text-decoration: none; font-size: 13px; font-weight: 600; }
+    .dl a:hover { background: var(--fill-hover); }
     .hint { font-size: 12px; }
     body.mic .yt-only, body:not(.mic) .mic-only { display: none !important; }
     body.mic #player { display: none; }
+    body.mic .stagewrap { background: radial-gradient(120% 90% at 50% 110%, #24232A 0%, var(--ink) 60%); }
     body.mic .ov { bottom: 50%; transform: translateY(50%); }
     body.mic .ov .box { background: transparent; font-size: clamp(20px, 3.6vw, 52px); }
     body.mic .ov .clip { max-height: calc(1.25em * 3); }
-    .micidle { position: absolute; inset: 0; display: grid; place-items: center; color: #A8A5AE; font-size: clamp(16px, 2vw, 24px); text-align: center; padding: 20px; }
-    #securewarn { background: color-mix(in srgb, var(--bad) 18%, transparent); border: 1px solid var(--bad); border-radius: 10px; padding: 8px 12px; margin: 10px 18px 0; font-size: 14px; }
+    /* The sound check's invitation: one big round button, breathing */
+    .micidle { position: absolute; inset: 0; display: grid; place-content: center; justify-items: center; gap: 22px; color: #C9C6CF; font-size: clamp(16px, 1.8vw, 22px); text-align: center; padding: 20px; transition: opacity var(--dur-slow) var(--ease-out), transform var(--dur-slow) var(--ease-out); }
+    .micidle.hidden { display: grid !important; opacity: 0; transform: scale(.96); pointer-events: none; }
+    .micidle p { margin: 0; max-width: 34ch; }
+    #mic-go { position: relative; display: grid; place-items: center; width: clamp(96px, 12vw, 132px); aspect-ratio: 1; padding: 0; border-radius: 50%; border: 0; background: var(--lime); color: var(--ink);
+      box-shadow: 0 18px 50px -12px rgb(212 255 58 / .45); transition: transform .35s var(--spring), box-shadow var(--dur) var(--ease-out); }
+    #mic-go::before { content: ''; position: absolute; inset: -10px; border-radius: 50%; border: 2px solid rgb(212 255 58 / .5); animation: dm-ring 2.2s var(--ease-out) infinite; }
+    #mic-go:hover { transform: scale(1.05); }
+    #mic-go:active { transform: scale(.96); }
+    #mic-go:focus-visible { outline: 3px solid var(--paper); outline-offset: 6px; }
+    #mic-go svg.i { width: 42%; height: 42%; stroke-width: 1.6; }
+    @keyframes dm-ring { 0% { transform: scale(.92); opacity: .9; } 100% { transform: scale(1.35); opacity: 0; } }
+    .lvl { margin-top: 14px; height: 8px; border-radius: 8px; }
+    .lvl > i { border-radius: 8px; transition: width .1s linear; }
+    #securewarn { background: color-mix(in srgb, var(--bad) 12%, transparent); border: 1px solid color-mix(in srgb, var(--bad) 50%, transparent); border-radius: 12px; padding: 10px 14px; margin: 12px 24px 0; font-size: 14px; }
+    @media (max-width: 700px) { header { padding: 10px 16px; } main { padding: 16px; } .stagewrap { border-radius: 16px; } }
   </style>
 </head>
 <body>
@@ -51,27 +79,30 @@
     <a class="brand u-fs14" href="/admin.html" title="Panel de producción">OpenCaptions<span class="sub">· demo</span></a>
     <select id="mode" aria-label="Fuente"><option value="youtube">Video de YouTube</option><option value="mic">Micrófono en vivo</option></select>
     <input type="text" id="url" class="yt-only" aria-label="URL de YouTube" placeholder="URL de YouTube (ej: https://www.youtube.com/watch?v=…)" />
-    <label class="row muted hint mic-only u-flex260">Micrófono <select id="mic" class="u-grow"><option value="">(predeterminado)</option></select></label>
-    <label class="row muted hint">Sala <select id="stage"></select></label>
-    <label class="row muted hint">Subtítulos <select id="lang"></select></label>
-    <label class="row muted hint yt-only">Desde (s) <input type="number" id="start" min="0" value="0" /></label>
+    <label class="row muted mic-only">Micrófono <select id="mic"><option value="">(predeterminado)</option></select></label>
+    <label class="row muted">Sala <select id="stage"></select></label>
+    <label class="row muted">Subtítulos <select id="lang"></select></label>
+    <label class="row muted yt-only">Desde (s) <input type="number" id="start" min="0" value="0" /></label>
     <button id="load" class="yt-only">Cargar</button>
+    <span class="spacer"></span>
     <button id="go" class="primary" data-icon="play">Empezar</button>
     <button id="stop" data-icon="stop">Detener</button>
   </header>
   <div id="securewarn" class="hidden">⚠ El micrófono solo funciona en <b>localhost</b> o <b>HTTPS</b>. Abrí esta página como https://… (ver docs/deployment.md → HTTPS).</div>
   <main>
     <h1 class="sr-only">OpenCaptions · demo</h1>
-    <section>
-      <div class="stagewrap"><div id="player"></div><div class="micidle mic-only" id="micidle" data-icon="mic">Elegí el micrófono, tocá Empezar y hablá en español o inglés.</div>
+    <section class="rise">
+      <div class="stagewrap"><div id="player"></div>
+        <div class="micidle mic-only" id="micidle"><button type="button" id="mic-go" data-no-i18n></button><p>Elegí el micrófono, tocá Empezar y hablá en español o inglés.</p></div>
+        <span class="onair" data-no-i18n><span class="dot live"></span><span id="onair-l"></span></span>
         <div class="ov"><div class="box idle" id="ovbox"><div class="clip"><div id="ovtxt" data-no-i18n></div></div></div></div>
       </div>
-      <div class="meter mic-only u-mt10 u-h10"><i id="miclvl"></i></div>
+      <div class="meter lvl mic-only"><i id="miclvl"></i></div>
       <div class="orig"><b id="origlbl">Original</b><span id="origtxt" data-no-i18n>…</span></div>
       <p class="muted hint mic-only">Prueba de sonido / demo en vivo: el audio del micrófono va al server igual que desde la mini PC del escenario. Ideal para chequear cada sala antes de abrir puertas.</p>
       <p class="muted hint yt-only">Play/pausa/adelantar el video mueve también el audio que procesa el server (≈1 s de diferencia al arrancar). La demora que ves entre la voz y el subtítulo es la latencia real del sistema.</p>
     </section>
-    <aside>
+    <aside class="stagger">
       <div class="card"><div class="row u-between"><b>En vivo</b><span class="chip" id="state">detenido</span></div>
         <div class="stats u-mt10">
           <div>Latencia original<b id="s-asr">—</b></div>
@@ -82,7 +113,7 @@
         <div class="row u-mt8" id="alerts"></div>
       </div>
       <div class="card"><b><span>Transcripción</span> · <span id="tlang"></span></b><div id="transcript" class="u-mt8" data-no-i18n></div>
-        <div class="row hint u-mt8"><a id="dl-srt" href="#" data-icon="download">SRT</a><a id="dl-txt" href="#" data-icon="download">TXT</a><a href="/admin.html" target="_blank" data-icon="dashboard">Producción</a></div>
+        <div class="dl u-mt12"><a id="dl-srt" href="#" data-icon="download">SRT</a><a id="dl-txt" href="#" data-icon="download">TXT</a><a href="/admin.html" target="_blank" data-icon="dashboard">Producción</a></div>
       </div>
     </aside>
   </main>

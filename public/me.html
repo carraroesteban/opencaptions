@@ -10,80 +10,170 @@
   <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
   <title>OpenCaptions</title>
   <link rel="stylesheet" href="/style.css" />
+  <link rel="preload" href="/tokens.css" as="style" /><link rel="preload" href="/fonts/brand.css" as="style" /><!-- style.css @imports them: fetched together, not one after another -->
   <style>
-    body { display: flex; flex-direction: column; height: 100dvh; overflow: hidden; }
-    header { display: flex; align-items: center; gap: 10px; padding: 10px 16px; border-bottom: 1px solid var(--line); background: var(--bg); }
-    header h1 { font-size: 18px; margin: 0; display: flex; align-items: center; gap: 8px; }
+    /* Three screens, one at a time (body[data-state], set by me.js): idle (a calm start screen), live (captions fill the
+       page, a floating dock), setup (one step per screen). Start and Stop morph one into the other (view transitions). */
+    :root { --thumb: var(--bg2); --stop: #C8321F; }
+    @media (prefers-color-scheme: dark) { :root:not([data-theme='light']) { --thumb: #34333B; } }
+    :root[data-theme='dark'], :root[data-theme='contrast'] { --thumb: #34333B; }
+    body { height: 100dvh; overflow: hidden; }
+    body.away { cursor: none; }
+    main { position: relative; height: 100dvh; }
+    #home, #setup, #view { position: absolute; inset: 0; }
+    body:not([data-state='idle']) #home, body:not([data-state='setup']) #setup, body:not([data-state='live']) #view, body:not(.running) #dock { display: none; }
+    .no-vt #home, .no-vt #view, .no-vt #setup .setup-in { animation: oc-in .45s var(--ease-out) both; }
+
+    /* The top bar: quiet, over everything; while captioning it leaves with the dock. */
+    header { position: fixed; inset: 0 0 auto; z-index: 15; display: flex; align-items: center; gap: 8px; padding: calc(12px + env(safe-area-inset-top)) 16px 12px; transition: opacity .45s var(--ease-out); }
+    body.away header { opacity: 0; pointer-events: none; }
+    header h1 { font-size: 17px; margin: 0; display: flex; align-items: center; gap: 8px; }
     header h1 svg { width: 26px; height: 20px; }
     header .spacer { flex: 1; }
-    header a, .linkish { color: var(--fg2); font-size: 14px; }
-    header a { display: inline-flex; align-items: center; gap: 6px; }
-    .linkish { background: none; border: 0; box-shadow: none; padding: 4px; text-decoration: underline; text-underline-offset: 3px; }
-    .linkish:hover { color: var(--fg); background: none; }
-    /* First run: one thing per screen (as the event wizard, welcome.html), then the captions fill the page. */
-    main { flex: 1; min-height: 0; display: flex; flex-direction: column; }
-    #setup { flex: 1; overflow-y: auto; padding: 28px 20px 40px; }
-    .setup-in { max-width: 620px; margin: 0 auto; }
-    .progress { display: flex; gap: 6px; margin-bottom: 26px; }
-    .progress span { height: 4px; flex: 1; border-radius: 4px; background: var(--line-strong); }
-    .progress span.on { background: var(--fg); }
-    .kicker { font-size: 13px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--fg2); margin: 0 0 10px; }
-    .step h2 { font-size: clamp(28px, 4vw, 40px); line-height: 1.08; letter-spacing: -.03em; margin: 0 0 12px; }
-    .lede { font-size: 17px; color: var(--fg2); margin: 0 0 22px; line-height: 1.55; }
-    .step select { font-size: 18px; padding: 11px 14px; width: 100%; max-width: 420px; }
-    .or { margin: 26px 0 0; padding-top: 18px; border-top: 1px solid var(--line); display: grid; gap: 6px; justify-items: start; }
-    .or small { color: var(--fg2); font-size: 14px; }
-    .actions { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-top: 30px; }
-    .actions button { padding: 11px 20px; font-size: 16px; border-radius: 12px; }
-    .actions .primary { margin-left: auto; }
-    #src-label { display: block; font-size: 13px; color: var(--fg2); margin-bottom: 5px; }
-    .step h2:focus { outline: none; } /* focused so screen readers start at the new step, not a control */
-    #src { display: inline-flex; flex-wrap: wrap; border: 1px solid var(--line); border-radius: var(--pill); padding: 3px; gap: 3px; background: var(--bg); }
-    #src button { border: 0; border-radius: var(--pill); padding: 7px 14px; background: none; }
-    #src button[aria-checked='true'] { background: var(--primary-bg); color: var(--primary-fg); }
-    .sound { display: grid; gap: 16px; justify-items: start; }
-    .sound .field { width: 100%; }
+    #mine-link { display: inline-flex; align-items: center; gap: 7px; padding: 9px 13px; border-radius: var(--pill); color: var(--fg2); font-size: 14px; font-weight: 600; text-decoration: none; transition: background-color var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease); }
+    #mine-link:hover { background: var(--fill); color: var(--fg); }
+    .ibtn { display: inline-grid; place-items: center; width: 40px; height: 40px; padding: 0; border: 0; border-radius: var(--pill); background: transparent; color: var(--fg2); }
+    .ibtn:hover { background: var(--fill); color: var(--fg); }
+    .ibtn svg.i { width: 20px; height: 20px; }
+
+    /* ---- idle: one big button, a line about it, the choices as a sentence ---- */
+    #home { display: flex; flex-direction: column; align-items: center; overflow-y: auto; padding: max(92px, 22vh) 20px calc(24px + env(safe-area-inset-bottom)); text-align: center; }
+    #go { min-height: 76px; padding: 0 42px 0 36px; font-size: 21px; gap: 14px; view-transition-name: morph; }
+    #go svg { width: 26px; height: 26px; }
+    .tagline { margin: 22px 0 0; max-width: 40ch; font-size: 17px; line-height: 1.5; color: var(--fg2); text-wrap: balance; }
+    .kbd-hint { margin: 6px 0 0; font-size: 13px; color: var(--fg2); }
+    @media (pointer: coarse) { .kbd-hint { display: none; } }
+    #home > #status { margin-top: 16px; padding: 8px 16px; border-radius: 14px; font-size: 14px; white-space: normal; max-width: 52ch; line-height: 1.45; text-wrap: balance; }
+    #status:empty { display: none; }
+    #opts { margin-top: 40px; display: grid; gap: 14px; justify-items: center; }
+    .line { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 10px 12px; }
+    .lbl-inline { font-size: 15px; color: var(--fg2); }
+    .arrow { color: var(--fg2); font-size: 18px; }
+    /* Basic hides these here (Advanced shows them); in a Settings step everything shows. */
+    body:not(.advanced) #home .adv { display: none !important; }
+    #home .adv { transition: opacity .4s var(--ease-out), translate .4s var(--ease-out); }
+    @starting-style { #home .adv { opacity: 0; translate: 0 6px; } }
+    .home-foot { margin-top: auto; padding-top: 36px; display: grid; gap: 8px; justify-items: center; }
+
+    /* What to listen to: a segmented control whose knob slides (iOS). */
+    .src { position: relative; display: inline-flex; gap: 2px; padding: 4px; border-radius: var(--pill); background: var(--fill); }
+    .src button { position: relative; z-index: 1; border: 0; background: none; border-radius: var(--pill); padding: 9px 16px; font-size: 15px; font-weight: 600; color: var(--fg2); }
+    .src button:hover { background: none; color: var(--fg); }
+    .src button[aria-checked='true'] { color: var(--fg); }
+    .src .thumb { position: absolute; top: 4px; bottom: 4px; left: 0; border-radius: var(--pill); background: var(--thumb); box-shadow: 0 1px 2px rgb(0 0 0 / .1), 0 4px 12px -4px rgb(0 0 0 / .18); transition: translate .5s var(--spring), width .5s var(--spring); }
+    /* A choice inside a sentence: "Translate to  Español ▾" */
+    .selchip { position: relative; display: inline-flex; align-items: center; min-width: 0; border-radius: var(--pill); background: var(--fill); transition: background-color var(--dur-fast) var(--ease); }
+    .selchip:hover { background: var(--fill-hover); }
+    .selchip > span:not(.sr-only) { padding-left: 16px; font-size: 14px; color: var(--fg2); white-space: nowrap; }
+    .selchip > svg.i { margin-left: 13px; width: 18px; height: 18px; color: var(--fg2); }
+    .selchip select { border: 0; background-color: transparent; padding: 10px 36px 10px 7px; font-size: 15px; font-weight: 700; max-width: 230px; box-shadow: none; min-width: 0; field-sizing: content; }
+    .selchip select:focus { box-shadow: none; }
+    .selchip:has(select:focus-visible) { outline: 2px solid var(--focus); outline-offset: 2px; }
+    #test { color: var(--fg2); font-size: 14px; }
+    #setup #test { margin-left: -14px; } /* a text button: its words line up with the step's, not its padding */
     #meters { display: flex; flex-direction: column; justify-content: center; gap: 6px; }
     #meters:empty { display: none; }
-    #meters div { display: grid; grid-template-columns: auto 120px; align-items: center; gap: 8px; font-size: 13px; color: var(--fg2); }
-    #meters .m { height: 8px; border-radius: 4px; background: var(--bg3); overflow: hidden; }
-    #meters i { display: block; height: 100%; width: 0; background: var(--accent); transition: width .1s linear; }
-    .call { color: var(--fg); font-weight: 600; }
-    .hint { margin: 0; font-size: 14px; color: var(--fg2); line-height: 1.5; }
-    .notice { margin: 0; padding: 10px 20px; border-bottom: 1px solid var(--line); background: var(--bg2); font-size: 15px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
-    #view { flex: 1; min-height: 0; display: flex; flex-direction: column; }
-    #scroll { flex: 1; overflow-y: auto; padding: 28px 20px 40px; }
-    #text { font-size: var(--size, 28px); line-height: 1.45; font-family: var(--read-font, var(--font)); max-width: 960px; margin: 0 auto; }
-    #text p { margin: 0 0 .6em; }
+    #meters div { display: grid; grid-template-columns: auto 140px; align-items: center; gap: 10px; font-size: 13px; color: var(--fg2); }
+    #meters .m { height: 6px; border-radius: 3px; background: var(--fill-hover); overflow: hidden; }
+    #meters i { display: block; height: 100%; width: 0; border-radius: 3px; background: var(--accent-fg); transition: width .1s linear; }
+    /* One discreet line each: the AI notice, a call app that's open. */
+    .note { margin: 0; display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 2px 8px; font-size: 14px; line-height: 1.5; color: var(--fg2); max-width: 62ch; }
+    .note > svg.i { color: var(--warn); }
+    .linkish { background: none; border: 0; padding: 2px 4px; color: var(--fg); font-weight: 700; text-decoration: underline; text-underline-offset: 3px; text-decoration-thickness: 1px; }
+    .linkish:hover { background: none; text-decoration-thickness: 2px; }
+    .call-more { flex-basis: 100%; margin-top: 4px; } /* the how, on request */
+
+    /* ---- live: the captions fill the page ---- */
+    #view { display: flex; flex-direction: column; padding-bottom: calc(96px + env(safe-area-inset-bottom)); }
+    #scroll { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; padding: 96px max(28px, calc(50vw - 560px)) 8px; scrollbar-width: none;
+      -webkit-mask-image: linear-gradient(transparent 48px, #000 200px); mask-image: linear-gradient(transparent 48px, #000 200px); }
+    #scroll::-webkit-scrollbar { display: none; }
+    #scroll:focus-visible { outline: 2px solid var(--focus); outline-offset: -6px; border-radius: 12px; }
+    #text { margin: auto 0 0; width: 100%; font-size: var(--size, 40px); line-height: 1.3; font-weight: 600; letter-spacing: -.01em; font-family: var(--read-font, var(--font)); }
+    #text p { margin: 0 0 .45em; transition: color 1.2s var(--ease-out); }
     #text p.old { color: var(--fg2); }
-    #text .empty { color: var(--fg2); font-size: 18px; margin-top: 16vh; text-align: center; }
-    #orig { border-top: 1px solid var(--line); padding: 10px 20px; font-size: 16px; color: var(--translation); background: var(--bg2); min-height: 2.8em; }
-    #orig b { color: var(--fg2); font-size: 11px; letter-spacing: .1em; text-transform: uppercase; margin-right: 8px; }
-    /* The slim bar: the few things used while captioning. Everything else is in Settings. */
-    footer { display: flex; gap: 6px; padding: 8px 12px calc(8px + env(safe-area-inset-bottom)); border-top: 1px solid var(--line); background: var(--bg); align-items: center; flex-wrap: wrap; }
-    footer .spacer { flex: 1; }
-    footer button, footer .btn { padding: 8px 11px; font-size: 15px; }
-    footer a.btn { text-decoration: none; }
-    footer select { padding: 7px 30px 7px 10px; font-size: 15px; max-width: 180px; }
-    footer #meters div { grid-template-columns: 80px; } footer #meters div > span:first-child { display: none; }
-    a.btn { display: inline-flex; align-items: center; gap: 7px; border: 1px solid transparent; border-radius: 10px; padding: 8px 14px; background: var(--fill); color: inherit; font-weight: 600; text-decoration: none; transition: background-color var(--dur-fast) var(--ease); } /* a link that looks like the buttons */
-    a.btn:hover { background: var(--fill-hover); }
-    #pip[aria-pressed='true'] { background: var(--primary-bg); border-color: var(--primary-bg); color: var(--primary-fg); }
-    #go { min-width: 120px; }
-    #status:empty { display: none; }
-    #dlg-settings nav { display: grid; gap: 8px; }
-    #dlg-settings nav button, #dlg-settings nav a { display: flex; align-items: center; gap: 10px; width: 100%; justify-content: flex-start; padding: 12px 14px; font-size: 16px; text-align: left; }
-    #dlg-settings nav small { color: var(--fg2); margin-left: auto; font-size: 14px; }
-    @media (max-width: 640px) {
-      #mode-chip { display: none; }
-      footer .lbl, header .lbl { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
-      footer #meters { display: none; }
-      footer button, footer .btn { padding: 8px 10px; }
-      footer select { max-width: 100px; }
-      #go { min-width: 0; flex: 1 0 auto; } footer .spacer { display: none; }
-      .notice, #orig { font-size: 13px; padding: 8px 16px; }
-      #scroll { padding: 20px 16px 32px; }
-    }
+    #text:has(.empty) { margin-block: auto; }
+    #text .empty { display: grid; justify-items: center; gap: 26px; padding-bottom: 6vh; text-align: center; color: var(--fg2); font-size: 19px; font-weight: 400; letter-spacing: 0; line-height: 1.5; }
+    #text .empty p { margin: 0; max-width: 36ch; }
+    /* Listening: five bars that move with the sound, so you can see it hears. */
+    .bars { display: flex; align-items: center; gap: 6px; height: 56px; animation: oc-breathe 1.6s var(--ease-in-out) infinite alternate; }
+    .bars i { --k: 1; width: 7px; border-radius: 4px; background: var(--accent-fg); height: calc(8px + 46px * var(--lvl, 0) * var(--k)); transition: height .12s linear; }
+    .bars i:nth-child(1), .bars i:nth-child(5) { --k: .4; }
+    .bars i:nth-child(2), .bars i:nth-child(4) { --k: .7; }
+    @keyframes oc-breathe { from { opacity: .55; } }
+    #view > #status { position: absolute; z-index: 5; top: calc(66px + env(safe-area-inset-top)); left: 50%; translate: -50% 0; max-width: calc(100vw - 32px); white-space: normal; text-align: center; transition: opacity .45s var(--ease-out); }
+    body.away #view > #status:not(.warn, .bad) { opacity: 0; }
+    #orig { margin: 0 auto; width: 100%; padding: 10px max(28px, calc(50vw - 560px)) 0; font-size: 17px; line-height: 1.45; color: var(--translation); }
+    #orig b { color: var(--fg2); font-size: 11px; letter-spacing: .1em; text-transform: uppercase; margin-right: 10px; }
+    /* After a reload: the one thing to press to carry on (the browser needs a click for sound). */
+    .resume { position: absolute; left: 50%; top: 42%; translate: -50% -50%; z-index: 6; min-height: 60px; padding: 0 28px; font-size: 18px; border-radius: var(--pill); box-shadow: var(--shadow-lg); animation: oc-in .4s var(--ease-out) both; }
+    #to-live { position: absolute; z-index: 6; left: 50%; bottom: calc(104px + env(safe-area-inset-bottom)); translate: -50% 0; border-radius: var(--pill); background: var(--bg2); border-color: var(--line); box-shadow: var(--shadow); font-size: 14px; animation: oc-in .3s var(--ease-out) both; }
+
+    /* The dock: everything used while captioning, in one frosted bar that fades away when you don't need it. */
+    #dock { gap: 4px; view-transition-name: morph; }
+    #dock button { height: 44px; min-width: 44px; }
+    #dock .ibtn { width: 44px; color: var(--fg); }
+    .rec { display: inline-flex; align-items: center; gap: 9px; padding: 0 10px 0 13px; font-size: 15px; font-weight: 700; font-variant-numeric: tabular-nums; }
+    .rdot { width: 10px; height: 10px; border-radius: 50%; background: var(--bad); flex: none; box-shadow: 0 0 0 calc(2px + var(--lvl, 0) * 8px) color-mix(in srgb, var(--bad) 22%, transparent); transition: box-shadow .1s linear; }
+    #stop { display: inline-flex; align-items: center; padding: 0 18px 0 15px; gap: 9px; background: var(--stop); border-color: var(--stop); color: #fff; font-weight: 700; }
+    #stop:hover { background: color-mix(in srgb, var(--stop) 86%, #000); }
+    #stop svg { width: 14px; height: 14px; }
+    #dock .selchip { background: none; }
+    #dock .selchip:hover { background: var(--fill); }
+    #dock .selchip select { height: 44px; padding: 0 32px 0 8px; font-weight: 600; max-width: 180px; }
+    .size { display: inline-flex; }
+    .size button { font-family: var(--font-display); font-weight: 800; line-height: 1; }
+    [data-size='-4'] { font-size: 14px; }
+    [data-size='4'] { font-size: 21px; }
+    #pip[aria-pressed='true'] { background: var(--primary-bg); color: var(--primary-fg); }
+    #dock.away { translate: -50% 18px; }
+    /* ⋯ menu (opens above the dock) */
+    #menu { position: fixed; inset: auto; margin: 0; padding: 6px; min-width: 260px; border: 1px solid var(--line-strong); border-radius: 16px; background: var(--bg2); color: var(--fg); box-shadow: var(--shadow-lg); }
+    #menu .mi { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 44px; padding: 8px 12px; border: 0; border-radius: 10px; background: none; color: inherit; font-size: 15px; font-weight: 600; text-align: left; text-decoration: none; cursor: pointer; }
+    #menu .mi:hover { background: var(--fill); }
+    #menu .mi:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
+    #menu .mi svg.i { width: 18px; height: 18px; color: var(--fg2); }
+    #menu .mi input, #menu .m-size .size { margin-left: auto; }
+    #menu .m-size { cursor: default; }
+    #menu .m-size:hover { background: none; }
+    #menu .m-size button { width: 40px; height: 40px; padding: 0; border-radius: var(--pill); }
+    #menu hr { border: 0; height: 1px; background: var(--line); margin: 6px 8px; }
+
+    /* ---- Settings ---- */
+    .adv-row { display: flex; align-items: center; gap: 16px; padding: 14px 16px; margin-bottom: 14px; border-radius: 14px; background: var(--fill); cursor: pointer; }
+    .adv-row > span { flex: 1; display: grid; gap: 2px; }
+    .adv-row small { color: var(--fg2); font-size: 14px; line-height: 1.4; }
+    .set-list { display: grid; gap: 4px; }
+    .set-list > button, .set-list > a { display: flex; align-items: center; gap: 12px; width: 100%; padding: 13px 14px; border: 0; border-radius: 12px; background: none; color: inherit; font-size: 16px; font-weight: 600; text-align: left; text-decoration: none; }
+    .set-list > button:hover, .set-list > a:hover { background: var(--fill); }
+    .set-list svg.i { width: 19px; height: 19px; color: var(--fg2); }
+    .set-list small { margin-left: auto; color: var(--fg2); font-size: 14px; font-weight: 400; }
+
+    /* ---- setup: one thing per screen (as the event wizard, welcome.html) ---- */
+    #setup { overflow-y: auto; padding: 92px 20px 48px; }
+    body.running #setup { padding-bottom: 128px; }
+    .setup-in { max-width: 580px; margin: 0 auto; }
+    .progress { display: flex; gap: 6px; margin-bottom: 26px; }
+    .progress span { height: 4px; flex: 1; border-radius: 4px; background: var(--line-strong); transition: background-color .4s var(--ease-out); }
+    .progress span.on { background: var(--fg); }
+    .kicker { font-size: 13px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--fg2); margin: 0 0 10px; }
+    .step { animation: oc-in .4s var(--ease-out) both; }
+    .step h2 { font-size: clamp(28px, 4vw, 40px); line-height: 1.08; letter-spacing: -.03em; margin: 0 0 12px; }
+    .step h2:focus { outline: none; } /* focused so screen readers start at the new step, not a control */
+    .lede { font-size: 17px; color: var(--fg2); margin: 0 0 24px; line-height: 1.55; }
+    .slot { display: grid; gap: 14px; justify-items: start; }
+    #setup .line { justify-content: flex-start; }
+    .hint { margin: 16px 0 0; font-size: 14px; color: var(--fg2); line-height: 1.5; }
+    #setup > .setup-in > #status { margin-top: 18px; white-space: normal; }
+    .actions { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-top: 32px; }
+    .actions button { padding: 11px 20px; font-size: 16px; border-radius: var(--pill); }
+    .actions .primary { margin-left: auto; }
+
+    /* Start ⇄ Stop: the big button becomes the dock and back (browsers with view transitions). */
+    ::view-transition-group(morph) { animation-duration: .6s; animation-timing-function: var(--ease-out); }
+    ::view-transition-old(morph), ::view-transition-new(morph) { height: 100%; animation-duration: .32s; }
+    ::view-transition-old(root), ::view-transition-new(root) { animation-duration: .38s; }
+
     /* Switching to events: what stays and what changes, before anything happens. */
     #dlg-events h3 { margin: 0 0 6px; }
     #dlg-events h4 { margin: 18px 0 8px; font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--fg2); }
@@ -94,17 +184,77 @@
     #dlg-events .change svg { color: var(--warn); }
     #dlg-events .back { margin: 18px 0 0; font-size: 14px; color: var(--fg2); }
     #dlg-events .dlg-actions { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; margin-top: 20px; }
+
+    @media (min-width: 641px) { #menu .m-size { display: none; } }
+    @media (max-width: 640px) {
+      #mode-chip { display: none; }
+      #mine-link { padding: 0; width: 40px; height: 40px; justify-content: center; }
+      #mine-link .lbl { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+      /* A phone: everything stacks from the bottom, Start right under the thumb (and where the dock will be). */
+      #home { justify-content: flex-end; padding: 84px 16px calc(20px + env(safe-area-inset-bottom)); }
+      .tagline { order: 1; margin: 0 0 auto; padding-top: 6vh; font: 800 26px/1.2 var(--font-display); letter-spacing: -.02em; color: var(--fg); text-wrap: balance; }
+      #opts { order: 2; margin-top: 28px; width: 100%; }
+      #home > #status { order: 3; }
+      #go { order: 4; width: 100%; max-width: 380px; margin-top: 28px; }
+      .home-foot { order: 5; margin-top: 0; padding-top: 18px; }
+      .src button { padding: 9px 12px; font-size: 14px; }
+      .src button svg.i { display: none; }
+      .selchip select { max-width: 200px; }
+      .arrow { display: none !important; } /* the two language chips stack: no arrow between lines */
+      #scroll { padding: 80px 18px 8px; }
+      #orig { padding: 8px 18px 0; font-size: 14px; }
+      #dock { left: 8px; right: 8px; translate: none; gap: 2px; }
+      #dock.away { translate: 0 18px; }
+      #dock .size, #dock .sep, #clock { display: none; }
+      #stop { width: 44px; padding: 0; justify-content: center; } /* a round red stop, the word kept for screen readers */
+      #stop-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+      .rec { padding: 0 8px 0 10px; }
+      #dock .selchip { flex: 1; }
+      #dock .selchip select { width: 100%; max-width: none; }
+      .actions .primary { flex: 1; }
+    }
   </style>
 </head>
 <body>
   <header>
-    <h1><svg viewBox="0 0 878 664" aria-hidden="true"><use href="/brand/sprite.svg#oc-o"/><use href="/brand/sprite.svg#oc-line"/></svg><span>OpenCaptions</span> <span class="chip" id="mode-chip"></span></h1>
+    <h1><svg class="oc-logo" viewBox="0 0 878 664" aria-hidden="true"><use class="o" href="/brand/sprite.svg#oc-o"/><use class="ln" href="/brand/sprite.svg#oc-line"/></svg><span>OpenCaptions</span> <span class="chip" id="mode-chip"></span></h1>
     <span class="spacer"></span>
+    <span id="ai-now"></span>
     <a href="/talks.html" id="mine-link" data-icon="doc"></a>
+    <button type="button" class="ibtn" id="settings" data-icon="gear"></button>
   </header>
 
   <main id="app">
-    <section id="setup" class="hidden" aria-labelledby="kicker">
+    <section id="home">
+      <button type="button" class="primary hero-btn" id="go"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M4 10v4M8 7v10M12 4v16M16 7v10M20 10v4"/></svg><span id="go-label"></span></button>
+      <p class="tagline" id="tagline"></p>
+      <p class="kbd-hint" id="kbd-hint"></p>
+      <p id="status" role="status"></p>
+      <div id="opts">
+        <div class="line" id="g-src">
+          <span class="lbl-inline" id="src-label"></span>
+          <div class="src" role="radiogroup" id="src" aria-labelledby="src-label">
+            <span class="thumb" id="src-thumb" aria-hidden="true"></span>
+            <button type="button" role="radio" data-src="mic" data-icon="mic"></button>
+            <button type="button" role="radio" data-src="screen" data-icon="monitor"></button>
+            <button type="button" role="radio" data-src="both" data-icon="headphones" class="adv"></button>
+          </div>
+          <label class="selchip adv" id="f-device"><span class="sr-only" id="device-label"></span><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21"/></svg><select id="device"></select></label>
+        </div>
+        <div class="line" id="g-lang">
+          <label class="selchip adv" id="f-from"><span id="from-label"></span><select id="from"></select></label>
+          <span class="arrow adv" id="arrow" aria-hidden="true">→</span>
+          <label class="selchip" id="f-to"><span id="to-label"></span><select id="to"></select></label>
+        </div>
+        <div class="line adv" id="g-test"><button type="button" id="test" class="plain" data-icon="play"></button><div id="meters" aria-hidden="true"></div></div>
+        <p class="note hidden" id="call" role="status"><span></span> <button type="button" id="call-how" class="linkish" aria-expanded="false"></button> <button type="button" id="call-use" class="linkish hidden"></button><span class="call-more hidden" id="call-more"></span></p>
+      </div>
+      <div class="home-foot">
+        <p class="note hidden" id="ai-box"><span id="ai-box-note"></span> <button type="button" id="ai-fix" class="linkish"></button></p>
+      </div>
+    </section>
+
+    <section id="setup" aria-labelledby="kicker">
       <div class="setup-in">
         <div class="progress" id="progress" aria-hidden="true"></div>
         <p class="kicker" id="kicker"></p>
@@ -118,55 +268,51 @@
         <div class="step" data-step="lang">
           <h2 id="lang-h"></h2>
           <p class="lede" id="lang-lede"></p>
-          <label class="field"><span id="to-label"></span><select id="to"></select></label>
+          <div class="slot" id="slot-lang"></div>
         </div>
         <div class="step" data-step="sound">
           <h2 id="sound-h"></h2>
           <p class="lede" id="sound-lede"></p>
-          <div class="sound">
-            <div class="field"><span id="src-label"></span>
-              <div class="seg" role="radiogroup" id="src">
-                <button type="button" role="radio" data-src="mic" data-icon="mic"></button>
-                <button type="button" role="radio" data-src="screen" data-icon="monitor"></button>
-                <button type="button" role="radio" data-src="both" data-icon="headphones"></button>
-              </div>
-            </div>
-            <label class="field" id="f-device"><span id="device-label"></span><select id="device"></select></label>
-            <p class="hint" id="hint"></p>
-            <p class="hint call hidden" id="call" role="status"><span></span> <button type="button" id="call-use" class="linkish hidden"></button></p>
-            <button type="button" id="test" data-icon="play"></button>
-            <div id="meters" aria-hidden="true"></div>
-          </div>
+          <div class="slot" id="slot-sound"></div>
+          <p class="hint" id="hint"></p>
         </div>
         <div class="actions"><button type="button" id="back"></button><button type="button" class="primary" id="next"></button></div>
       </div>
     </section>
 
-    <section id="view" class="hidden" aria-label="Captions">
-      <p class="notice hidden" id="ai-box"><span id="ai-box-note"></span> <button type="button" id="ai-fix"></button></p>
-      <div id="scroll" aria-live="polite"><div id="text"></div></div>
-      <div id="orig" class="hidden" role="complementary"><b id="orig-label"></b><span></span></div>
+    <section id="view">
+      <div id="scroll" tabindex="0" aria-live="polite"><div id="text"></div></div>
+      <button type="button" class="primary resume hidden" id="resume" data-icon="play"></button>
+      <button type="button" class="hidden" id="to-live" data-icon="arrowdown"></button>
+      <p id="orig" class="hidden" data-advanced><b id="orig-label"></b><span></span></p>
     </section>
   </main>
 
-  <footer class="hidden">
-    <button class="primary" id="go" type="button"></button>
-    <span class="chip" id="status" role="status"></span>
-    <span class="spacer"></span>
-    <label><span class="sr-only" id="to2-label"></span><select id="to2"></select></label>
-    <button type="button" id="smaller" aria-label="A−">A−</button>
-    <button type="button" id="bigger" aria-label="A+">A+</button>
-    <button type="button" id="pip" class="hidden" data-icon="pin" aria-pressed="false"></button>
-    <a class="btn" id="download" data-icon="download"></a>
-    <button type="button" id="settings" data-icon="gear"></button>
-  </footer>
+  <div class="dock" id="dock" role="group">
+    <span class="rec"><span class="rdot" aria-hidden="true"></span><span id="clock" role="timer">0:00</span></span>
+    <button type="button" id="stop"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4" fill="currentColor"/></svg><span id="stop-label"></span></button>
+    <span class="sep"></span>
+    <label class="selchip"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.4 2.6 3.6 5.6 3.6 9s-1.2 6.4-3.6 9c-2.4-2.6-3.6-5.6-3.6-9S9.6 5.6 12 3z"/></svg><span class="sr-only" id="to2-label"></span><select id="to2"></select></label>
+    <span class="size"><button type="button" class="ibtn" data-size="-4" id="smaller">A</button><button type="button" class="ibtn" data-size="4" id="bigger">A</button></span>
+    <button type="button" class="ibtn hidden" id="pip" data-icon="pin" aria-pressed="false"></button>
+    <button type="button" class="ibtn" id="more" popovertarget="menu"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="1.9" fill="currentColor"/><circle cx="12" cy="12" r="1.9" fill="currentColor"/><circle cx="19" cy="12" r="1.9" fill="currentColor"/></svg></button>
+  </div>
+  <div id="menu" popover>
+    <div class="mi m-size"><span id="size-label"></span><span class="size"><button type="button" data-size="-4" id="smaller2">A</button><button type="button" data-size="4" id="bigger2">A</button></span></div>
+    <a class="mi" id="download" data-icon="download" data-advanced></a>
+    <button type="button" class="mi" id="menu-settings" data-icon="gear"></button>
+    <hr />
+    <label class="mi"><span id="adv-label"></span><input type="checkbox" id="adv" /></label>
+  </div>
+
   <dialog id="dlg-settings" class="sheet" aria-labelledby="set-title">
     <div class="sheet-head"><h2 id="set-title"></h2><button type="button" id="set-close" data-icon="x"></button></div>
-    <nav aria-labelledby="set-title">
+    <label class="adv-row"><span><b id="adv2-t"></b><small id="adv2-d"></small></span><input type="checkbox" id="adv2" /></label>
+    <nav class="set-list" aria-labelledby="set-title">
       <button type="button" data-open="ai" data-icon="spark"></button>
       <button type="button" data-open="lang" data-icon="chat"></button>
       <button type="button" data-open="sound" data-icon="mic"></button>
-      <a class="btn" id="doc" target="_blank" rel="noopener" data-icon="doc"></a>
+      <a id="doc" target="_blank" rel="noopener" data-icon="doc"></a>
       <button type="button" id="to-events" data-icon="dashboard"></button>
     </nav>
   </dialog>

@@ -1,6 +1,6 @@
 // Settings → Security (admins only): signed-in devices, the three passwords, two-factor sign-in and company sign-in.
 // Server side: src/auth.js and the /api/auth/* endpoints. Passwords are never shown, except a new one, once.
-import { LANG } from '/i18n.js';
+import { LANG } from '/prefs.js';
 import { esc, copyText } from '/common.js';
 import { icon } from '/illustrations.js';
 

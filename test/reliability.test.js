@@ -128,6 +128,44 @@ test('bilingual speaker: captions switch cleanly between passthrough and transla
   assert.ok(!finals.es.some((f) => !f.startsWith('(es)') && f.includes('Now I will')), `English not shown untranslated in the Spanish track: ${es}`);
 });
 
+test('a speech model that names no language (Transcribe Live): the spoken language is passed through, not translated into itself', async () => {
+  config.engine = 'mock';
+  const store = { openTalk() {}, append() {} };
+  const glossary = { apply: (t) => t, vocabulary: () => [] };
+  const st = new Stage({ id: 'nolang', name: 'nolang', source: 'auto', targets: ['es', 'en'], translation: 'text', vocabulary: [], title: '' }, { glossary, store });
+  st.on('log', () => {});
+  const finals = { orig: [], es: [], en: [] }, partials = { orig: [], es: [], en: [] };
+  st.on('caption', (s) => (s.final ? finals : partials)[s.channel].push(s.text));
+  const chunk = Buffer.alloc(3200);
+  for (let i = 0; i < 1600; i++) chunk.writeInt16LE(Math.round(8000 * Math.sin(i / 5)), i * 2);
+  st.pushAudio(chunk);
+  await sleep(50);
+  const eng = st.engines.get('es');
+  const useInterim = config.useInterim;
+  config.useInterim = true;
+  // Transcribe Live sends provisional words as they're spoken, then whole sentences, and never a language code.
+  for (const text of ['Hi everyone and welcome', 'Hi everyone and welcome to the summit']) { eng.emit('interim', { text }); await sleep(20); }
+  eng.emit('input', { text: 'Hi everyone and welcome to the summit, this is the part about our users.', finished: true });
+  await sleep(80);
+  for (const text of ['Today we', 'Today we will talk about']) { eng.emit('interim', { text }); await sleep(20); }
+  eng.emit('input', { text: ' Today we will talk about the users and their phones.', finished: true });
+  await sleep(80);
+  eng.emit('input', { text: ' Y ahora volvemos al español para las preguntas de todos ustedes.', finished: true });
+  await sleep(400);
+  st.destroy();
+  config.useInterim = useInterim;
+  assert.ok(partials.orig.includes('Today we will talk about'), `provisional words on the original: ${partials.orig.join(' | ')}`);
+  assert.ok(partials.en.includes('Today we will talk about'), `and as soon on the speaker's own language: ${partials.en.join(' | ')}`);
+  assert.ok(partials.en.includes('Hi everyone and welcome to the summit'), `even a talk's first words, before any sentence: ${partials.en.join(' | ')}`);
+  assert.ok(!partials.es.some((p) => /^(Today|Hi)/.test(p)), `never untranslated English on Spanish: ${partials.es.join(' | ')}`);
+  const en = finals.en.join(' | '), es = finals.es.join(' | ');
+  assert.ok(finals.en.includes('Hi everyone and welcome to the summit, this is the part about our users.'), `English shown as spoken: ${en}`);
+  assert.ok(finals.es.includes('Y ahora volvemos al español para las preguntas de todos ustedes.'), `Spanish shown as spoken: ${es}`);
+  assert.match(es, /\(es\) Hi everyone/, `English translated into Spanish: ${es}`);
+  assert.match(en, /\(en\) Y ahora volvemos/, `Spanish translated into English: ${en}`);
+  assert.equal(st.status().detectedLang, 'es', 'the dashboard shows the language being spoken');
+});
+
 test('a pinned-language room still translates when the speaker switches language', async () => {
   config.engine = 'mock';
   const store = { openTalk() {}, append() {} };
@@ -148,4 +186,29 @@ test('a pinned-language room still translates when the speaker switches language
   await sleep(200);
   st.destroy();
   assert.ok(finals.some((f) => f.startsWith('(es) And now a question')), `translated into Spanish: ${finals.join(' | ')}`);
+});
+
+test('changing a room’s languages mid-talk keeps what was said, and a new language starts with it translated', async () => {
+  config.engine = 'mock';
+  const store = { openTalk() {}, append() {} };
+  const glossary = { apply: (t) => t, vocabulary: () => [] };
+  const st = new Stage({ id: 'lc', name: 'lc', source: 'en', targets: ['es'], translation: 'text', vocabulary: [], title: '' }, { glossary, store });
+  st.on('log', () => {});
+  const chunk = Buffer.alloc(3200);
+  for (let i = 0; i < 1600; i++) chunk.writeInt16LE(Math.round(8000 * Math.sin(i / 5)), i * 2);
+  st.pushAudio(chunk); // opens the (mock) session
+  await sleep(50);
+  const eng = st.engines.get('es');
+  for (const w of 'Good morning everyone, and welcome to the talk.'.split(' ')) { eng.emit('input', { text: ` ${w}`, lang: 'en' }); await sleep(5); }
+  eng.emit('input', { text: '', finished: true, lang: 'en' });
+  await sleep(100);
+  assert.equal(st.history('orig').length, 1);
+  const fr = [];
+  st.on('caption', (s) => { if (s.final && s.channel === 'fr') fr.push(s.text); });
+  st.reconfigure({ ...st.def, targets: ['fr'] }); // the language picked in Just for me, or added by the organizer
+  await sleep(100);
+  st.destroy();
+  assert.equal(st.history('orig').length, 1, 'what was said is still there for screens and phones that (re)connect');
+  assert.deepEqual(fr, ['(fr) Good morning everyone, and welcome to the talk.'], 'the new language starts with the last sentences, translated');
+  assert.equal(st.history('fr').length, 1);
 });

@@ -59,9 +59,11 @@ export async function capture({ source, deviceId = '', raw = false, channel = 'm
     const mute = ctx.createGain(); mute.gain.value = 0; node.connect(mute).connect(ctx.destination); // keeps the graph pulling
     node.port.onmessage = (e) => onPcm(e.data);
     stream.getAudioTracks().forEach((t) => { t.onended = () => onEnded?.(); });
-    if (ctx.state !== 'running') { try { await ctx.resume(); } catch { /* needs a click */ } }
+    await wake(ctx);
     return {
       ctx, stream,
+      /** The browser holds the sound until the next click or key (started without one, e.g. after a reload). */
+      held: () => ctx.state !== 'running',
       setGain: (g) => node.port.postMessage({ gain: g }),
       levels: () => inputs.map(({ kind, meter, buf }) => {
         meter.getFloatTimeDomainData(buf);
@@ -72,4 +74,42 @@ export async function capture({ source, deviceId = '', raw = false, channel = 'm
       stop: () => { stream.getTracks().forEach((t) => t.stop()); ctx.close(); },
     };
   } catch (e) { ctx.close(); throw e; }
+}
+
+/**
+ * Browsers start audio only after a click or a key. Started without one (a reload that resumes the captions), the sound
+ * waits for the first click or key anywhere on the page.
+ */
+export async function wake(ctx) {
+  // Without a click, resume() never settles (the browser keeps it until one): don't wait for it.
+  if (ctx.state !== 'running') await Promise.race([ctx.resume().catch(() => {}), new Promise((r) => setTimeout(r, 300))]);
+  if (ctx.state === 'running') return;
+  const go = () => { ctx.resume().catch(() => {}); removeEventListener('pointerdown', go, true); removeEventListener('keydown', go, true); };
+  addEventListener('pointerdown', go, true);
+  addEventListener('keydown', go, true);
+}
+
+/**
+ * Captions that outlive the page. While on, closing the tab asks first; a reload (the page language, F5) or the tab
+ * reopened with Ctrl+Shift+T comes back with `resumed` true (within 5 minutes), so the page can start again by itself.
+ * @param {string} key  this page's sound
+ */
+export function keepAlive(key) {
+  const k = `oc.live.${key}`;
+  const read = () => { try { return Number(sessionStorage.getItem(k)) || 0; } catch { return 0; } };
+  const write = (v) => { try { if (v) sessionStorage.setItem(k, String(v)); else sessionStorage.removeItem(k); } catch { /* storage blocked: no resume */ } };
+  const resumed = Date.now() - read() < 5 * 60_000;
+  let on = false, quiet = false;
+  addEventListener('oc:reload', () => { quiet = true; }); // the page reloads itself on purpose (prefs.js): no question
+  const ask = (e) => { if (!quiet) { e.preventDefault(); e.returnValue = ''; } };
+  addEventListener('pagehide', () => { if (on) write(Date.now()); });
+  return {
+    resumed,
+    /** @param {boolean} v */
+    set(v) {
+      on = v;
+      write(v ? Date.now() : 0);
+      if (v) addEventListener('beforeunload', ask); else removeEventListener('beforeunload', ask);
+    },
+  };
 }

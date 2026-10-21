@@ -2,7 +2,7 @@
 // the server once; the browser then holds only an HttpOnly session cookie, which scripts on the page can't read.
 // Nothing is kept in localStorage and no password stays in a link: an old ?token= link, or a password a previous
 // version stored in this browser, is swapped for a session and forgotten.
-import { LANG } from '/i18n.js';
+import { LANG } from '/prefs.js';
 import { store } from '/common.js';
 
 const T = {

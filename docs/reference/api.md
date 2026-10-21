@@ -121,6 +121,7 @@ body is rejected before your route handler runs. WebSocket messages are capped s
 | Method & path | Auth | Notes |
 |---|---|---|
 | `GET /api/event` | Public | Event metadata + a summary of every stage. Powers the audience homepage. |
+| `GET /branding/logo` | Public | The event's own logo (Settings › General), `404` when there is none. The pages use the `logo` URL from `/api/event` (`/branding/logo?v=<mtime>`, or `null`), so a new logo shows at once. |
 
 Response:
 
@@ -133,6 +134,7 @@ Response:
   "audienceAi": true,
   "publicTranscripts": "current",
   "timezone": "America/Argentina/Buenos_Aires",
+  "logo": "/branding/logo?v=1792519786159",
   "stages": [
     {
       "id": "main", "name": "Auditorio", "title": "Designing cities for everyone",
@@ -524,6 +526,8 @@ curl -X POST http://localhost:8080/api/stages/main/ask \
 |---|---|---|---|
 | `GET` | `/api/instance` | none | `{ "id" }`: names this server's data folder (`data/instance.json`). Pages compare it with the one the browser remembered its choices for, and forget them when it changed (a fresh start, or a deleted `data/`). |
 | `GET` | `/api/setup` | crew | First-run state for the welcome wizard: `done`, `locked`, event `name` and `named` (`false` until someone names the event), `languages` (event.json's, minus the ones removed and plus the ones added from the dashboard), `addedLanguages`, `builtInLanguages` (event.json's codes), `removedLanguages`, `mode` (`event` or `personal`: Just for me), `eventDone` (`true` once the wizard was finished for an event), `publicTranscripts` and `publicTranscriptsFixed` (`true` when `PUBLIC_TRANSCRIPTS` is set in the environment), `speechModel` (`transcribe` = Transcribe Live in `text`-mode rooms, the default; `translate` = Live Translate) and `speechModelFixed` (`true` when `TRANSCRIBE_MODEL` is set in the environment, even empty or `off`), `defaultTargets`, `stages` (`id`, `name`, `source`, `targets`, `pull`: the room's stream or file, redacted for the crew), `ffmpeg` (`true` when ffmpeg is available, so OBS or vMix can stream a room's sound in), `engine`, `primaryEngine`, `failover`, `ai` (see below), `tunnel` (see below), `tunnelTokenSaved`, `tunnelMoved` (`true` when the free address differs from the one used before the last restart, so printed QR codes are out of date), `publicUrl` (the address QR codes use for this request), `publicUrlSource` (`config` = `PUBLIC_URL` / `publicUrl`, `tunnel`, or `auto` = the address the page was opened with, or this computer's Wi-Fi address instead of `localhost`), `lanUrl` and `port`. |
+| `POST` | `/api/event/logo` | admin | The event's logo, shown on the audience pages, the stage screen and the QR posters instead of OpenCaptions'. The raw image is the body, `Content-Type: image/png`, `image/jpeg` or `image/webp`, up to 2 MB (`413` over). The type is judged by the file's first bytes: anything else, SVG included, is `415`. Replaces the previous one (`data/branding/logo.<ext>`), recorded in the history (`event.logo`). `423` in Event mode. |
+| `DELETE` | `/api/event/logo` | admin | Removes the event's logo: the pages go back to OpenCaptions'. `423` in Event mode. |
 | `PUT` | `/api/setup` | admin | Body `{ "name"?: string, "done"?: boolean, "mode"?: "event" \| "personal", "timezone"?: string, "languages"?: { code: name }, "removedLanguages"?: [code], "publicTranscripts"?: "current" \| "all" \| "none", "speechModel"?: "translate" \| "transcribe" }`. Renames the event (1–80 characters), marks the wizard as finished, switches between an event and Just for me, sets the agenda's time zone, replaces the languages added from the dashboard (up to 40) and the ones of `config/event.json` that aren't offered (`400` for other codes, or when no language would be left), sets who can read transcripts (`409` when `PUBLIC_TRANSCRIPTS` fixes it), and sets the speech model of Gemini rooms (`409` when `TRANSCRIBE_MODEL` fixes it): `text`-mode rooms reconnect with it at once, and captions pause a few seconds. A changed speech model is recorded in the history (`ai.speech`) and can be undone. A language a room still uses can't go: `409` with `{ "code": "language-in-use", "rooms": [names], "languages": [names] }`. Everything is validated before anything changes. Saved in `data/setup.json`; the name overrides `eventName` from `config/event.json`. All but `done` and `mode: "event"` answer `423` in Event mode (switching to Just for me would take the event offline). |
 | `POST` | `/api/lock` | admin | Event mode. Body `{ "locked": true \| false }`. While locked, the setup endpoints below answer `423 Locked` with `{ "locked": true }`: creating, changing (except the current talk's `title`) and deleting rooms, `PUT /api/schedule`, `PUT /api/glossary`, renaming the event and undoing changes. Live operations keep working: `POST /api/stages/:id/talk`, `/restart`, `/youtube`, the pull controls and `POST /api/engine`. Recorded in the history. |
 | `GET` | `/api/history` | crew | `{ "locked", "changes": [...], "trash": [...] }`. `changes` are the latest setup changes, newest first: `{ id, at, kind, target, summary, before, after, undoes?, undone }` (`kind`: `room.create`, `room.update`, `room.delete`, `agenda.set`, `glossary.set`, `event.rename`, `engine.mode`, `ai.speech`, `event.lock`, `ai.key`, `tunnel`, `auth.signin`, `auth.signout`, `auth.password`, `auth.2fa`; `by` is who made it: the signed-in device's name, the work account, `this computer` or `admin password (script)`; agenda and glossary snapshots are summarized as counts). `trash` lists deleted rooms that haven't been restored: `{ id, at, room }`. |
@@ -680,6 +684,7 @@ Server → client, every 500 ms while connected:
   "sound": "voice",
   "engines": [{ "target": "es", "state": "live" }],
   "preview": { "orig": "…the last words heard…", "es": "…las últimas palabras…" },
+  "said": "The last two sentences heard, and the one in progress.",
   "alerts": [],
   "latency": { "asr": 812, "tr": { "es": 1140 } }
 }
@@ -898,6 +903,7 @@ inside every `admin` `status` broadcast:
 | `costUsd`, `costLiveUsd` | number | Estimated Gemini spend (all-in / Live-session-only). |
 | `alerts` | string[] | Any of `no-ingest`, `no-audio`, `muted?`, `reconnecting`, `high-latency`, `mt-throttled`. |
 | `preview` | object | `{ <channel>: "last text seen" }` — quick glance without subscribing. |
+| `said` | string | The original's last two sentences and the one in progress (up to 400 characters): what the dashboard's card shows. |
 
 ## Prometheus metrics
 
@@ -967,6 +973,6 @@ Shared by `/overlay.html` and `/screen.html` (`applyCaptionStyle()` in `common.j
 uppercase) · `align` (`center`\|`left`) · `accent` (hex, label color).
 
 Non-page static assets also served from `public/`: `common.js`, `i18n.js` (shared client helpers and UI
-localization), `pcm-worklet.js` (AudioWorklet used by `ingest.html`/`demo.html` to capture and downsample
+localization), `prefs.js` (page language and the language/theme switcher, without the dictionary), `pcm-worklet.js` (AudioWorklet used by `ingest.html`/`demo.html` to capture and downsample
 microphone/tab audio to 16 kHz PCM16), `illustrations.js` (line illustrations), `tokens.css` (design tokens, light +
 dark) and `style.css` (shared components). Brand assets live in `brand/` (see [docs/brand.md](../brand.md)).

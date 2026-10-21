@@ -11,29 +11,71 @@
   <link rel="manifest" href="/manifest.webmanifest" />
   <title>Producción · OpenCaptions</title>
   <link rel="stylesheet" href="/style.css" />
+  <link rel="preload" href="/tokens.css" as="style" /><link rel="preload" href="/fonts/brand.css" as="style" /><!-- style.css @imports them: fetched together, not one after another -->
   <style>
     body { min-height: 100vh; }
-    /* the sidebar itself is shared (style.css, public/nav.js); the dashboard adds the event, who's signed in and Event mode */
+
+    /* ---------- sidebar (shared: style.css + nav.js). The dashboard adds the event's name, a marker that slides to
+       the current section, and a footer: Advanced mode, Event mode, who's signed in. ---------- */
     .side .event { font-family: var(--font-display); font-weight: 800; font-size: 19px; letter-spacing: -.02em; line-height: 1.15; padding: 6px 8px 0; overflow-wrap: anywhere; }
-    .lockbtn { display: flex; align-items: center; gap: 10px; width: 100%; text-align: left; padding: 11px 12px; border-radius: 12px; font-size: 14px; }
-    .lockbtn b { display: block; font-size: 14px; }
-    .lockbtn small { display: block; font-size: 12px; color: var(--fg2); font-weight: 400; }
-    .lockbtn.on { background: var(--primary-bg); border-color: var(--primary-bg); color: var(--primary-fg); }
-    .lockbtn.on small { color: inherit; opacity: .75; }
-    .lockbtn svg.i { width: 20px; height: 20px; }
+    #nav { position: relative; }
+    #nav .side-ind { position: absolute; left: 0; right: 0; top: 0; height: 0; border-radius: 10px; background: var(--primary-bg); opacity: 0; pointer-events: none; }
+    #nav .side-ind.on { opacity: 1; }
+    #nav .side-ind.ready { transition: transform .45s var(--ease-out), height .45s var(--ease-out), opacity .2s var(--ease-out); }
+    #nav a { transition: color .3s var(--ease-out), background-color var(--dur-fast) var(--ease-out); }
+    #nav a[aria-current]:not(.side-h a) { background: transparent; }
+    .side .foot { gap: 2px; padding: 10px 0 0; border-top: 1px solid var(--line); }
+    .side-opt { position: relative; display: flex; align-items: center; gap: 10px; padding: 7px 10px; border-radius: 10px; font-size: 14px; color: var(--fg2); cursor: pointer; user-select: none; transition: background-color var(--dur-fast) var(--ease-out), color .3s var(--ease-out); }
+    .side-opt:hover { background: var(--bg3); color: var(--fg); }
+    .side-opt > [data-icon] { display: grid; flex: none; }
+    .side-opt svg.i { width: 18px; height: 18px; }
+    .side-opt .lbl { flex: 1; display: grid; line-height: 1.25; }
+    .side-opt .lbl small { font-size: 12px; opacity: .8; overflow: hidden; text-overflow: ellipsis; }
+    .side-opt .lbl small:empty { display: none; }
+    /* a smaller switch in the sidebar */
+    .side-opt input[type='checkbox'] { width: 34px; height: 20px; }
+    .side-opt input[type='checkbox']::before { top: 3px; left: 3px; width: 14px; height: 14px; }
+    .side-opt input[type='checkbox']:checked::before { transform: translateX(14px); }
+    .side-opt input[type='checkbox']:active::before { width: 17px; }
+    .side-opt input[type='checkbox']:checked:active::before { transform: translateX(11px); }
+    .lockrow.on { background: var(--primary-bg); color: var(--primary-fg); font-weight: 700; }
+    .lockrow.on input[type='checkbox']:checked { background: color-mix(in srgb, var(--primary-fg) 28%, transparent); }
+    .lockrow.on input[type='checkbox']:checked::before { background: var(--primary-fg); }
+    .me { display: flex; align-items: center; gap: 8px; padding: 8px 2px 2px 8px; margin-top: 6px; border-top: 1px solid var(--line); font-size: 13px; min-width: 0; }
+    .me .av { flex: none; display: grid; place-items: center; width: 28px; height: 28px; border-radius: 50%; background: var(--bg3); color: var(--fg2); }
+    .me .av svg.i { width: 15px; height: 15px; }
+    .me .who { flex: 1; min-width: 0; display: grid; line-height: 1.25; }
+    .me .who b { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .me .who small { color: var(--fg2); font-size: 12px; }
+    .me .who button { justify-self: start; padding: 0; margin-top: 1px; background: none; border: 0; color: var(--fg2); font-size: 12px; font-weight: 600; text-decoration: underline; text-underline-offset: 2px; }
+    .me .who button:hover { color: var(--fg); background: none; }
+    .me .prefs select { padding: 3px 20px 3px 7px; font-size: 12px; background-position: right 6px center; background-size: 9px 6px; border-radius: 8px; }
+    .me .prefs button { padding: 3px 8px; font-size: 13px; border-radius: 8px; }
     @media (min-width: 901px) {
-      body.rail .lockbtn { justify-content: center; padding: 10px 0; }
-      body.rail .lockbtn > span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+      body.rail .side-opt { justify-content: center; padding-inline: 0; }
+      body.rail #adv-row { display: none; }
+      body.rail .side-opt input { position: absolute; opacity: 0; pointer-events: none; }
+      body.rail .side .me { display: flex; flex-direction: column; padding-left: 0; }
+      body.rail .me .who { display: none; }
     }
-    .content { min-width: 0; padding: 14px 32px 48px; display: grid; gap: 20px; align-content: start; max-width: 1500px; }
+
+    /* ---------- page ---------- */
+    .content { min-width: 0; padding: 14px 36px 64px; display: grid; gap: 22px; align-content: start; max-width: 1480px; view-transition-name: oc-main; }
     .content > .crumbbar { margin: 0 0 -14px -10px; }
-    @media (max-width: 560px) { .content { padding: 16px; } }
+    @media (max-width: 560px) { .content { padding: 16px 16px 48px; } }
+    /* Switching sections inside the dashboard: the page body crossfades and rises; the sidebar stays put (its marker slides). */
+    html:active-view-transition-type(oc-view)::view-transition-old(root), html:active-view-transition-type(oc-view)::view-transition-new(root) { animation: none; }
+    html:active-view-transition-type(oc-view)::view-transition-group(oc-main) { animation-duration: 0s; }
+    html:active-view-transition-type(oc-view)::view-transition-old(oc-main) { animation: oc-vt-out .12s var(--ease-out) both; }
+    html:active-view-transition-type(oc-view)::view-transition-new(oc-main) { animation: oc-vt-in .36s var(--ease-out) both; }
+    @keyframes oc-vt-out { to { opacity: 0; } }
+    @keyframes oc-vt-in { from { opacity: 0; transform: translateY(8px); } }
     .topbar { display: flex; gap: 10px 14px; align-items: center; flex-wrap: wrap; }
-    .topbar h1 { font-size: 30px; margin: 0; min-width: 0; }
+    .topbar h1 { font-size: 32px; letter-spacing: -.035em; margin: 0; min-width: 0; }
     .topbar .help-q { margin: 0; }
     .topbar #engine { margin-left: auto; }
     #engine:empty, .side .event:empty { display: none; } /* until the first update: nothing, not an empty pill */
-    .view { display: none; gap: 20px; align-content: start; min-width: 0; }
+    .view { display: none; gap: 22px; align-content: start; min-width: 0; }
     .view.on { display: grid; }
     h2.sec { font-size: 20px; margin: 6px 0 -6px; }
     .lockedbar { display: flex; gap: 12px; align-items: center; padding: 12px 16px; border-radius: 14px; background: var(--bg3); font-size: 14px; }
@@ -43,92 +85,127 @@
     .update-note code { user-select: all; }
     .update-note .update-btn { font-size: 13px; padding: 3px 10px; margin-left: 2px; }
     .muted-note { font-size: 13px; color: var(--fg2); }
+    .tools-btn { margin-left: auto; }
+    @media (max-width: 560px) { .tools-btn { padding: 8px 10px; } .tools-btn .tl { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; } }
+    .topbar #engine + .tools-btn { margin-left: 0; }
+    .topbar #engine:empty + .tools-btn { margin-left: auto; }
+    .ctx button { display: flex; align-items: center; gap: 10px; width: 100%; padding: 8px 10px; border: 0; border-radius: 8px; background: none; box-shadow: none; font-size: 14px; text-align: left; }
+    .ctx button:hover { background: var(--bg3); }
+    .ctx button.danger { color: var(--bad); }
 
-    /* KPIs */
-    /* KPIs: one quiet strip, not four boxes */
-    .kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); background: var(--bg2); border: 1px solid var(--line); border-radius: 18px; box-shadow: var(--shadow-sm); }
-    .kpi { padding: 14px 20px; display: grid; gap: 2px; font-size: 12px; font-weight: 600; color: var(--fg2); min-width: 0; }
+    /* ---------- Live: the numbers, then one card per room ---------- */
+    .kpis { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); background: var(--bg2); border: 1px solid var(--line); border-radius: 18px; box-shadow: var(--shadow-sm); }
+    .kpi { padding: 16px 20px 18px; display: grid; gap: 8px; min-width: 0; }
     .kpi + .kpi { border-left: 1px solid var(--line); }
-    .kpi b { font-family: var(--font-display); font-weight: 800; font-size: 24px; color: var(--fg); letter-spacing: -.02em; font-variant-numeric: tabular-nums; line-height: 1.15; }
-    @media (max-width: 640px) { .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } .kpi:nth-child(3) { border-left: 0; } .kpi:nth-child(n + 3) { border-top: 1px solid var(--line); } .kpi { padding: 12px 16px; } }
+    .kpi > span { display: flex; align-items: center; gap: 7px; font-size: 13px; font-weight: 600; color: var(--fg2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .kpi > span svg.i { width: 15px; height: 15px; }
+    .kpi b { font: 800 32px/1 var(--font-display); letter-spacing: -.035em; color: var(--fg); font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .kpi b small { font-size: 22px; color: var(--fg2); letter-spacing: -.02em; margin-left: 1px; }
+    .kpi .dot { display: none; }
+    .kpis.on-air .kpi .dot { display: inline-block; }
+    @media (max-width: 640px) {
+      .view[data-view='live'] .kpis { order: 2; } /* on a phone the rooms come first */
+      .kpi { padding: 12px 14px 14px; } .kpi b { font-size: 26px; } .kpi > span { font-size: 12px; white-space: normal; } .kpi > span svg.i { display: none; }
+      body.advanced .kpis { grid-auto-flow: row; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      body.advanced .kpi:nth-child(3) { border-left: 0; }
+      body.advanced .kpi:nth-child(n + 3) { border-top: 1px solid var(--line); }
+    }
 
-    /* Live room cards */
-    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)); gap: 16px; }
-    @media (max-width: 400px) { .grid { grid-template-columns: minmax(0, 1fr); } }
-    /* A room: its name and state, what's being said, and the few controls a live room needs */
-    .stage { display: grid; gap: 14px; align-content: start; padding: 20px; min-width: 0; }
-    .stage.alert { border-color: color-mix(in srgb, var(--bad) 45%, var(--line)); }
-    .stage.over { border-color: color-mix(in srgb, var(--warn) 55%, var(--line)); }
-    .stage .top { display: flex; gap: 10px; align-items: center; }
-    .stage h3 { margin: 0; font: 700 18px/1.25 var(--font); letter-spacing: -.005em; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 16px; align-items: start; } /* a card that opens doesn't stretch its neighbours */
+    @media (max-width: 420px) { .grid { grid-template-columns: minmax(0, 1fr); } .stage { padding: 16px; } .stage .actions button { padding-inline: 10px; } .stage > .actions [data-a='next'] svg.i { display: none; } }
+    /* before the first update: the cards' shapes, shimmering */
+    .sk-card { height: 300px; border-radius: 20px; }
+    /* A room: its name and state, what's being said on a small caption monitor, and the three controls a live room needs */
+    .stage { display: flex; flex-direction: column; gap: 14px; padding: 18px; min-width: 0; border-radius: 20px; transition: border-color .4s var(--ease-out), box-shadow .4s var(--ease-out); }
+    .stage.alert { border-color: color-mix(in srgb, var(--bad) 45%, var(--line)); box-shadow: 0 0 0 3px color-mix(in srgb, var(--bad) 9%, transparent); }
+    .stage.over { border-color: color-mix(in srgb, var(--warn) 55%, var(--line)); box-shadow: 0 0 0 3px color-mix(in srgb, var(--warn) 10%, transparent); }
+    .stage .top { display: flex; gap: 10px; align-items: center; min-width: 0; }
+    .stage .ini, .tile .ini { flex: none; display: grid; place-items: center; width: 32px; height: 32px; border-radius: 10px; background: var(--bg3); color: var(--fg); font: 800 11px/1 var(--font); letter-spacing: .02em; }
+    .stage h3 { margin: 0; font: 800 19px/1.2 var(--font-display); letter-spacing: -.02em; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .stage h3 a { text-decoration: none; }
     .stage h3 a:hover { text-decoration: underline; }
-    .stage .talkline { font-size: 15px; font-weight: 600; margin-top: -10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .stage .talk { display: grid; gap: 2px; margin-top: -4px; min-width: 0; }
+    .stage .talkline { font-size: 14px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .stage .talkline.none { font-weight: 400; color: var(--fg2); }
-    .stage .next { font-size: 13px; color: var(--fg2); margin-top: -8px; }
+    .stage .next { font-size: 13px; color: var(--fg2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .stage .next:empty { display: none; }
     .stage .next.over { font-weight: 700; color: var(--warn); }
-    /* What's being said: plain text, the newest at the bottom */
-    .stage .said { font-size: 16px; line-height: 1.5; min-height: 4.5em; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
-    .stage .said:empty::before { content: '…'; color: var(--fg2); }
-    .stage .meter { height: 4px; border-radius: 4px; background: var(--fill); position: relative; overflow: hidden; }
-    .stage .meter i { position: absolute; inset: 0 auto 0 0; background: var(--ok); border-radius: 4px; transition: width .2s; }
-    .stage .meter b { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--fg2); }
+    /* The caption monitor: ink, the newest words at the bottom, older ones fading out at the top, and the sound level
+       as a thin lime line (lime on ink only). */
+    .stage .screen { position: relative; overflow: hidden; padding: 14px 16px 16px; border-radius: 14px; background: #111014; color: #FAF8F3; transition: opacity .4s var(--ease-out); }
+    .stage.brk .screen { opacity: .5; }
+    :root[data-theme='dark'] .stage .screen { background: #0A090C; box-shadow: inset 0 0 0 1px var(--line); }
+    @media (prefers-color-scheme: dark) { :root:not([data-theme='light']) .stage .screen { background: #0A090C; box-shadow: inset 0 0 0 1px var(--line); } }
+    .stage .said { font-size: 15.5px; line-height: 1.5; height: 4.5em; display: flex; flex-direction: column; justify-content: flex-end; overflow: hidden; -webkit-mask-image: linear-gradient(to bottom, transparent, #000 1.5em); mask-image: linear-gradient(to bottom, transparent, #000 1.5em); }
+    .stage .said span:empty::before { content: '…'; opacity: .5; }
+    .stage .lvl { position: absolute; left: 0; right: 0; bottom: 0; height: 3px; background: rgb(250 248 243 / .1); }
+    .stage .lvl i { position: absolute; inset: 0 auto 0 0; width: 0; background: var(--lime); transition: width .3s var(--ease-out); }
+    .stage .lvl b { position: absolute; top: 0; bottom: 0; width: 2px; background: rgb(250 248 243 / .55); transition: left .4s var(--ease-out); }
     /* No sound yet: one next step, right on the card */
-    .stage .nosound { display: grid; gap: 12px; font-size: 14px; line-height: 1.45; color: var(--fg2); }
-    .stage .nosound b { color: var(--fg); font-weight: 600; }
+    .stage .nosound { display: grid; gap: 12px; padding: 16px; border-radius: 14px; border: 1.5px dashed var(--line-strong); font-size: 14px; line-height: 1.45; color: var(--fg2); }
     .stage .nosound .row { gap: 8px; flex-wrap: wrap; }
-    .stage.idle .said, .stage.idle .speakers, .stage.idle .meter, .stage.idle .stats, .stage.idle [data-a="break"] { display: none; }
-    .stage .nosound > p { display: none; } /* the state badge already says it */
-    .stage:not(.idle) .on-live { display: none; } /* on air, Break and Next talk matter; Screens & QR is on the room's page */
-    .stage .nosound button { color: var(--fg); }
-    .stage .nosound button.plain { color: var(--fg2); }
+    .stage .nosound button { font-size: 13.5px; padding: 7px 12px; }
+    .stage.idle .screen, .stage.idle .speakers, .stage.idle .stats, .stage.idle [data-a="break"] { display: none; }
     .stage .stats { display: flex; gap: 6px 16px; flex-wrap: wrap; font-size: 13px; color: var(--fg2); }
     .stage .stats span { display: inline-flex; align-items: center; gap: 6px; }
     .stage .stats b { color: var(--fg); font-variant-numeric: tabular-nums; font-weight: 600; }
     .stage .row[data-f="alerts"]:empty { display: none; }
-    .stage .actions { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; padding-top: 2px; }
-    .stage .actions button { padding: 6px 12px; font-size: 13px; }
-    /* See details: a round chevron (its words stay for screen readers and as the tooltip) */
-    .stage .actions .more { margin-left: auto; width: 32px; height: 32px; padding: 0; display: grid; place-items: center; border-radius: var(--pill); background: transparent; color: var(--fg2); }
-    .stage .actions .more span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+    .stage .speakers { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; font-size: 13px; color: var(--fg2); }
+    .stage .speakers .pill { font-size: 13px; padding: 4px 11px; }
+    .stage .actions { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+    .stage .actions button { padding: 7px 12px; font-size: 13.5px; }
+    .stage .actions .ib { padding: 7px 9px; }
+    @media (pointer: coarse) { .stage .actions button, .stage .speakers .pill, .crumbbar .nav-btn { min-height: 44px; } } /* a finger, not a mouse */
+    /* More: a round chevron (its words stay for screen readers and as the tooltip) */
+    .stage .actions .more { margin-left: auto; display: grid; place-items: center; width: 34px; height: 34px; padding: 0; border-radius: var(--pill); background: transparent; color: var(--fg2); }
     .stage .actions .more:hover { color: var(--fg); background: var(--fill); }
-    .stage .actions .more svg { transition: transform var(--dur) var(--ease); }
-    .stage.open .actions .more svg { transform: rotate(180deg); }
-    .stage .details { display: none; gap: 12px; border-top: 1px solid var(--line); padding-top: 14px; }
-    .stage.open .details { display: grid; }
+    .stage .actions .more svg { transition: rotate .35s var(--ease-out); }
+    .stage.open .actions .more svg { rotate: 180deg; }
+    /* The rest of the room folds out below (and closes back): every language, corrections, the technical side */
+    .stage .details { display: grid; grid-template-rows: 0fr; margin-top: -14px; opacity: 0; transition: grid-template-rows .38s var(--ease-out), margin-top .38s var(--ease-out), opacity .25s var(--ease-out); }
+    .stage.open .details, #room-live .stage .details { grid-template-rows: 1fr; margin-top: 0; opacity: 1; }
+    .stage .details > div { min-height: 0; overflow: hidden; padding: 3px; margin: -3px; }
+    .stage .details-body { display: grid; gap: 12px; border-top: 1px solid var(--line); padding-top: 14px; }
+    .stage .details .actions button { padding: 6px 11px; font-size: 13px; }
     .stage .sub { font-size: 13px; color: var(--fg2); }
     .stage .metrics { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
     .stage .metrics div { background: var(--fill); border-radius: 10px; padding: 7px 10px; font-size: 11px; color: var(--fg2); min-width: 0; }
     .stage .metrics b { display: block; font-size: 15px; color: var(--fg); font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .stage .preview { display: grid; gap: 5px; font-size: 13px; }
+    .stage .preview { display: grid; gap: 6px; font-size: 13px; }
     .stage .preview div { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .stage .preview div + div { color: var(--translation); }
-    .stage .preview span.l { display: inline-block; min-width: 38px; font-size: 10px; font-weight: 700; color: var(--fg2); letter-spacing: .06em; text-transform: uppercase; }
-    #room-live .grid { grid-template-columns: minmax(0, 1fr); max-width: 900px; } /* a room's page: only its card */
-    #room-live .on-live { display: none; }
-    /* On its own page the room's name is the page title: the card leads with what's being said, large. */
-    #room-live .stage h3 { visibility: hidden; }
-    #room-live .stage .said { font-size: 22px; line-height: 1.45; -webkit-line-clamp: 4; min-height: 2.9em; letter-spacing: -.005em; }
-    /* …and everything about the room open below it: every language, the AI sessions, corrections and exports */
-    #room-live .stage .details { display: grid; }
-    #room-live .stage .actions .more { display: none; }
+    .stage .preview span.l { display: inline-block; min-width: 84px; font-size: 10px; font-weight: 700; color: var(--fg2); letter-spacing: .06em; text-transform: uppercase; }
+    .stage .diag { border-top: 1px solid var(--line); padding-top: 10px; }
+    .stage .diag summary { cursor: pointer; font-size: 13px; font-weight: 600; color: var(--fg2); list-style: none; display: inline-flex; align-items: center; gap: 6px; }
+    .stage .diag summary::-webkit-details-marker { display: none; }
+    .stage .diag summary::after { content: ''; width: 9px; height: 6px; background: var(--chevron) center / contain no-repeat; transition: rotate .3s var(--ease-out); }
+    .stage .diag[open] summary::after { rotate: 180deg; }
+    .stage .diag[open] { display: grid; gap: 10px; }
+    /* A room's own page: only its card, what's being said large, everything below it open */
+    #room-live .grid { grid-template-columns: minmax(0, 1fr); max-width: 900px; }
+    #room-live .on-live, #room-live .stage .top, #room-live .stage .actions .more { display: none; }
+    #room-live .stage .said { font-size: 22px; line-height: 1.45; height: 5.8em; letter-spacing: -.005em; }
+    #room-live .stage .screen { padding: 20px 22px 22px; }
     #room-live .stage .preview { font-size: 15px; gap: 8px; }
-    .empty-rooms { grid-column: 1 / -1; display: grid; justify-items: center; gap: 14px; text-align: center; padding: 30px 20px 40px; }
-    .empty-rooms img { width: 220px; border-radius: 20px; }
-    .empty-rooms h3 { font-size: 22px; margin: 0; }
+    .empty-rooms, .empty-art { grid-column: 1 / -1; display: grid; justify-items: center; gap: 12px; text-align: center; padding: 30px 20px 40px; color: var(--fg2); }
+    .empty-rooms img, .empty-art img { width: 200px; height: auto; border-radius: 20px; }
+    .empty-art img { width: 150px; }
+    .empty-rooms h3, .empty-art h3 { font-size: 21px; margin: 0; color: var(--fg); }
+    .empty-art p { margin: 0; max-width: 46ch; font-size: 14px; }
     details.log summary { cursor: pointer; font-weight: 700; list-style: none; display: flex; align-items: center; gap: 8px; }
     details.log summary::-webkit-details-marker { display: none; }
-    details.log summary::after { content: ''; width: 10px; height: 7px; margin-left: auto; background: var(--chevron) center / contain no-repeat; transition: rotate var(--dur) var(--ease); }
+    details.log summary::after { content: ''; width: 10px; height: 7px; margin-left: auto; background: var(--chevron) center / contain no-repeat; transition: rotate .3s var(--ease-out); }
     details.log[open] summary::after { rotate: 180deg; }
     #logs { font-family: var(--mono); font-size: 12px; max-height: 280px; overflow: auto; display: grid; gap: 2px; margin-top: 10px; }
     #logs .warn { color: var(--warn); } #logs .error { color: var(--bad); }
 
-    /* tables and lists */
+    /* ---------- tables and lists ---------- */
     .table { width: 100%; border-collapse: collapse; font-size: 14px; }
     .table th { text-align: left; font-size: 12px; color: var(--fg2); font-weight: 700; padding: 10px; border-bottom: 1px solid var(--line); }
     .table td { padding: 12px 10px; border-bottom: 1px solid var(--line); vertical-align: middle; }
     .table tr:last-child td { border-bottom: 0; }
+    .table tbody tr { transition: background-color var(--dur-fast) var(--ease-out); }
+    .table tbody tr:hover { background: color-mix(in srgb, var(--fill) 60%, transparent); }
     .table td.r { text-align: right; white-space: nowrap; }
     .table td.r button:not(.x) { padding: 6px 11px; font-size: 13px; }
     .table button.x { width: 36px; height: 36px; margin: 0; }
@@ -154,16 +231,11 @@
     .reps td { padding: 6px 4px; }
     .reps input, .reps select { width: 100%; box-sizing: border-box; }
 
-    /* screens */
+    /* a room's links */
     .links { display: grid; gap: 12px; }
-    .copy { display: flex; gap: 6px; } .copy input { flex: 1; min-width: 0; font-family: var(--mono); font-size: 12px; }
     .qrrow { display: grid; grid-template-columns: 140px minmax(0, 1fr); gap: 16px; align-items: center; }
-    .qrrow img { width: 140px; background: #fff; border-radius: 10px; padding: 4px; border: 1px solid var(--line); }
+    .qrrow img { width: 140px; background: #fff; border-radius: 12px; padding: 6px; border: 1px solid var(--line); }
     @media (max-width: 600px) { .qrrow { grid-template-columns: minmax(0, 1fr); } }
-    .tools { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
-    .tool { display: grid; gap: 4px; align-content: start; text-decoration: none; color: inherit; font: inherit; } /* buttons centre their content: tiles in a row line up at the top */
-    .tool b { display: flex; align-items: center; gap: 8px; }
-    .tool span { font-size: 13px; color: var(--fg2); font-weight: 400; }
 
     /* history */
     .change { display: grid; grid-template-columns: 38px minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 12px 18px; border-bottom: 1px solid var(--line); }
@@ -174,23 +246,39 @@
     .change.undone > div:nth-child(2) { opacity: .55; }
     .change button { padding: 6px 11px; font-size: 13px; }
 
-    /* settings */
     .role-crew [data-admin], .role-crew [data-setup] { display: none !important; }
-    .stage .speakers { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; font-size: 13px; color: var(--fg2); }
-    .stage .speakers .pill { font-size: 13px; padding: 4px 11px; }
-    .me { grid-column: 1 / -1; display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 14px; background: var(--bg3); font-size: 13px; }
-    .me svg { width: 18px; height: 18px; flex: none; }
-    .me span { flex: 1; min-width: 0; display: grid; }
-    .me b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .me small { color: var(--fg2); }
-    .me button { padding: 4px 10px; font-size: 13px; }
-    .setting { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px 24px; align-items: center; }
-    .setting h3 { margin: 0 0 4px; font-size: 17px; }
-    .setting p { margin: 0; font-size: 14px; color: var(--fg2); max-width: 640px; }
-    @media (max-width: 700px) { .setting { grid-template-columns: minmax(0, 1fr); } }
 
-    /* first-run guide */
-    /* Getting started: how far along, and the next step; every step one click away */
+    /* ---------- settings rows (Settings window, a room's settings): what it is on the left, the control on the right ---------- */
+    .set-sub { margin: 22px 0 0; padding-bottom: 6px; font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--fg2); }
+    .setting { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px 28px; align-items: center; }
+    .setting h3 { margin: 0 0 3px; font: 600 15.5px/1.3 var(--font); letter-spacing: 0; }
+    .setting p { margin: 0; font-size: 13.5px; line-height: 1.5; color: var(--fg2); max-width: 600px; }
+    @media (max-width: 700px) { .setting:not(.sw) { grid-template-columns: minmax(0, 1fr); } }
+    /* Event logo (Settings › General): a drop zone, and the logo on a light and a dark chip (the pages and the stage screen) */
+    .logo-drop { display: grid; justify-items: center; gap: 10px; width: 300px; padding: 14px; border: 1.5px dashed var(--line-strong); border-radius: 14px; color: var(--fg2); font-size: 14px; text-align: center; transition: border-color var(--dur) var(--ease-out), background var(--dur) var(--ease-out); }
+    .logo-drop.over { border-color: var(--fg); background: var(--bg3); }
+    .logo-prev { display: flex; gap: 8px; }
+    .logo-chip { display: block; width: 132px; height: 64px; padding: 10px; border-radius: 12px; background: #FAF8F3; box-shadow: inset 0 0 0 1px rgb(17 16 20 / .12); }
+    .logo-chip.dark { background: #111014; box-shadow: inset 0 0 0 1px rgb(250 248 243 / .16); }
+    .logo-chip img { display: block; width: 100%; height: 100%; object-fit: contain; }
+    .logo-drop .logo-err { margin: 0; color: var(--bad); }
+    @media (max-width: 700px) { .logo-drop { width: auto; } }
+    .srow { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 24px; align-items: center; padding: 14px 0; border-top: 1px solid var(--line); }
+    label.srow { cursor: pointer; }
+    .srow > span b { display: block; font-size: 15px; font-weight: 600; }
+    .srow > span small { display: block; margin-top: 2px; font-size: 13.5px; line-height: 1.45; color: var(--fg2); max-width: 560px; }
+    .srow select { width: 260px; max-width: 100%; }
+    .srow :is(select, input) { font-size: 14px; }
+    .srow input[type='number'] { width: 110px; }
+    .room-form .field > :is(input, select, textarea) { font-size: 15px; padding: 10px 12px; }
+    .srow.indent { padding-left: 22px; }
+    .srow.indent:has(input:disabled) { opacity: .55; }
+    @media (max-width: 640px) { .srow:has(select) { grid-template-columns: minmax(0, 1fr); } .srow select { width: 100%; } }
+    .fld { display: grid; gap: 8px; }
+    .fld > span { font-size: 13px; color: var(--fg2); }
+    .fld > small { font-size: 13px; color: var(--fg2); }
+
+    /* first-run guide: how far along, and the next step; every step one click away */
     #onboard { display: grid; gap: 12px; padding: 18px 20px; }
     .ob-head { display: flex; align-items: center; gap: 6px; }
     .ob-progress { display: flex; align-items: center; gap: 12px; }
@@ -200,7 +288,7 @@
     .ob-head .spacer { flex: 1; }
     .ob-head button { padding: 5px 11px; font-size: 13px; }
     .ob-bar { height: 4px; border-radius: 4px; background: var(--fill); overflow: hidden; }
-    .ob-bar i { display: block; height: 100%; width: 0; border-radius: 4px; background: var(--ok); transition: width .4s var(--ease); }
+    .ob-bar i { display: block; height: 100%; width: 0; border-radius: 4px; background: var(--ok); transition: width .6s var(--ease-out); }
     #onboard ol { list-style: none; padding: 0; margin: 0; display: grid; gap: 2px; font-size: 14px; }
     #onboard li { display: flex; gap: 10px; align-items: baseline; padding: 5px 0; }
     #onboard:not(.all) li:not(.next) { display: none; }
@@ -218,30 +306,31 @@
     .netbar p { margin: 2px 0 0; font-size: 14px; color: var(--fg2); }
     dialog .dlg-actions { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; margin-top: 18px; }
     dialog p { line-height: 1.5; }
-    .langs-check { display: flex; gap: 10px; flex-wrap: wrap; }
     /* caption a recording */
-    .recdrop { display: grid; justify-items: center; gap: 8px; text-align: center; padding: 22px 16px; border: 1.5px dashed var(--line-strong); border-radius: 14px; background: var(--bg); color: var(--fg2); font-size: 14px; transition: border-color var(--dur) var(--ease), background var(--dur) var(--ease); }
+    .recdrop { display: grid; justify-items: center; gap: 8px; text-align: center; padding: 22px 16px; border: 1.5px dashed var(--line-strong); border-radius: 14px; background: var(--bg); color: var(--fg2); font-size: 14px; transition: border-color var(--dur) var(--ease-out), background var(--dur) var(--ease-out); }
     .recdrop.over { border-color: var(--fg); background: var(--bg3); }
     .recdrop b { color: var(--fg); overflow-wrap: anywhere; }
     .recprog { display: grid; gap: 8px; }
     .recbar { height: 8px; border-radius: 8px; background: var(--bg3); overflow: hidden; }
-    .recbar i { display: block; height: 100%; width: 0; background: var(--fg); border-radius: 8px; transition: width .4s var(--ease); }
+    .recbar i { display: block; height: 100%; width: 0; background: var(--fg); border-radius: 8px; transition: width .4s var(--ease-out); }
     .recline { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; font-size: 13px; color: var(--fg2); }
     .recline .spacer { flex: 1; }
     .recjob { display: grid; gap: 8px; padding: 14px 18px; border-bottom: 1px solid var(--line); }
     .recjob:last-child { border-bottom: 0; }
     .recjob .recline b { color: var(--fg); font-size: 14px; }
     .recjob button, .recline button { padding: 4px 10px; font-size: 13px; }
-    .notes { position: fixed; left: 50%; bottom: 22px; translate: -50% 0; display: grid; gap: 8px; z-index: 50; width: min(520px, calc(100vw - 32px)); }
-    .note { display: flex; gap: 12px; align-items: center; padding: 12px 14px 12px 16px; border-radius: 14px; background: var(--ink); color: var(--paper); box-shadow: var(--shadow-lg); font-size: 14px; animation: oc-note .25s var(--ease); }
+    .notes { position: fixed; inset: auto auto 22px 50%; margin: 0; padding: 0; border: 0; background: none; overflow: visible; translate: -50% 0; display: grid; gap: 8px; z-index: 50; width: min(520px, calc(100vw - 32px)); }
+    .note { display: flex; gap: 12px; align-items: center; padding: 12px 14px 12px 16px; border-radius: 14px; background: var(--ink); color: var(--paper); box-shadow: var(--shadow-lg); font-size: 14px; animation: oc-note .5s var(--spring) both; }
+    .note.out { animation: oc-note-out .22s var(--ease-out) forwards; }
     .note span { flex: 1; }
     .note button { background: var(--lime); color: var(--ink); border-color: var(--lime); padding: 5px 12px; font-weight: 700; font-size: 13px; }
     .note.err { background: var(--bad); color: #fff; }
     html[data-theme='dark'] .note:not(.err) { border: 1px solid #3A3940; }
     @media (prefers-color-scheme: dark) { html:not([data-theme='light']) .note:not(.err) { border: 1px solid #3A3940; } }
-    @keyframes oc-note { from { opacity: 0; translate: 0 10px; } }
+    @keyframes oc-note { from { opacity: 0; transform: translateY(16px) scale(.96); } }
+    @keyframes oc-note-out { to { opacity: 0; transform: translateY(8px) scale(.97); } }
 
-    /* Settings: a window over the page (#settings/<section>), sections on the left, options on the right */
+    /* ---------- Settings: a window over the page (#settings/<section>), sections on the left, options on the right ---------- */
     dialog.settings { padding: 0; width: 100%; max-width: min(980px, calc(100vw - 32px)); height: min(740px, calc(100dvh - 32px)); overflow: hidden; }
     dialog.settings[open] { display: grid; grid-template-rows: auto minmax(0, 1fr); }
     .set-head { display: flex; align-items: center; gap: 12px; padding: 14px 16px 14px 22px; border-bottom: 1px solid var(--line); }
@@ -251,21 +340,23 @@
     .set-x svg.i { margin: 0; }
     .set-body { display: grid; grid-template-columns: 220px minmax(0, 1fr); min-height: 0; }
     .set-nav { display: grid; align-content: start; gap: 2px; padding: 14px 10px; border-right: 1px solid var(--line); background: var(--bg); overflow: auto; }
-    .set-nav a { display: flex; align-items: center; gap: 10px; padding: 9px 10px; border-radius: 10px; color: var(--fg2); text-decoration: none; font-size: 15px; }
+    .set-nav a { display: flex; align-items: center; gap: 10px; padding: 9px 10px; border-radius: 10px; color: var(--fg2); text-decoration: none; font-size: 15px; transition: background-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out); }
     .set-nav a:hover { background: var(--bg3); color: var(--fg); }
     .set-nav a[aria-current] { background: var(--primary-bg); color: var(--primary-fg); font-weight: 700; }
-    .set-panes { overflow: auto; min-width: 0; padding: 6px 28px 28px; }
+    .set-panes { overflow: auto; min-width: 0; padding: 6px 30px 30px; }
     .set-pane { display: none; align-content: start; grid-template-columns: minmax(0, 1fr); }
-    .set-pane.on, .settings.searching .set-pane.set-hit { display: grid; }
+    .set-pane.on, .settings.searching .set-pane.set-hit { display: grid; animation: oc-in .32s var(--ease-out) both; }
     .settings.searching .set-pane:not(.set-hit) { display: none; }
-    .set-h { font-size: 22px; margin: 16px 0 2px; }
+    .set-h { font-size: 24px; margin: 18px 0 6px; }
     .set-panes .card { background: none; border: 0; border-top: 1px solid var(--line); border-radius: 0; box-shadow: none; padding: 18px 0; }
-    .set-h + .card { border-top: 0; }
+    .set-h + .card, .set-sub + .card { border-top: 0; }
+    .set-panes .card > h3 { margin: 0 0 4px; font: 600 15.5px/1.3 var(--font); letter-spacing: 0; }
     .set-panes select { max-width: 100%; }
     .set-miss { display: none !important; }
     .set-none { color: var(--fg2); padding: 24px 0; }
     .settings .set-back { display: none; margin-top: 12px; }
     .set-back svg.i { rotate: 90deg; }
+    .chips .chip code { background: none; padding: 0; font-size: 11px; color: var(--fg2); }
     @media (max-width: 700px) {
       dialog.settings { max-width: 100vw; height: 100dvh; max-height: 100dvh; margin: 0; border: 0; border-radius: 0; }
       .set-head { flex-wrap: wrap; padding: 12px 16px; }
@@ -280,35 +371,205 @@
       .settings.picked:not(.searching) .set-back { display: inline-flex; }
       .set-panes { padding: 0 16px 24px; }
     }
-    /* One room (#room/<room>/<section>): Live, Screens & QR, Sound, Settings */
+
+    /* ---------- One room (#room/<room>/<section>): Live, Screens & QR, Sound, Settings ---------- */
     .room-tabs { justify-self: start; flex-wrap: wrap; }
-    .room-tabs a { padding: 7px 14px; border-radius: 9px; color: var(--fg2); text-decoration: none; font-size: 14px; }
+    .room-tabs a { padding: 7px 14px; border-radius: 9px; color: var(--fg2); text-decoration: none; font-size: 14px; transition: background-color var(--dur) var(--ease-out), color var(--dur) var(--ease-out), box-shadow var(--dur) var(--ease-out); }
     .room-tabs a:hover { color: var(--fg); }
     .room-tabs a[aria-current] { background: var(--bg2); box-shadow: var(--shadow-sm); font-weight: 700; color: var(--fg); }
     .room-pane { display: grid; gap: 16px; align-content: start; }
     .room-pane:not(.on) { display: none; }
-    .room-pane > .card { max-width: 820px; }
-    #f-edit label.row { flex-wrap: nowrap; align-items: flex-start; }
+    .room-pane > .card, .room-form { max-width: 820px; }
+    .room-form { display: grid; gap: 16px; }
+    .room-form .card { display: grid; gap: 16px; }
+    .room-form .card > h3 { margin: 0; font-size: 18px; }
+    .room-form .card > h3 + .srow { border-top: 0; padding-top: 0; }
+    .form-foot { display: flex; gap: 10px; align-items: center; }
+    .form-foot .spacer { flex: 1; }
     /* a link in one row: what it is, then Copy and Open */
     .crow { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 8px; padding: 10px 0; border-bottom: 1px solid var(--line); min-width: 0; }
-    .crow:last-child { border-bottom: 0; }
+    .crow:last-child, .crow:has(+ #ingest-link:empty) { border-bottom: 0; }
+    #ingest-link:empty { display: none; }
     .crow-l { flex: 1 1 220px; min-width: 0; font-weight: 600; }
+    .crow-n { display: block; font-size: 13px; font-weight: 400; color: var(--fg2); } /* a note under a row's name (not an address) */
     .crow-v { display: block; font: 400 12px var(--mono); color: var(--fg2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .crow-b { display: flex; gap: 6px; flex: none; }
     .crow button { padding: 7px 12px; font-size: 14px; }
-    /* Rooms: tiles or a list */
-    .rooms-gallery { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
-    a.tile { display: grid; gap: 6px; padding: 14px 16px; color: inherit; text-decoration: none; min-width: 0; }
-    a.tile:hover { border-color: var(--line-strong); }
-    .tile b, .rooms-list b { display: flex; align-items: center; gap: 8px; font-size: 16px; min-width: 0; }
-    .tile .said { font-size: 13px; color: var(--fg2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-height: 1.4em; }
+
+    /* ---------- Rooms: tiles or a list ---------- */
+    .rooms-gallery { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 14px; }
+    a.tile { display: grid; gap: 10px; padding: 16px; color: inherit; text-decoration: none; min-width: 0; height: 100%; }
+    .tile-top { display: flex; align-items: center; gap: 10px; min-width: 0; }
+    .tile b, .rooms-list b { display: flex; align-items: center; gap: 8px; font-size: 16px; min-width: 0; flex: 1; }
+    .tile b > span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .tile .said { font-size: 13.5px; line-height: 1.45; color: var(--fg2); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; min-height: 2.9em; }
+    .tile .tl { font-size: 12px; font-weight: 700; letter-spacing: .04em; color: var(--fg2); }
     .rooms-list a { color: inherit; text-decoration: none; }
     .rooms-list a:hover b { text-decoration: underline; }
-    .tools-btn { margin-left: auto; }
-    .topbar #engine + .tools-btn { margin-left: 0; }
-    .topbar #engine:empty + .tools-btn { margin-left: auto; }
-    .ctx button { display: flex; align-items: center; gap: 10px; width: 100%; padding: 8px 10px; border: 0; border-radius: 8px; background: none; box-shadow: none; font-size: 14px; text-align: left; }
-    .ctx button:hover { background: var(--bg3); }
+
+    /* ---------- Integrations: what's connected, then a gallery of what can be ---------- */
+    .intg-sec { display: grid; gap: 14px; }
+    .intg-sec > header { display: grid; gap: 2px; }
+    .intg-sec > header h2 { margin: 0; font-size: 19px; }
+    .intg-sec > header p { margin: 0; font-size: 14px; color: var(--fg2); max-width: 72ch; }
+    .intg-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 12px; }
+    .intg { position: relative; display: grid; grid-template-rows: auto 1fr auto; gap: 12px; padding: 18px; border-radius: 18px; }
+    .intg:has(.connect-btn:focus-visible) { outline: 2px solid var(--focus); outline-offset: 2px; }
+    .intg h3 { margin: 0; font: 700 16px/1.3 var(--font); letter-spacing: 0; }
+    .intg p { margin: 4px 0 0; font-size: 13.5px; line-height: 1.45; color: var(--fg2); }
+    .intg-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 34px; }
+    .intg .connect-btn { padding: 6px 14px; font-size: 13.5px; }
+    .intg .connect-btn:focus-visible { outline: none; }
+    .intg .connect-btn::after { content: ''; position: absolute; inset: 0; border-radius: 18px; } /* the whole card is the button */
+    .intg:hover .connect-btn { background: var(--primary-bg); color: var(--primary-fg); }
+    .logo { flex: none; display: grid; place-items: center; width: 40px; height: 40px; border-radius: 11px; color: #fff; font: 800 17px/1 var(--font-display); letter-spacing: -.03em; box-shadow: inset 0 0 0 1px rgb(255 255 255 / .1); }
+    .logo svg.i { width: 20px; height: 20px; stroke-width: 2.2; }
+    .logo.zoom { background: #0B5CFF; } .logo.youtube { background: #E5102E; } .logo.teams { background: #4B53BC; }
+    .logo.webhook { background: #2B2A31; } .logo.vmix { background: #0E7C86; font-size: 14px; } .logo.obs { background: #302E31; font-size: 11px; letter-spacing: 0; }
+    .count { display: inline-flex; align-items: center; gap: 7px; font-size: 13px; font-weight: 600; color: var(--ok); }
+    .count .dot, .st.ok .dot { background: var(--ok); box-shadow: 0 0 0 3px color-mix(in srgb, var(--ok) 18%, transparent); }
+    .conns { padding: 2px 0; }
+    .conn { display: grid; grid-template-columns: 40px minmax(0, 1fr) auto auto; gap: 6px 14px; align-items: center; padding: 12px 10px 12px 18px; border-bottom: 1px solid var(--line); }
+    .conn:last-child { border-bottom: 0; }
+    .conn .what { min-width: 0; display: grid; gap: 1px; }
+    .conn .what b { font-size: 15px; }
+    .conn .what span { font-size: 13.5px; color: var(--fg2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .conn .what code { background: none; padding: 0; font-size: 12px; color: var(--fg2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .st { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; color: var(--fg2); max-width: 340px; min-width: 0; }
+    .st > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .st.ok { color: var(--ok); }
+    .st.bad { color: var(--bad); } .st.bad .dot { background: var(--bad); }
+    .st.wait .dot { background: var(--fg2); animation: oc-breathe 1.6s var(--ease-in-out) infinite; }
+    @keyframes oc-breathe { 50% { opacity: .3; } }
+    .kebab { display: grid; place-items: center; width: 36px; height: 36px; padding: 0; border-radius: var(--pill); background: transparent; color: var(--fg2); }
+    .kebab:hover, .kebab[aria-expanded='true'] { background: var(--fill); color: var(--fg); }
+    @media (max-width: 640px) { .conn { grid-template-columns: 36px minmax(0, 1fr) auto; } .conn .st { grid-column: 2; grid-row: 2; } .conn .kebab { grid-row: 1 / span 2; grid-column: 3; } .logo { width: 36px; height: 36px; } }
+    /* Already built in: cards on the same grid as the gallery above, each a link to where it lives */
+    .intg-more { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 12px; }
+    .intg-more a { display: grid; grid-template-columns: 40px minmax(0, 1fr) auto; align-items: center; gap: 14px; padding: 16px 14px 16px 18px; border-radius: 18px; color: inherit; text-decoration: none; min-width: 0; }
+    .intg-more a > svg.i:first-child { width: 40px; height: 40px; padding: 10px; box-sizing: border-box; border-radius: 11px; background: var(--bg3); color: var(--fg); }
+    .intg-more a > span:not(.go) { min-width: 0; display: grid; gap: 2px; font-size: 15px; font-weight: 700; line-height: 1.3; }
+    .intg-more a small { font-size: 13.5px; font-weight: 400; line-height: 1.4; color: var(--fg2); }
+    .intg-more a > .go { display: grid; color: var(--fg2); rotate: -90deg; transition: translate var(--dur) var(--ease-out); }
+    .intg-more a:hover > .go { translate: 3px 0; color: var(--fg); }
+
+    /* ---------- Transcripts: a room's talks as a list. What and when on the left; Read, Download and ⋯ on the right ---------- */
+    .tx-bar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+    .tx-bar select { min-width: 180px; }
+    .tx-q { flex: 1 1 240px; max-width: 400px; }
+    .tx-bar #tx-rec { margin-left: auto; }
+    .tx-box { display: grid; }
+    .tx-head { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 10px 12px 10px 18px; border-bottom: 1px solid var(--line); background: color-mix(in srgb, var(--fill) 40%, transparent); }
+    .tx-head .tx-sum { flex: 1 1 200px; min-width: 0; font-size: 13px; font-weight: 600; color: var(--fg2); font-variant-numeric: tabular-nums; }
+    .tx-head :is(button, a) { display: inline-flex; align-items: center; gap: 7px; padding: 6px 10px; border-radius: 9px; background: none; color: var(--fg2); font-size: 13px; font-weight: 600; text-decoration: none; }
+    .tx-head :is(button, a):hover { background: var(--fill); color: var(--fg); }
+    .tx-row { display: grid; grid-template-columns: 36px minmax(0, 1fr) auto; gap: 4px 14px; align-items: center; padding: 14px 12px 14px 18px; border-bottom: 1px solid var(--line); transition: background-color var(--dur-fast) var(--ease-out); }
+    .tx-row:last-child { border-bottom: 0; }
+    .tx-row:hover { background: color-mix(in srgb, var(--fill) 50%, transparent); }
+    .tx-ic { display: grid; place-items: center; width: 36px; height: 36px; border-radius: 10px; background: var(--bg3); color: var(--fg2); }
+    .tx-ic svg.i { width: 18px; height: 18px; }
+    .tx-main { min-width: 0; display: grid; gap: 3px; }
+    .tx-title { display: flex; align-items: center; gap: 8px; min-width: 0; }
+    .tx-title a { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--fg); font-size: 15px; font-weight: 700; text-decoration: none; }
+    .tx-title a:hover { text-decoration: underline; text-underline-offset: 3px; }
+    .tx-title a.untitled { color: var(--fg2); font-weight: 600; }
+    .tx-title .chip { flex: none; }
+    .tx-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 0; font-size: 13px; color: var(--fg2); font-variant-numeric: tabular-nums; }
+    .tx-meta > span:not(:last-child)::after { content: '·'; margin: 0 8px; opacity: .7; }
+    .tx-langs { display: inline-flex; flex-wrap: wrap; gap: 4px; }
+    .tx-langs .chip { padding: 1px 7px; font-size: 11px; letter-spacing: .04em; }
+    .tx-acts { display: flex; gap: 4px; align-items: center; }
+    .tx-acts > :is(a, button) { display: inline-flex; align-items: center; gap: 7px; height: 36px; padding: 0 12px; border-radius: 10px; font-size: 13.5px; font-weight: 600; text-decoration: none; }
+    .tx-acts a.tx-read { background: var(--fill); color: var(--fg); font-weight: 700; transition: background-color var(--dur-fast) var(--ease-out); }
+    .tx-acts a.tx-read:hover { background: var(--fill-hover); }
+    .tx-acts .tx-dlb { background: none; color: var(--fg2); }
+    .tx-acts .tx-dlb:hover, .tx-acts .tx-dlb[aria-expanded='true'] { background: var(--fill); color: var(--fg); }
+    .tx-acts .kebab { padding: 0; width: 36px; }
+    .tx-acts svg.i { width: 17px; height: 17px; }
+    #tx-list .empty-art { padding: 36px 20px 44px; }
+    /* The Download menu: one line per language, its three files */
+    .tx-dl { display: grid; grid-template-columns: minmax(0, 1fr) repeat(3, auto); align-items: center; gap: 2px; padding: 2px 2px 2px 10px; }
+    .tx-dl > span { font-size: 14px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .ctx .tx-dl a { padding: 6px 9px; font-size: 12.5px; font-weight: 700; letter-spacing: .03em; color: var(--fg2); }
+    .ctx .tx-dl a:hover { color: var(--fg); }
+    .tx-dl-note { margin: 4px 0 0; padding: 8px 10px 4px; border-top: 1px solid var(--line); font-size: 12px; line-height: 1.4; color: var(--fg2); max-width: 260px; }
+    @media (max-width: 640px) {
+      .tx-q { max-width: none; }
+      .tx-bar select { flex: 1 1 100%; }
+      .tx-bar #tx-rec { margin-left: 0; }
+      .tx-head { gap: 0 2px; padding: 8px 8px 6px 14px; }
+      .tx-head .tx-sum { flex-basis: 100%; padding: 4px 0; }
+      .tx-head :is(button, a) { padding-inline: 8px; }
+      .tx-row { grid-template-columns: minmax(0, 1fr); padding: 14px 14px 12px 16px; }
+      .tx-ic { display: none; }
+      .tx-acts { margin-left: -4px; }
+    }
+    @media (pointer: coarse) { .tx-acts > :is(a, button), .tx-head :is(button, a) { min-height: 44px; } .tx-acts .kebab { width: 44px; } }
+
+    /* ---------- Settings › Alerts (public/alerts-ui.js): what triggers them, the channels added, then add one ---------- */
+    .alerts { display: grid; gap: 22px; }
+    .alerts .al-when { padding: 14px 16px; border-radius: 14px; background: var(--bg); border: 1px solid var(--line); }
+    .alerts .al-when > p:first-child { margin: 0 0 10px; font-size: 14px; font-weight: 700; }
+    .alerts .al-when ul { margin: 0; padding: 0; list-style: none; display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 8px 18px; }
+    .alerts .al-when li { display: flex; gap: 10px; align-items: center; font-size: 14px; }
+    .alerts .al-when li svg { color: var(--fg2); }
+    .alerts .al-when .cx-fine { margin: 10px 0 0; }
+    .al-sec { display: grid; gap: 10px; }
+    .alerts .al-h { margin: 0; font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--fg2); }
+    .al-none { padding: 14px 16px; border: 1px dashed var(--line-strong); border-radius: 14px; font-size: 14px; color: var(--fg2); }
+    .logo.al-logo { width: 32px; height: 32px; border-radius: 9px; font-size: 14px; }
+    .logo.al-logo svg.i { width: 17px; height: 17px; }
+    .logo.ntfy { background: #2E7D6B; } .logo.telegram { background: #1D8BC2; } .logo.slack { background: #4A154B; } .logo.discord { background: #5865F2; }
+    .al-list { list-style: none; margin: 0; padding: 0; border: 1px solid var(--line); border-radius: 14px; }
+    .al-row { display: grid; grid-template-columns: 32px minmax(0, 1fr) auto; grid-template-areas: 'logo what acts' 'logo res acts'; gap: 2px 12px; align-items: center; padding: 12px 12px 12px 14px; border-bottom: 1px solid var(--line); }
+    .al-row:last-child { border-bottom: 0; }
+    .al-row > .logo { grid-area: logo; align-self: start; }
+    .al-what { grid-area: what; min-width: 0; display: grid; }
+    .al-what b { font-size: 15px; }
+    .al-what code { background: none; padding: 0; font-size: 12px; color: var(--fg2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .al-res { grid-area: res; display: flex; gap: 6px; align-items: center; min-width: 0; font-size: 13px; font-weight: 600; animation: oc-in .3s var(--ease-out) both; }
+    .al-res:empty { display: none; }
+    .al-res.ok { color: var(--ok); } .al-res.bad { color: var(--bad); }
+    .al-res svg.i { width: 15px; height: 15px; }
+    .al-acts { grid-area: acts; display: flex; gap: 4px; }
+    .al-acts button { padding: 6px 12px; font-size: 13.5px; }
+    .al-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; }
+    .al-card { display: grid; grid-template-columns: 32px minmax(0, 1fr); align-content: start; gap: 6px 12px; padding: 14px; border: 1px solid var(--line); border-radius: 14px; background: var(--bg2); text-align: left; font-weight: 400; }
+    .al-card:hover { background: var(--bg2); border-color: var(--line-strong); }
+    .al-card[aria-pressed='true'] { border-color: var(--fg); box-shadow: 0 0 0 1px var(--fg); }
+    .al-card-t { display: grid; gap: 2px; min-width: 0; }
+    .al-card-t b { font-size: 15px; }
+    .al-card-t small { font-size: 13px; line-height: 1.4; color: var(--fg2); }
+    .al-card > .chip { grid-column: 2; justify-self: start; }
+    .al-card > .chip svg.i { width: 12px; height: 12px; }
+    .al-form { display: grid; gap: 14px; padding: 18px; border: 1px solid var(--line); border-radius: 16px; background: var(--bg); animation: oc-in .32s var(--ease-out) both; }
+    .al-form-h { display: flex; gap: 10px; align-items: center; margin: 0; font-size: 17px; }
+    .al-steps { margin: 0; padding-left: 22px; display: grid; gap: 12px; font-size: 14.5px; line-height: 1.5; }
+    .al-steps li::marker { font-weight: 700; }
+    .al-copy { display: flex; gap: 8px; margin-top: 8px; }
+    .al-copy code { flex: 1; min-width: 0; padding: 10px 12px; border-radius: 10px; background: var(--bg3); font-size: 14px; overflow-wrap: anywhere; }
+    .al-form .field small { color: var(--fg2); font-size: 13px; line-height: 1.4; }
+    .al-err { margin: 0; padding: 10px 12px; border-radius: 10px; color: var(--bad); background: color-mix(in srgb, var(--bad) 10%, transparent); font-size: 14px; }
+    .al-form-acts { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; }
+    .al-foot { display: flex; flex-wrap: wrap; gap: 12px 18px; align-items: end; justify-content: space-between; padding-top: 16px; border-top: 1px solid var(--line); }
+    .al-foot .field { min-width: 200px; }
+    @media (max-width: 560px) { .al-row { grid-template-columns: 32px minmax(0, 1fr); grid-template-areas: 'logo what' 'logo res' '. acts'; } .al-acts { margin-top: 6px; } }
+    @media (pointer: coarse) { .al-acts button, .al-form-acts button, .al-foot button { min-height: 44px; } }
+    /* connect dialogs */
+    .intg-dlg { max-width: min(540px, calc(100vw - 32px)); }
+    .intg-dlg form { display: grid; gap: 16px; }
+    .dlg-head { display: flex; gap: 14px; align-items: center; }
+    .dlg-head h3 { margin: 0; font-size: 21px; }
+    .dlg-head p { margin: 2px 0 0; font-size: 14px; color: var(--fg2); }
+    .howto { margin: 0; padding: 12px 14px; border-radius: 12px; background: var(--fill); font-size: 13.5px; line-height: 1.5; color: var(--fg2); }
+    .howto b { display: block; margin-bottom: 2px; color: var(--fg); font-size: 13px; }
+    label.field > .hint { display: flex; gap: 6px; align-items: center; min-height: 1.4em; font-size: 12.5px; color: var(--fg2); }
+    label.field > .hint.ok { color: var(--ok); } label.field > .hint.warn { color: var(--warn); }
+    .hint svg.i { width: 14px; height: 14px; }
+    .more-opts summary { cursor: pointer; font-size: 14px; font-weight: 600; color: var(--fg2); }
+    .more-opts[open] summary { margin-bottom: 10px; }
+    fieldset.field { border: 0; padding: 0; margin: 0; display: grid; gap: 8px; }
+    fieldset.field legend { padding: 0; margin-bottom: 8px; font-size: 13px; color: var(--fg2); }
   </style>
 </head>
 <body>
@@ -316,22 +577,23 @@
     <a class="brand" href="#live">OpenCaptions</a>
     <div class="event" id="event" data-no-i18n></div>
     <div class="foot">
-      <div class="me" id="me" data-no-i18n></div>
-      <button type="button" class="lockbtn" id="lockbtn" data-admin></button>
-      <span id="prefs-slot"></span>
+      <label class="side-opt" id="adv-row"><span data-icon="sliders"></span><span class="lbl">Modo avanzado</span><input type="checkbox" role="switch" id="adv-sw" /></label>
+      <label class="side-opt lockrow" id="lockrow" data-admin><span data-icon="lock"></span><span class="lbl"><span>Modo evento</span><small id="lock-sub" data-no-i18n></small></span><input type="checkbox" role="switch" id="lockbtn" /></label>
+      <div class="me"><span class="av" id="me-av"></span><span class="who" id="me" data-no-i18n></span><span id="prefs-slot"></span></div>
     </div>
   </aside>
 
     <main class="content">
       <div class="crumbbar" id="crumbbar"></div>
-      <div class="topbar"><h1 id="view-title">En vivo</h1><span class="chip" id="engine"></span>
-        <button type="button" class="tools-btn" popovertarget="tools-menu" data-icon="sliders">Herramientas</button>
+      <div class="topbar"><h1 id="view-title">En vivo</h1><span id="engine"></span>
+        <button type="button" class="tools-btn" popovertarget="tools-menu" data-icon="sliders" title="Herramientas"><span class="tl">Herramientas</span></button>
         <div class="ctx" popover id="tools-menu">
           <a href="/kit.html" target="_blank" data-icon="qr">Kit de QR</a>
           <a href="/style.html" target="_blank" data-icon="palette">Estilo de subtítulos</a>
           <a href="/demo.html?mode=mic" target="_blank" data-icon="mic">Prueba de sonido</a>
           <button type="button" class="hidden" id="float" data-icon="pin">Ventana flotante</button>
         </div></div>
+      <p class="view-sub hidden" id="view-sub"></p>
       <section class="netbar hidden" id="netbar" role="status"></section>
       <section class="card hidden" id="local-offer" data-no-i18n aria-live="polite"></section>
       <div class="lockedbar hidden" id="lockedbar"></div>
@@ -339,11 +601,11 @@
 
       <!-- LIVE -->
       <section class="view" data-view="live">
-        <div class="kpis">
-          <div class="kpi">Salas en vivo<b id="k-live">–</b></div>
-          <div class="kpi">Espectadores<b id="k-viewers">–</b></div>
-          <div class="kpi">Costo estimado<b id="k-cost">–</b></div>
-          <div class="kpi">Sesiones IA<b id="k-sessions">–</b></div>
+        <div class="kpis" id="kpis">
+          <div class="kpi"><span><i class="dot live"></i>Salas en vivo</span><b><span id="k-live">–</span><small id="k-of" data-no-i18n></small></b></div>
+          <div class="kpi"><span data-icon="eye">Espectadores</span><b id="k-viewers">–</b></div>
+          <div class="kpi"><span data-icon="chat">Idiomas</span><b id="k-langs">–</b></div>
+          <div class="kpi" data-advanced><span data-icon="coin">Costo estimado</span><b id="k-cost">–</b></div>
         </div>
         <section class="card hidden" id="onboard">
           <div class="ob-head"><h2>Primeros pasos</h2><span class="spacer"></span>
@@ -351,9 +613,9 @@
           <div class="ob-progress"><div class="ob-bar" aria-hidden="true"><i id="ob-bar"></i></div><span class="ob-count" id="ob-count" data-no-i18n></span></div>
           <ol id="ob-steps" data-no-i18n></ol>
         </section>
-        <div class="grid" id="grid"></div>
-        <details class="card log"><summary>Registro de eventos</summary>
-          <div class="row u-mt10"><select id="logfilter"><option value="">Todas las salas</option></select></div>
+        <div class="grid" id="grid"><div class="sk-card skeleton"></div><div class="sk-card skeleton"></div><div class="sk-card skeleton"></div></div>
+        <details class="card log" data-advanced><summary>Registro de eventos</summary>
+          <div class="row u-mt10"><select id="logfilter" aria-label="Sala"><option value="">Todas las salas</option></select></div>
           <div id="logs" data-no-i18n></div>
         </details>
       </section>
@@ -376,9 +638,9 @@
         <p class="help-pop" popover id="help-agenda">Con la agenda, cada sala nombra sola sus charlas sin cortar a quien se pasa de tiempo, y los nombres de speakers ayudan a la IA a escribirlos bien.</p>
         <div id="agenda-current" data-no-i18n></div>
         <section class="card u-stack12">
-          <h2 class="u-m0 u-fs20">Reemplazar la agenda</h2>
+          <h2 class="u-m0 u-fs20" id="agenda-h">Reemplazar la agenda</h2>
           <p data-help>Desde Swapcard, Sessionize o una planilla: exportá las sesiones, seleccioná todo (con la fila de títulos), copiá y pegá acá. O una charla por línea: sala, hora, título, speaker.</p>
-          <textarea id="agenda-text" class="paste" placeholder="main,10:00,Keynote de apertura,Equipo del evento&#10;room-a,10:30,Diseñar ciudades para todos,María José Fernández"></textarea>
+          <textarea id="agenda-text" class="paste" aria-label="Agenda" placeholder="main,10:00,Keynote de apertura,Equipo del evento&#10;room-a,10:30,Diseñar ciudades para todos,María José Fernández"></textarea>
           <div class="rowbar"><button id="agenda-preview" data-icon="eye">Ver qué cambia</button><span class="spacer"></span></div>
           <div id="agenda-diff" class="hidden" data-no-i18n></div>
         </section>
@@ -401,7 +663,7 @@
           <h2 class="u-m0 u-fs20">Nombres y términos</h2>
           <p data-help>Speakers, marcas, siglas y palabras técnicas. Ayudan al reconocimiento de voz y a la traducción.</p>
           <div class="terms" id="terms" data-no-i18n></div>
-          <form class="rowbar" id="term-form"><input id="term-in" placeholder="Ej: María José Fernández" class="u-grow u-minw200" maxlength="80" /><button data-icon="plus">Agregar</button></form>
+          <form class="rowbar" id="term-form"><input id="term-in" aria-label="Nombres y términos" placeholder="Ej: María José Fernández" class="u-grow u-minw200" maxlength="80" /><button data-icon="plus">Agregar</button></form>
         </section>
         <section class="card u-stack12">
           <h2 class="u-m0 u-fs20">Correcciones</h2>
@@ -414,91 +676,96 @@
 
       <!-- ONE ROOM: everything about it, in four sections (#room/<room>/<section>) -->
       <section class="view" data-view="room">
-        <nav class="seg room-tabs" id="room-tabs" aria-label="Secciones de la sala" data-no-i18n></nav>
+        <nav class="seg room-tabs" id="room-tabs" aria-label="Secciones de la sala"></nav>
         <div class="room-pane" data-tab="live" id="room-live"></div>
         <div class="room-pane" data-tab="screens"><section class="card links" id="screens-links"></section></div>
         <div class="room-pane" data-tab="sound">
           <section class="card links">
-            <div class="crow"><span class="crow-l">Página de sonido en esta computadora</span><a id="edit-ingest" target="_blank"><button type="button" tabindex="-1" data-icon="mic">Abrir</button></a></div>
-            <div class="crow" data-admin><span class="crow-l">Enlace para la computadora junto al escenario<span class="crow-v">Sirve una vez, sin contraseña.</span></span><button type="button" data-ingest-link data-icon="link">Crear el enlace</button></div>
+            <div class="crow"><span class="crow-l">Página de sonido en esta computadora<span class="crow-n">Para la computadora que recibe el micrófono o la consola.</span></span><a id="edit-ingest" target="_blank"><button type="button" tabindex="-1" data-icon="mic">Abrir</button></a></div>
+            <div class="crow" data-admin><span class="crow-l">Enlace para la computadora junto al escenario<span class="crow-n">Sirve una vez, sin contraseña.</span></span><button type="button" data-ingest-link data-icon="link">Crear el enlace</button></div>
             <div id="ingest-link"></div>
           </section>
           <section class="card u-stack12" data-admin>
             <h3 class="u-m0 u-fs20">Desde OBS, vMix o un stream</h3>
             <div class="rowbar"><button type="button" data-addr="rtmp" data-icon="link" data-setup>Dirección RTMP (OBS, vMix)</button><button type="button" data-addr="srt" data-icon="link" data-setup>Dirección SRT</button></div>
-      <div id="edit-addr" class="u-stack8" data-no-i18n></div>
-      <label class="field">Sonido desde un stream o un archivo (opcional)<input name="pull" form="f-edit" aria-describedby="pull-hint" placeholder="rtmp://0.0.0.0:1935/live/sala1  ·  srt://0.0.0.0:9001?mode=listener  ·  https://…/stream.m3u8  ·  samples/charla.mp3" /></label>
-      <p class="muted-note u-m0" id="pull-hint">Vacío si el sonido llega por la página de sonido de la sala.</p>
-      <label class="row muted"><input type="checkbox" name="loop" form="f-edit" /> Repetir en loop (archivos de prueba)</label>
-      <div class="rowbar"><button class="primary" form="f-edit" data-icon="check" data-setup>Guardar</button></div>
+            <div id="edit-addr" class="u-stack8" data-no-i18n></div>
+            <div class="u-stack12" data-advanced>
+              <label class="field">Sonido desde un stream o un archivo (opcional)<input name="pull" form="f-edit" aria-describedby="pull-hint" placeholder="rtmp://0.0.0.0:1935/live/room1  ·  srt://0.0.0.0:9001?mode=listener  ·  https://…/stream.m3u8" /></label>
+              <p class="muted-note u-m0" id="pull-hint">Vacío si el sonido llega por la página de sonido de la sala.</p>
+              <label class="srow"><span><b id="loop-l">Repetir en loop</b><small>Para archivos de prueba.</small></span><input type="checkbox" role="switch" name="loop" form="f-edit" aria-labelledby="loop-l" /></label>
+            </div>
+            <div class="rowbar"><button class="primary" form="f-edit" data-icon="check" data-setup>Guardar</button></div>
           </section>
         </div>
         <div class="room-pane" data-tab="settings" data-admin>
-      <form id="f-edit" class="card u-stack12">
-        <div class="row u-stretch">
-          <label class="field u-grow">ID<input name="id" required pattern="[a-z0-9_-]+" /></label>
-          <label class="field u-grow2">Nombre<input name="name" required /></label>
-        </div>
-        <label class="field">Idioma de la charla<select name="source"><option value="auto">Detectar automáticamente</option></select></label>
-        <div class="field">Traducir a<div class="langs-check" id="edit-targets"></div></div>
-        <label class="field">Modo de traducción de subtítulos<select name="translation">
-          <option value="">Por defecto del servidor</option>
-          <option value="text">Texto (frase a frase · menor latencia · 1 sesión Live por sala)</option>
-          <option value="live">Live (speech-to-speech de Gemini · 1 sesión por idioma)</option>
-          <option value="hybrid">Híbrido (subtítulos por texto + voz traducida en todos los idiomas)</option>
-        </select></label>
-        <label class="row muted"><input type="checkbox" name="musicGuard" checked /> Pausar los subtítulos cuando suena música (entre charlas, videos)</label>
-        <div class="u-stack8">
-          <label class="row muted"><input type="checkbox" name="roomSound" /> El sonido de la sala en los celulares (escucha asistida)</label>
-          <p data-help>Para quien usa audífonos: escucha la sala en su celular (Original → Escuchar). Quien tenga el enlace la escucha aunque no esté en la sala: activalo solo si lo que se dice es público.</p>
-          <label class="field">Máximo de personas escuchando a la vez<input name="roomSoundMax" type="number" min="1" max="5000" step="1" inputmode="numeric" placeholder="100" /></label>
-        </div>
-        <label class="field">Vocabulario de la sala<textarea name="vocabulary" rows="2" aria-describedby="vocab-hint" placeholder="María José Fernández, OpenCaptions, WCAG"></textarea></label>
-        <p class="muted-note u-m0" id="vocab-hint">Nombres y términos de esta sala, separados por comas. Se suman al glosario.</p>
-        <div class="rowbar"><button type="button" class="danger" id="room-del" data-setup>Eliminar la sala</button><span class="spacer"></span><button class="primary" data-icon="check" data-setup>Guardar</button></div>
-      </form>
+          <form id="f-edit" class="room-form">
+            <section class="card">
+              <label class="field">Nombre<input name="name" required maxlength="80" autocomplete="off" /></label>
+              <label class="field hidden" data-advanced id="id-field">ID (en las direcciones de la sala)<input name="id" required pattern="[a-z0-9_-]+" maxlength="40" autocomplete="off" spellcheck="false" /></label>
+              <label class="field">Idioma que se habla<select name="source"><option value="auto">Detectar automáticamente</option></select></label>
+              <div class="fld"><span id="targets-l">Idiomas para el público</span><div class="pick" id="edit-targets" role="group" aria-labelledby="targets-l"></div><small>Cada persona elige el suyo en el celular. Más idiomas, más costo de IA.</small></div>
+            </section>
+            <section class="card" data-advanced>
+              <h3>Avanzado</h3>
+              <div class="srow"><span><b id="tr-l">Modo de traducción</b><small id="tr-d">Texto: menor latencia. Live: voz traducida por Gemini. Híbrido: los dos.</small></span>
+                <select name="translation" aria-labelledby="tr-l" aria-describedby="tr-d">
+                  <option value="">Por defecto del servidor</option>
+                  <option value="text">Texto (frase a frase · menor latencia · 1 sesión Live por sala)</option>
+                  <option value="live">Live (speech-to-speech de Gemini · 1 sesión por idioma)</option>
+                  <option value="hybrid">Híbrido (subtítulos por texto + voz traducida en todos los idiomas)</option>
+                </select></div>
+              <label class="srow"><span><b id="mg-l">Pausar cuando suena música</b><small id="mg-d">Entre charlas y en los videos, los subtítulos esperan a que alguien hable.</small></span><input type="checkbox" role="switch" name="musicGuard" checked aria-labelledby="mg-l" aria-describedby="mg-d" /></label>
+              <label class="srow"><span><b id="rs-l">Sonido de la sala en los celulares</b><small id="rs-d">Escucha asistida para quien usa audífonos. Quien tenga el enlace la escucha aunque no esté en la sala: activalo solo si lo que se dice es público.</small></span><input type="checkbox" role="switch" name="roomSound" aria-labelledby="rs-l" aria-describedby="rs-d" /></label>
+              <label class="srow indent"><span><b id="rsm-l">Máximo de personas escuchando a la vez</b></span><input name="roomSoundMax" type="number" min="1" max="5000" step="1" inputmode="numeric" placeholder="100" aria-labelledby="rsm-l" /></label>
+              <label class="field">Vocabulario de la sala<textarea name="vocabulary" rows="2" aria-describedby="vocab-hint" placeholder="María José Fernández, OpenCaptions, WCAG"></textarea></label>
+              <p class="muted-note u-m0" id="vocab-hint">Nombres y términos de esta sala, separados por comas. Se suman al glosario.</p>
+            </section>
+            <div class="form-foot"><button type="button" class="danger" id="room-del" data-setup>Eliminar la sala</button><span class="spacer"></span><button class="primary" data-icon="check" data-setup>Guardar</button></div>
+          </form>
         </div>
       </section>
 
-      <!-- TRANSCRIPTS -->
+      <!-- INTEGRATIONS -->
       <section class="view" data-view="integrations">
         <p class="help-pop" popover id="help-integrations">Llevá los subtítulos adonde ya está tu público: una reunión de Zoom o Teams, una transmisión de YouTube, o cualquier sistema con un webhook.</p>
-        <h2 class="sec">Subtítulos en tus reuniones y transmisiones</h2>
-        <div class="tools">
-          <button class="card tool u-left" type="button" data-connect="zoom"><b data-icon="monitor">Zoom</b><span>En la reunión o el webinar, para todos.</span></button>
-          <button class="card tool u-left" type="button" data-connect="youtube"><b data-icon="film">YouTube Live</b><span>En la transmisión, con el botón CC.</span></button>
-          <button class="card tool u-left" type="button" data-connect="teams"><b data-icon="chat">Microsoft Teams</b><span>Subtítulos CART dentro de la reunión de Teams.</span></button>
-          <button class="card tool u-left" type="button" data-connect="webhook"><b data-icon="link">Webhook</b><span>Cada subtítulo y cada charla, a tu sistema (Zapier, Make…).</span></button>
-        </div>
-        <h2 class="sec">Conectadas</h2>
-        <div class="card flush" id="conn-list" data-no-i18n></div>
-        <h2 class="sec">Pausas desde la mezcla de video</h2>
-        <p data-help>Cuando la transmisión pasa a una escena de pausa («Pausa», «Break», «Publicidad»…), los subtítulos de esa sala se pausan solos y las pantallas muestran la pausa y la próxima charla. Al volver, siguen.</p>
-        <div class="tools">
-          <button class="card tool u-left" type="button" data-switcher="vmix"><b data-icon="film">vMix</b><span>Lee qué entrada está al aire (Web Controller, puerto 8088).</span></button>
-          <button class="card tool u-left" type="button" data-switcher="obs"><b data-icon="film">OBS Studio</b><span>Lee la escena al aire (servidor WebSocket de OBS 28 o más nuevo, puerto 4455).</span></button>
-        </div>
-        <div class="card flush" id="sw-list" data-no-i18n></div>
-        <h2 class="sec">Ya incluidas</h2>
-        <div class="tools">
-          <a class="card tool" href="#agenda"><b data-icon="calendar">Sessionize y calendarios</b><span>Importá la agenda desde Sessionize o un enlace de calendario (Google, Outlook).</span></a>
-          <a class="card tool" href="#settings"><b data-icon="alert">ntfy, Telegram, Slack, Discord</b><span>Alertas al celular del equipo cuando algo necesita atención (Ajustes → Alertas).</span></a>
-          <a class="card tool" href="#rooms"><b data-icon="monitor">OBS y vMix</b><span>Overlay transparente para el streaming, y audio por RTMP o SRT.</span></a>
-          <a class="card tool" href="https://github.com/carraroesteban/opencaptions/blob/main/docs/security-guide.md#company-sign-in" target="_blank" rel="noopener"><b data-icon="shield">Google y Microsoft</b><span>Inicio de sesión con las cuentas de la empresa (OpenID Connect).</span></a>
-        </div>
-        <h2 class="sec">En la nube, en minutos</h2>
-        <div class="tools">
-          <a class="card tool" href="https://render.com/deploy?repo=https://github.com/carraroesteban/opencaptions" target="_blank" rel="noopener"><b data-icon="cloud">Render</b><span>Un clic: servidor con HTTPS y disco para los datos.</span></a>
-          <a class="card tool" href="https://github.com/carraroesteban/opencaptions/blob/main/docs/deployment.md#flyio" target="_blank" rel="noopener"><b data-icon="cloud">Fly.io</b><span>Tres comandos, cerca de tu público.</span></a>
-          <a class="card tool" href="https://github.com/carraroesteban/opencaptions/blob/main/docs/deployment.md#railway" target="_blank" rel="noopener"><b data-icon="cloud">Railway</b><span>Desde el repositorio de GitHub, con un volumen para los datos.</span></a>
-        </div>
+        <section class="intg-sec hidden" id="conn-sec">
+          <header><h2>Conectadas</h2></header>
+          <div class="card flush conns" id="conn-list" data-no-i18n></div>
+        </section>
+        <section class="intg-sec">
+          <header><h2>Subtítulos en reuniones y transmisiones</h2><p>Los subtítulos de una sala aparecen en vivo donde ya está tu público.</p></header>
+          <div class="intg-grid" id="intg-caps"></div>
+        </section>
+        <section class="intg-sec">
+          <header><h2>Pausas desde la mezcla de video</h2><p>Cuando la transmisión pasa a una escena de pausa («Pausa», «Break», «Publicidad»…), los subtítulos de esa sala se pausan solos y las pantallas muestran la próxima charla.</p></header>
+          <div class="intg-grid" id="intg-sw"></div>
+        </section>
+        <section class="intg-sec">
+          <header><h2>Ya incluidas</h2><p>No hace falta conectarlas: están en otras partes del panel.</p></header>
+          <nav class="intg-more" aria-label="Ya incluidas">
+            <a class="card lift" href="#agenda" data-icon="calendar"><span>Sessionize y calendarios<small>Importá la agenda (Google, Outlook).</small></span><span class="go" data-icon="chevron"></span></a>
+            <a class="card lift" href="#settings/alerts" data-icon="alert"><span>ntfy, Telegram, Slack, Discord<small>Alertas al celular del equipo.</small></span><span class="go" data-icon="chevron"></span></a>
+            <a class="card lift" href="#rooms" data-icon="monitor"><span>OBS y vMix<small>Overlay para el streaming, y audio por RTMP o SRT.</small></span><span class="go" data-icon="chevron"></span></a>
+            <a class="card lift" href="https://github.com/carraroesteban/opencaptions/blob/main/docs/security-guide.md#company-sign-in" data-icon="shield" target="_blank" rel="noopener"><span>Google y Microsoft<small>Inicio de sesión con las cuentas de la empresa.</small></span><span class="go" data-icon="chevron"></span></a>
+          </nav>
+        </section>
+        <div class="ctx" popover id="conn-menu" role="menu" data-no-i18n></div>
       </section>
 
       <section class="view" data-view="transcripts">
         <p class="help-pop" popover id="help-transcripts">Todo lo que se dijo en cada charla, para leer, buscar y descargar en cada idioma.</p>
-        <div class="rowbar"><label class="row">Sala <select id="tx-room"></select></label><button type="button" id="tx-zip" data-admin data-icon="download" title="Todas las charlas de esta sala, en cada idioma: SRT, VTT y TXT">Descargar todo (.zip)</button><button type="button" id="tx-rec" class="primary" data-admin data-icon="film" title="Un archivo de audio o video de tu computadora, mucho más rápido que el tiempo real">Subtitular una grabación</button><span class="spacer"></span><a href="/report.html"><button data-icon="dashboard" tabindex="-1">Informe del evento</button></a><a href="/talks.html" target="_blank"><button data-icon="doc" tabindex="-1">Abrir la biblioteca pública</button></a></div>
+        <div class="tx-bar"><select id="tx-room" aria-label="Sala"></select>
+          <label class="has-icon tx-q"><span class="sr-only">Buscar una charla</span><input type="search" id="tx-q" placeholder="Buscar por título o speaker" autocomplete="off" /></label>
+          <button type="button" id="tx-rec" class="primary" data-admin data-icon="film" title="Un archivo de audio o video de tu computadora, mucho más rápido que el tiempo real">Subtitular una grabación</button></div>
         <div class="card flush hidden" id="tx-jobs" data-admin></div>
-        <div class="card flush" id="tx-list"></div>
+        <section class="card flush tx-box" aria-labelledby="tx-sum">
+          <div class="tx-head"><span class="tx-sum" id="tx-sum" data-no-i18n></span>
+            <button type="button" id="tx-zip" data-admin data-icon="download" title="Todas las charlas de esta sala, en cada idioma: SRT, VTT y TXT">Descargar todo (.zip)</button>
+            <a href="/report.html" data-icon="dashboard">Informe del evento</a>
+            <a href="/talks.html" target="_blank" data-advanced data-icon="book">Abrir la biblioteca pública</a></div>
+          <div id="tx-list" data-no-i18n></div>
+        </section>
+        <div class="ctx" popover id="tx-menu" data-no-i18n></div>
       </section>
 
       <!-- HISTORY -->
@@ -530,12 +797,18 @@
         <section class="set-pane" data-pane="general" aria-labelledby="set-h-general">
           <h3 class="set-h" id="set-h-general">General</h3>
           <section class="card setting">
-            <div><h3>Modo evento</h3><p data-help>Durante el evento, bloqueá la configuración: nadie puede borrar ni cambiar salas, agenda o glosario por error. Las acciones en vivo (siguiente charla, reconectar una sala) siguen funcionando.</p></div>
-            <button id="lock2" type="button"></button>
+            <div><h3>Nombre del evento</h3><p data-help>Aparece en los celulares, en la pantalla del escenario y en los carteles.</p></div>
+            <form class="rowbar" id="name-form"><input id="name-in" maxlength="80" class="u-minw220" aria-label="Nombre del evento" /><button data-icon="check">Guardar</button></form>
           </section>
           <section class="card setting">
-            <div><h3>Nombre del evento</h3><p data-help>Aparece en los celulares, en la pantalla del escenario y en los carteles.</p></div>
-            <form class="rowbar" id="name-form"><input id="name-in" maxlength="80" class="u-minw220" /><button data-icon="check">Guardar</button></form>
+            <div><h3>Logo del evento</h3><p data-help>Va en lugar del de OpenCaptions en celulares, pantalla y carteles. PNG, JPEG o WebP de hasta 2 MB, legible en claro y en oscuro.</p></div>
+            <div class="logo-drop" id="logo-drop">
+              <div class="logo-prev hidden" id="logo-prev"><span class="logo-chip"><img alt="" /></span><span class="logo-chip dark"><img alt="" /></span></div>
+              <span id="logo-empty">Arrastrá la imagen acá</span>
+              <input type="file" id="logo-file" accept="image/png,image/jpeg,image/webp" class="sr-only" tabindex="-1" aria-hidden="true" />
+              <div class="rowbar"><button type="button" id="logo-pick" data-icon="palette" data-setup>Subir el logo</button><button type="button" id="logo-del" class="danger hidden" data-icon="x" data-setup>Quitar</button></div>
+              <p class="logo-err hidden" id="logo-err" role="alert" data-no-i18n></p>
+            </div>
           </section>
           <section class="card setting">
             <div><h3>Idiomas</h3><p data-help>Los que pueden elegir las salas. Agregá los que necesites y quitá los que no; después elegilos en cada sala.</p><div class="chips" id="langs-list" data-no-i18n></div></div>
@@ -549,18 +822,24 @@
               <option value="none">Ninguna (solo el equipo)</option>
             </select>
           </section>
-          <section class="card setting">
+          <section class="card setting sw">
+            <div><h3 id="lock2-l">Modo evento</h3><p id="lock2-d" data-help>Bloquea las salas, la agenda y el glosario para que nada cambie por error. Los controles en vivo siguen funcionando.</p></div>
+            <input type="checkbox" role="switch" id="lock2" aria-labelledby="lock2-l" aria-describedby="lock2-d" />
+          </section>
+          <section class="card setting sw">
+            <div><h3><label for="adv-sw2" id="adv2-l">Modo avanzado</label></h3><p id="adv2-d" data-help>Muestra el glosario, las integraciones, el historial, el costo y los ajustes técnicos de cada sala. Se recuerda en este navegador.</p></div>
+            <input type="checkbox" role="switch" id="adv-sw2" aria-labelledby="adv2-l" aria-describedby="adv2-d" />
+          </section>
+          <h4 class="set-sub" data-advanced>Avanzado</h4>
+          <section class="card setting sw" data-advanced>
+            <div><h3 id="upd-l">Versiones nuevas</h3><p id="upd-note">Una vez por día, OpenCaptions le pregunta a GitHub si salió una versión nueva y lo avisa arriba del panel, con un botón para instalarla. No envía nada sobre vos ni instala nada sin que lo toques.</p></div>
+            <input type="checkbox" role="switch" id="upd-check" aria-labelledby="upd-l" aria-describedby="upd-note" />
+          </section>
+          <section class="card setting" data-advanced>
             <div><h3>Solo para mí</h3><p data-help>Usá OpenCaptions solo para vos: tus llamadas, videos y conversaciones en esta compu. Las salas, la agenda y las transcripciones quedan guardadas para cuando vuelvas.</p></div>
             <button type="button" id="to-me" data-icon="headphones" data-setup>Pasar a Solo para mí</button>
           </section>
-          <section class="card setting">
-            <div><h3>Versiones nuevas</h3><p id="upd-note">Una vez por día, OpenCaptions le pregunta a GitHub si salió una versión nueva y lo avisa arriba del panel, con un botón para instalarla. No envía nada sobre vos ni instala nada sin que lo toques.</p></div>
-            <select id="upd-check" aria-label="Versiones nuevas" class="u-minw220">
-              <option value="on">Avisar</option>
-              <option value="off">No avisar</option>
-            </select>
-          </section>
-          <section class="card setting">
+          <section class="card setting" data-advanced>
             <div><h3>Servidor</h3><p id="sys" data-no-i18n></p></div>
             <span></span>
           </section>
@@ -568,36 +847,32 @@
         <section class="set-pane" data-pane="ai" aria-labelledby="set-h-ai">
           <h3 class="set-h" id="set-h-ai">IA</h3>
           <section class="card">
-            <h3 class="u-h17">IA en la nube</h3>
+            <h3>IA en la nube</h3>
             <p data-help>La API key de Gemini, la IA de Google con la que OpenCaptions subtitula en la nube. Se guarda en este servidor y nunca se muestra completa.</p>
             <div id="key-panel" data-no-i18n></div>
           </section>
-          <section class="card">
-            <h3 class="u-h17">IA para traducir</h3>
+          <section class="card setting" id="ai-setting">
+            <div><h3>Quién hace los subtítulos</h3><p data-help>Gemini en la nube, esta computadora, o Gemini con esta computadora de respaldo si se corta internet. Es la misma etiqueta de arriba del panel.</p></div>
+            <span id="ai-use"></span>
+          </section>
+          <h4 class="set-sub" data-advanced>Avanzado</h4>
+          <section class="card" data-advanced>
+            <h3>IA para traducir</h3>
             <p class="muted-note u-mb14">La IA que traduce los subtítulos, resume las charlas y responde las preguntas del público. Gemini, salvo que elijas otra.</p>
             <div id="text-api-panel" data-no-i18n></div>
           </section>
-          <section class="card">
-            <h3 class="u-h17">Modelo de voz</h3>
-            <p id="speech-note" data-help>Con qué modelo de Gemini se escucha al orador en las salas que traducen los subtítulos como texto (el modo normal).</p>
+          <section class="card setting" data-advanced>
+            <div><h3>Modelo de voz</h3><p id="speech-note" data-help>Con qué modelo de Gemini se escucha al orador en las salas que traducen los subtítulos como texto (el modo normal).</p></div>
             <select id="speech-model" aria-label="Modelo de voz" class="u-minw220" data-setup>
               <option value="transcribe">Solo subtítulos (Transcribe Live, unos US$ 0,54 por hora de sala; recomendado)</option>
               <option value="translate">Subtítulos + voz traducida (Live Translate, unos US$ 2,2 por hora de sala)</option>
-            </select>
-          </section>
-          <section class="card setting hidden" id="ai-setting">
-            <div><h3>IA y respaldo sin internet</h3><p id="ai-desc" data-help></p></div>
-            <select id="ai-mode" aria-label="Motor de IA">
-              <option value="auto">Automática: la nube, y esta computadora si se corta internet</option>
-              <option value="cloud">Siempre en la nube</option>
-              <option value="local">Siempre esta computadora</option>
             </select>
           </section>
         </section>
         <section class="set-pane" data-pane="address" aria-labelledby="set-h-address">
           <h3 class="set-h" id="set-h-address">Dirección pública</h3>
           <section class="card">
-            <h3 class="u-h17">Dirección pública</h3>
+            <h3>Dirección pública</h3>
             <p data-help>La dirección a la que apuntan los QR y los links.</p>
             <div id="tunnel-panel" data-no-i18n></div>
           </section>
@@ -605,7 +880,7 @@
         <section class="set-pane" data-pane="security" aria-labelledby="set-h-security">
           <h3 class="set-h" id="set-h-security">Seguridad</h3>
           <section class="card">
-            <h3 class="u-h17">Acceso</h3>
+            <h3>Acceso</h3>
             <p data-help>Quién puede entrar a este panel, y desde qué dispositivos.</p>
             <div id="access-panel" data-no-i18n></div>
           </section>
@@ -613,7 +888,7 @@
         <section class="set-pane" data-pane="alerts" aria-labelledby="set-h-alerts">
           <h3 class="set-h" id="set-h-alerts">Alertas</h3>
           <section class="card">
-            <h3 class="u-h17">Alertas en tu celular</h3>
+            <h3>Alertas en tu celular</h3>
             <p data-help>Para cuando nadie está mirando el panel.</p>
             <div id="alerts-panel" data-no-i18n></div>
           </section>
@@ -623,30 +898,31 @@
     </div>
   </dialog>
 
-  <dialog id="dlg-conn"><form method="dialog" id="f-conn" class="u-stack12">
-    <h3 class="u-m0" id="conn-title"></h3>
-    <p class="muted-note u-m0" id="conn-help" data-no-i18n></p>
+  <dialog id="dlg-conn" class="intg-dlg" aria-labelledby="conn-title"><form method="dialog" id="f-conn">
+    <div class="dlg-head"><span class="logo" id="conn-logo" aria-hidden="true"></span><div><h3 id="conn-title" data-no-i18n></h3><p id="conn-sub" data-no-i18n></p></div></div>
+    <p class="howto"><b>Dónde está el enlace</b><span id="conn-help" data-no-i18n></span></p>
     <div class="row u-stretch">
       <label class="field u-grow">Sala<select name="stage" required></select></label>
       <label class="field u-grow">Idioma de los subtítulos<select name="lang"></select></label>
     </div>
-    <label class="field">Enlace<input name="url" required autocomplete="off" spellcheck="false" /></label>
+    <label class="field">Enlace<input name="url" required autocomplete="off" spellcheck="false" aria-describedby="conn-hint" /><span class="hint" id="conn-hint" data-no-i18n></span></label>
     <fieldset class="field hidden" id="conn-events"><legend>Enviar</legend>
-      <label class="row"><input type="checkbox" name="ev-caption" checked /> Cada subtítulo</label>
-      <label class="row"><input type="checkbox" name="ev-talk" checked /> Cada charla terminada (con el enlace a la transcripción)</label>
+      <div class="pick"><label><input type="checkbox" name="ev-caption" checked /> Cada subtítulo</label><label><input type="checkbox" name="ev-talk" checked /> Cada charla terminada (con el enlace a la transcripción)</label></div>
     </fieldset>
     <p class="muted-note u-m0 u-bad" id="conn-err" role="alert"></p>
-    <div class="dlg-actions"><button value="cancel" formnovalidate>Cancelar</button><button class="primary" id="conn-save" value="ok" data-icon="link">Conectar</button></div>
+    <div class="dlg-actions u-mt0"><button value="cancel" formnovalidate>Cancelar</button><button class="primary" id="conn-save" value="ok" data-icon="link">Conectar</button></div>
   </form></dialog>
-  <dialog id="dlg-sw"><form method="dialog" id="f-sw" class="u-stack12">
-    <h3 class="u-m0" id="sw-title"></h3>
-    <p class="muted-note u-m0" id="sw-help"></p>
+  <dialog id="dlg-sw" class="intg-dlg" aria-labelledby="sw-title"><form method="dialog" id="f-sw">
+    <div class="dlg-head"><span class="logo" id="sw-logo" aria-hidden="true"></span><div><h3 id="sw-title" data-no-i18n></h3><p id="sw-sub" data-no-i18n></p></div></div>
+    <p class="howto"><b>Cómo activarlo</b><span id="sw-help"></span></p>
     <label class="field">Sala<select name="stage" required></select></label>
-    <label class="field">Dirección de la computadora<input name="url" required autocomplete="off" spellcheck="false" placeholder="192.168.1.20" /></label>
+    <label class="field">Dirección de la computadora<input name="url" required autocomplete="off" spellcheck="false" placeholder="192.168.1.20" aria-describedby="sw-hint" /><span class="hint" id="sw-hint" data-no-i18n></span></label>
     <label class="field" id="sw-pass">Contraseña del servidor WebSocket<input name="password" type="password" autocomplete="off" /></label>
-    <label class="field">Escenas de pausa (palabras separadas por comas)<input name="scenes" autocomplete="off" spellcheck="false" /></label>
+    <details class="more-opts"><summary>Escenas de pausa</summary>
+      <label class="field">Palabras separadas por comas: una escena cuyo nombre tenga alguna pausa los subtítulos<input name="scenes" autocomplete="off" spellcheck="false" /></label>
+    </details>
     <p class="muted-note u-m0 u-bad" id="sw-err" role="alert"></p>
-    <div class="dlg-actions"><button value="cancel" formnovalidate>Cancelar</button><button class="primary" value="ok" data-icon="link">Conectar</button></div>
+    <div class="dlg-actions u-mt0"><button value="cancel" formnovalidate>Cancelar</button><button class="primary" value="ok" data-icon="link">Conectar</button></div>
   </form></dialog>
 
   <dialog id="dlg-confirm"><form method="dialog">
@@ -693,7 +969,7 @@
       <label class="field u-grow">Idioma que se habla<select name="source"><option value="auto">Detectar automáticamente</option></select></label>
     </div>
     <label class="field">Título<input name="title" maxlength="200" autocomplete="off" /></label>
-    <div class="field">Subtítulos en<div class="langs-check" id="rec-targets"></div></div>
+    <div class="fld"><span id="rec-targets-l">Subtítulos en</span><div class="pick" id="rec-targets" role="group" aria-labelledby="rec-targets-l"></div></div>
     <p class="muted-note u-m0" id="rec-estimate" data-no-i18n></p>
     <div class="recprog hidden" id="rec-prog">
       <div class="recbar" id="rec-bar" role="progressbar" aria-labelledby="rec-phase" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><i></i></div>
@@ -702,7 +978,7 @@
     <p class="muted-note u-m0 u-bad" id="rec-err" role="alert" data-no-i18n></p>
     <div class="dlg-actions"><button type="button" id="rec-close">Cancelar</button><a id="rec-open" class="hidden" target="_blank"><button type="button" tabindex="-1" data-icon="doc">Abrir la transcripción</button></a><button type="button" class="primary" id="rec-start" data-icon="play" disabled>Subtitular</button></div>
   </form></dialog>
-  <div class="notes" id="toasts" aria-live="polite"></div>
+  <div class="notes" id="toasts" popover="manual" aria-live="polite"></div>
 
   <script type="module" src="/pages/admin.js"></script>
 </body>

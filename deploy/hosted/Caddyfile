@@ -1,0 +1,2 @@
+# Caddy for the hosted test instances: testers.sh writes one site block per tester in sites/ and reloads.
+import /etc/caddy/sites/*.caddy

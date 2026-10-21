@@ -2,7 +2,7 @@
 // running OpenCaptions, with one click instead of `npm run local`. The server prepares everything and this shows
 // its progress (GET /api/local, src/local/mode.js). Used by the welcome wizard, the "Just for me" page and the
 // dashboard's banner when a free Gemini key runs out.
-import { LANG } from '/i18n.js';
+import { LANG } from '/prefs.js';
 import { esc } from '/common.js';
 import { icon } from '/illustrations.js';
 

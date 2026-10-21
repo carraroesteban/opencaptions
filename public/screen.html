@@ -11,6 +11,7 @@
   <link rel="manifest" href="/manifest.webmanifest" />
   <title>Pantalla · Subtítulos</title>
   <link rel="stylesheet" href="/style.css" />
+  <link rel="preload" href="/tokens.css" as="style" /><link rel="preload" href="/fonts/brand.css" as="style" /><!-- style.css @imports them: fetched together, not one after another -->
   <style>
     /* Projector / stage screen. Params: ?stage=main&langs=es,orig&qr=1&ui=es&size=6.4&lines=3 (default: fill the screen)
        Style: &font=… &weight=… &color=ffffff &bg=111014 &accent=d4ff3a &upper=1 &align=left|center &style=none|shadow|outline
@@ -19,14 +20,21 @@
     .band { font-family: var(--cap-font); text-transform: var(--cap-transform); text-align: var(--cap-align); text-shadow: var(--cap-shadow); }
     .band.main .clip { color: var(--cap-color); font-weight: var(--cap-weight); }
     .wrap { position: fixed; inset: 0; display: grid; grid-template-rows: auto 1fr auto; padding: 3vh 4vw; gap: 2vh; }
-    .head { display: flex; justify-content: space-between; align-items: baseline; color: #A8A5AE; font-size: 2.2vh; }
-    .head b { color: var(--paper); font-family: var(--font-display); font-weight: 800; letter-spacing: -.01em; }
+    .head { display: flex; justify-content: space-between; align-items: center; gap: 2vw; color: #A8A5AE; font-size: 2.3vh; }
+    .head > span:first-child { display: flex; align-items: center; gap: .7em; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .head .ev-logo { flex: none; height: 5.6vh; max-width: 24vw; object-fit: contain; object-position: left center; margin-right: .5em; } /* the event's own (Settings › General) */
+    .head b { color: var(--paper); font-family: var(--font-display); font-weight: 800; letter-spacing: -.015em; }
+    #talk:not(:empty)::before { content: '·'; margin-right: .7em; color: #5C5A63; }
+    /* On air: a red dot that breathes while words are coming, grey when the room is quiet */
+    .onair { flex: none; width: 1.1vh; height: 1.1vh; border-radius: 50%; background: #5C5A63; transition: background-color .6s; }
+    .onair.on { background: #FF5A47; animation: onair 2s ease-in-out infinite; }
+    @keyframes onair { 50% { box-shadow: 0 0 0 .7vh rgb(255 90 71 / 0); } 0%, 100% { box-shadow: 0 0 0 0 rgb(255 90 71 / .45); } }
     #clock { font-variant-numeric: tabular-nums; }
     .bands { position: relative; min-height: 0; }
     #bands { display: flex; flex-direction: column; justify-content: flex-end; gap: 3vh; height: 100%; min-height: 0; }
     .band { line-height: 1.22; transition: opacity 1s; min-height: 0; }
     /* The main language fills the screen from the bottom up; older lines fade out at the top. */
-    .band.main { flex: 1 1 auto; display: flex; flex-direction: column; }
+    .band.main { flex: 1 1 auto; display: flex; flex-direction: column; justify-content: flex-end; }
     .band.main .clip { flex: 1 1 auto; min-height: 0; -webkit-mask-image: linear-gradient(to bottom, transparent, #000 14%); mask-image: linear-gradient(to bottom, transparent, #000 14%); }
     .fixed-lines .band.main { flex: 0 0 auto; }
     .fixed-lines .band.main .clip { flex: none; -webkit-mask-image: none; mask-image: none; }
@@ -37,10 +45,14 @@
     .band.sub .clip { font-size: 3.6vh; height: calc(3.6vh * 1.22 * 2); color: var(--fog); font-weight: 400; } /* translation tone */
     .band .lbl { font-family: var(--font); font-size: 1.6vh; letter-spacing: .14em; text-transform: uppercase; color: var(--accent); margin-bottom: .8vh; font-weight: 700; }
     .foot { display: flex; justify-content: space-between; align-items: flex-end; gap: 2vw; }
-    .qr { display: flex; align-items: center; gap: 1.4vw; background: #1B1A20; border: 1px solid #2A2930; padding: 1.4vh 1.4vw; border-radius: 1.8vh; }
-    .qr img { width: 14vh; height: 14vh; background: #fff; border-radius: 1vh; padding: .6vh; }
-    .qr div { font-size: 2.1vh; color: var(--fog); max-width: 26vw; }
-    .qr b { display: block; color: var(--paper); font-family: var(--font-display); font-weight: 800; font-size: 2.7vh; letter-spacing: -.01em; margin-bottom: .5vh; }
+    .qr { display: flex; align-items: center; gap: 1.6vw; background: linear-gradient(180deg, #1D1C22, #17161B); border: 1px solid #2A2930; padding: 1.4vh 2vw 1.4vh 1.4vh; border-radius: 2.6vh; box-shadow: 0 2vh 5vh -2vh rgb(0 0 0 / .6); }
+    .qr img { width: 15vh; height: 15vh; background: #fff; border-radius: 1.6vh; padding: .9vh; }
+    .qr div { display: grid; gap: .6vh; font-size: 2vh; color: #A8A5AE; max-width: 28vw; }
+    .qr b { color: var(--paper); font-family: var(--font-display); font-weight: 800; font-size: 2.8vh; line-height: 1.1; letter-spacing: -.015em; }
+    #url { font-variant-numeric: tabular-nums; letter-spacing: .01em; }
+    .qr-langs { display: flex; flex-wrap: wrap; gap: .6vh; margin-top: .4vh; }
+    .qr-langs:empty { display: none; }
+    .qr-langs i { font-style: normal; font-size: 1.6vh; font-weight: 700; padding: .35vh 1vh; border-radius: 99px; background: var(--lime); color: var(--ink); } /* lime only as a fill, ink on it */
     .foot-l { font-size: 1.8vh; color: #8D8A94; display: flex; align-items: center; gap: .5em; } .foot-l i { font-style: normal; }
     .foot-l .brand { color: #A8A5AE; } .foot-l .brand::before { background-image: url(/brand/mark-dark.svg); } /* always dark: paper O + lime line */
     .fade { opacity: .25; transition: opacity 1s; }
@@ -58,11 +70,11 @@
 </head>
 <body>
   <main class="wrap">
-    <div class="head"><span><b id="stage"></b> <span id="talk"></span></span><span id="clock"></span></div>
+    <div class="head"><span><img class="ev-logo hidden" id="ev-logo" alt="" /><i class="onair" id="onair"></i><b id="stage"></b><span id="talk"></span></span><span id="clock"></span></div>
     <div class="bands"><div id="bands"></div><div id="pause" class="pause hidden" role="status"></div></div>
     <div class="foot">
       <div class="foot-l"><span class="brand">OpenCaptions</span> · <i id="powered"></i></div>
-      <div class="qr" id="qrbox"><img id="qr" alt="QR" /><div><b id="follow"></b><span id="url"></span></div></div>
+      <div class="qr" id="qrbox"><img id="qr" alt="QR" /><div><b id="follow"></b><span id="url"></span><span class="qr-langs" id="qr-langs"></span></div></div>
     </div>
   </main>
   <script type="module" src="/pages/screen.js"></script>

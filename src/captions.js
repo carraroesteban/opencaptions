@@ -44,6 +44,7 @@ export class CaptionTrack extends EventEmitter {
   replace(text, { final = false, lang = null } = {}) {
     clearTimeout(this.timer);
     this.timer = null;
+    this.interimText = ''; // provisional words shown before the language was known: the translation takes over
     text = (text || '').trim();
     if (!text) return;
     const now = this.clock();
@@ -71,6 +72,14 @@ export class CaptionTrack extends EventEmitter {
     const saved = this.cur;
     this.cur = { ...c, raw: text, end: Math.max(c.end, this.clock()), lang: lang || c.lang };
     this.#emit(true);
+    this.cur = saved;
+  }
+
+  /** A finished caption made elsewhere (a translation of something already said), with its own times. */
+  addFinal({ id, text, start, end, lang }) {
+    const saved = this.cur;
+    this.cur = { id, raw: String(text || '').trim(), start, end, lang };
+    if (this.cur.raw) this.#emit(true);
     this.cur = saved;
   }
 

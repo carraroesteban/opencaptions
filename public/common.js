@@ -1,4 +1,5 @@
 // Shared helpers for all OpenCaptions pages (no build step, plain ES modules).
+import '/select.js';
 export const qs = new URLSearchParams(location.search);
 
 // A new data folder (a fresh start, FRESH=1, or a deleted data/) starts this browser afresh too: what it remembered
@@ -17,12 +18,13 @@ fetch('/api/instance', { cache: 'no-store' }).then((r) => (r.ok ? r.json() : nul
 const browserLang = (navigator.language || 'es').slice(0, 2).toLowerCase();
 const savedUi = (() => { try { return JSON.parse(localStorage.getItem('oc.ui')); } catch { return null; } })();
 export const UI = qs.get('ui') || savedUi || (['es', 'pt'].includes(browserLang) ? (browserLang === 'pt' ? 'pt' : 'es') : 'en');
+document.documentElement.lang = UI; // screen readers read the page in its language (captions say their own, see watch.js)
 
 const T = {
   es: {
     chooseStage: 'Elegí una sala', chooseLang: 'Idioma de los subtítulos', live: 'En vivo', paused: 'En pausa', offline: 'Todavía no llega sonido',
     original: 'Original', listen: 'Escuchar', stopListen: 'Dejar de escuchar', download: 'Descargar', dual: 'Ver original',
-    backToLive: 'Volver al vivo', waiting: 'Esperando que empiece a hablar alguien…', connecting: 'Conectando…',
+    backToLive: 'Volver al vivo', waiting: 'Esperando que empiece a hablar alguien…', connecting: 'Conectando…', startsHere: 'Los subtítulos aparecen acá en cuanto empiece. Elegí tu idioma arriba.', reconnecting: 'Reconectando…', noNet: 'Sin conexión',
     followOnPhone: 'Seguí los subtítulos en tu celu', scan: 'Escaneá el QR', stages: 'Salas', uiLang: 'Idioma de la página', fmtText: 'texto', fmtSubs: 'subtítulos', fmtWeb: 'web', screenTitle: 'Pantalla', liveCaptions: 'Subtítulos en vivo', production: 'Producción', myTranscripts: 'Mis transcripciones', myTranscriptsHint: 'Todo lo que subtitulaste en esta compu: leelo, buscalo o descargalo.', backCaptions: 'Subtítulos',
     fontSize: 'Tamaño', newTalk: 'Nueva charla', poweredBy: 'Subtítulos generados con IA · pueden contener errores',
     listenHint: 'Usá auriculares', roomSoundHint: 'El sonido de la sala · usá auriculares o conectá tus audífonos', soundFull: 'El sonido de la sala está completo: ya lo escucha el máximo de personas. Los subtítulos siguen. Probá de nuevo en unos minutos.', soundOff: 'El sonido de la sala se apagó. Los subtítulos siguen.', talkChanged: 'Empezó una nueva charla', allStages: 'Todas las salas', theme: 'Tema',
@@ -30,11 +32,20 @@ const T = {
     fixTalk: 'Corregir', fixHint: 'Tocá una frase para corregirla: se guarda al salir de ella (Enter). Las descargas usan el texto corregido.',
     deleteTalk: 'Eliminar', deleteTalkQ: '¿Eliminar para siempre esta transcripción? No se puede deshacer.',
     catchUp: '¿Qué me perdí?', lastMinutes: 'Últimos 5 min', wholeTalk: 'Toda la charla', askTalk: 'Preguntale a la charla', askPlaceholder: 'Ej: ¿cuáles fueron las ideas principales?', askBtn: 'Preguntar', thinking: 'Pensando…', aiNote: 'Generado con IA a partir de la transcripción · puede contener errores', noAiNote: 'Momentos destacados de la transcripción', notFound: 'No lo encontré en lo que se dijo hasta ahora.', nothingYet: 'Todavía no hay suficiente para resumir. Volvé en un rato.', transcript: 'Transcripción', settings: 'Ajustes', textSize: 'Tamaño del texto', font: 'Tipografía', fontDefault: 'Estándar', fontLegible: 'Alta legibilidad', fontEasy: 'Lectura fácil', lineSpacing: 'Interlineado', themeAuto: 'Automático', themeLight: 'Claro', themeDark: 'Oscuro', themeContrast: 'Alto contraste', flow: 'Subtítulos', wordByWord: 'Palabra por palabra', wholeSentences: 'Oraciones completas', close: 'Cerrar', search: 'Buscar en la transcripción', matches: 'coincidencias', match: 'coincidencia', summary: 'Resumen', keyTerms: 'Temas clave', library: 'Transcripciones de las charlas', libraryHint: 'Cada charla, en tu idioma.', liveNow: 'En vivo ahora', untitled: 'Charla sin título', copyLink: 'Copiar link', copied: '✓ Copiado', print: 'Imprimir', followLive: 'Seguir en vivo', noTalks: 'Todavía no hay transcripciones.', readTranscript: 'Leer la transcripción completa', quotesFrom: 'Lo que se dijo', tooMany: 'Muchas preguntas ahora mismo, probá en un minuto.', error: 'No se pudo completar. Probá de nuevo.', seeLive: 'Ver subtítulos en vivo', allTalks: 'Todas las charlas', generate: 'Generar resumen', transcriptOf: 'Transcripción de', aiOff: 'Las funciones de IA están desactivadas en este evento.', accessibility: 'Accesibilidad', searchTalks: 'Buscar por título o sala', next: 'A continuación', speaker: 'Speaker', yes: 'Sí', no: 'No', floating: 'Subtítulos flotantes', fullscreen: 'pantalla completa',
+    // a transcript with nothing to show says why, and what to do
+    cancel: 'Cancelar', retry: 'Probar de nuevo', txEmpty: 'Todavía no se dijo nada en {room}', txEmptyBody: 'La transcripción aparece acá en cuanto alguien habla, y queda guardada cuando termina la charla.',
+    txGone: 'Esta transcripción no existe', txGoneBody: 'Puede que la hayan eliminado, o que al enlace le falte una parte. Buscala entre todas las charlas.',
+    txPrivate: 'Esta transcripción no es pública', txPrivateBody: 'Los organizadores no la publicaron. Si sos del equipo, abrila desde Transcripciones en el panel de producción.',
+    txFail: 'No se pudo abrir la transcripción', txFailBody: 'Revisá la conexión y probá de nuevo.', libPrivate: 'Las transcripciones de este evento no son públicas.',
+    // audience redesign
+    homeHint: 'Subtítulos y traducción en vivo de cada sala, en tu idioma.', roomsLive1: '1 sala en vivo', roomsLiveN: '{n} salas en vivo', otherRooms: 'Más salas', readIn: 'Leer en', noResults: 'Ninguna charla coincide con la búsqueda.',
+    smaller: 'Texto más chico', bigger: 'Texto más grande', lhTight: 'Compacto', lhNormal: 'Normal', lhLoose: 'Amplio', send: 'Enviar',
+    askSuggest1: '¿Cuáles son las ideas principales hasta ahora?', askSuggest2: '¿Qué dijo recién?', noSound: 'Sin sonido', captionsBy: 'Subtítulos por OpenCaptions',
   },
   en: {
     chooseStage: 'Choose a room', chooseLang: 'Caption language', live: 'Live', paused: 'Paused', offline: 'No sound yet',
     original: 'Original', listen: 'Listen', stopListen: 'Stop listening', download: 'Download', dual: 'Show original',
-    backToLive: 'Back to live', waiting: 'Waiting for someone to start speaking…', connecting: 'Connecting…',
+    backToLive: 'Back to live', waiting: 'Waiting for someone to start speaking…', connecting: 'Connecting…', startsHere: 'Captions appear here as soon as it starts. Pick your language above.', reconnecting: 'Reconnecting…', noNet: 'No connection',
     followOnPhone: 'Follow the captions on your phone', scan: 'Scan the QR code', stages: 'Rooms', uiLang: 'Page language', fmtText: 'text', fmtSubs: 'captions', fmtWeb: 'web', screenTitle: 'Screen', liveCaptions: 'Live captions', production: 'Production', myTranscripts: 'My transcripts', myTranscriptsHint: 'Everything you captioned on this computer: read, search or download it.', backCaptions: 'Captions',
     fontSize: 'Size', newTalk: 'New talk', poweredBy: 'AI-generated captions · may contain errors',
     listenHint: 'Use headphones', roomSoundHint: 'The room’s sound · use earbuds or connect your hearing aids', soundFull: 'The room’s sound is full: the most people it allows are already listening. Captions keep working. Try again in a few minutes.', soundOff: 'The room’s sound was turned off. Captions keep working.', talkChanged: 'A new talk started', allStages: 'All rooms', theme: 'Theme',
@@ -42,11 +53,20 @@ const T = {
     fixTalk: 'Correct', fixHint: 'Tap a sentence to correct it: it’s saved when you leave it (Enter). Downloads use the corrected text.',
     deleteTalk: 'Delete', deleteTalkQ: 'Delete this transcript for good? This can’t be undone.',
     catchUp: 'What did I miss?', lastMinutes: 'Last 5 min', wholeTalk: 'Whole talk', askTalk: 'Ask the talk', askPlaceholder: 'e.g. What were the main takeaways?', askBtn: 'Ask', thinking: 'Thinking…', aiNote: 'AI-generated from the transcript · may contain errors', noAiNote: 'Highlights from the transcript', notFound: "I couldn't find that in what has been said so far.", nothingYet: 'Not enough yet to summarize. Check back in a bit.', transcript: 'Transcript', settings: 'Settings', textSize: 'Text size', font: 'Font', fontDefault: 'Standard', fontLegible: 'High legibility', fontEasy: 'Easy reading', lineSpacing: 'Line spacing', themeAuto: 'Automatic', themeLight: 'Light', themeDark: 'Dark', themeContrast: 'High contrast', flow: 'Captions', wordByWord: 'Word by word', wholeSentences: 'Whole sentences', close: 'Close', search: 'Search the transcript', matches: 'matches', match: 'match', summary: 'Summary', keyTerms: 'Key topics', library: 'Talk transcripts', libraryHint: 'Every talk, in your language.', liveNow: 'Live now', untitled: 'Untitled talk', copyLink: 'Copy link', copied: '✓ Copied', print: 'Print', followLive: 'Follow live', noTalks: 'No transcripts yet.', readTranscript: 'Read the full transcript', quotesFrom: 'What was said', tooMany: 'Lots of questions right now — try again in a minute.', error: "Couldn't complete that. Please try again.", seeLive: 'See live captions', allTalks: 'All talks', generate: 'Generate summary', transcriptOf: 'Transcript of', aiOff: 'AI features are turned off for this event.', accessibility: 'Accessibility', searchTalks: 'Search by title or room', next: 'Up next', speaker: 'Speaker', yes: 'Yes', no: 'No', floating: 'Floating captions', fullscreen: 'full screen',
+    // a transcript with nothing to show says why, and what to do
+    cancel: 'Cancel', retry: 'Try again', txEmpty: 'Nothing has been said in {room} yet', txEmptyBody: 'The transcript shows up here as soon as someone speaks, and it’s kept when the talk ends.',
+    txGone: 'This transcript doesn’t exist', txGoneBody: 'It may have been deleted, or part of the link is missing. Look for it among all the talks.',
+    txPrivate: 'This transcript isn’t public', txPrivateBody: 'The organizers haven’t published it. If you’re on the team, open it from Transcripts in the production dashboard.',
+    txFail: 'Couldn’t open the transcript', txFailBody: 'Check the connection and try again.', libPrivate: 'This event’s transcripts aren’t public.',
+    // audience redesign
+    homeHint: 'Live captions and translation for every room, in your language.', roomsLive1: '1 room live', roomsLiveN: '{n} rooms live', otherRooms: 'More rooms', readIn: 'Read in', noResults: 'No talks match your search.',
+    smaller: 'Smaller text', bigger: 'Larger text', lhTight: 'Compact', lhNormal: 'Normal', lhLoose: 'Relaxed', send: 'Send',
+    askSuggest1: 'What are the main ideas so far?', askSuggest2: 'What was just said?', noSound: 'No sound yet', captionsBy: 'Captions by OpenCaptions',
   },
   pt: {
     chooseStage: 'Escolha uma sala', chooseLang: 'Idioma das legendas', live: 'Ao vivo', paused: 'Em pausa', offline: 'Ainda sem som',
     original: 'Original', listen: 'Ouvir', stopListen: 'Parar de ouvir', download: 'Baixar', dual: 'Ver original',
-    backToLive: 'Voltar ao vivo', waiting: 'Esperando alguém começar a falar…', connecting: 'Conectando…',
+    backToLive: 'Voltar ao vivo', waiting: 'Esperando alguém começar a falar…', connecting: 'Conectando…', startsHere: 'As legendas aparecem aqui assim que começar. Escolha seu idioma acima.', reconnecting: 'Reconectando…', noNet: 'Sem conexão',
     followOnPhone: 'Acompanhe as legendas no celular', scan: 'Escaneie o QR', stages: 'Salas', uiLang: 'Idioma da página', fmtText: 'texto', fmtSubs: 'legendas', fmtWeb: 'web', screenTitle: 'Tela', liveCaptions: 'Legendas ao vivo', production: 'Produção', myTranscripts: 'Minhas transcrições', myTranscriptsHint: 'Tudo o que você legendou neste computador: leia, pesquise ou baixe.', backCaptions: 'Legendas',
     fontSize: 'Tamanho', newTalk: 'Nova palestra', poweredBy: 'Legendas geradas por IA · podem conter erros',
     listenHint: 'Use fones de ouvido', roomSoundHint: 'O som da sala · use fones de ouvido ou conecte seus aparelhos auditivos', soundFull: 'O som da sala está lotado: o máximo de pessoas já está ouvindo. As legendas continuam. Tente de novo em alguns minutos.', soundOff: 'O som da sala foi desligado. As legendas continuam.', talkChanged: 'Começou uma nova palestra', allStages: 'Todas as salas', theme: 'Tema',
@@ -54,6 +74,15 @@ const T = {
     fixTalk: 'Corrigir', fixHint: 'Toque numa frase para corrigi-la: ela é salva quando você sai dela (Enter). Os downloads usam o texto corrigido.',
     deleteTalk: 'Excluir', deleteTalkQ: 'Excluir esta transcrição para sempre? Não dá para desfazer.',
     catchUp: 'O que eu perdi?', lastMinutes: 'Últimos 5 min', wholeTalk: 'Palestra inteira', askTalk: 'Pergunte à palestra', askPlaceholder: 'Ex.: quais foram as ideias principais?', askBtn: 'Perguntar', thinking: 'Pensando…', aiNote: 'Gerado por IA a partir da transcrição · pode conter erros', noAiNote: 'Destaques da transcrição', notFound: 'Não encontrei isso no que foi dito até agora.', nothingYet: 'Ainda não há o suficiente para resumir. Volte daqui a pouco.', transcript: 'Transcrição', settings: 'Ajustes', textSize: 'Tamanho do texto', font: 'Fonte', fontDefault: 'Padrão', fontLegible: 'Alta legibilidade', fontEasy: 'Leitura fácil', lineSpacing: 'Espaçamento', themeAuto: 'Automático', themeLight: 'Claro', themeDark: 'Escuro', themeContrast: 'Alto contraste', flow: 'Legendas', wordByWord: 'Palavra por palavra', wholeSentences: 'Frases completas', close: 'Fechar', search: 'Buscar na transcrição', matches: 'resultados', match: 'resultado', summary: 'Resumo', keyTerms: 'Temas principais', library: 'Transcrições das palestras', libraryHint: 'Cada palestra, no seu idioma.', liveNow: 'Ao vivo agora', untitled: 'Palestra sem título', copyLink: 'Copiar link', copied: '✓ Copiado', print: 'Imprimir', followLive: 'Acompanhar ao vivo', noTalks: 'Ainda não há transcrições.', readTranscript: 'Ler a transcrição completa', quotesFrom: 'O que foi dito', tooMany: 'Muitas perguntas agora — tente em um minuto.', error: 'Não foi possível concluir. Tente de novo.', seeLive: 'Ver legendas ao vivo', allTalks: 'Todas as palestras', generate: 'Gerar resumo', transcriptOf: 'Transcrição de', aiOff: 'As funções de IA estão desativadas neste evento.', accessibility: 'Acessibilidade', searchTalks: 'Buscar por título ou sala', next: 'A seguir', speaker: 'Palestrante', yes: 'Sim', no: 'Não', floating: 'Legendas flutuantes', fullscreen: 'tela cheia',
+    // a transcript with nothing to show says why, and what to do
+    cancel: 'Cancelar', retry: 'Tentar de novo', txEmpty: 'Ainda não foi dito nada em {room}', txEmptyBody: 'A transcrição aparece aqui assim que alguém fala, e fica salva quando a palestra termina.',
+    txGone: 'Esta transcrição não existe', txGoneBody: 'Talvez tenha sido excluída, ou falta uma parte do link. Procure entre todas as palestras.',
+    txPrivate: 'Esta transcrição não é pública', txPrivateBody: 'Os organizadores não a publicaram. Se você é da equipe, abra em Transcrições no painel de produção.',
+    txFail: 'Não foi possível abrir a transcrição', txFailBody: 'Verifique a conexão e tente de novo.', libPrivate: 'As transcrições deste evento não são públicas.',
+    // audience redesign
+    homeHint: 'Legendas e tradução ao vivo de cada sala, no seu idioma.', roomsLive1: '1 sala ao vivo', roomsLiveN: '{n} salas ao vivo', otherRooms: 'Mais salas', readIn: 'Ler em', noResults: 'Nenhuma palestra corresponde à busca.',
+    smaller: 'Texto menor', bigger: 'Texto maior', lhTight: 'Compacto', lhNormal: 'Normal', lhLoose: 'Amplo', send: 'Enviar',
+    askSuggest1: 'Quais são as ideias principais até agora?', askSuggest2: 'O que acabou de ser dito?', noSound: 'Sem som', captionsBy: 'Legendas por OpenCaptions',
   },
 };
 export const t = (k) => T[UI]?.[k] ?? T.en[k] ?? k;
@@ -166,14 +195,18 @@ export class Socket {
     this.open();
   }
   async open() {
+    const n = (this.opens = (this.opens || 0) + 1);
     let url;
     try { url = await this.urlFn(); } catch { return this.retry(); } // offline: try again like a dropped socket
-    if (this.closed) return;
+    if (this.closed || n !== this.opens) return; // closed, or another open() started meanwhile (reconnect)
+    const prev = this.ws;
     const ws = (this.ws = new WebSocket(url));
+    if (prev && prev.readyState < 2) prev.close(); // a retry that was already scheduled: one connection at a time
     ws.binaryType = 'arraybuffer';
     ws.onopen = () => { this.backoff = 500; this.h.open?.(); };
     ws.onmessage = (e) => (typeof e.data === 'string' ? this.h.message?.(JSON.parse(e.data)) : this.h.binary?.(e.data));
     ws.onclose = (e) => {
+      if (ws !== this.ws) return; // replaced already (reconnect)
       this.h.close?.(e);
       // 4000 = replaced by another ingest, 4001 = bad token, 4004 = unknown room: don't fight it. Anything else is
       // reconnected with backoff, 1012 included (the server restarting, or the room removed: then 4004 follows).
@@ -189,7 +222,17 @@ export class Socket {
   }
   get ready() { return this.ws?.readyState === 1; }
   send(obj) { if (this.ready) this.ws.send(typeof obj === 'string' || obj instanceof ArrayBuffer || ArrayBuffer.isView(obj) ? obj : JSON.stringify(obj)); }
-  reconnect() { try { this.ws.close(); } catch { /* ignore */ } }
+  /** Open a new connection now (new parameters): no waiting, as there would be after a drop. */
+  reconnect() {
+    const old = this.ws;
+    this.ws = null;
+    try { old?.close(); } catch { /* ignore */ }
+    this.open();
+  }
+  /** A viewer changes languages (or Listen) on the same connection; the server answers with a new hello. */
+  subscribe(langs, audio = '0') {
+    if (this.ready) this.send({ type: 'subscribe', langs, audio }); else this.reconnect();
+  }
   close() { this.closed = true; this.ws?.close(); }
 }
 
@@ -377,6 +420,52 @@ export function setTheme(th) {
   if (th === 'auto') { delete document.documentElement.dataset.theme; store.set('theme', null); }
   else { document.documentElement.dataset.theme = th; store.set('theme', th); }
 }
+/**
+ * A segmented control (iOS, Linear): buttons on a track and a thumb that glides to the chosen one.
+ * items: [value, label HTML (escape it), aria-label?]; onPick(value) runs on a new choice.
+ */
+export function segment(el, items, cur, onPick) {
+  el.classList.add('segmented');
+  el.innerHTML = '<span class="thumb" aria-hidden="true"></span>' + items.map(([v, html, aria]) => `<button type="button" data-v="${esc(v)}" aria-pressed="${String(v) === String(cur)}"${aria ? ` aria-label="${esc(aria)}" title="${esc(aria)}"` : ''}>${html}</button>`).join('');
+  el.onclick = (e) => {
+    const b = e.target.closest('[data-v]');
+    if (!b || b.getAttribute('aria-pressed') === 'true') return;
+    pressSegment(el, b.dataset.v);
+    onPick(b.dataset.v);
+  };
+  // Re-measure when it becomes visible (a sheet opening) or its labels change width (a font arriving).
+  el._ro ??= new ResizeObserver(() => glide(el, true));
+  el._ro.disconnect();
+  for (const x of [el, ...el.querySelectorAll(':scope > [data-v]')]) el._ro.observe(x); // not the thumb: it resizes as it glides
+  glide(el, true);
+}
+/** Choose a value from code: the thumb glides there. */
+export function pressSegment(el, v) {
+  for (const x of el.querySelectorAll(':scope > [data-v]')) x.setAttribute('aria-pressed', String(x.dataset.v === String(v)));
+  glide(el);
+}
+function glide(el, instant) {
+  const th = el.querySelector(':scope > .thumb');
+  const b = el.querySelector(':scope > [aria-pressed="true"]');
+  if (!th || !b?.offsetWidth) return;
+  if (instant) th.style.transition = 'none';
+  Object.assign(th.style, { width: `${b.offsetWidth}px`, height: `${b.offsetHeight}px`, transform: `translate(${b.offsetLeft}px, ${b.offsetTop}px)` });
+  th.classList.add('on');
+  if (instant) { void th.offsetWidth; th.style.transition = ''; return; }
+  // A track that scrolls (many languages): bring the choice into view, without moving the page.
+  const l = b.offsetLeft - 24, r = b.offsetLeft + b.offsetWidth + 24 - el.clientWidth;
+  if (l < el.scrollLeft) el.scrollTo({ left: l, behavior: 'smooth' }); else if (r > el.scrollLeft) el.scrollTo({ left: r, behavior: 'smooth' });
+}
+/** The Aa sheet's choices (phone captions and transcript): font, line spacing, theme. */
+export const readingItems = {
+  font: () => [['default', 'fontDefault'], ['legible', 'fontLegible'], ['easy', 'fontEasy']].map(([v, k]) => [v, `<span data-ff="${v}">${esc(t(k))}</span>`]),
+  lh: () => [['1.3', 'lhTight'], ['1.5', 'lhNormal'], ['1.8', 'lhLoose']].map(([v, k]) => [v, `<span class="lh-ic ${k}" aria-hidden="true"><i></i><i></i><i></i></span>`, t(k)]),
+  theme: () => [['auto', 'themeAuto'], ['light', 'themeLight'], ['dark', 'themeDark'], ['contrast', 'themeContrast']].map(([v, k]) => [v, `<span class="sw sw-${v}" aria-hidden="true">Aa</span><span class="sw-l">${esc(t(k))}</span>`]),
+};
+/** Each font choice written in its own font (loads them: call it when the sheet opens). */
+export function previewFonts(el) {
+  for (const s of el.querySelectorAll('[data-ff]')) s.style.fontFamily = READING_FONTS[s.dataset.ff] ? loadFont(READING_FONTS[s.dataset.ff]) : 'var(--font)';
+}
 export const fmtClock = (ms) => { const s = Math.max(0, Math.round(ms / 1000)); const h = Math.floor(s / 3600); const m = Math.floor((s % 3600) / 60); return `${h ? h + ':' + String(m).padStart(2, '0') : m}:${String(s % 60).padStart(2, '0')}`; };
 
 // ---------- caption styling (shared by overlay.html, screen.html and style.html) ----------
@@ -482,3 +571,8 @@ export function serverHost(setup) {
   }
   return '127.0.0.1';
 }
+
+// The page is built (its module scripts have run up to their first wait): show it (style.css keeps it hidden until
+// then, so it never flashes half-built or untranslated).
+if (document.readyState === 'loading') addEventListener('DOMContentLoaded', () => document.documentElement.classList.add('ready'));
+else document.documentElement.classList.add('ready');

@@ -3,7 +3,7 @@
 //   keyPanel    → paste a Gemini API key; the server checks it with Google and saves it (POST/PUT /api/ai/key)
 //   textApiPanel → translations, summaries and questions on another AI service (PUT/DELETE /api/ai/text)
 //   tunnelPanel → a public HTTPS address through Cloudflare, with one click (POST /api/tunnel)
-import { LANG } from '/i18n.js';
+import { LANG } from '/prefs.js';
 import { esc, copyText } from '/common.js';
 import { icon } from '/illustrations.js';
 
@@ -12,6 +12,7 @@ const T = {
     // key
     keyNone: 'Sin API key: los subtítulos son simulados.',
     keyOn: (l4, src) => `Conectado a Gemini con la key ••••${l4}${src === 'env' ? ' (del archivo .env)' : ''}.`,
+    keyIdle: (l4) => `La key ••••${l4} está guardada, pero OpenCaptions se inició en modo de prueba: los subtítulos son simulados. Inicialo normalmente para usar Gemini.`,
     vertex: 'Conectado a Gemini por Google Cloud Vertex AI (configurado en .env).',
     s1: 'Abrí Google AI Studio, entrá con una cuenta de Google y tocá «Create API key».',
     s1Link: 'Abrir AI Studio',
@@ -103,6 +104,7 @@ const T = {
     ta_error: 'The service answered with an error.',
     keyNone: 'No API key: captions are simulated.',
     keyOn: (l4, src) => `Connected to Gemini with the key ••••${l4}${src === 'env' ? ' (from the .env file)' : ''}.`,
+    keyIdle: (l4) => `The key ••••${l4} is saved, but OpenCaptions was started in test mode: captions are simulated. Start it normally to use Gemini.`,
     vertex: 'Connected to Gemini through Google Cloud Vertex AI (set in .env).',
     s1: 'Open Google AI Studio, sign in with a Google account and click “Create API key”.',
     s1Link: 'Open AI Studio',
@@ -173,7 +175,9 @@ export function keyPanel(el, { api, confirm = async (m) => window.confirm(m), on
     let html;
     if (ai.vertex) html = `<p class="cx-status ok">${icon('check')}<span>${esc(t.vertex)}</span></p>`;
     else if (ai.set) {
-      html = `<p class="cx-status ok">${icon('check')}<span>${esc(t.keyOn(ai.last4, ai.source))}</span></p>`;
+      // Started with --mock / ENGINE=mock: the key is there but unused; "Connected" would contradict the rest of the page.
+      html = setup.engine === 'mock' ? `<p class="cx-status warn">${icon('alert')}<span>${esc(t.keyIdle(ai.last4))}</span></p>`
+        : `<p class="cx-status ok">${icon('check')}<span>${esc(t.keyOn(ai.last4, ai.source))}</span></p>`;
       if (!open) html += `<div class="cx-row"><button type="button" data-cx="open">${esc(t.replace)}</button>${ai.source === 'dashboard' ? `<button type="button" class="cx-link" data-cx="remove">${esc(t.remove)}</button>` : ''}</div>`;
     } else html = `<p class="cx-status warn">${icon('alert')}<span>${esc(t.keyNone)}</span></p>`;
     if (!ai.vertex && (open || !ai.set)) {
