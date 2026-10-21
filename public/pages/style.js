@@ -2,6 +2,9 @@
 import { esc, store, getEvent, FONTS, langLabel, copyText } from '/common.js';
 import { localize, prefsControls, tr } from '/i18n.js';
 import { mountIcons } from '/illustrations.js';
+import { ensureSignedIn } from '/signin.js';
+
+await ensureSignedIn(); // an organizer page: without the password, the sign-in screen instead of the controls
 mountIcons();
 document.querySelector('header').append(prefsControls());
 const $ = (id) => document.getElementById(id);

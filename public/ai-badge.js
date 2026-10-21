@@ -4,6 +4,7 @@
 import { esc } from '/common.js';
 import { LANG } from '/prefs.js';
 import { icon } from '/illustrations.js';
+import { menu, popMenu } from '/menu.js';
 
 const T = {
   es: {
@@ -52,9 +53,10 @@ export function aiBadge(el, { api, settings = '', onChange = () => {} } = {}) {
   const id = `ai-pop-${++n}`;
   let ai = null, busy = false;
   el.classList.add('ai-badge');
-  el.innerHTML = `<button type="button" class="ai-chip" ${api ? `popovertarget="${id}"` : 'disabled'}></button>
+  el.innerHTML = `<button type="button" class="ai-chip" ${api ? `aria-haspopup="true" aria-expanded="false" aria-controls="${id}"` : 'disabled'}></button>
     ${api ? `<div class="ai-pop" popover id="${id}" role="dialog" aria-label="${esc(t.title)}"></div>` : ''}`;
   const chip = el.querySelector('.ai-chip'), pop = el.querySelector('.ai-pop');
+  if (pop) { menu(pop); chip.onclick = (e) => popMenu(pop, chip, null, e); }
   function render() {
     if (!ai) return;
     const [ic, name, where, tone] = label(ai);

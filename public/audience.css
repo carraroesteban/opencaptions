@@ -219,6 +219,10 @@ body.watch { display: flex; flex-direction: column; height: 100dvh; overflow: hi
   box-shadow: 0 10px 24px -12px color-mix(in srgb, var(--primary-bg) 90%, transparent); animation: au-pop .45s var(--spring) both;
 }
 .w-ai:hover { background: color-mix(in srgb, var(--primary-bg) 88%, var(--fg)); }
+/* 360 px phones (many Androids): the bar fits without cutting off its last button; a longer label shortens with "…" */
+.w-ai { min-width: 0; }
+.w-ai .lbl { overflow: hidden; text-overflow: ellipsis; }
+@media (max-width: 380px) { .w-dock { gap: 6px; } .w-dock .au-btn { min-width: 44px; height: 44px; padding: 0 10px; } .w-ai { height: 44px; padding: 0 14px; font-size: 14.5px; } }
 .w-ai:active { transform: scale(.96); }
 .w-ai svg.i { width: 19px; height: 19px; }
 #listen .w-eq { display: none; }

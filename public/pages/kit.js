@@ -3,6 +3,9 @@ import { getEvent, esc, langLabel, qs } from '/common.js';
 import { prefsControls, LANG } from '/prefs.js';
 import { icon } from '/illustrations.js';
 import { mountNav, home } from '/nav.js';
+import { ensureSignedIn } from '/signin.js';
+
+await ensureSignedIn(); // an organizer page: without the password, the sign-in screen instead of the controls
 const $ = (id) => document.getElementById(id);
 $('prefs-slot').append(prefsControls());
 document.documentElement.lang = LANG;

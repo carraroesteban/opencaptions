@@ -5,13 +5,14 @@
 import { esc, store } from '/common.js';
 import { LANG, advanced } from '/prefs.js';
 import { icon } from '/illustrations.js';
+import { menu, menuAt } from '/menu.js';
 
 const T = {
   es: {
     views: { live: 'En vivo', rooms: 'Salas', agenda: 'Agenda', glossary: 'Glosario', integrations: 'Integraciones', transcripts: 'Transcripciones', history: 'Historial', settings: 'Ajustes' },
     panes: { general: 'General', ai: 'IA', address: 'Dirección pública', security: 'Seguridad', alerts: 'Alertas' },
     pages: [['dashboard', 'Informe del evento', '/report.html'], ['wand', 'Configurar el evento', '/welcome.html'], ['book', 'Biblioteca de transcripciones', '/talks.html'], ['qr', 'Kit de QR', '/kit.html'], ['palette', 'Estilo de subtítulos', '/style.html'], ['mic', 'Prueba de sonido', '/demo.html?mode=mic']],
-    state: { live: 'en vivo', pause: 'en pausa', off: 'sin sonido', bad: 'necesita atención' },
+    state: { live: 'en vivo', pause: 'escuchando', off: 'sin sonido', bad: 'necesita atención' },
     groups: { event: 'Evento', archive: 'Archivo' }, allRooms: 'Todas las salas', moveUp: 'Mover arriba', moveDown: 'Mover abajo', drag: 'Arrastrá para ordenar',
     home: 'Panel', sections: 'Secciones', rooms: 'Salas', menu: 'Menú', back: 'Atrás', here: 'Estás en', help: 'Ayuda',
     search: 'Buscar', jump: 'Ir a', jumpPh: 'Una sala, una página o un ajuste', page: 'Página', roomSet: 'Ajustes de la sala', roomTabs: { live: 'En vivo', screens: 'Pantallas y QR', sound: 'Sonido', settings: 'Ajustes' }, room: 'Abrir la sala', recent: 'Recientes',
@@ -23,7 +24,7 @@ const T = {
     views: { live: 'Live', rooms: 'Rooms', agenda: 'Agenda', glossary: 'Glossary', integrations: 'Integrations', transcripts: 'Transcripts', history: 'History', settings: 'Settings' },
     panes: { general: 'General', ai: 'AI', address: 'Public address', security: 'Security', alerts: 'Alerts' },
     pages: [['dashboard', 'Event report', '/report.html'], ['wand', 'Set up the event', '/welcome.html'], ['book', 'Transcript library', '/talks.html'], ['qr', 'QR kit', '/kit.html'], ['palette', 'Caption style', '/style.html'], ['mic', 'Sound check', '/demo.html?mode=mic']],
-    state: { live: 'live', pause: 'paused', off: 'no sound', bad: 'needs attention' },
+    state: { live: 'live', pause: 'listening', off: 'no sound', bad: 'needs attention' },
     groups: { event: 'Event', archive: 'Archive' }, allRooms: 'All rooms', moveUp: 'Move up', moveDown: 'Move down', drag: 'Drag to reorder',
     home: 'Dashboard', sections: 'Sections', rooms: 'Rooms', menu: 'Menu', back: 'Back', here: 'You are here', help: 'Help',
     search: 'Search', jump: 'Go to', jumpPh: 'A room, a page or a setting', page: 'Page', roomSet: 'Room settings', roomTabs: { live: 'Live', screens: 'Screens & QR', sound: 'Sound', settings: 'Settings' }, room: 'Open the room', recent: 'Recent',
@@ -240,13 +241,10 @@ function roomMenu(a, x, y) {
   m.innerHTML = roomActions(r).map((it) => `<a role="menuitem" href="${esc(it.href)}"${it.blank ? ' target="_blank"' : ''}>${icon(it.ic)}${esc(it.label)}</a>`).join('')
     + (moves.length ? `<span class="ctx-sep" role="separator"></span>${moves.map(([d, ic, label]) => `<a role="menuitem" href="#" data-move="${d}" data-room="${esc(r.id)}">${icon(ic)}${esc(label)}</a>`).join('')}` : '');
   m.showPopover();
-  const w = m.offsetWidth, h = m.offsetHeight;
-  m.style.left = `${Math.min(x, innerWidth - w - 8)}px`;
-  m.style.top = `${Math.min(y, innerHeight - h - 8)}px`;
-  menuFrom = a;
+  menuAt(m, x, y);
+  m._for = a;
   m.querySelector('a').focus();
 }
-let menuFrom = null;
 function mountRoomMenu() {
   const m = document.createElement('div');
   m.id = 'room-menu';
@@ -255,19 +253,13 @@ function mountRoomMenu() {
   m.setAttribute('role', 'menu');
   m.dataset.noI18n = '';
   $('side').append(m); // inside a landmark; as a popover it still shows on top of everything
-  m.addEventListener('keydown', (e) => {
-    const all = [...m.querySelectorAll('a')], i = all.indexOf(document.activeElement);
-    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); all[(i + (e.key === 'ArrowDown' ? 1 : -1) + all.length) % all.length].focus(); }
-    else if (e.key === 'Home' || e.key === 'End') { e.preventDefault(); all.at(e.key === 'Home' ? 0 : -1).focus(); }
-    else if (e.key === 'Tab') m.hidePopover();
-  });
+  menu(m);
   m.addEventListener('click', (e) => {
     const a = e.target.closest('a');
     if (!a) return;
     if (a.dataset.move) { e.preventDefault(); moveRoom(a.dataset.room, Number(a.dataset.move)); } else remember(a.getAttribute('href'));
     m.hidePopover();
   });
-  m.addEventListener('toggle', (e) => { if (e.newState === 'closed' && m.contains(document.activeElement)) menuFrom?.focus(); });
   // Right-click on a room, or the keyboard's menu key / Shift+F10 on it
   $('side-rooms').addEventListener('contextmenu', (e) => {
     const a = e.target.closest('a[data-room]');

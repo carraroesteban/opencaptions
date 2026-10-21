@@ -21,9 +21,6 @@ select[data-oc-select] { display: none !important; } /* still in the form, still
 .oc-fit .oc-sz { display: none; } /* the page sizes it to the chosen option (field-sizing: content) */
 
 /* The pages' own rules for their selects, for the button */
-.prefs .oc-select { padding: 5px 10px; font-size: 13px; border-radius: 9px; gap: 8px; }
-.me .prefs .oc-select { padding: 3px 7px; font-size: 12px; border-radius: 8px; gap: 6px; }
-.me .prefs .oc-select::after { width: 9px; height: 6px; background-size: 9px 6px; }
 .dock .oc-select { border-radius: var(--pill); }
 header .oc-select { border-radius: var(--pill); font-size: 14px; } /* demo.html: header select */
 .reps .oc-select { width: 100%; }

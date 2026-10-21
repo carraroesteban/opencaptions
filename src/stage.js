@@ -210,7 +210,8 @@ export class Stage extends EventEmitter {
     // The room's sound, for phones that play it: everything the room hears, breaks and music included.
     if (this.soundListeners.size) this.emit('sound', chunk);
     if (config.musicGuard) this.voice.push(chunk);
-    const loud = lvl >= config.speechRms;
+    // Just for me hears a tab or a call its person chose, often played low: anything audible is worth captioning.
+    const loud = lvl >= (this.id === 'me' ? 0.003 : config.speechRms);
     // On a break or during music, sound isn't speech to caption: it doesn't wake the AI up.
     const speech = loud && !this.brk && !this.music;
     if (this.brk && loud && this.voice.state === 'voice') this.voiceInBreakMs += 100;
@@ -292,7 +293,8 @@ export class Stage extends EventEmitter {
   }
 
   #onVoice(state) {
-    const music = state === 'music' && this.def.musicGuard !== false && !this.musicOverride;
+    // Just for me captions whatever its person chose to play, songs and voices over music included: never paused for music.
+    const music = state === 'music' && this.def.musicGuard !== false && !this.musicOverride && this.id !== 'me';
     if (music === this.music) return;
     this.music = music;
     if (music) {

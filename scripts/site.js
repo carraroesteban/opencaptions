@@ -18,6 +18,7 @@ const COPY = [
   ['site', '.'],
   ['public/tokens.css', 'tokens.css'],
   ['public/style.css', 'style.css'],
+  ['public/controls.css', 'controls.css'], // style.css imports it
   ['public/brand', 'brand'],
   ['public/fonts', 'fonts'],
   ['public/art', 'art'],
