@@ -3,7 +3,7 @@
 // live dot, a back button and a breadcrumb, a ⌘K / Ctrl+K quick switcher, and "?" buttons that hold the explanations.
 // A page adds <div class="crumbbar" id="crumbbar"></div> where its header goes and calls mountNav().
 import { esc, store } from '/common.js';
-import { LANG } from '/i18n.js';
+import { LANG, advanced } from '/prefs.js';
 import { icon } from '/illustrations.js';
 
 const T = {
@@ -17,7 +17,7 @@ const T = {
     search: 'Buscar', jump: 'Ir a', jumpPh: 'Una sala, una página o un ajuste', page: 'Página', roomSet: 'Ajustes de la sala', roomTabs: { live: 'En vivo', screens: 'Pantallas y QR', sound: 'Sonido', settings: 'Ajustes' }, room: 'Abrir la sala', recent: 'Recientes',
     sound: 'Página de sonido', screen: 'Pantalla del escenario', audience: 'Subtítulos en el celular', qr: 'Cartel con QR', newRoom: 'Nueva sala',
     keys: 'Atajos de teclado', toggle: 'Mostrar u ocultar el menú', collapse: 'Contraer el menú', menuKey: 'Menú de una sala (o clic derecho)', closeMenu: 'Cerrar el menú', move: 'moverse', open: 'abrir', close: 'Cerrar',
-    found: (n) => (n ? `${n} ${n === 1 ? 'resultado' : 'resultados'}` : 'Nada coincide'),
+    found: (n) => (n ? `${n} ${n === 1 ? 'resultado' : 'resultados'}` : 'Nada coincide'), adv: 'Modo avanzado',
   },
   en: {
     views: { live: 'Live', rooms: 'Rooms', agenda: 'Agenda', glossary: 'Glossary', integrations: 'Integrations', transcripts: 'Transcripts', history: 'History', settings: 'Settings' },
@@ -29,13 +29,13 @@ const T = {
     search: 'Search', jump: 'Go to', jumpPh: 'A room, a page or a setting', page: 'Page', roomSet: 'Room settings', roomTabs: { live: 'Live', screens: 'Screens & QR', sound: 'Sound', settings: 'Settings' }, room: 'Open the room', recent: 'Recent',
     sound: 'Sound page', screen: 'Stage screen', audience: 'Captions on phones', qr: 'QR poster', newRoom: 'New room',
     keys: 'Keyboard shortcuts', toggle: 'Show or hide the menu', collapse: 'Collapse the menu', menuKey: 'A room’s menu (or right-click)', closeMenu: 'Close the menu', move: 'move', open: 'open', close: 'Close',
-    found: (n) => (n ? `${n} ${n === 1 ? 'result' : 'results'}` : 'Nothing matches'),
+    found: (n) => (n ? `${n} ${n === 1 ? 'result' : 'results'}` : 'Nothing matches'), adv: 'Advanced mode',
   },
 };
 const L = T[LANG] || T.en;
-// [view, icon, admin only]; null is a divider
+// [view, icon, admin only, Advanced mode only]
 // Settings isn't in the list: it's always the sidebar's last item, at the bottom.
-const VIEWS = [['live', 'play'], ['rooms', 'dashboard', 1], ['agenda', 'calendar', 1], ['glossary', 'book', 1], ['integrations', 'link', 1], ['transcripts', 'doc'], ['history', 'refresh']];
+const VIEWS = [['live', 'play'], ['rooms', 'dashboard', 1], ['agenda', 'calendar', 1], ['glossary', 'book', 1, 1], ['integrations', 'link', 1, 1], ['transcripts', 'doc'], ['history', 'refresh', 0, 1]];
 const SETTINGS = ['settings', 'gear', 1];
 const onAdmin = location.pathname === '/admin.html';
 const to = (hash) => (onAdmin ? hash : `/admin.html${hash}`); // on the dashboard itself, only the #hash changes
@@ -45,7 +45,7 @@ const fold = (x) => x.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase();
 const $ = (id) => document.getElementById(id);
 const crew = () => document.body.classList.contains('role-crew');
 
-const link = (v) => `<a href="${to(`#${v[0]}`)}" data-view="${v[0]}"${v[2] ? ' data-admin' : ''}>${icon(v[1])}<span class="lbl">${L.views[v[0]]}</span></a>`;
+const link = (v) => `<a href="${to(`#${v[0]}`)}" data-view="${v[0]}"${v[2] ? ' data-admin' : ''}${v[3] ? ' data-advanced' : ''}>${icon(v[1])}<span class="lbl">${L.views[v[0]]}</span></a>`;
 const VIEW = Object.fromEntries(VIEWS.map((v) => [v[0], v]));
 /** A titled group of views; its title hides with them when they're all admin-only and a crew member is signed in. */
 const group = (key, ids) => `<h2 class="side-h"${ids.every((v) => VIEW[v][2]) ? ' data-admin' : ''}>${L.groups[key]}</h2>${ids.map((v) => link(VIEW[v])).join('')}`;
@@ -77,9 +77,19 @@ export function mountNav({ current = '', crumbs: c = [] } = {}) {
     <nav id="nav" aria-label="${L.sections}">${link(VIEW.live)}
       <h2 class="side-h" id="side-rooms-h"><a href="${to('#rooms')}" data-view="rooms" title="${L.allRooms}">${L.rooms}</a></h2><ul class="side-rooms" id="side-rooms" aria-labelledby="side-rooms-h"></ul>
       <a href="${to('#room/new')}" class="side-new" data-admin data-setup>${icon('plus')}<span class="lbl">${L.newRoom}</span></a>
-      ${group('event', ['agenda', 'glossary', 'integrations'])}${group('archive', ['transcripts', 'history'])}</nav>`;
+      ${group('event', ['agenda', 'glossary', 'integrations'])}${group('archive', ['transcripts', 'history'])}
+      <a href="/report.html" data-view="report">${icon('dashboard')}<span class="lbl">${L.pages[0][1]}</span></a></nav>`;
   side.querySelector('.foot') ? side.querySelector('.foot').before(block) : side.append(block);
-  side.insertAdjacentHTML('beforeend', `<nav class="side-last" aria-label="${L.views.settings}">${link(SETTINGS)}</nav>`);
+  // Settings sits with the rest of the navigation, above who's signed in and Event mode: always in view on a laptop.
+  block.insertAdjacentHTML('afterend', `<nav class="side-last" aria-label="${L.views.settings}">${link(SETTINGS)}</nav>`);
+  // The dashboard switches sections in place: a marker slides to the current one (its look is in admin.html).
+  if (onAdmin) {
+    marker = document.createElement('span');
+    marker.className = 'side-ind';
+    marker.setAttribute('aria-hidden', 'true');
+    $('nav').prepend(marker);
+    new ResizeObserver(() => placeMarker(false)).observe($('nav'));
+  }
   setCurrent(current);
 
   const bar = $('crumbbar');
@@ -114,6 +124,20 @@ export function setCurrent(view, room = '') {
   for (const a of document.querySelectorAll('#side-rooms a')) a.toggleAttribute('aria-current', a.dataset.room === room);
   for (const a of document.querySelectorAll('#side-rooms a[aria-current]')) a.setAttribute('aria-current', 'page');
   currentRoom = room;
+  placeMarker();
+}
+let marker = null;
+/** Moves the marker under the current item (sliding there, unless it was hidden or the layout itself changed). */
+function placeMarker(slide = true) {
+  if (!marker) return;
+  const nav = $('nav'), a = [...nav.querySelectorAll('a[aria-current]')].find((x) => !x.closest('.side-h') && x.offsetParent);
+  const was = marker.classList.contains('on');
+  marker.classList.toggle('on', !!a);
+  if (!a) return;
+  if (!slide || !was) marker.classList.remove('ready');
+  marker.style.transform = `translateY(${a.getBoundingClientRect().top - nav.getBoundingClientRect().top}px)`;
+  marker.style.height = `${a.offsetHeight}px`;
+  if (!marker.classList.contains('ready')) requestAnimationFrame(() => requestAnimationFrame(() => marker.classList.add('ready')));
 }
 
 // ---------- sidebar: collapse (desktop) or open (phone) ----------
@@ -147,7 +171,7 @@ function syncMenu() {
 /** A room's state for its dot: live, pause, off (no sound) or bad (needs attention), and how to say it. */
 export const stateOf = (st) => (st.alerts?.some((a) => a !== 'no-ingest') || st.dueTalk ? 'bad' : !st.ingest ? 'off' : st.engines?.length && !st.gated ? 'live' : 'pause');
 export const stateLabel = (state) => L.state[state];
-const initials = (name) => name.split(/\s+/).filter((w) => /\p{L}|\d/u.test(w[0] || '')).slice(0, 2).map((w) => w[0]).join('').toUpperCase() || '·';
+export const initials = (name) => name.split(/\s+/).filter((w) => /\p{L}|\d/u.test(w[0] || '')).slice(0, 2).map((w) => w[0]).join('').toUpperCase() || '·';
 let roomsKey = '';
 /** The rooms in the sidebar, each with its status dot: [{ id, name, alerts, ingest, engines, gated, dueTalk }] as /api/status gives them. */
 export function setRooms(stages = []) {
@@ -312,7 +336,8 @@ const recent = () => store.get('nav.recent', []);
 const remember = (href) => { if (href) store.set('nav.recent', [href, ...recent().filter((h) => h !== href)].slice(0, 6)); };
 function items() {
   const admin = !crew();
-  const out = [...VIEWS, SETTINGS].filter((v) => admin || !v[2]).map(([v, ic]) => ({ ic, label: L.views[v], href: to(`#${v}`) }));
+  const adv = (on) => (on ? { adv: 1, sub: advanced.get() ? undefined : L.adv } : {}); // found in Basic too: opening it turns Advanced on
+  const out = [...VIEWS, SETTINGS].filter((v) => admin || !v[2]).map(([v, ic, , a]) => ({ ic, label: L.views[v], href: to(`#${v}`), ...adv(a) }));
   if (admin) out.push({ ic: 'plus', label: L.newRoom, sub: L.views.rooms, href: to('#rooms/new') });
   for (const r of rooms) for (const it of roomActions(r)) out.push({ ...it, label: r.name, sub: it.label, dot: r.state });
   if (admin) {
@@ -321,7 +346,7 @@ function items() {
     for (const pane of document.querySelectorAll('#dlg-settings .set-pane')) {
       for (const h of pane.querySelectorAll(':scope > .card h3')) {
         const label = [...h.childNodes].filter((n) => n.nodeType === 3).map((n) => n.textContent).join('').trim();
-        if (label && !h.closest('.hidden')) out.push({ ic: 'gear', label, sub: `${L.views.settings} · ${L.panes[pane.dataset.pane] || ''}`, href: `#settings/${pane.dataset.pane}` });
+        if (label && !h.closest('.hidden')) out.push({ ic: 'gear', label, sub: `${L.views.settings} · ${L.panes[pane.dataset.pane] || ''}`, href: `#settings/${pane.dataset.pane}`, ...(h.closest('[data-advanced]') ? { adv: 1 } : {}) });
       }
     }
   }
@@ -387,6 +412,7 @@ function renderJump() {
 function pick(it) {
   $('jump').close();
   if (phone.matches) openMenu(false);
+  if (it.adv && !advanced.get()) { advanced.set(true); dispatchEvent(new Event('oc:advanced')); }
   if (it.run) return it.run();
   remember(it.href);
   if (it.blank) open(it.href, '_blank'); else location.href = it.href;
@@ -448,14 +474,17 @@ export function helpButton(pop) {
   if (pop) b.setAttribute('popovertarget', pop.id);
   return b;
 }
-/** Turns each [data-help] paragraph into a popover behind a "?" at the end of the heading just before it (or in its place). */
+/**
+ * Each [data-help] paragraph: a short one (or one with no heading to hang a "?" on) stays in view as a quiet line under
+ * its heading, as settings pages do; a long one goes in a popover behind a "?" at the end of the heading before it.
+ */
 export function mountHelp(root = document) {
-  for (const p of root.querySelectorAll('[data-help]:not([popover])')) {
+  for (const p of root.querySelectorAll('[data-help]:not([popover]):not(.help-inline)')) {
+    const h = p.previousElementSibling;
+    if (p.textContent.trim().length <= 130 || !h?.matches('h1, h2, h3, h4, legend')) { p.classList.add('help-inline'); continue; }
     p.id ||= `help-${++helpN}`;
     p.className = 'help-pop';
     p.setAttribute('popover', '');
-    const b = helpButton(p);
-    const h = p.previousElementSibling;
-    if (h?.matches('h1, h2, h3, h4, legend')) h.append(b); else p.before(b);
+    h.append(helpButton(p));
   }
 }

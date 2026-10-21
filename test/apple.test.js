@@ -38,14 +38,14 @@ test('streams audio in, provisional and settled sentences out', async () => {
   e.start();
   await sleep(5);
   assert.deepEqual(opened, [{ lang: 'en', vocabulary: ['Horizon Summit'] }]);
-  e.sendAudio(Buffer.alloc(3200)); // not live yet: dropped
+  e.sendAudio(Buffer.alloc(3200)); // not live yet: kept, and heard once it listens (the room's first words)
   procs[0].say({ ready: 'en-US', engine: 'SpeechAnalyzer' });
   await sleep(5);
   assert.equal(e.state, 'live');
   e.sendAudio(Buffer.alloc(3200));
   e.sendAudio(Buffer.alloc(3200));
   await sleep(5);
-  assert.equal(procs[0].audio, 6400);
+  assert.equal(procs[0].audio, 9600);
   procs[0].say({ partial: 'Welcome every' });
   procs[0].say({ partial: '' }); // nothing pending: no caption change
   procs[0].say({ final: 'Welcome everyone to Horizon Summit.', start: 0.3, end: 2.1 });
@@ -208,4 +208,79 @@ test('voice: local mode on a Mac offers 🎧 in every translated language; Whisp
   } finally {
     Object.assign(config, prev);
   }
+});
+
+/** A settled sentence as the helper writes it: every word with its time, spread evenly over [start, end]. */
+const settled = (text, start, end) => {
+  const ws = text.split(' ');
+  const d = (end - start) / ws.length;
+  return { final: text, start, end, w: ws.map((w, i) => [w, start + i * d, start + (i + 1) * d]) };
+};
+/** Words in progress: one stretch of time, as the helper writes them. */
+const progress = (text, start, end) => ({ partial: text, w: [[text, start, end]] });
+
+test('on "auto" two helpers listen; a sentence in the other language hands over to the other one, nothing garbled shown', async () => {
+  const { e, procs, opened, got } = engine({ source: 'auto', heard: 'en', languages: ['es', 'en'] });
+  const heard = [];
+  e.on('heard', (l) => heard.push(l));
+  e.start();
+  await sleep(5);
+  assert.deepEqual(opened.map((x) => x.lang), ['en', 'es'], 'the language believed spoken, and the room\'s other one');
+  procs[0].say({ ready: 'en-US', engine: 'SpeechAnalyzer' });
+  procs[1].say({ ready: 'es-ES', engine: 'SpeechAnalyzer' });
+  await sleep(5);
+  e.sendAudio(Buffer.alloc(3200));
+  await sleep(5);
+  assert.ok(procs[0].audio && procs[0].audio === procs[1].audio, 'both hear the same sound');
+  // English: the English helper captions as usual (and early, before Apple settles it).
+  procs[0].say(progress('Good morning everyone and welcome to the summit. Today', 0, 3.3));
+  procs[0].say(progress('Good morning everyone and welcome to the summit. Today we', 0, 3.5));
+  procs[1].say(settled('Gud mornin evrivan an guelcom tu de samit.', 0, 3));
+  await sleep(5);
+  assert.deepEqual(got.input.map((x) => x.text), [' Good morning everyone and welcome to the summit.']);
+  // The speaker switches to Spanish. The Spanish helper settles it; the English one writes Spanish-looking words.
+  procs[1].say(settled('Hoy seguimos en español con las preguntas de la gente.', 3.1, 7));
+  procs[1].say(progress('Y esta es la', 7, 8));
+  procs[0].say(settled('Good morning everyone and welcome to the summit. La hora sigo en espanol para las preguntas de la gente.', 0, 7.1));
+  await sleep(5);
+  assert.deepEqual(heard, ['es']);
+  assert.deepEqual(got.input.map((x) => x.text).slice(1), [' Hoy seguimos en español con las preguntas de la gente.'], 'the Spanish helper\'s sentence, not the garbled one');
+  assert.equal(got.interim.at(-1).text, 'Y esta es la', 'and its words in progress');
+  // Spanish leads now, captioning early as usual.
+  procs[1].say(progress('Y esta es la segunda pregunta que tenemos hoy. Muy', 7, 10));
+  procs[1].say(progress('Y esta es la segunda pregunta que tenemos hoy. Muy bien', 7, 10.4));
+  procs[0].say(settled('e esta es la segunda pregunta que tenemos', 7, 10));
+  await sleep(5);
+  assert.equal(got.input.at(-1).text, ' Y esta es la segunda pregunta que tenemos hoy.');
+  assert.equal(got.input.length, 3);
+  assert.ok(got.input.every((x) => x.lang === undefined), 'on "auto" the room tells each sentence\'s language from its words');
+  e.stop();
+});
+
+test('on "auto" a sentence in the lead\'s own language is never handed over', async () => {
+  const { e, procs, got } = engine({ source: 'auto', heard: 'es', languages: ['en'] });
+  e.start();
+  await sleep(5);
+  procs[0].say({ ready: 'es-ES', engine: 'SpeechAnalyzer' });
+  procs[1].say({ ready: 'en-US', engine: 'SpeechAnalyzer' });
+  await sleep(5);
+  procs[1].say(settled('la cultura de la gente is for every one hoo comes', 0, 3));
+  procs[0].say(settled('La cultura de la gente es para todos los que vienen.', 0, 3));
+  procs[0].say(settled('Gracias.', 3.2, 3.6)); // too short to tell: stays with the lead
+  await sleep(5);
+  assert.deepEqual(got.input.map((x) => x.text), [' La cultura de la gente es para todos los que vienen.', ' Gracias.']);
+  e.stop();
+});
+
+test('runs of lone punctuation (music, noise) never reach the captions', async () => {
+  const { e, procs, got } = engine();
+  e.start();
+  await sleep(5);
+  procs[0].say({ ready: 'en-US', engine: 'SpeechAnalyzer' });
+  procs[0].say({ partial: ', , ,, , ,, ,' });
+  procs[0].say({ final: 'That is all. , , ,, ,' });
+  await sleep(5);
+  assert.deepEqual(got.interim, []);
+  assert.deepEqual(got.input, [{ text: ' That is all.', finished: true, lang: 'en' }]);
+  e.stop();
 });

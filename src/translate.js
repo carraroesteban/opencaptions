@@ -11,9 +11,11 @@
 import { getClient } from './genai.js';
 import { config } from './config.js';
 import { chat as localChat, cleanTranslation, llmBusy, llmInfo } from './local/llm.js';
-import { appleTranslate } from './local/apple.js';
+import { appleTranslate, macLanguage } from './local/apple.js';
+import { guessLang } from './langid.js';
 import { promptLanguage } from './languages.js';
 import { textApiOn, textChat } from './textapi.js';
+import { spend, overBudget, BudgetError } from './budget.js';
 
 let ai = null;
 const client = () => ai ?? getClient(); // tests can inject their own (_setClient)
@@ -85,6 +87,7 @@ export async function translateText({ text, from, to, context = [], prior = [], 
     limiter.take();
     // Another AI service (Settings → AI): no streaming, and its cost isn't counted.
     if (textApiOn()) return (await textChat({ system: sys, user: `${ctx}Translate:\n${text}`, maxTokens: 512, temperature: 0.1, timeoutMs: config.mtTimeoutMs })).replace(/^["“]|["”]$/g, '');
+    if (overBudget()) throw new BudgetError();
     const cfg = { systemInstruction: sys, temperature: 0.1, maxOutputTokens: 512, abortSignal: AbortSignal.timeout(config.mtTimeoutMs) };
     if (thinking) cfg.thinkingConfig = { thinkingLevel: 'MINIMAL' }; // captions need speed, not reasoning
     const req = { model: config.textModel, contents: `${ctx}Translate:\n${text}`, config: cfg };
@@ -105,7 +108,9 @@ export async function translateText({ text, from, to, context = [], prior = [], 
       out = res.text || '';
       u = res.usageMetadata || {};
     }
-    if (stats) stats.usd = (stats.usd || 0) + (u.promptTokenCount || 0) * USD_IN + ((u.candidatesTokenCount || 0) + (u.thoughtsTokenCount || 0)) * USD_OUT;
+    const usd = (u.promptTokenCount || 0) * USD_IN + ((u.candidatesTokenCount || 0) + (u.thoughtsTokenCount || 0)) * USD_OUT;
+    spend(usd);
+    if (stats) stats.usd = (stats.usd || 0) + usd;
     return out.trim().replace(/^["“]|["”]$/g, '');
   };
   try {
@@ -136,8 +141,11 @@ export function translateGemmaPrompt({ text, from, to }) {
 
 async function translateLocal({ text, from, to, prior, vocabulary, partial, priority }) {
   // Apple's speech on a Mac: Apple's translation too (no Ollama needed). A language pair it can't do goes to Ollama.
-  if (config.localAsrApi === 'apple' && from) {
-    try { return await appleTranslate(text, from, to, config.mtTimeoutMs); } catch (e) { if (config.localLlmOff) throw e; }
+  if (config.localAsrApi === 'apple') {
+    // Apple needs the source language; an "auto" room's first sentences may not have one yet: guess, don't drop them.
+    const src = from || guessLang(text, Object.keys(config.event.languages)) || macLanguage();
+    if (src === to) return text;
+    try { return await appleTranslate(text, src, to, config.mtTimeoutMs); } catch (e) { if (config.localLlmOff) throw e; }
   }
   const model = llmInfo().mtModel;
   const request = { model, maxTokens: Math.min(400, 32 + Math.ceil(text.length / 2)), temperature: 0.1, timeoutMs: config.mtTimeoutMs, priority: priority ?? (partial ? 0 : 2) };

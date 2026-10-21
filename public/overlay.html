@@ -10,18 +10,21 @@
   <link rel="manifest" href="/manifest.webmanifest" />
   <title>Overlay · OpenCaptions</title>
   <link rel="stylesheet" href="/tokens.css" />
+  <link rel="preload" href="/fonts/brand.css" as="style" /><!-- tokens.css @imports it: fetched together, not one after another -->
   <style>
     /*
       Broadcast overlay for vMix (Web Browser input) / OBS (Browser Source), 1920×1080.
       Layout:  ?stage=main&lang=es&lines=2&size=46&pos=bottom|top|middle&width=78&margin=64&hide=6&bg=transparent
       Bilingual: &also=en (or orig) adds a smaller second line in another language for mixed-language streams
       Style:   &font=atkinsonnext|inter|atkinson|lexend|roboto|opensans|montserrat|mono|system &weight=700 &color=ffffff
-               &style=box|outline|shadow|none &box=000000 &alpha=78 &edge=000000 &upper=1 &align=center|left
+               &style=box|outline|shadow|none &box=000000 &alpha=78 &edge=000000 &upper=1 &align=left|center
       Design it visually at /style.html
     */
     :root { color-scheme: normal !important; } /* never let a light/dark scheme paint a backdrop: the overlay must stay transparent */
     html, body { margin: 0; height: 100%; background: var(--ov-bg, transparent); overflow: hidden; }
     .wrap { position: fixed; left: 0; right: 0; display: flex; justify-content: center; padding: 0 4vw; }
+    /* Left-aligned: the box starts where a centred one of full width would, and grows to the right (its left edge never moves). */
+    .wrap.left { justify-content: flex-start; padding-left: calc(4vw + 92vw * (1 - var(--wfrac, .78)) / 2); }
     .wrap.bottom { bottom: var(--margin, 64px); }
     .wrap.top { top: var(--margin, 64px); }
     .wrap.middle { top: 50%; transform: translateY(-50%); }

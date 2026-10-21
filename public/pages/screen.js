@@ -23,6 +23,7 @@ applyCaptionStyle(qs, { style: 'none', align: 'left' });
 if (qs.get('bg')) document.documentElement.style.setProperty('--screen-bg', toColor(qs.get('bg')));
 if (qs.get('clock') === '0') $('clock').classList.add('hidden');
 $('powered').textContent = t('poweredBy');
+if (ev.logo) Object.assign($('ev-logo'), { src: ev.logo, alt: ev.name }).classList.remove('hidden'); // OpenCaptions stays as the credit at the bottom
 $('follow').textContent = t('followOnPhone');
 const viewUrl = `${ev.publicUrl}/s/${stageId}`;
 $('url').textContent = viewUrl.replace(/^https?:\/\//, '');
@@ -34,7 +35,9 @@ const states = {}; // channel → { pacer, roll, at }: words at the speaker's pa
 if (qs.get('preview') === '1') {
   // Style preview: fake captions, no server needed. Shows exactly the bands the URL asks for (langs=es or es,orig).
   bands = [...new Set(want)].slice(0, 2);
-  $('stage').textContent = ev.stages.find((s) => s.id === stageId)?.name || ev.stages[0]?.name || '';
+  const st = ev.stages.find((s) => s.id === stageId) || ev.stages[0];
+  $('stage').textContent = st?.name || '';
+  qrLangs(st?.languages || []);
   $('bands').innerHTML = bands.map((l, i) => `<div class="band ${i ? 'sub' : 'main'}" id="b-${esc(l)}"><div class="lbl">${esc(langLabel(l, ev.languages))}</div><div class="clip"><div class="txt"></div></div></div>`).join('');
   const fake = (l) => (l === 'en' ? 'en' : l === 'orig' && bands[0] !== 'en' ? 'en' : 'es');
   bands.forEach((l, i) => {
@@ -46,7 +49,8 @@ if (qs.get('preview') === '1') {
     if (m.type === 'hello') {
       talkId = m.talk;
       $('stage').textContent = m.stage.name;
-      $('talk').textContent = m.stage.title ? `· ${m.stage.title}` : '';
+      $('talk').textContent = m.stage.title || '';
+      qrLangs(m.stage.languages);
       // Distinct channels in the requested order (e.g. es→orig when the talk is already in Spanish).
       bands = [...new Set(want.map((l) => m.map[l]))];
       $('bands').innerHTML = bands.map((ch, i) => {
@@ -60,16 +64,22 @@ if (qs.get('preview') === '1') {
         draw(ch);
       });
       showPause(m.pause);
+      wholeLines();
     } else if (m.type === 'pause') showPause(m);
     else if (m.type === 'caption') {
       const st = states[m.channel];
       if (st?.pacer) { st.at = Date.now(); st.pacer.push(m); }
     } else if (m.type === 'talk' || m.type === 'title') {
-      $('talk').textContent = m.title ? `· ${m.title}` : '';
+      $('talk').textContent = m.title || '';
       if (m.type === 'talk' && m.talk !== talkId) { talkId = m.talk; for (const ch of bands) { states[ch]?.pacer?.clear(); states[ch]?.roll?.clear(); } }
     }
   },
 });
+
+/** The languages a phone can read this room in, on the QR card: why scanning it is worth it. */
+function qrLangs(langs) {
+  $('qr-langs').innerHTML = langs.filter((l) => l !== 'orig').map((l) => `<i>${esc(langLabel(l, ev.languages))}</i>`).join('');
+}
 
 /** A break: "Break · Back at 11:30 · Next talk: …" over the captions. Music: a quiet note. */
 let pauseNow = null;
@@ -94,5 +104,23 @@ setInterval(() => {
     const idle = Date.now() - (states[ch]?.at || 0) > 12000;
     document.getElementById(`b-${ch}`)?.classList.toggle('fade', idle);
   }
+  $('onair').classList.toggle('on', !!bands[0] && Date.now() - (states[bands[0]]?.at || 0) < 12000 && !pauseView(pauseNow));
   $('clock').textContent = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 }, 1000);
+
+/**
+ * The main band holds whole lines, as on TV: its height rounded down to a number of lines, so the top line is never
+ * sliced (the fade at the top then covers one whole line). Fixed ?lines= screens set their own height.
+ */
+function wholeLines() {
+  const clip = document.querySelector('.band.main .clip');
+  if (!clip || document.body.classList.contains('fixed-lines')) return;
+  clip.style.height = '';
+  clip.style.flex = '';
+  const lh = parseFloat(getComputedStyle(clip).fontSize) * 1.22;
+  const h = clip.clientHeight;
+  if (!lh || h < lh) return;
+  clip.style.flex = 'none';
+  clip.style.height = `${Math.floor(h / lh) * lh}px`;
+}
+addEventListener('resize', wholeLines);

@@ -2,10 +2,45 @@
 // Source strings are Spanish; add a language by adding a dictionary below (exact strings + a few patterns
 // for interpolated text). A MutationObserver translates content rendered later (live dashboard cards,
 // dialogs), so pages don't need to wrap every string. Viewer pages (index/watch/screen) use t() in common.js.
-import { store, qs } from '/common.js';
+import { LANG } from '/prefs.js';
+
+export { LANG, prefsControls } from '/prefs.js'; // the pages that use the dictionary keep one import
 
 const DICTS = {
   en: {
+    // the dashboard: Basic / Advanced, room settings, integrations gallery
+    'Modo avanzado': 'Advanced mode',
+    'Muestra el glosario, las integraciones, el historial, el costo y los ajustes técnicos de cada sala. Se recuerda en este navegador.': 'Shows the glossary, integrations, history, costs and each room’s technical settings. Remembered in this browser.',
+    'Para la computadora que recibe el micrófono o la consola.': 'For the computer that gets the microphone or the sound desk.',
+    'Bloquea las salas, la agenda y el glosario para que nada cambie por error. Los controles en vivo siguen funcionando.': 'Locks rooms, the agenda and the glossary so nothing changes by accident. The live controls keep working.',
+    'Repetir en loop': 'Loop', 'Para archivos de prueba.': 'For test files.',
+    'ID (en las direcciones de la sala)': 'ID (in the room’s addresses)',
+    'Idiomas para el público': 'Languages for the audience',
+    'Cada persona elige el suyo en el celular. Más idiomas, más costo de IA.': 'Each person picks theirs on their phone. More languages, more AI cost.',
+    'Modo de traducción': 'Translation mode',
+    'Texto: menor latencia. Live: voz traducida por Gemini. Híbrido: los dos.': 'Text: the shortest delay. Live: voice translated by Gemini. Hybrid: both.',
+    'Pausar cuando suena música': 'Pause while music plays',
+    'Entre charlas y en los videos, los subtítulos esperan a que alguien hable.': 'Between talks and during videos, captions wait for someone to speak.',
+    'Sonido de la sala en los celulares': 'The room’s sound on phones',
+    'Escucha asistida para quien usa audífonos. Quien tenga el enlace la escucha aunque no esté en la sala: activalo solo si lo que se dice es público.': 'Assisted listening for people with hearing aids. Anyone with the link can listen, even outside the room: turn it on only if what’s said is public.',
+    'Abrí la página de sonido en la computadora que recibe el micrófono.': 'Open the sound page on the computer that gets the microphone.',
+    'Esperando el stream de OBS, vMix o el archivo.': 'Waiting for the stream from OBS, vMix or the file.',
+    'persona': 'person', 'personas': 'people',
+    'Cada charla queda acá cuando termina, con sus descargas en cada idioma.': 'Each talk lands here when it ends, with its downloads in every language.',
+    'Subtítulos en reuniones y transmisiones': 'Captions in meetings and streams',
+    'Los subtítulos de una sala aparecen en vivo donde ya está tu público.': 'A room’s captions show up live where your audience already is.',
+    'Cuando la transmisión pasa a una escena de pausa («Pausa», «Break», «Publicidad»…), los subtítulos de esa sala se pausan solos y las pantallas muestran la próxima charla.': 'When the stream switches to a break scene (“Break”, “Intermission”, “Ads”…), that room’s captions pause by themselves and the screens show the next talk.',
+    'No hace falta conectarlas: están en otras partes del panel.': 'Nothing to connect: they live in other parts of the dashboard.',
+    'Importá la agenda (Google, Outlook).': 'Import the agenda (Google, Outlook).',
+    'Alertas al celular del equipo.': 'Alerts on the team’s phones.',
+    'Overlay para el streaming, y audio por RTMP o SRT.': 'An overlay for the stream, and audio over RTMP or SRT.',
+    'Inicio de sesión con las cuentas de la empresa.': 'Sign-in with company accounts.',
+    'Dónde está el enlace': 'Where to find the link', 'Cómo activarlo': 'How to turn it on', 'Escenas de pausa': 'Break scenes',
+    'Palabras separadas por comas: una escena cuyo nombre tenga alguna pausa los subtítulos': 'Words separated by commas: a scene whose name has one of them pauses the captions',
+    'La IP de la computadora con OBS (puerto 4455).': 'The IP address of the computer running OBS (port 4455).',
+    'La IP de la computadora con vMix (puerto 8088).': 'The IP address of the computer running vMix (port 8088).',
+    'Solo la dirección, por ejemplo 192.168.1.20': 'Just the address, e.g. 192.168.1.20',
+    'Los subtítulos se pausan solos en las escenas de pausa.': 'Captions pause by themselves on break scenes.',
     // integrations and agenda import
     // a room's page, the rooms' gallery and list, Tools
     'Galería': 'Gallery', 'Lista': 'List', 'Ver las salas como': 'Show rooms as', 'Herramientas': 'Tools', 'Secciones de la sala': 'Room sections',
@@ -113,7 +148,7 @@ const DICTS = {
     'Cancelar': 'Cancel', 'Guardar': 'Save', 'Cargar': 'Load', 'Nombre': 'Name', 'ID': 'ID', 'Estilo': 'Style', 'Fondo': 'Background',
     'Subtítulos': 'Captions', 'Subtítulos en vivo': 'Live captions', 'Micrófono': 'Microphone', '(predeterminado)': '(default)',
     'En vivo': 'Live', 'en vivo': 'live', 'detenido': 'stopped', 'preparando audio…': 'preparing audio…',
-    'conectado': 'connected', 'desconectado': 'disconnected', 'reconectando…': 'reconnecting…', 'token inválido': 'invalid token',
+    'conectado': 'connected', 'desconectado': 'disconnected', 'listo para empezar': 'ready to start', 'reconectando…': 'reconnecting…', 'token inválido': 'invalid token',
     'otra computadora tomó esta sala': 'another computer took over this room', 'falta el enlace o la contraseña': 'needs the room link or the password', 'error': 'error', 'Presets': 'Presets',
     'sala inexistente': 'unknown room', 'archivo terminado': 'file finished', 'Empezar de nuevo': 'Start again',
     // dashboard
@@ -154,12 +189,15 @@ const DICTS = {
     "Lo que va en cada pantalla del lugar: el QR para el público, la pantalla del escenario y el overlay del streaming.": "What goes on each screen at the venue: the QR code for the audience, the stage screen and the livestream overlay.",
     "Modo evento": "Event mode",
     "Nombre del evento": "Event name",
+    "Logo del evento": "Event logo",
+    "Va en lugar del de OpenCaptions en celulares, pantalla y carteles. PNG, JPEG o WebP de hasta 2 MB, legible en claro y en oscuro.": "Shown instead of OpenCaptions’ on phones, the screen and posters. A PNG, JPEG or WebP up to 2 MB that reads on light and dark.",
+    "Arrastrá la imagen acá": "Drop the image here",
     "Nombres y términos": "Names and terms",
     "Nombres y términos que la IA tiene que escribir bien, y correcciones que se aplican a todos los subtítulos al instante.": "Names and terms the AI has to get right, and corrections applied to every caption instantly.",
     "Overlay vMix/OBS": "vMix/OBS overlay",
     "Pantallas y QR": "Screens & QR",
     "Quitar": "Remove",
-    "Reemplazar la agenda": "Replace the agenda",
+    "Reemplazar la agenda": "Replace the agenda", "Cargar la agenda": "Add your agenda", "Agregar un idioma…": "Add a language…", "Avanzado": "Advanced",
     "Registro de eventos": "Event log",
     "Renombrar charla": "Rename talk",
     "Salas eliminadas": "Deleted rooms",
@@ -198,7 +236,7 @@ const DICTS = {
     'Público': 'Audience', 'Min · US$': 'Min · US$',
     'Todavía no llega sonido.': 'No sound yet.', 'sonido desde': 'sound from',
     'no llega audio': 'no audio arriving', '¿mic muteado? (60s sin señal)': 'mic muted? (60 s without signal)', 'reconectando IA': 'AI reconnecting',
-    'latencia alta': 'high latency', 'traducción limitada por cuota → usando Live': 'translation rate-limited → using Live', 'la key de Gemini llegó a su límite': 'the Gemini key reached its limit', 'la IA está dando errores (ver el registro)': 'the AI is returning errors (see the log)',
+    'latencia alta': 'high latency', 'traducción limitada por cuota → usando Live': 'translation rate-limited → using Live', 'la key de Gemini llegó a su límite': 'the Gemini key reached its limit', 'la IA está dando errores (ver el registro)': 'the AI is returning errors (see the log)', 'se terminó el presupuesto de IA de esta semana': 'this week’s AI budget is used up', 'Presupuesto de IA de esta semana: se renueva el lunes': 'This week’s AI budget: it renews on Monday',
     'Idioma de la charla': 'Talk language', 'Detectar automáticamente': 'Detect automatically', 'Traducir a': 'Translate to',
     'Modo de traducción de subtítulos': 'Caption translation mode', 'Por defecto del servidor': 'Server default',
     'Live (speech-to-speech de Gemini · 1 sesión por idioma)': 'Live (Gemini speech-to-speech · 1 session per language)',
@@ -215,6 +253,7 @@ const DICTS = {
     'Charla': 'Talk',
     'Sin título': 'Untitled', 'Todavía no hay transcripciones.': 'No transcripts yet.',
     'Descargar todo (.zip)': 'Download all (.zip)', 'Todas las charlas de esta sala, en cada idioma: SRT, VTT y TXT': 'Every talk in this room, in each language: SRT, VTT and TXT',
+    'Buscar una charla': 'Search for a talk', 'Buscar por título o speaker': 'Search by title or speaker',
     'Es demasiado para un solo archivo. Desde la API se puede descargar un día por vez.': 'Too much for one file. The API can download one day at a time.',
     'No se pudo preparar la descarga.': 'The download couldn’t be prepared.',
     // caption a recording
@@ -290,6 +329,7 @@ const DICTS = {
     'The computer that gets the room’s sound (a microphone or an output of the sound desk) opens the sound page. From another computer, use a link: it works once and asks for no password.',
     'Esta dirección no es segura (http), así que el navegador de la otra computadora no le va a dejar usar un micrófono. Creá primero una dirección pública (Ajustes → Dirección pública) y volvé a crear el enlace.':
     'This address isn’t secure (http), so the browser on the other computer won’t let it use a microphone. Create a public address first (Settings → Public address), then make the link again.',
+    'Empezando…': 'Starting…', 'Más': 'More', 'Menos': 'Less', 'Diagnóstico': 'Diagnostics', 'Quién hace los subtítulos': 'Who makes the captions', 'Gemini en la nube, esta computadora, o Gemini con esta computadora de respaldo si se corta internet. Es la misma etiqueta de arriba del panel.': 'Gemini in the cloud, this computer, or Gemini with this computer as a backup when the internet drops. It’s the same badge as at the top of the dashboard.', 'Terminar la charla': 'End the talk', 'main,10:00,Keynote de apertura,Equipo del evento\nroom-a,10:30,Diseñar ciudades para todos,María José Fernández': 'main,10:00,Opening keynote,Event team\nroom-a,10:30,Designing cities for everyone,María José Fernández', 'La página se recargó y el navegador dejó de compartir el sonido: tocá Empezar para seguir.': 'The page reloaded, so the browser stopped sharing the sound: press Start to carry on.',
     'Crear un enlace para esa computadora': 'Make a link for that computer', 'Enlace para la computadora junto al escenario': 'Link for the computer next to the stage',
   },
 };
@@ -305,15 +345,6 @@ const PATTERNS = {
     [/^(\d+) charla\(s\) cargadas\.?$/, '$1 talk(s) loaded'], [/^✓ (\d+) charla\(s\) guardadas(.*)$/, '✓ $1 talk(s) saved$2'], [/ · ⚠ salas desconocidas: /, ' · ⚠ unknown rooms: '], [/ · Producción$/, ' · Production'], [/^Transcripción$/, 'Transcript'],
   ],
 };
-
-export const LANG = (() => {
-  const q = qs.get('ui');
-  if (q) { store.set('ui', q); return q; }
-  const saved = store.get('ui', null);
-  if (saved) return saved;
-  const b = (navigator.language || 'es').toLowerCase();
-  return b.startsWith('es') ? 'es' : b.startsWith('pt') ? 'pt' : 'en';
-})();
 
 // Looked up by trimmed text (see tr), so keys are trimmed too: "No se pudo iniciar: " must still match.
 const dict = DICTS[LANG] ? Object.fromEntries(Object.entries(DICTS[LANG]).map(([k, v]) => [k.trim(), v.trim()])) : null;
@@ -354,38 +385,4 @@ export function localize() {
       else m.addedNodes.forEach(translateNode);
     }
   }).observe(document.body, { childList: true, subtree: true, characterData: true });
-}
-
-const PREFS_LABELS = {
-  es: { lang: 'Idioma de la página', theme: 'Claro / oscuro' },
-  en: { lang: 'Page language', theme: 'Light / dark' },
-  pt: { lang: 'Idioma da página', theme: 'Claro / escuro' },
-};
-
-/**
- * Language + theme switcher for page headers.
- * @param {{ langs?: string[] }} [o]  languages to offer (audience pages add 'pt'); default: Spanish and English
- */
-export function prefsControls({ langs = ['es', 'en', ...Object.keys(DICTS).filter((k) => k !== 'en')] } = {}) {
-  const wrap = document.createElement('span');
-  wrap.className = 'row prefs';
-  wrap.setAttribute('data-no-i18n', '');
-  const cur = langs.includes(LANG) ? LANG : 'es';
-  const L = PREFS_LABELS[cur] || PREFS_LABELS.en;
-  wrap.innerHTML = `<select aria-label="${L.lang}" title="${L.lang}">${[...new Set(langs)].map((k) => `<option value="${k}" ${k === cur ? 'selected' : ''}>${k.toUpperCase()}</option>`).join('')}</select>
-    <button type="button" aria-label="${L.theme}" title="${L.theme}">◐</button>`;
-  wrap.querySelector('select').onchange = (e) => {
-    store.set('ui', e.target.value);
-    const u = new URL(location.href);
-    u.searchParams.delete('ui');
-    // Same address (e.g. only a #hash): assigning it wouldn't reload the page.
-    if (u.href === location.href || u.href.split('#')[0] === location.href.split('#')[0]) location.reload(); else location.href = u.href;
-  };
-  wrap.querySelector('button').onclick = () => {
-    const cur = document.documentElement.dataset.theme || (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
-    const next = cur === 'light' ? 'dark' : 'light';
-    document.documentElement.dataset.theme = next;
-    store.set('theme', next);
-  };
-  return wrap;
 }

@@ -34,6 +34,7 @@ export class GeminiEngine extends EventEmitter {
     this.mode = mode;
     this.setupFails = 0;
     this.level = 0; // index in LEVELS; lowered automatically if the model rejects optional fields
+    this.heard = ''; // what's been confirmed of the speech the provisional words are about (#unheard)
     this.state = 'idle';
     this.session = null;
     this.gen = 0;
@@ -221,11 +222,13 @@ export class GeminiEngine extends EventEmitter {
     if (sc.interimInputTranscription?.text) {
       const t = sc.interimInputTranscription;
       this.stats.interim = (this.stats.interim || 0) + 1;
-      this.emit('interim', { text: t.text, lang: normLang(t.languageCode) });
+      const text = this.#unheard(t.text);
+      if (text) this.emit('interim', { text, lang: normLang(t.languageCode) });
     }
     if (sc.inputTranscription) {
       this.stats.lastInputAt = Date.now();
       const t = sc.inputTranscription;
+      if (this.transcribeOnly) this.heard += t.text || ''; // the only model with provisional words (#unheard)
       this.emit('input', { text: this.#spaced(t.text), finished: !!t.finished, lang: normLang(t.languageCode) });
     }
     if (sc.outputTranscription) {
@@ -253,6 +256,22 @@ export class GeminiEngine extends EventEmitter {
     for (const p of sc.modelTurn?.parts || []) {
       if (p.inlineData?.data && (p.inlineData.mimeType || '').startsWith('audio')) this.emit('audio', Buffer.from(p.inlineData.data, 'base64'));
     }
+  }
+
+  /**
+   * Transcribe Live's provisional text can start again with words it has already confirmed ("…a simple tablet.a good",
+   * right after "We gave each clinic a simple tablet."): only the rest is new, or phones show the sentence twice.
+   */
+  #unheard(text) {
+    // Compared on letters and digits only: the two versions can differ in spaces and commas ("small,measure").
+    const done = letters(this.heard);
+    if (done && letters(text).startsWith(done)) {
+      let i = 0;
+      for (let n = 0; n < done.length; i++) if (/[\p{L}\p{N}]/u.test(text[i])) n++;
+      return text.slice(i).replace(/^[\s.,;:!?…]+/u, ''); // the confirmed sentence's own full stop, and the space
+    }
+    this.heard = ''; // provisional words about new speech: nothing of it is confirmed yet
+    return text;
   }
 
   /** Transcribe Live sends each finished sentence without a leading space ("Summit.My name…"): add one. */
@@ -337,3 +356,6 @@ function normLang(code) {
   if (!code) return null;
   return String(code).toLowerCase().split(/[-_]/)[0];
 }
+
+/** Only the letters and digits, lowercased: the words, whatever the spacing and punctuation. */
+const letters = (s) => s.toLowerCase().replace(/[^\p{L}\p{N}]/gu, '');

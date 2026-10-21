@@ -17,3 +17,6 @@ samples/*.webm
 # Build output: the website (npm run site) and the desktop downloads (npm run package)
 /_site/
 /dist/
+
+# Hosted test instances: one Caddy site per tester, written on the server by testers.sh
+deploy/hosted/sites/

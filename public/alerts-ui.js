@@ -1,8 +1,9 @@
 // Settings → Alerts: where the server sends a message when something goes wrong and nobody is watching the
-// dashboard (src/alerts.js). The card shows what triggers an alert and the destinations as tiles (connected or
-// not); a destination is set up in its own dialog, with room for its steps, and tested right after it's saved.
+// dashboard (src/alerts.js). Top to bottom: what triggers an alert; the channels already added, each with Send a test
+// and Remove; then "Add a channel": pick a service from its card, and only that service's steps and fields open below.
+// One channel per service (the server keeps one of each), so picking one already added edits it.
 // ntfy is the easy one: a free app, no account, a topic name generated here.
-import { LANG } from '/i18n.js';
+import { LANG } from '/prefs.js';
 import { esc, copyText } from '/common.js';
 import { icon } from '/illustrations.js';
 
@@ -11,16 +12,17 @@ const T = {
     whenH: 'Te avisamos cuando',
     when: [['mic', 'Una sala se queda sin sonido'], ['sparkle', 'La IA falla más de un minuto'], ['clock', 'Una charla se pasa 5 minutos'], ['offline', 'Se corta internet'], ['link', 'La dirección pública deja de funcionar']],
     fixed: 'Y otra vez cuando se resuelve.',
-    whereH: 'Adónde',
-    names: { ntfy: 'App ntfy', telegram: 'Telegram', slack: 'Slack', discord: 'Discord', webhook: 'Otro servicio (webhook)' },
+    mineH: 'Adónde llegan', addH: 'Agregar un canal', addMoreH: 'Agregar otro canal',
+    none: 'Todavía no llegan a ningún lado: elegí un servicio abajo.',
+    names: { ntfy: 'App ntfy', telegram: 'Telegram', slack: 'Slack', discord: 'Discord', webhook: 'Webhook' },
     descs: {
-      ntfy: 'Recomendado: gratis, sin cuenta, en iPhone, Android y computadora.',
-      telegram: 'Un bot que le escribe a vos o al grupo del equipo.',
+      ntfy: 'Gratis, sin cuenta, en iPhone, Android y computadora.',
+      telegram: 'Un bot que te escribe a vos o al grupo del equipo.',
       slack: 'Un mensaje en el canal del equipo.',
-      discord: 'Un mensaje en un canal del servidor.',
+      discord: 'Un mensaje en un canal de tu servidor.',
       webhook: 'Un POST con JSON, para Zapier, Make, n8n o un script propio.',
     },
-    on: 'Conectado', setUp: 'Configurar',
+    recommended: 'Recomendado', added: 'Agregado',
     steps: {
       ntfy: ['Instalá la app ntfy:', 'Tocá «+» y suscribite a este tema:', 'Guardá: te llega una prueba.'],
       telegram: ['En Telegram, abrí @BotFather, mandá /newbot y copiá el token que te da.', 'Escribile algo a tu bot nuevo (o sumalo al grupo del equipo).', 'Pegá el token y el ID del chat:'],
@@ -36,11 +38,9 @@ const T = {
     chatHelp: 'Para saber el ID: escribile al bot y abrí api.telegram.org/bot<token>/getUpdates; es el número de «chat».',
     url: 'Dirección', keep: (v) => `Guardada: ${v}. Dejala vacía para no cambiarla.`, copy: 'Copiar', copied: 'Copiado',
     lang: 'Idioma de los mensajes',
-    saveTest: 'Guardar y probar', save: 'Guardar', cancel: 'Cancelar', remove: 'Desconectar', testAll: 'Probar todos',
-    tested: (t) => `Listo: le mandamos una prueba a ${t}. Fijate en el celular.`,
-    savedBad: (t, e) => `Quedó guardado, pero la prueba a ${t} no llegó: ${e}`,
-    testBad: (t, e) => `No se pudo enviar a ${t}: ${e}`,
-    removed: (t) => `${t}: desconectado.`,
+    saveTest: 'Guardar y probar', cancel: 'Cancelar', test: 'Enviar una prueba', sending: 'Enviando…', remove: 'Quitar',
+    removeAsk: (t) => `¿Quitar ${t}?`, removeBody: 'Las alertas dejan de llegar ahí. Podés volver a agregarlo cuando quieras.',
+    sent: 'Prueba enviada: fijate en el celular.', failed: (e) => `No llegó: ${e}`,
     pause: 'Pausar 1 hora', pauseDay: 'Pausar hasta mañana', resume: 'Reanudar',
     paused: (h) => `Pausadas hasta las ${h}`,
   },
@@ -48,16 +48,17 @@ const T = {
     whenH: 'You get a message when',
     when: [['mic', 'A room loses its sound'], ['sparkle', 'The AI fails for over a minute'], ['clock', 'A talk runs 5 minutes over'], ['offline', 'The internet drops'], ['link', 'The public address stops working']],
     fixed: 'And another one when it’s fixed.',
-    whereH: 'Where they go',
-    names: { ntfy: 'ntfy app', telegram: 'Telegram', slack: 'Slack', discord: 'Discord', webhook: 'Another service (webhook)' },
+    mineH: 'Where they go', addH: 'Add a channel', addMoreH: 'Add another channel',
+    none: 'They don’t go anywhere yet: pick a service below.',
+    names: { ntfy: 'ntfy app', telegram: 'Telegram', slack: 'Slack', discord: 'Discord', webhook: 'Webhook' },
     descs: {
-      ntfy: 'Recommended: free, no account, on iPhone, Android and desktop.',
+      ntfy: 'Free, no account, on iPhone, Android and desktop.',
       telegram: 'A bot that messages you or the team’s group.',
       slack: 'A message in the team’s channel.',
       discord: 'A message in a channel of your server.',
       webhook: 'A JSON POST, for Zapier, Make, n8n or your own script.',
     },
-    on: 'Connected', setUp: 'Set up',
+    recommended: 'Recommended', added: 'Added',
     steps: {
       ntfy: ['Install the ntfy app:', 'Tap “+” and subscribe to this topic:', 'Save: a test message arrives.'],
       telegram: ['In Telegram, open @BotFather, send /newbot and copy the token it gives you.', 'Send your new bot any message (or add it to the team’s group).', 'Paste the token and the chat ID:'],
@@ -73,34 +74,33 @@ const T = {
     chatHelp: 'To find the ID: message the bot, then open api.telegram.org/bot<token>/getUpdates; it’s the “chat” number.',
     url: 'Address', keep: (v) => `Saved: ${v}. Leave it empty to keep it.`, copy: 'Copy', copied: 'Copied',
     lang: 'Language of the messages',
-    saveTest: 'Save and send a test', save: 'Save', cancel: 'Cancel', remove: 'Disconnect', testAll: 'Test all',
-    tested: (t) => `Done: a test went to ${t}. Check your phone.`,
-    savedBad: (t, e) => `Saved, but the test to ${t} didn’t arrive: ${e}`,
-    testBad: (t, e) => `Couldn’t send to ${t}: ${e}`,
-    removed: (t) => `${t}: disconnected.`,
+    saveTest: 'Save and send a test', cancel: 'Cancel', test: 'Send a test', sending: 'Sending…', remove: 'Remove',
+    removeAsk: (t) => `Remove ${t}?`, removeBody: 'Alerts stop going there. You can add it again any time.',
+    sent: 'Test sent: check your phone.', failed: (e) => `It didn’t arrive: ${e}`,
     pause: 'Pause for 1 hour', pauseDay: 'Pause until tomorrow', resume: 'Resume',
     paused: (h) => `Paused until ${h}`,
   },
 };
 const t = T[LANG] || T.en;
 const KINDS = ['ntfy', 'telegram', 'slack', 'discord', 'webhook'];
-const ICON = { ntfy: 'phone', telegram: 'chat', slack: 'chat', discord: 'chat', webhook: 'link' };
+// Each service its own mark (the same chat bubble on three of them read as one choice).
+const MARK = { ntfy: icon('phone'), telegram: 'T', slack: 'S', discord: 'D', webhook: icon('link') };
+const mark = (k) => `<span class="logo al-logo ${k}" aria-hidden="true">${MARK[k]}</span>`;
 const newTopic = () => `opencaptions-${[...crypto.getRandomValues(new Uint8Array(10))].map((b) => 'abcdefghijkmnpqrstuvwxyz23456789'[b % 32]).join('')}`;
 
 /**
  * @param {HTMLElement} el
- * @param {{ api: (m: string, u: string, b?: any) => Promise<any>, toast: (msg: string, o?: any) => void }} ctx
+ * @param {{ api: (m: string, u: string, b?: any) => Promise<any>,
+ *   confirm: (o: { title: string, body: string, ok: string, danger?: boolean }) => Promise<boolean> }} ctx
  */
-export function alertsPanel(el, { api, toast }) {
+export function alertsPanel(el, { api, confirm }) {
   el.classList.add('connect', 'alerts');
   let cfg = { lang: LANG === 'es' ? 'es' : 'en', channels: [], snoozeUntil: 0 };
   const has = (type) => cfg.channels.find((c) => c.type === type);
-  let picked = ''; // a language chosen before any destination exists
+  let picked = ''; // a language chosen before any channel exists
   const lang = () => picked || (cfg.channels.length ? cfg.lang : LANG === 'es' ? 'es' : 'en'); // not set up yet: the dashboard's
-  // One dialog, filled with the destination being set up.
-  const dlg = Object.assign(document.createElement('dialog'), { className: 'al-dlg connect' });
-  dlg.setAttribute('aria-labelledby', 'al-dlg-title');
-  document.body.append(dlg);
+  let editing = ''; // the service whose fields are open
+  const results = {}; // the last test of each channel: { ok, text }, shown on its row
 
   async function load() {
     try { cfg = await api('GET', '/api/alerts'); } catch { return; }
@@ -108,32 +108,44 @@ export function alertsPanel(el, { api, toast }) {
   }
 
   function render() {
-    const tile = (k) => {
-      const c = has(k);
-      const detail = c ? (c.topic || c.chat || c.url || '') : '';
-      return `<button type="button" class="card tool al-tile${c ? ' on' : ''}" data-open="${k}">
-        <b>${icon(ICON[k])}<span>${esc(t.names[k])}</span></b>
-        <span>${esc(t.descs[k])}</span>
-        ${c ? `<span class="al-state ok">${icon('check')}${esc(t.on)}${detail ? ` <code>${esc(detail)}</code>` : ''}</span>` : `<span class="al-state">${esc(t.setUp)} →</span>`}
-      </button>`;
+    const row = (c) => {
+      const detail = (c.topic || c.chat || c.url || '').replace(/…+/g, '…'); // the server shows a hidden address as host/……end
+      const r = results[c.type];
+      return `<li class="al-row" data-type="${c.type}">${mark(c.type)}
+        <span class="al-what"><b>${esc(t.names[c.type])}</b>${detail ? `<code>${esc(detail)}</code>` : ''}</span>
+        <span class="al-res${r ? ` ${r.ok ? 'ok' : 'bad'}` : ''}" role="status">${r ? `${icon(r.ok ? 'check' : 'alert')}<span>${esc(r.text)}</span>` : ''}</span>
+        <span class="al-acts"><button type="button" data-a="test" data-type="${c.type}">${icon('play')}<span>${esc(t.test)}</span></button><button type="button" class="danger" data-a="remove" data-type="${c.type}" aria-label="${esc(`${t.remove}: ${t.names[c.type]}`)}">${esc(t.remove)}</button></span>
+      </li>`;
     };
+    const card = (k) => `<button type="button" class="al-card" data-open="${k}" aria-pressed="${editing === k}" aria-controls="al-form">
+        ${mark(k)}<span class="al-card-t"><b>${esc(t.names[k])}</b><small>${esc(t.descs[k])}</small></span>
+        ${has(k) ? `<span class="chip ok">${icon('check')}${esc(t.added)}</span>` : k === 'ntfy' ? `<span class="chip">${esc(t.recommended)}</span>` : ''}
+      </button>`;
     const on = cfg.channels.length > 0;
+    const typing = el.querySelector(`#al-form[data-type="${editing}"]`); // what's being typed survives a redraw (a test, a pause)
     el.innerHTML = `
       <div class="al-when"><p>${esc(t.whenH)}</p><ul>${t.when.map(([i, s]) => `<li>${icon(i)}<span>${esc(s)}</span></li>`).join('')}</ul><p class="cx-fine">${esc(t.fixed)}</p></div>
-      <h4 class="al-h">${esc(t.whereH)}</h4>
-      <div class="tools al-grid">${KINDS.map(tile).join('')}</div>
+      <section class="al-sec" aria-labelledby="al-mine-h">
+        <h4 class="al-h" id="al-mine-h">${esc(t.mineH)}</h4>
+        ${on ? `<ul class="al-list">${cfg.channels.map(row).join('')}</ul>` : `<p class="al-none">${esc(t.none)}</p>`}
+      </section>
+      <section class="al-sec" aria-labelledby="al-add-h">
+        <h4 class="al-h" id="al-add-h">${esc(on ? t.addMoreH : t.addH)}</h4>
+        <div class="al-cards">${KINDS.map(card).join('')}</div>
+        <form class="al-form${editing ? '' : ' hidden'}" id="al-form" data-type="${editing}" aria-label="${esc(editing ? t.names[editing] : '')}">${editing && !typing ? form(editing) : ''}</form>
+      </section>
       <div class="al-foot">
         <label class="field">${esc(t.lang)}<select data-f="lang"><option value="es" ${lang() === 'es' ? 'selected' : ''}>Español</option><option value="en" ${lang() === 'en' ? 'selected' : ''}>English</option></select></label>
-        <div class="cx-row">${on ? `<button type="button" data-a="test">${esc(t.testAll)}</button>` : ''}${on ? (cfg.snoozeUntil
-          ? `<span class="chip warn">${esc(t.paused(new Date(cfg.snoozeUntil).toLocaleString(LANG, { weekday: 'short', hour: '2-digit', minute: '2-digit' })))}</span><button type="button" class="cx-link" data-a="resume">${esc(t.resume)}</button>`
-          : `<button type="button" class="cx-link" data-a="pause">${esc(t.pause)}</button><button type="button" class="cx-link" data-a="pauseDay">${esc(t.pauseDay)}</button>`) : ''}</div>
-      </div>`;
+        ${on ? `<div class="cx-row">${cfg.snoozeUntil
+          ? `<span class="chip warn">${esc(t.paused(new Date(cfg.snoozeUntil).toLocaleString(LANG, { weekday: 'short', hour: '2-digit', minute: '2-digit' })))}</span><button type="button" data-a="resume">${esc(t.resume)}</button>`
+          : `<button type="button" data-a="pause">${esc(t.pause)}</button><button type="button" class="plain" data-a="pauseDay">${esc(t.pauseDay)}</button>`}</div>` : ''}
+      </div>
+      <p class="al-err al-msg hidden" role="alert"></p>`;
+    if (typing) el.querySelector('#al-form').replaceWith(typing);
   }
 
-  // ---------- one destination, in its dialog ----------
-  let editing = '';
-  function open(type) {
-    editing = type;
+  // ---------- one service's steps and fields ----------
+  function form(type) {
     const c = has(type) || {};
     const steps = t.steps[type];
     const input = (f, label, { value = '', ph = '', note = '' } = {}) => `<label class="field">${esc(label)}<input data-f="${f}" value="${esc(value)}" placeholder="${esc(ph)}" autocomplete="off" spellcheck="false" />${note ? `<small>${esc(note)}</small>` : ''}</label>`;
@@ -155,67 +167,74 @@ export function alertsPanel(el, { api, toast }) {
         ${input('url', t.url, { ph: 'https://…', note: c.url ? t.keep(c.url) : '' })}
         ${t.help[type] ? `<p class="cx-fine"><a href="${t.help[type]}" target="_blank" rel="noopener">${esc(t.helpLink)}</a></p>` : ''}`;
     }
-    dlg.innerHTML = `<form method="dialog" class="u-stack12">
-      <h3 class="al-title" id="al-dlg-title">${icon(ICON[type])}<span>${esc(t.names[type])}</span></h3>
-      <p class="muted-note u-m0">${esc(t.descs[type])}</p>
+    return `<h4 class="al-form-h">${mark(type)}<span>${esc(t.names[type])}</span></h4>
       ${body}
       <p class="al-err hidden" role="alert"></p>
-      <div class="dlg-actions">${has(type) ? `<button type="button" class="cx-link al-remove" data-a="remove">${esc(t.remove)}</button>` : ''}<button value="cancel" formnovalidate>${esc(t.cancel)}</button><button type="submit" class="primary" data-a="save">${esc(t.saveTest)}</button></div>
-    </form>`;
-    dlg.showModal();
-    /** @type {HTMLElement | null} */ (dlg.querySelector('input:not([type=hidden])'))?.focus();
+      <div class="al-form-acts"><button type="button" data-a="cancel">${esc(t.cancel)}</button><button type="submit" class="primary" data-a="save">${esc(t.saveTest)}</button></div>`;
   }
-  const val = (k) => /** @type {HTMLInputElement | null} */ (dlg.querySelector(`[data-f="${k}"]`))?.value.trim() || '';
-  const others = () => cfg.channels.filter((c) => c.type !== editing); // as the server shows them: saved secrets stay
-  const showErr = (msg) => { const p = dlg.querySelector('.al-err'); p.textContent = msg; p.classList.toggle('hidden', !msg); };
+  const val = (k) => /** @type {HTMLInputElement | null} */ (el.querySelector(`#al-form [data-f="${k}"]`))?.value.trim() || '';
+  const others = (type) => cfg.channels.filter((c) => c.type !== type); // as the server shows them: saved secrets stay
+  const showErr = (msg) => { const p = el.querySelector('.al-err'); if (!p) return; p.textContent = msg; p.classList.toggle('hidden', !msg); };
+  // An error, said under the panel (a toast would sit under the Settings window's backdrop).
+  const say = (msg) => { const p = el.querySelector('.al-msg'); p.textContent = msg; p.classList.toggle('hidden', !msg); };
+  const focusSoon = (sel) => requestAnimationFrame(() => /** @type {HTMLElement | null} */ (el.querySelector(sel))?.focus());
 
-  dlg.addEventListener('submit', async (e) => {
-    if (/** @type {SubmitEvent} */ (e).submitter?.getAttribute('value') === 'cancel') return;
+  /** One channel's test: its row says how it went (and stays saying it). */
+  async function test(type) {
+    const b = /** @type {HTMLButtonElement | null} */ (el.querySelector(`[data-a="test"][data-type="${type}"]`));
+    if (b) { b.disabled = true; b.setAttribute('aria-busy', 'true'); b.querySelector('span').textContent = t.sending; }
+    try {
+      const r = (await api('POST', '/api/alerts/test', { type })).results?.find((x) => x.type === type);
+      results[type] = r && !r.ok ? { ok: false, text: t.failed(r.error) } : { ok: true, text: t.sent };
+    } catch (err) { results[type] = { ok: false, text: t.failed(err.message) }; }
+    render();
+    return results[type];
+  }
+
+  el.addEventListener('submit', async (e) => {
     e.preventDefault();
-    const btn = /** @type {HTMLButtonElement} */ (dlg.querySelector('[data-a="save"]'));
+    const type = editing;
+    const btn = /** @type {HTMLButtonElement} */ (el.querySelector('[data-a="save"]'));
     btn.disabled = true;
     showErr('');
-    const type = editing, name = t.names[type];
     const ch = type === 'ntfy' ? { type, topic: val('topic'), server: val('server') }
       : type === 'telegram' ? { type, token: val('token'), chat: val('chat') }
         : { type, url: val('url') };
     try {
-      cfg = await api('PUT', '/api/alerts', { channels: [...others(), ch], lang: lang() });
+      cfg = await api('PUT', '/api/alerts', { channels: [...others(type), ch], lang: lang() });
     } catch (err) { showErr(err.message); btn.disabled = false; return; }
-    render();
-    try {
-      const r = (await api('POST', '/api/alerts/test', { type })).results?.[0];
-      if (r && !r.ok) { showErr(t.savedBad(name, r.error)); btn.disabled = false; return; } // saved; fix and try again
-    } catch (err) { showErr(t.savedBad(name, err.message)); btn.disabled = false; return; }
-    dlg.close();
-    toast(t.tested(name), { ms: 7000 });
-  });
-  dlg.addEventListener('click', async (e) => {
-    if (e.target === dlg) return dlg.close(); // a click on the backdrop
-    const a = /** @type {HTMLElement} */ (e.target).closest('[data-a]')?.getAttribute('data-a');
-    if (a === 'copy') {
-      await copyText(dlg.querySelector('[data-topic]').textContent).catch(() => {});
-      const s = dlg.querySelector('[data-a="copy"] span'); s.textContent = t.copied; setTimeout(() => (s.textContent = t.copy), 1500);
-    }
-    if (a === 'remove') {
-      try { cfg = await api('PUT', '/api/alerts', { channels: others(), lang: lang() }); } catch (err) { return showErr(err.message); }
-      dlg.close();
-      render();
-      toast(t.removed(t.names[editing]));
-    }
+    editing = '';
+    await test(type); // renders: the form closes and the new row says whether the test arrived (a toast would sit under this dialog's backdrop)
+    focusSoon(`[data-a="test"][data-type="${type}"]`);
   });
 
-  // ---------- the card: open a destination, language, test, pause ----------
   el.addEventListener('click', async (e) => {
     const target = /** @type {HTMLElement} */ (e.target);
     const k = target.closest('[data-open]')?.getAttribute('data-open');
-    if (k) return open(k);
-    const a = target.closest('[data-a]')?.getAttribute('data-a');
+    if (k) {
+      editing = editing === k ? '' : k; // the same card again folds it away
+      render();
+      // Its steps from the top (on a phone the form opens below all five cards), and the first field ready to type in
+      if (editing) requestAnimationFrame(() => { el.querySelector('#al-form').scrollIntoView({ block: 'start', behavior: 'smooth' }); /** @type {HTMLElement} */ (el.querySelector('#al-form input:not([type=hidden])')).focus({ preventScroll: true }); });
+      return;
+    }
+    const b = target.closest('[data-a]');
+    const a = b?.getAttribute('data-a'), type = b?.getAttribute('data-type') || '';
     if (!a) return;
+    if (a === 'cancel') { const was = editing; editing = ''; render(); return focusSoon(`[data-open="${was}"]`); }
+    if (a === 'copy') {
+      await copyText(el.querySelector('[data-topic]').textContent).catch(() => {});
+      const s = b.querySelector('span'); s.textContent = t.copied; setTimeout(() => (s.textContent = t.copy), 1500);
+      return;
+    }
+    if (a === 'test') return test(type);
     try {
-      if (a === 'test') {
-        const { results } = await api('POST', '/api/alerts/test', {});
-        for (const r of results) toast(r.ok ? t.tested(t.names[r.type] || r.type) : t.testBad(t.names[r.type] || r.type, r.error), { error: !r.ok, ms: 9000 });
+      if (a === 'remove') {
+        if (!(await confirm({ title: t.removeAsk(t.names[type]), body: t.removeBody, ok: t.remove, danger: true }))) return;
+        cfg = await api('PUT', '/api/alerts', { channels: others(type), lang: lang() });
+        delete results[type];
+        render();
+        focusSoon(`[data-open="${type}"]`);
       }
       if (a === 'pause' || a === 'pauseDay' || a === 'resume') {
         const tomorrow = new Date(); tomorrow.setDate(tomorrow.getDate() + 1); tomorrow.setHours(8, 0, 0, 0);
@@ -223,15 +242,15 @@ export function alertsPanel(el, { api, toast }) {
         cfg = await api('POST', '/api/alerts/snooze', { minutes });
         render();
       }
-    } catch (err) { toast(err.message, { error: true }); }
+    } catch (err) { say(err.message); }
   });
-  // The messages' language: saved as soon as it's picked (with no destination yet, it's sent with the first one).
+  // The messages' language: saved as soon as it's picked (with no channel yet, it's sent with the first one).
   el.addEventListener('change', async (e) => {
     const s = /** @type {HTMLSelectElement} */ (e.target);
     if (s.getAttribute('data-f') !== 'lang') return;
     picked = s.value;
     if (!cfg.channels.length) return;
-    try { cfg = await api('PUT', '/api/alerts', { channels: cfg.channels, lang: s.value }); } catch (err) { toast(err.message, { error: true }); }
+    try { cfg = await api('PUT', '/api/alerts', { channels: cfg.channels, lang: s.value }); } catch (err) { say(err.message); }
   });
   return { load };
 }

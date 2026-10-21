@@ -56,6 +56,14 @@ test('every page has an icon, and the icons are served', async () => {
   }
 });
 
+test('static files go out compressed; fonts and pictures are kept a day, code revalidates', async () => {
+  const js = await get(`${base}/common.js`, { 'accept-encoding': 'gzip' });
+  assert.equal(js.headers['content-encoding'], 'gzip');
+  assert.match(js.headers['cache-control'], /max-age=0/, 'no version in the name: phones must ask again');
+  assert.equal((await get(`${base}/common.js`)).headers['content-encoding'], undefined, 'a client that asks for nothing gets it plain');
+  for (const f of ['/fonts/brand.css', '/art/hero.webp', '/brand/icon.svg']) assert.match((await get(base + f)).headers['cache-control'], /max-age=86400/, f);
+});
+
 test('manifest is named after the event', async () => {
   const r = await fetch(`${base}/manifest.webmanifest`);
   assert.match(r.headers.get('content-type'), /application\/manifest\+json/);

@@ -26,6 +26,7 @@ import { rms } from './audio.js';
 import { getClient } from './genai.js';
 import { translateText } from './translate.js';
 import { textApiOn } from './textapi.js';
+import { spend, overBudget, BudgetError } from './budget.js';
 import { transcribe as whisper, withAsrSlot, wavFile, isNetworkError, asrInfo } from './local/asr.js';
 import { promptLanguage } from './languages.js';
 import { CORPUS } from './engines/mock.js';
@@ -464,11 +465,13 @@ async function retry(fn, signal) {
 const THINKING = [{ thinkingLevel: 'MINIMAL' }, { thinkingLevel: 'LOW' }, null];
 const thinkingFor = new Map(); // model → index in THINKING that it accepted
 async function generate(req, signal) {
+  if (overBudget()) throw new BudgetError();
   for (let i = thinkingFor.get(req.model) ?? 0; i < THINKING.length; i++) {
     const cfg = { ...req.config, abortSignal: signal };
     if (THINKING[i]) cfg.thinkingConfig = THINKING[i]; else delete cfg.thinkingConfig;
     try {
       const res = await client().models.generateContent({ ...req, config: cfg });
+      spend(usd(req.model, res.usageMetadata));
       thinkingFor.set(req.model, i);
       return res;
     } catch (e) {
@@ -996,7 +999,7 @@ export class Recordings {
       else {
         job.state = 'failed';
         job.phase = 'failed';
-        job.code = e instanceof RecordingError ? e.code : isNetworkError(e) && job.engine === 'local' ? 'asr-down' : isQuota(e) ? 'quota' : 'error';
+        job.code = e instanceof RecordingError || e instanceof BudgetError ? e.code : isNetworkError(e) && job.engine === 'local' ? 'asr-down' : isQuota(e) ? 'quota' : 'error';
         job.error = job.code === 'asr-down' ? 'The local speech server isn’t answering: start it with npm run local.' : String(e?.message || e).slice(0, 300);
         this.log(`${job.name}: failed: ${job.error}`);
       }

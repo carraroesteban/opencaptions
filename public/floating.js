@@ -37,7 +37,8 @@ export function floatingCaptions({ button, text, live, caps, onError }) {
     }
     if (cur) lines.push(cur);
     if (lines.length > 6) cvStart = lines[lines.length - 4].first; // old lines leave whole: the rest wraps the same
-    lines.slice(-3).forEach(({ text: l }, i) => { g.fillStyle = '#FAF8F3'; g.fillText(l, pad, pad + i * lh); }); // paper on ink
+    // Paper on ink; the lines above the newest one dimmed (fog), as on the page, so the eye lands on the new words.
+    lines.slice(-3).forEach(({ text: l }, i, shown) => { g.fillStyle = i === shown.length - 1 ? '#FAF8F3' : '#A8A5AE'; g.fillText(l, pad, pad + i * lh); });
   }
 
   function render() {
@@ -60,7 +61,13 @@ export function floatingCaptions({ button, text, live, caps, onError }) {
         d.body.className = 'pip-cap';
         d.title = document.title;
         d.body.innerHTML = '<div id="t" aria-live="polite"></div>';
-        if (caps) { d.body.classList.add('rolling'); roll = new RollUp(d.getElementById('t')); }
+        if (caps) {
+          const box = d.getElementById('t');
+          d.body.classList.add('rolling');
+          roll = new RollUp(box);
+          // The box fills the window: the oldest line fades out at the top instead of being cut by the window's edge.
+          box.style.maskImage = box.style.webkitMaskImage = 'linear-gradient(transparent, #000 40%)';
+        }
         pipWin.addEventListener('pagehide', () => { pipWin = null; roll = null; button.setAttribute('aria-pressed', 'false'); });
         button.setAttribute('aria-pressed', 'true');
         render();

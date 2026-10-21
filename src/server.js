@@ -8,6 +8,7 @@ import crypto from 'node:crypto';
 import { spawn } from 'node:child_process';
 import { openCallApps } from './call-apps.js';
 import express from 'express';
+import compression from 'compression';
 import { WebSocketServer } from 'ws';
 import QRCode from 'qrcode';
 import './preflight.js'; // first: a data folder it can't write to ends here, with the fix
@@ -35,6 +36,7 @@ import { PullSource, ffmpegBin } from './pull.js';
 import { muLaw } from './audio.js';
 import { systemStats } from './system.js';
 import { summarize, ask, audienceAiEnabled, assistStats } from './assist.js';
+import { budgetInfo } from './budget.js';
 import { Schedule, parseSchedule } from './schedule.js';
 import { History } from './history.js';
 import { asrInfo, asrReachable } from './local/asr.js';
@@ -81,6 +83,9 @@ function addStage(def) {
   // (No dashboard is connected yet while the saved rooms load.)
   st.on('log', (entry) => { if (admins.size && visibleStages().includes(st)) broadcastAdmin({ type: 'log', ...entry }); });
   st.on('sound', (chunk) => sendSound(st, chunk));
+  // Apple speech on "auto": the language it found is where the room's next session starts, after a restart too.
+  st.heardLang = setup.heard?.[def.id] || '';
+  st.on('heard', (lang) => { if (setup.heard?.[def.id] !== lang) saveSetup({ heard: { ...setup.heard, [def.id]: lang } }); });
   stages.set(def.id, st);
   if (def.pull) startPull(st, def.pull, def.loop);
   integrations?.attachAll(); // a restored room gets its Zoom/YouTube/Teams/webhook connectors back
@@ -183,6 +188,7 @@ const trustProxy = process.env.TRUST_PROXY || 'loopback';
 app.set('trust proxy', /^\d+$/.test(trustProxy) ? Number(trustProxy) : trustProxy);
 setTrustProxy(app.get('trust proxy fn')); // the WebSocket and rate limits judge addresses the same way
 app.use(securityHeaders);
+app.use(compression()); // pages, scripts and API answers go out about 70% smaller (phones on a crowded venue Wi-Fi)
 // Which data folder this server runs on (a fresh start, FRESH=1, makes a new one every time). Pages compare it with
 // the one this browser remembered things for, and forget them when it changed (public/common.js). Asked for with
 // GET /api/instance, not set in a cookie: caption pages set no cookies.
@@ -264,8 +270,53 @@ app.get('/api/event', (req, res) => {
     audienceAi: audienceAiEnabled,
     timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
     publicTranscripts: PUBLIC_TRANSCRIPTS,
+    logo: logo ? `/branding/logo?v=${logo.v}` : null,
     stages: visibleStages().map(roomSummary),
   });
+});
+
+// ---------------- event logo (Settings › General): the audience pages show it instead of OpenCaptions' own ----------------
+// PNG, JPEG or WebP only, told apart by the file's first bytes, never by what the browser claims: an SVG served
+// from this origin could run script. One file, data/branding/logo.<ext>; its mtime goes in the URL, so a new logo
+// shows at once while phones still cache it.
+const LOGO_DIR = path.join(config.dataDir, 'branding');
+const LOGO_TYPES = { png: 'image/png', jpg: 'image/jpeg', webp: 'image/webp' };
+const PNG_SIG = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+const sniffLogo = (b) => (b.subarray(0, 8).equals(PNG_SIG) ? 'png'
+  : b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff ? 'jpg'
+    : b.toString('latin1', 0, 4) === 'RIFF' && b.toString('latin1', 8, 12) === 'WEBP' ? 'webp' : null);
+const findLogo = () => {
+  for (const ext of Object.keys(LOGO_TYPES)) {
+    try { return { ext, v: Math.floor(fs.statSync(path.join(LOGO_DIR, `logo.${ext}`)).mtimeMs) }; } catch { /* not this one */ }
+  }
+  return null;
+};
+let logo = findLogo();
+const dropLogos = (keep) => { for (const ext of Object.keys(LOGO_TYPES)) if (ext !== keep) fs.rmSync(path.join(LOGO_DIR, `logo.${ext}`), { force: true }); };
+// The body is read only once the admin is known (no buffering 2 MB for strangers).
+app.post('/api/event/logo', admin, unlocked, express.raw({ type: Object.values(LOGO_TYPES), limit: '2mb' }), (req, res) => {
+  const ext = Buffer.isBuffer(req.body) ? sniffLogo(req.body) : null;
+  if (!ext) return res.status(415).json({ error: 'the logo must be a PNG, JPEG or WebP image' });
+  fs.mkdirSync(LOGO_DIR, { recursive: true });
+  writeFileAtomic(path.join(LOGO_DIR, `logo.${ext}`), req.body);
+  dropLogos(ext);
+  const had = !!logo;
+  logo = findLogo();
+  const change = recordChange({ kind: 'event.logo', summary: had ? 'Event logo replaced' : 'Event logo added', before: had, after: true });
+  res.json({ ok: true, logo: `/branding/logo?v=${logo.v}`, change: change.id });
+});
+app.delete('/api/event/logo', admin, unlocked, (req, res) => {
+  if (logo) {
+    dropLogos(null);
+    logo = null;
+    recordChange({ kind: 'event.logo', summary: 'Event logo removed', before: true, after: false });
+  }
+  res.json({ ok: true, logo: null });
+});
+app.get('/branding/logo', (req, res) => {
+  if (!logo) return res.status(404).end();
+  res.set({ 'Content-Type': LOGO_TYPES[logo.ext], 'X-Content-Type-Options': 'nosniff', 'Cache-Control': 'public, max-age=86400' });
+  res.sendFile(path.join(LOGO_DIR, `logo.${logo.ext}`));
 });
 
 app.get('/api/status', crew, (req, res) => res.json(req.who.role === 'admin' ? snapshot() : forCrew(snapshot())));
@@ -318,7 +369,8 @@ app.patch('/api/stages/:id', crew, getStage, async (req, res) => {
     if (def.pull) startPull(st, def.pull, def.loop); else stopPull(st.id);
   }
   persistStages();
-  const change = setupKeys.length && JSON.stringify(old) !== JSON.stringify(st.def) ? recordChange({ kind: 'room.update', target: st.id, summary: `Room "${st.def.name}" changed`, before: clone(old), after: clone(st.def) }) : null;
+  // Just for me's language picker isn't the event's setup: no History entry per switch.
+  const change = setupKeys.length && st.id !== PERSONAL_ROOM && JSON.stringify(old) !== JSON.stringify(st.def) ? recordChange({ kind: 'room.update', target: st.id, summary: `Room "${st.def.name}" changed`, before: clone(old), after: clone(st.def) }) : null;
   res.json({ ...st.status(), change: change?.id ?? null });
 });
 
@@ -455,8 +507,14 @@ app.get('/api/talks', (req, res) => {
   const signedIn = allows(identify(req, reqUrl(req)), 'crew');
   const all = (PUBLIC_TRANSCRIPTS === 'all' && !personal()) || signedIn;
   if ((PUBLIC_TRANSCRIPTS === 'none' || personal()) && !signedIn) return res.status(401).json({ error: 'admin token required' });
-  res.json({ publicTranscripts: PUBLIC_TRANSCRIPTS, talks: talkList(visibleStages(), all) });
+  // Every open library page asks every 30 s, and the talk in progress is re-read from disk whenever a caption
+  // landed: one answer per few seconds serves them all. shortcut: up to 3 s stale, fine for a list of talks.
+  const key = `${setup.mode}/${all}`; // the mode too: "just for me" talks must never answer for the event, nor the reverse
+  let hit = talksMemo.get(key);
+  if (!hit || Date.now() - hit.at > 3000) talksMemo.set(key, (hit = { at: Date.now(), talks: talkList(visibleStages(), all) }));
+  res.json({ publicTranscripts: PUBLIC_TRANSCRIPTS, talks: hit.talks });
 });
+const talksMemo = new Map();
 /** The talks with captions in these rooms, newest first: the one in progress, and the saved ones when `all`. */
 function talkList(rooms, all) {
   const out = [];
@@ -982,6 +1040,7 @@ app.get('/api/setup', crew, (req, res) => {
     primaryEngine: config.primaryEngine,
     failover: failoverStatus(),
     ai: keyInfo(),
+    aiNow: aiNow(),
     textApi: textApiInfo(),
     updateCheck: updatesOn(),
     updateCheckFixed: !updateCheckEnv,
@@ -1178,13 +1237,19 @@ function leaveLocal() {
 // apple: an Apple-chip Mac on macOS 26+, where "this computer" uses Apple's built-in speech (no big download).
 const localStatus = () => ({ ...localMode.status(), engine: config.engine, hasKey: !!(config.geminiApiKey || config.vertex), apple: appleSupported() && process.arch === 'arm64' });
 app.get('/api/local', admin, (req, res) => res.json(localStatus()));
-app.post('/api/local/start', admin, (req, res) => { localMode.start(); res.json(localStatus()); });
+app.post('/api/local/start', admin, (req, res) => { saveSetup({ ai: 'local' }); localMode.start(); res.json(localStatus()); });
 app.post('/api/local/retry', admin, (req, res) => { localMode.retryText(); res.json(localStatus()); });
 app.post('/api/local/stop', admin, (req, res) => {
+  saveSetup({ ai: 'cloud' });
   if (localMode.status().state === 'ready') { leaveLocal(); recordChange({ kind: 'ai.local', summary: `AI: ${config.engine}` }); }
   res.json(localStatus());
 });
-if (setup.localMode && config.engine !== 'local') localMode.start();
+// At start: this computer when that was the choice. A "Run it on this computer" from before choices were saved
+// (setup.ai) was the way to captions without a key: with a key now, Gemini it is (Settings → AI switches back).
+if (setup.localMode && !setup.ai && (config.geminiApiKey || config.vertex)) {
+  saveSetup({ localMode: false });
+  console.log('  AI: Gemini (a key is set). To caption on this computer instead: Dashboard → Settings → AI.');
+} else if (setup.localMode && config.engine !== 'local') localMode.start();
 
 // Offline backup: which engine the rooms use (auto | cloud | local). Only with Gemini as the main engine.
 app.post('/api/engine', crew, (req, res) => {
@@ -1232,6 +1297,26 @@ app.put('/api/ai/text', admin, async (req, res) => {
   recordChange({ kind: 'ai.text', summary: `Translations, summaries and questions: ${model} (${new URL(url).host})` });
   res.json({ ok: true, check: check.code, textApi: textApiInfo() });
 });
+// Which AI makes the captions (aiNow, below): one switch, the badge's and Settings → AI's: saved, so a restart keeps it.
+app.post('/api/ai/use', admin, (req, res) => {
+  const use = String(req.body?.use || '');
+  if (!['cloud', 'local', 'auto'].includes(use)) return res.status(400).json({ error: 'use must be cloud|local|auto' });
+  const hasKey = !!(config.geminiApiKey || config.vertex);
+  if (use !== 'local' && !hasKey) return res.status(400).json({ error: 'connect a Gemini key first (Settings → AI)', code: 'no-key' });
+  if (use === 'auto' && !failover) return res.status(400).json({ error: 'the offline backup needs Gemini as the main AI when OpenCaptions starts', code: 'no-backup' });
+  const was = aiNow().use;
+  saveSetup({ ai: use });
+  if (use === 'local') {
+    if (failover?.mode !== 'cloud') failover?.setMode('cloud'); // no switching back and forth by itself
+    localMode.start();
+  } else {
+    if (setup.localMode || localMode.status().state !== 'idle') leaveLocal();
+    failover?.setMode(use === 'auto' ? 'auto' : 'cloud');
+  }
+  if (was !== use) recordChange({ kind: 'ai.use', summary: `AI: ${{ cloud: 'Gemini (cloud)', local: 'this computer', auto: 'Gemini, this computer as backup' }[use]}` });
+  res.json(aiNow());
+});
+
 app.delete('/api/ai/text', admin, (req, res) => {
   saveTextApi(null);
   recordChange({ kind: 'ai.text', summary: config.textApi.url ? 'Translations: back to the service in .env' : 'Translations, summaries and questions: back to Gemini' });
@@ -1434,7 +1519,12 @@ app.get(['/', '/index', '/index.html', '/watch', '/watch.html', '/talk', '/talk.
       .replaceAll('%EVENT%', htmlEsc(eventName())));
   } catch { next(); }
 });
-app.use(express.static(path.join(ROOT, 'public'), { extensions: ['html'] }));
+app.use(express.static(path.join(ROOT, 'public'), {
+  extensions: ['html'],
+  // Fonts and pictures don't change between releases: phones keep them a day. Code and pages still revalidate
+  // every load (their names carry no version to bust a cache).
+  setHeaders: (res, file) => { if (/[\\/]public[\\/](fonts|art|brand)[\\/]/.test(file)) res.setHeader('Cache-Control', 'public, max-age=86400'); },
+}));
 // Only the bundled test talks (the room page's "test talk"): recordings organizers copy into samples/ to pull stay private.
 for (const f of ['talk-en.wav', 'talk-es.wav']) app.get(`/samples/${f}`, (req, res) => res.sendFile(path.join(ROOT, 'samples', f)));
 app.use('/api', (req, res) => res.status(404).json({ error: 'not found' }));
@@ -1480,6 +1570,33 @@ function failoverStatus() { return failover ? { ...failover.status(), backup: co
 if (failover) {
   failover.on('change', () => broadcastAdmin({ type: 'failover', ...failoverStatus() }));
   failover.start().catch((e) => console.warn(`  failover check: ${e.message}`));
+  if (setup.ai === 'auto' && !setup.localMode) failover.setMode('auto');
+}
+
+/**
+ * Which AI makes the captions, the same answer for every page (the dashboard's badge, Settings → AI, Just for me).
+ * use: the organizer's choice — 'cloud' (Gemini), 'local' (this computer: Apple's speech on a Mac, else Whisper) or
+ * 'auto' (Gemini, and this computer while the internet is down); 'none' without a key and no choice yet.
+ * now: what makes them at this moment — 'cloud', 'local' or 'simulated'.
+ */
+function aiNow() {
+  const hasKey = !!(config.geminiApiKey || config.vertex);
+  const fo = failoverStatus();
+  const lm = localMode.status();
+  const use = setup.localMode || lm.state !== 'idle' ? 'local' : fo?.mode === 'auto' ? 'auto' : hasKey ? 'cloud' : 'none';
+  const now = config.engine === 'gemini' ? 'cloud' : config.engine === 'local' ? 'local' : 'simulated';
+  const asr = asrInfo();
+  return {
+    use, now,
+    name: now === 'cloud' ? 'Gemini' : now === 'local' ? (asr.api === 'apple' ? 'Apple' : 'Whisper') : '',
+    detail: now === 'cloud' ? (speechModel() === 'transcribe' ? 'Transcribe Live' : 'Live Translate') : now === 'local' ? asr.label : '',
+    preparing: use === 'local' && now !== 'local' ? lm.state : '', // this computer chosen, still getting ready
+    backup: fo && fo.mode === 'auto' ? (fo.active === 'local' ? 'on' : 'ready') : '', // 'on': offline, this computer covers
+    hasKey,
+    forced: config.primaryEngine === 'mock' && hasKey, // started in test mode (--mock): the key waits
+    canAuto: !!failover,
+    apple: appleSupported() && process.arch === 'arm64',
+  };
 }
 
 // The crew password goes to volunteers: audio addresses can hold a stream key or an SRT passphrase
@@ -1502,6 +1619,8 @@ function snapshot() {
     failover: failoverStatus(),
     tunnel: tunnel.status(),
     ai: keyInfo(),
+    aiNow: aiNow(),
+    budget: budgetInfo(), // hosted test instances: this week's AI spend and its cap (BUDGET_USD_WEEK)
     update: updatesOn() ? updateInfo() : null,
     publicUrl: config.publicUrl, // '' = none: QR codes use the address the page was opened with
     setupDone: !!setup.done,
@@ -1594,6 +1713,13 @@ server.on('upgrade', (req, socket, head) => {
 });
 
 const sendJson = (ws, obj) => ws.readyState === 1 && ws.send(JSON.stringify(obj));
+// A caption goes to every phone in the room: serialized once, not once per phone (a segment never changes once sent).
+const captionJsons = new WeakMap();
+const captionJson = (seg) => {
+  let j = captionJsons.get(seg);
+  if (!j) captionJsons.set(seg, (j = JSON.stringify({ type: 'caption', ...seg })));
+  return j;
+};
 
 function onIngest(ws, url) {
   const st = stages.get(url.searchParams.get('stage'));
@@ -1687,7 +1813,7 @@ function onView(ws, url) {
   const onCaption = (seg) => {
     if (!subs.includes(seg.channel)) return;
     if (ws.bufferedAmount > 1 << 20) return ws.terminate();
-    sendJson(ws, { type: 'caption', ...seg });
+    if (ws.readyState === 1) ws.send(captionJson(seg));
   };
   const onAudio = (target, buf) => {
     if (audioCh && target === audioCh && ws.readyState === 1 && ws.bufferedAmount < 512 * 1024) ws.send(buf, { binary: true });
@@ -1766,7 +1892,7 @@ function broadcastAdmin(obj) {
   }
 }
 
-setInterval(() => broadcastAdmin({ type: 'status', ...snapshot() }), 1000);
+setInterval(() => admins.size && broadcastAdmin({ type: 'status', ...snapshot() }), 1000); // no dashboard open: don't build it
 
 server.on('error', (/** @type {NodeJS.ErrnoException} */ e) => {
   if (e.code === 'EADDRINUSE') console.error(`✗ Port ${config.port} is already in use — stop the other process or set PORT=…`);

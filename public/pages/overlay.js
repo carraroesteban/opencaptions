@@ -8,12 +8,15 @@ root.setProperty('--lines', p('lines', 2));
 root.setProperty('--width', p('width', 78) + '%');
 root.setProperty('--margin', p('margin', 64) + 'px');
 root.setProperty('--ov-bg', toColor(p('bg', 'transparent')));
-const style = applyCaptionStyle(qs);
+// Left-aligned by default: words land at the end of a line that stays put, as broadcast roll-up captions do (a centred
+// line slides sideways with every word). &align=center still centres it.
+const style = applyCaptionStyle(qs, { align: 'left' });
+root.setProperty('--wfrac', Number(p('width', 78)) / 100);
 const capRgb = (toColor(p('color', 'ffffff')).match(/\d+/g) || [255, 255, 255]).slice(0, 3).map(Number);
 root.setProperty('--cap-color2', (capRgb[0] * 299 + capRgb[1] * 587 + capRgb[2] * 114) / 1000 > 140 ? 'var(--fog)' : 'var(--graphite)');
 const box = document.getElementById('box');
 box.classList.toggle('boxed', style === 'box');
-document.getElementById('wrap').className = 'wrap ' + p('pos', 'bottom');
+document.getElementById('wrap').className = `wrap ${p('pos', 'bottom')}${p('align', 'left') === 'left' ? ' left' : ''}`;
 
 const lang = p('lang', 'es');
 const hideMs = Number(p('hide', 6)) * 1000;

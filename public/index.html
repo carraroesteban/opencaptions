@@ -20,37 +20,26 @@
   <meta name="twitter:card" content="summary_large_image" />
   <title>Subtítulos en vivo</title>
   <link rel="stylesheet" href="/style.css" />
-  <style>
-    main { max-width: 780px; margin: 0 auto; padding: 22px 20px 64px; }
-    .bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-    .hero { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 24px; align-items: end; margin: 52px 0 8px; }
-    .hero .art { width: 300px; aspect-ratio: 4 / 3; object-fit: cover; border-radius: 20px; border: 1px solid var(--line); background: #FAF8F3; box-shadow: var(--shadow); }
-    h1 { font-size: clamp(34px, 7vw, 52px); margin: 0 0 8px; }
-    #subtitle { font-size: 18px; margin: 0; }
-    .stages { display: grid; gap: 12px; margin-top: 32px; }
-    .stage { display: grid; grid-template-columns: 1fr auto; gap: 8px 12px; align-items: center; text-decoration: none; padding: 20px 22px; }
-    .stage h2 { margin: 0; font-size: 22px; }
-    .stage .title { grid-column: 1 / -1; color: var(--fg2); font-size: 15px; }
-    .stage .langs { grid-column: 1 / -1; margin-top: 4px; }
-    .stage .next { font-size: 13px; }
-    .lib { margin-top: 12px; background: transparent; border-style: dashed; border-color: var(--line-strong); box-shadow: none; }
-    .lib .illo { width: 52px; color: var(--fg); }
-    footer { margin-top: 48px; padding-top: 18px; border-top: 1px solid var(--line); font-size: 13px; gap: 12px; }
-    @media (max-width: 560px) { .hero { grid-template-columns: 1fr; margin-top: 28px; } .hero .art { width: 100%; order: -1; } }
-  </style>
+  <link rel="preload" href="/tokens.css" as="style" /><link rel="preload" href="/fonts/brand.css" as="style" /><!-- style.css @imports them: fetched together, not one after another -->
+  <link rel="stylesheet" href="/audience.css" />
 </head>
 <body>
-  <main>
-    <div class="bar"><a class="brand u-fs17" href="/">OpenCaptions</a></div>
-    <section class="hero">
-      <div><h1 id="event">…</h1><p class="muted" id="subtitle"></p></div>
-      <img class="art" src="/art/audience.webp" alt="" />
+  <main class="ix">
+    <div class="au-bar"><a class="brand u-fs17" href="/">OpenCaptions</a><span id="prefs-slot"></span></div>
+    <section class="ix-hero">
+      <div>
+        <img class="ev-logo ix-logo hidden" id="ev-logo" alt="" />
+        <p class="ix-live hidden" id="live-count"><span class="dot live"></span><span></span></p>
+        <h1 id="event">…</h1>
+        <p class="ix-sub" id="subtitle"></p>
+      </div>
+      <img class="ix-art" src="/art/audience.webp" alt="" width="1200" height="896" fetchpriority="high" />
     </section>
-    <div class="stages" id="stages" data-no-i18n></div>
-    <a class="card stage lib" href="/talks.html" id="lib"><h2 id="lib-h"></h2><span id="lib-illo"></span><div class="title" id="lib-p"></div></a>
-    <footer class="muted row u-between">
+    <div id="stages" data-no-i18n></div>
+    <a class="ix-lib" href="/talks.html" id="lib"><h2 id="lib-h"></h2><p id="lib-p"></p><span class="illo" id="lib-illo"></span></a>
+    <footer class="ix-foot">
       <span id="powered"></span>
-      <a href="/admin.html" id="prod"></a>
+      <a href="/admin.html" id="prod" class="hidden"></a>
     </footer>
   </main>
   <script type="module" src="/pages/index.js"></script>

@@ -11,54 +11,124 @@
   <link rel="manifest" href="/manifest.webmanifest" />
   <title>Sonido de la sala · OpenCaptions</title>
   <link rel="stylesheet" href="/style.css" />
+  <link rel="preload" href="/tokens.css" as="style" /><link rel="preload" href="/fonts/brand.css" as="style" /><!-- style.css @imports them: fetched together, not one after another -->
   <style>
-    /* A tool, not a form: where the sound comes from, one big Start, and the level, large. The rest folds away. */
-    main { max-width: 760px; margin: 0 auto; padding: 18px 20px 64px; display: grid; gap: 20px; }
+    /* A recording app, not a form (Voice Memos, Riverside, OBS's mixer): the room's name, how it's going in one line,
+       a big level meter, one big Start/Stop, and what's being captioned. Everything else folds into Options. */
+    main { max-width: 820px; margin: 0 auto; padding: 18px 20px 56px; display: grid; gap: 18px; }
     .ig-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-    .ig-title h1 { margin: 6px 0 6px; font-size: 32px; }
-    .ig-title p { margin: 0; max-width: 60ch; }
-    .ig-main { display: grid; gap: 20px; padding: 22px; }
-    .ig-status { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-    .ig-status #conn { font-size: 13px; padding: 4px 12px; }
-    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; }
-    .ig-go { display: flex; gap: 10px; flex-wrap: wrap; }
-    #go { font-size: 18px; padding: 15px 30px; border-radius: 14px; flex: 1 1 260px; justify-content: center; }
-    #conn:empty { display: none; }
-    #brk { padding: 15px 22px; border-radius: 14px; }
-    #go.danger { background: var(--bad); border-color: var(--bad); color: var(--bg); } /* Stop: still the big button, in red */
-    .ig-level { display: grid; gap: 8px; }
-    .ig-level .row { font-size: 13px; color: var(--fg2); }
-    #db { font-variant-numeric: tabular-nums; }
-    .big-meter { height: 14px; border-radius: 7px; background: var(--fill); }
-    .big-meter > i { border-radius: 7px; }
-    .ig-more { border-top: 1px solid var(--line); padding-top: 14px; }
-    .ig-more summary { cursor: pointer; list-style: none; display: inline-flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 600; color: var(--fg2); }
+
+    .ig-title { display: grid; gap: 6px; margin-top: 18px; }
+    .ig-kicker { margin: 0; font-size: 13px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--fg2); display: flex; gap: 10px; align-items: center; }
+    .ig-kicker button { padding: 2px 10px; font-size: 12px; letter-spacing: 0; text-transform: none; border-radius: var(--pill); }
+    .ig-title h1 { margin: 0; font-size: clamp(38px, 7vw, 64px); line-height: 1; letter-spacing: -.035em; overflow-wrap: anywhere; }
+    .ig-state { display: flex; align-items: center; gap: 10px; min-height: 30px; font-size: 18px; font-weight: 600; }
+    .ig-state .dot { width: 10px; height: 10px; transition: background-color var(--dur) var(--ease-out); }
+    .ig-state[data-tone='live'] .dot { background: var(--bad); animation: pulse 1.6s infinite; }
+    .ig-state[data-tone='warn'] .dot { background: var(--warn); animation: ig-blink 1s var(--ease-in-out) infinite alternate; }
+    .ig-state[data-tone='bad'] .dot { background: var(--bad); }
+    .ig-state[data-tone='bad'] #conn { color: var(--bad); }
+    .ig-state[data-tone='ok'] .dot { background: var(--ok); }
+    @keyframes ig-blink { to { opacity: .25; } }
+    #conn { animation: oc-in .35s var(--ease-out); }
+    #clock { margin-left: auto; font-variant-numeric: tabular-nums; color: var(--fg2); font-weight: 500; transition: opacity var(--dur) var(--ease-out); }
+    #clock:empty { opacity: 0; }
+    #alerts:empty { display: none; }
+
+    /* The deck: the meter, how the level is, and the big button */
+    .deck { display: grid; gap: 18px; padding: 26px 26px 28px; border-radius: 26px; background: var(--bg2); border: 1px solid var(--line); box-shadow: var(--shadow);
+      transition: border-color var(--dur-slow) var(--ease-out), box-shadow var(--dur-slow) var(--ease-out); }
+    .deck.on { border-color: color-mix(in srgb, var(--bad) 40%, var(--line)); box-shadow: 0 0 0 4px color-mix(in srgb, var(--bad) 9%, transparent), var(--shadow); }
+    .deck.on.brk { border-color: color-mix(in srgb, var(--warn) 45%, var(--line)); box-shadow: 0 0 0 4px color-mix(in srgb, var(--warn) 10%, transparent), var(--shadow); }
+    .vu-top { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+    .vu-top span { font-size: 13px; font-weight: 600; color: var(--fg2); }
+    #db { font-size: 28px; font-weight: 800; letter-spacing: -.02em; font-variant-numeric: tabular-nums; min-width: 4.2ch; text-align: right; }
+    #db small { font-family: var(--font); font-size: 14px; font-weight: 600; color: var(--fg2); margin-left: 3px; }
+    .vu { position: relative; height: 30px; }
+    /* Segments like a hardware meter: one mask over the lit bar and the dim one under it */
+    .vu-bars { position: absolute; inset: 0; border-radius: 6px;
+      -webkit-mask: repeating-linear-gradient(90deg, #000 0 7px, transparent 7px 10px); mask: repeating-linear-gradient(90deg, #000 0 7px, transparent 7px 10px); }
+    .vu-bars i { position: absolute; inset: 0; border-radius: 6px; background: linear-gradient(90deg, var(--ok) 0 66%, var(--warn) 80%, var(--bad) 94%); }
+    .vu-bars i.dim { opacity: .16; }
+    #lvl { clip-path: inset(0 100% 0 0); will-change: clip-path; }
+    #pk { position: absolute; top: -3px; bottom: -3px; left: 0; width: 3px; border-radius: 2px; background: var(--fg); opacity: 0; will-change: transform; transition: opacity var(--dur) var(--ease-out); }
+    .deck.on #pk { opacity: .85; }
+    .vu-scale { position: relative; height: 16px; font-size: 11px; color: var(--fg2); font-variant-numeric: tabular-nums; }
+    .vu-scale span { position: absolute; top: 0; translate: -50% 0; }
+    .vu-scale span:nth-child(2) { left: 20%; } .vu-scale span:nth-child(3) { left: 40%; } .vu-scale span:nth-child(4) { left: 60%; }
+    .vu-scale span:nth-child(5) { left: 80%; } .vu-scale span:nth-child(6) { left: 90%; } .vu-scale span:last-child { left: 100%; }
+    .vu-scale span:first-child { translate: 0 0; }
+    .vu-scale span:last-child { translate: -100% 0; }
+    .vu-foot { display: flex; align-items: center; justify-content: space-between; gap: 10px 16px; flex-wrap: wrap; }
+    #hint { display: inline-flex; align-items: center; gap: 8px; font-size: 15px; font-weight: 600; color: var(--fg2); transition: color var(--dur) var(--ease-out); }
+    #hint::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: currentColor; opacity: .6; }
+    #hint[data-tone='ok'] { color: var(--ok); }
+    #hint[data-tone='warn'] { color: var(--warn); }
+    #hint[data-tone='bad'] { color: var(--bad); }
+    #src-sum { display: inline-flex; align-items: center; gap: 8px; max-width: 100%; padding: 6px 12px; border-radius: var(--pill); font-size: 14px; font-weight: 600; color: var(--fg2); background: var(--fill); }
+    #src-sum:hover { color: var(--fg); background: var(--fill-hover); }
+    #src-sum span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 34ch; }
+    .ig-go { display: flex; gap: 12px; justify-content: center; align-items: center; flex-wrap: wrap; padding-top: 6px; }
+    #go { min-width: min(320px, 100%); min-height: 72px; font-size: 20px; }
+    #go.stop { background: var(--bad); border-color: var(--bad); color: var(--bg); box-shadow: 0 10px 30px -10px color-mix(in srgb, var(--bad) 70%, transparent); }
+    #go.stop:hover { background: color-mix(in srgb, var(--bad) 88%, var(--fg)); }
+    #go:disabled { opacity: .8; }
+    #go .spin { width: 20px; height: 20px; border-radius: 50%; border: 2.5px solid currentColor; border-right-color: transparent; animation: ig-spin .8s linear infinite; }
+    @keyframes ig-spin { to { rotate: 360deg; } }
+    #brk { min-height: 52px; padding: 0 20px; border-radius: var(--pill); animation: oc-in .35s var(--ease-out); }
+    #brk kbd { margin-left: 4px; }
+
+    /* What's being captioned, live */
+    .preview { display: grid; gap: 14px; padding: 22px 24px; }
+    .pv-head { display: flex; align-items: center; justify-content: space-between; gap: 8px 12px; flex-wrap: wrap; }
+    .pv-head h2 { margin: 0; font-family: var(--font); font-size: 13px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--fg2); }
+    #engines { display: flex; gap: 6px; flex-wrap: wrap; }
+    #pv { display: grid; gap: 14px; }
+    .pv-line { display: grid; gap: 2px; }
+    .pv-line b { font-size: 12px; font-weight: 700; letter-spacing: .04em; color: var(--fg2); }
+    .pv-line p { margin: 0; font-size: 21px; line-height: 1.4; min-height: 1.4em; text-wrap: pretty; }
+    .pv-line + .pv-line p { font-size: 18px; color: var(--translation); }
+    .pv-line p.fresh { animation: oc-in .35s var(--ease-out); }
+    .pv-empty { margin: 0; color: var(--fg2); font-size: 15px; }
+    .pv-empty .skeleton { display: block; height: 12px; margin: 12px 0 0; }
+
+    /* Options: the rarely used settings, out of the way */
+    .ig-more { border-radius: 18px; border: 1px solid var(--line); background: var(--bg2); }
+    .ig-more summary { cursor: pointer; list-style: none; display: flex; align-items: center; gap: 10px; padding: 16px 20px; font-weight: 700; border-radius: 18px; }
     .ig-more summary::-webkit-details-marker { display: none; }
-    .ig-more summary::after { content: ''; width: 10px; height: 7px; background: var(--chevron) center / contain no-repeat; transition: rotate var(--dur) var(--ease); }
+    .ig-more summary svg.i { color: var(--fg2); }
+    .ig-more summary small { font-weight: 400; color: var(--fg2); font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+    .ig-more summary::after { content: ''; flex: none; margin-left: auto; width: 11px; height: 8px; background: var(--chevron) center / contain no-repeat; transition: rotate var(--dur) var(--ease-out); }
     .ig-more[open] summary::after { rotate: 180deg; }
-    .ig-more summary:hover { color: var(--fg); }
-    .ig-more > div { display: grid; gap: 14px; margin-top: 14px; }
-    .ig-checks { display: grid; gap: 10px; }
-    .ig-checks label { align-items: flex-start; flex-wrap: nowrap; }
-    .ig-checks input { margin-top: 3px; }
-    .preview { display: grid; gap: 12px; }
-    .preview:empty { display: none; } /* nothing said yet: no empty box */
-    .preview div { font-size: 18px; line-height: 1.45; min-height: 1.45em; }
-    .preview div + div { color: var(--translation); }
-    .preview b { display: block; font-size: 12px; font-weight: 600; color: var(--fg2); margin-bottom: 2px; }
-    #links { display: flex; flex-wrap: wrap; gap: 4px; }
-    #links a { display: inline-flex; align-items: center; gap: 8px; padding: 7px 12px; border-radius: 10px; color: var(--fg2); text-decoration: none; font-size: 14px; }
-    #links a:hover { background: var(--fill); color: var(--fg); }
+    .ig-more summary:hover { background: var(--fill); }
+    .ig-opts { display: grid; gap: 18px; padding: 4px 20px 20px; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; }
+    .gain { display: flex; align-items: center; gap: 10px; }
+    .gain input { flex: 1; }
+    #gain-v { min-width: 4ch; text-align: right; font-variant-numeric: tabular-nums; color: var(--fg2); }
+    .ig-checks { display: grid; gap: 4px; border-top: 1px solid var(--line); padding-top: 10px; }
+    .ig-checks label { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 8px 0; font-size: 15px; cursor: pointer; }
+    .ig-checks small { display: block; color: var(--fg2); font-size: 13px; }
+
+    .fine { margin: 0; font-size: 13px; color: var(--fg2); max-width: 70ch; }
+    #links { display: flex; flex-wrap: wrap; gap: 6px; }
+    #links a { display: inline-flex; align-items: center; gap: 8px; padding: 8px 14px; border-radius: var(--pill); background: var(--fill); color: var(--fg2); text-decoration: none; font-size: 14px; font-weight: 600; transition: background-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out); }
+    #links a:hover { background: var(--fill-hover); color: var(--fg); }
     .hint { font-size: 13px; }
+    @media (max-width: 600px) {
+      main { padding: 12px 16px 40px; gap: 14px; }
+      .ig-title { margin-top: 8px; }
+      .deck { padding: 20px 16px 20px; border-radius: 22px; }
+      .preview { padding: 18px; }
+      #go { width: 100%; }
+      #brk { width: 100%; }
+      .ig-state { font-size: 16px; }
+    }
   </style>
 </head>
 <body>
   <main>
     <div class="ig-head"><a class="brand u-fs16" href="/admin.html" title="Panel de producción">OpenCaptions</a><span id="prefs-slot"></span></div>
-    <div class="ig-title">
-      <h1>Enviar el sonido de esta sala</h1>
-      <p class="muted">Abrí esta página en la computadora que recibe el sonido del escenario: un micrófono, o una salida de la consola.</p>
-    </div>
 
     <div id="securewarn" class="card hidden u-danger-outline">⚠ Esta página no está en un contexto seguro: el navegador <b>no va a dejar usar el micrófono</b>. Abrila por <b>HTTPS</b> o en <b>localhost</b> (ver docs/deployment.md → HTTPS).</div>
     <section id="f-token" class="card hidden u-danger-outline"><div class="u-stack8">
@@ -67,48 +137,58 @@
       <label class="field">Contraseña de las computadoras de sala<input id="token" type="password" autocomplete="off" aria-describedby="token-hint" /></label>
     </div></section>
 
-    <section class="card ig-main">
-      <div class="ig-status"><span class="chip" id="conn" data-no-i18n></span><div class="row" id="engines"></div></div>
-      <div class="grid">
-        <label class="field">Sala<select id="stage"></select></label>
-        <label class="field">¿De dónde viene el sonido?
-          <select id="mode">
-            <option value="mic">Un micrófono o una placa de sonido</option>
-            <option value="tab">Otra pestaña o ventana (un stream, YouTube…)</option>
-            <option value="file">Una grabación (archivo de audio o video)</option>
-            <option value="sample">Una charla de prueba</option>
-          </select>
-        </label>
-        <label class="field" id="f-device">Entrada<select id="device"><option value="">(predeterminado)</option></select></label>
-        <label class="field hidden" id="f-file">Grabación<input type="file" id="file" accept="audio/*,video/*" /></label>
-        <label class="field hidden" id="f-sample">Charla de prueba<select id="sample"><option value="/samples/talk-en.wav">Charla en inglés (EN → ES)</option><option value="/samples/talk-es.wav">Charla en español (ES → EN)</option></select></label>
+    <header class="ig-title rise">
+      <p class="ig-kicker" data-no-i18n><span data-l="kicker"></span><button type="button" class="plain hidden" id="change-room" data-l="changeRoom"></button></p>
+      <h1 id="room" data-no-i18n></h1>
+      <div class="ig-state" id="state" role="status" data-no-i18n><span class="dot"></span><span id="conn"></span><span id="clock"></span></div>
+      <div class="row" id="alerts" data-no-i18n></div>
+    </header>
+
+    <section class="deck rise" id="deck" aria-labelledby="room">
+      <div class="vu-top"><span>Nivel de entrada</span><b id="db" data-no-i18n>—<small>dB</small></b></div>
+      <div>
+        <div class="vu" aria-hidden="true"><div class="vu-bars"><i class="dim"></i><i id="lvl"></i></div><b id="pk"></b></div>
+        <div class="vu-scale" aria-hidden="true" data-no-i18n><span>-60</span><span>-48</span><span>-36</span><span>-24</span><span>-12</span><span>-6</span><span>0</span></div>
       </div>
+      <div class="vu-foot"><span id="hint" data-no-i18n aria-live="polite"></span><button type="button" id="src-sum" data-no-i18n></button></div>
       <div class="ig-go">
-        <button id="go" class="primary">Empezar a transcribir</button>
+        <button id="go" class="primary hero-btn">Empezar a transcribir</button>
         <button id="brk" class="hidden" title="Pausa (intervalo, publicidad): los subtítulos se detienen y las pantallas muestran la pausa. Tecla B.">Pausa (B)</button>
       </div>
-      <div class="ig-level">
-        <div class="row u-between"><span>Nivel de entrada</span><span id="db">–∞ dB</span></div>
-        <div class="meter big-meter"><i id="lvl"></i><b id="pk" class="u-left0"></b></div>
-      </div>
-      <details class="ig-more"><summary>Más opciones</summary>
-        <div>
-          <div class="grid">
-            <label class="field" id="f-channel">Canal<select id="channel"><option value="mix">Mono (mezcla L+R)</option><option value="left">Solo izquierdo</option><option value="right">Solo derecho</option></select></label>
-            <label class="field">Volumen <input type="range" id="gain" min="0.5" max="4" step="0.1" value="1" /></label>
-          </div>
-          <div class="ig-checks">
-            <label class="row muted hint"><input type="checkbox" id="monitor" /> Escucharla también en esta computadora (grabación o prueba)</label>
-            <label class="row muted hint"><input type="checkbox" id="auto" /> Empezar solo al abrir esta página</label>
-            <label class="row muted hint" title="Otra computadora (u otra salida de la consola) para la misma sala: queda en espera y entra sola si la principal se corta o se queda muda."><input type="checkbox" id="backup" /> Es el respaldo de la sala</label>
-          </div>
-        </div>
-      </details>
-      <p class="muted hint u-m0">Una vez que empieza, no necesita a nadie: si hay silencio un rato deja de enviar (sin costo) y sigue solo cuando alguien habla. Si se corta la red, se vuelve a conectar y manda lo que quedó pendiente.</p>
     </section>
 
-    <section class="card preview" id="preview" data-no-i18n></section>
+    <section class="card preview rise" aria-labelledby="pv-h">
+      <div class="pv-head"><h2 id="pv-h" data-no-i18n data-l="pvTitle"></h2><div id="engines" data-no-i18n></div></div>
+      <div id="pv" data-no-i18n aria-live="off"></div>
+    </section>
 
+    <details class="ig-more" id="more"><summary><span data-no-i18n data-l="options"></span><small id="more-sum" data-no-i18n></small></summary>
+      <div class="ig-opts">
+        <div class="grid">
+          <label class="field">Sala<select id="stage"></select></label>
+          <label class="field">¿De dónde viene el sonido?
+            <select id="mode">
+              <option value="mic">Un micrófono o una placa de sonido</option>
+              <option value="tab">Otra pestaña o ventana (un stream, YouTube…)</option>
+              <option value="file">Una grabación (archivo de audio o video)</option>
+              <option value="sample">Una charla de prueba</option>
+            </select>
+          </label>
+          <label class="field" id="f-device">Entrada<select id="device"><option value="">(predeterminado)</option></select></label>
+          <label class="field hidden" id="f-file">Grabación<input type="file" id="file" accept="audio/*,video/*" /></label>
+          <label class="field hidden" id="f-sample">Charla de prueba<select id="sample"><option value="/samples/talk-en.wav">Charla en inglés (EN → ES)</option><option value="/samples/talk-es.wav">Charla en español (ES → EN)</option></select></label>
+          <label class="field" id="f-channel">Canal<select id="channel"><option value="mix">Mono (mezcla L+R)</option><option value="left">Solo izquierdo</option><option value="right">Solo derecho</option></select></label>
+          <label class="field">Volumen<span class="gain"><input type="range" id="gain" min="0.5" max="4" step="0.1" value="1" /><span id="gain-v" data-no-i18n></span></span></label>
+        </div>
+        <div class="ig-checks">
+          <label><span>Escucharla también en esta computadora (grabación o prueba)</span><input type="checkbox" id="monitor" /></label>
+          <label><span>Empezar solo al abrir esta página</span><input type="checkbox" id="auto" /></label>
+          <label title="Otra computadora (u otra salida de la consola) para la misma sala: queda en espera y entra sola si la principal se corta o se queda muda."><span>Es el respaldo de la sala<small data-no-i18n data-l="backupNote"></small></span><input type="checkbox" id="backup" /></label>
+        </div>
+      </div>
+    </details>
+
+    <p class="fine">Una vez que empieza, no necesita a nadie: si hay silencio un rato deja de enviar (sin costo) y sigue solo cuando alguien habla. Si se corta la red, se vuelve a conectar y manda lo que quedó pendiente.</p>
     <nav id="links" aria-label="Más páginas de esta sala"></nav>
   </main>
   <script type="module" src="/pages/ingest.js"></script>

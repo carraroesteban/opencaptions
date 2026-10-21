@@ -1,8 +1,8 @@
 // talk.html: page script (kept out of the HTML so the Content-Security-Policy can forbid inline scripts).
-import { qs, t, UI, esc, store, wsUrl, Socket, langLabel, getEvent, applyReadingPrefs, setReadingPref, setTheme, fmtClock, liveHtml, endsSentence, copyText } from '/common.js';
+import { qs, t, UI, esc, store, wsUrl, Socket, langLabel, getEvent, applyReadingPrefs, setReadingPref, setTheme, fmtClock, liveHtml, endsSentence, copyText, segment, readingItems, previewFonts } from '/common.js';
 import { mountAssistant } from '/assist-ui.js';
 import { icon, mountIcons } from '/illustrations.js';
-import { prefsControls } from '/i18n.js';
+import { prefsControls } from '/prefs.js';
 const $ = (id) => document.getElementById(id);
 const stageId = qs.get('stage');
 if (!stageId) location.href = '/talks.html';
@@ -11,24 +11,68 @@ const talkParam = qs.get('talk');
 mountIcons();
 $('prefs-slot').append(prefsControls({ langs: ['es', 'en', 'pt'] }));
 $('set-close').setAttribute('aria-label', t('close'));
+$('settings').setAttribute('aria-label', t('settings'));
+$('smaller').setAttribute('aria-label', t('smaller'));
+$('bigger').setAttribute('aria-label', t('bigger'));
+$('q').setAttribute('aria-label', t('search'));
 const ev = await getEvent();
+// The event's own logo (Settings › General) where OpenCaptions' was; OpenCaptions keeps a line at the bottom.
+if (ev.logo) {
+  document.querySelector('.au-bar > .brand').replaceChildren(Object.assign(new Image(), { src: ev.logo, alt: ev.name, className: 'ev-logo' }));
+  $('credit').textContent = t('captionsBy');
+  $('credit').classList.remove('hidden');
+}
 let prefs = applyReadingPrefs();
 let size = store.get('docSize', 19);
 document.documentElement.style.setProperty('--size', size + 'px');
 
 // ---- load talk ----
-const infoRes = await fetch(`/api/stages/${encodeURIComponent(stageId)}/talks/${encodeURIComponent(talkParam || 'current')}`);
-if (!infoRes.ok) { $('doc').innerHTML = `<div class="empty">${esc(t('noTalks'))}</div>`; throw new Error('talk not available'); }
-const info = await infoRes.json();
+$('back').append(t('allTalks'));
+const base = `/api/stages/${encodeURIComponent(stageId)}`;
+// Nothing to read (yet, or here): a block that says why and what to do takes the text's place, and the reading tools
+// (downloads, search, the summary) step aside. Never a blank page.
+const allBtn = `<a class="au-btn" href="${esc($('back').getAttribute('href'))}">${icon('doc')}<span>${esc(t('allTalks'))}</span></a>`;
+const liveBtn = `<a class="au-btn" href="/watch.html?stage=${encodeURIComponent(stageId)}"><span class="dot live"></span><span>${esc(t('seeLive'))}</span></a>`;
+const blank = (h, body, acts) => `<div class="tk-blank">${h ? `<h2>${esc(h)}</h2>` : ''}<p>${esc(body)}</p><div class="tk-blank-acts">${acts}</div></div>`;
+async function cantOpen(title, body, acts) {
+  document.querySelector('main.tk').classList.add('blank');
+  document.title = `${title} · ${ev.name}`;
+  $('title').textContent = title;
+  $('doc').innerHTML = blank('', body, acts);
+  $('retry')?.addEventListener('click', () => location.reload());
+  await new Promise(() => {}); // the rest of the page needs a talk
+}
+let infoRes = null;
+try { infoRes = await fetch(`${base}/talks/${encodeURIComponent(talkParam || 'current')}`); } catch { /* offline: said below */ }
+if (infoRes?.status === 404) await cantOpen(t('txGone'), t('txGoneBody'), allBtn);
+else if (infoRes?.status === 401 || infoRes?.status === 403) await cantOpen(t('txPrivate'), t('txPrivateBody'), `${allBtn}${liveBtn}`);
+else if (!infoRes?.ok) await cantOpen(t('txFail'), t('txFailBody'), `<button type="button" class="au-btn" id="retry">${icon('refresh')}<span>${esc(t('retry'))}</span></button>${allBtn}`);
+let info = await infoRes.json();
+// Opened for the room (no talk named: the captions page, the room's links) while its talk in progress has nothing yet
+// and the room is quiet: its latest transcript instead. A restart, Next talk or the end of a talk starts an empty one,
+// and that empty talk is what this page used to show.
+if (!talkParam && !info.segments && !info.live) {
+  const last = (await fetch(`${base}/talks`).then((r) => (r.ok ? r.json() : [])).catch(() => [])).find((x) => x.id !== info.id);
+  const r = last && (await fetch(`${base}/talks/${encodeURIComponent(last.id)}`).catch(() => null));
+  if (r?.ok) {
+    info = await r.json();
+    const u = new URL(location.href); u.searchParams.set('talk', info.id); history.replaceState(null, '', u); // a reload or a shared link keeps it
+  }
+}
 const talkId = info.id;
-const all = await (await fetch(`/api/stages/${encodeURIComponent(stageId)}/export.json?talk=${encodeURIComponent(talkId)}`)).json();
+const all = await fetch(`${base}/export.json?talk=${encodeURIComponent(talkId)}`).then((r) => (r.ok ? r.json() : [])).catch(() => []);
 
-const title = info.title || `${t('untitled')}`;
+const title = info.title || (info.segments ? t('untitled') : info.stageName); // nothing said yet: the room, not "Untitled talk"
 document.title = `${title} · ${info.stageName} · ${ev.name}`;
 $('title').textContent = title;
-$('back').textContent = `‹ ${t('allTalks')}`;
 const started = new Date(info.startedAt);
-$('meta').innerHTML = `${info.speaker ? `<b>${esc(info.speaker)}</b> · ` : ''}<span>${esc(info.stageName)}</span> · <span>${started.toLocaleDateString(UI, { weekday: 'short', day: 'numeric', month: 'short' })} ${started.toLocaleTimeString(UI, { hour: '2-digit', minute: '2-digit' })}</span> · <span>${Math.max(1, Math.round(info.durationMs / 60000))} min</span>${info.current ? ` · <span class="chip live"><span class="dot live"></span> ${esc(t('liveNow'))}</span>` : ''}`;
+// Where and when above the title; who and how long under it (a talk with nothing said yet has no length).
+$('eyebrow').textContent = `${info.stageName} · ${started.toLocaleDateString(UI, { weekday: 'short', day: 'numeric', month: 'short' })} · ${started.toLocaleTimeString(UI, { hour: '2-digit', minute: '2-digit' })}`;
+$('meta').innerHTML = [
+  info.speaker ? `<span class="tk-who"><span class="tk-ini" aria-hidden="true">${esc([...info.speaker.trim()][0] || '')}</span>${esc(info.speaker)}</span>` : '',
+  info.segments ? `<span>${Math.max(1, Math.round(info.durationMs / 60000))} min</span>` : '',
+  info.live ? `<span class="chip live"><span class="dot live"></span> ${esc(t('liveNow'))}</span>` : '',
+].filter(Boolean).join('<span class="sep" aria-hidden="true"></span>');
 
 // languages present in this transcript
 const chans = [...new Set(all.map((s) => s.channel))];
@@ -39,20 +83,17 @@ let segs = [];
 let partial = null;
 
 function renderLangs() {
-  $('langs').innerHTML = langs.map((l) => `<button class="pill" data-lang="${l}" aria-pressed="${l === lang}">${esc(langLabel(l, ev.languages))}</button>`).join('');
   for (const f of ['txt', 'srt', 'vtt']) {
     $(`dl-${f}`).href = `/api/stages/${encodeURIComponent(stageId)}/export.${f}?talk=${encodeURIComponent(talkId)}&lang=${lang}`;
     $(`dl-${f}`).setAttribute('download', '');
   }
 }
-$('langs').onclick = (e) => {
-  const b = e.target.closest('[data-lang]');
-  if (!b) return;
-  lang = b.dataset.lang;
+segment($('langs'), langs.map((l) => [l, esc(langLabel(l, ev.languages))]), lang, (v) => {
+  lang = v;
   store.set('lang', lang);
   const u = new URL(location.href); u.searchParams.set('lang', lang); history.replaceState(null, '', u);
   select(); renderLangs(); render(); live?.reconnect();
-};
+});
 const select = () => { segs = all.filter((s) => s.channel === lang).sort((a, b) => a.start - b.start); partial = null; };
 
 // ---- rendering: paragraphs split on pauses, timestamps, search highlight ----
@@ -104,6 +145,9 @@ function render() {
   // Don't rebuild the sentence someone is correcting: a live caption arriving would throw their typing away.
   if (document.activeElement?.classList.contains('edit-seg')) { renderLater = true; return; }
   const ps = paragraphs();
+  const none = !all.length && !partial; // nothing said yet in any language
+  document.querySelector('main.tk').classList.toggle('blank', none);
+  if (none) { patchDoc([blank(info.live ? t('waiting') : t('txEmpty').replace('{room}', info.stageName), t('txEmptyBody'), `${info.current ? liveBtn : ''}${allBtn}`)]); $('count').textContent = ''; return; }
   if (!ps.length && !partial) { patchDoc([`<div class="empty">${esc(info.current ? t('waiting') : t('noTalks'))}</div>`]); $('count').textContent = ''; return; }
   let matches = 0;
   const blocks = ps.map((p) => {
@@ -165,7 +209,7 @@ if (info.current) {
 }
 
 // ---- summary + ask ----
-$('sum-title').innerHTML = `${icon('sparkle')} ${esc(info.current ? t('catchUp') : t('summary'))}`;
+$('sum-title').innerHTML = `<span class="as-badge">${icon('sparkle')}</span>${esc(info.current ? t('catchUp') : t('summary'))}`;
 const assistant = mountAssistant($('assistant'), {
   stage: stageId, talk: talkId,
   lang: () => (lang !== 'orig' ? lang : (UIlang())),
@@ -197,22 +241,30 @@ $('copy').onclick = async () => {
 $('print').querySelector('span').textContent = t('print');
 $('print').title = t('print');
 $('print').onclick = () => window.print();
+// Download: a small menu under its button (fixed, so the scrolling row of actions doesn't clip it); it closes on a tap
+// elsewhere or when the page scrolls.
+const dl = document.querySelector('details.dl');
+dl.addEventListener('toggle', () => {
+  if (!dl.open) return;
+  const r = dl.querySelector('summary').getBoundingClientRect();
+  Object.assign(dl.querySelector('.menu').style, { top: `${r.bottom + 6}px`, left: `${Math.max(8, Math.min(r.left, innerWidth - 216))}px` });
+});
+document.addEventListener('click', (e) => { if (dl.open && !dl.contains(e.target)) dl.open = false; });
+addEventListener('scroll', () => { if (dl.open) dl.open = false; }, { passive: true });
+// The toolbar stays at the top while reading; a hairline appears once it floats over the text.
+new IntersectionObserver(([e]) => $('toolbar').classList.toggle('stuck', e.intersectionRatio < 1), { rootMargin: '-1px 0px 0px 0px', threshold: 1 }).observe($('toolbar'));
 
 // ---- reading settings ----
 $('set-title').textContent = t('settings');
 $('l-size').textContent = t('textSize'); $('l-font').textContent = t('font'); $('l-lh').textContent = t('lineSpacing'); $('l-theme').textContent = t('theme');
-const opts = (el, items, cur, onPick) => {
-  el.innerHTML = items.map(([v, label]) => `<button class="pill" data-v="${v}" aria-pressed="${String(v) === String(cur)}">${esc(label)}</button>`).join('');
-  el.onclick = (e) => { const b = e.target.closest('[data-v]'); if (!b) return; el.querySelectorAll('[data-v]').forEach((x) => x.setAttribute('aria-pressed', x === b)); onPick(b.dataset.v); };
-};
-opts($('font-opts'), [['default', t('fontDefault')], ['legible', t('fontLegible')], ['easy', t('fontEasy')]], prefs.font || 'default', (v) => { prefs = setReadingPref('font', v); });
-opts($('lh-opts'), [['1.3', '1'], ['1.5', '1.5'], ['1.8', '2']], prefs.lh || 1.5, (v) => { prefs = setReadingPref('lh', Number(v)); });
-opts($('theme-opts'), [['auto', t('themeAuto')], ['light', t('themeLight')], ['dark', t('themeDark')], ['contrast', t('themeContrast')]], store.get('theme', null) || 'auto', setTheme);
+segment($('font-opts'), readingItems.font(), prefs.font || 'default', (v) => { prefs = setReadingPref('font', v); });
+segment($('lh-opts'), readingItems.lh(), prefs.lh || 1.5, (v) => { prefs = setReadingPref('lh', Number(v)); });
+segment($('theme-opts'), readingItems.theme(), store.get('theme', null) || 'auto', setTheme);
 const setSize = (d) => { size = Math.min(40, Math.max(14, size + d)); store.set('docSize', size); document.documentElement.style.setProperty('--size', size + 'px'); $('size-val').textContent = size; };
 $('size-val').textContent = size;
 $('smaller').onclick = () => setSize(-1);
 $('bigger').onclick = () => setSize(1);
-$('settings').onclick = () => $('dlg-set').showModal();
+$('settings').onclick = () => { previewFonts($('font-opts')); $('dlg-set').showModal(); };
 $('set-close').onclick = () => $('dlg-set').close();
 $('dlg-set').addEventListener('click', (e) => { if (e.target === $('dlg-set')) $('dlg-set').close(); });
 
@@ -252,8 +304,13 @@ $('doc').addEventListener('focusout', async (e) => {
   }
   if (renderLater) { renderLater = false; setTimeout(render); }
 });
-$('del').onclick = async () => {
-  if (!confirm(t('deleteTalkQ'))) return;
+// Delete asks first, in a dialog that says it can't be undone.
+$('del-title').textContent = t('deleteTalkQ');
+$('del-no').textContent = t('cancel');
+$('del-ok').textContent = t('deleteTalk');
+$('del').onclick = () => { $('dlg-del').returnValue = ''; $('dlg-del').showModal(); };
+$('dlg-del').addEventListener('close', async () => {
+  if ($('dlg-del').returnValue !== 'ok') return;
   const r = await fetch(`/api/stages/${encodeURIComponent(stageId)}/talks/${encodeURIComponent(talkId)}`, { method: 'DELETE' });
-  if (r.ok) location.href = '/talks.html';
-};
+  if (r.ok) location.href = $('back').getAttribute('href');
+});

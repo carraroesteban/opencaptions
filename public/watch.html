@@ -20,88 +20,50 @@
   <meta name="twitter:card" content="summary_large_image" />
   <title>Subtítulos en vivo</title>
   <link rel="stylesheet" href="/style.css" />
-  <style>
-    body { display: flex; flex-direction: column; height: 100dvh; overflow: hidden; }
-    header { padding: 12px 16px 12px; border-bottom: 1px solid var(--line); background: var(--bg); }
-    header .top { display: flex; align-items: center; gap: 10px; }
-    header h1 { font-size: 20px; margin: 0; flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    header .talk { font-size: 14px; color: var(--fg2); margin: 2px 0 12px 38px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    header .talk:empty { margin-bottom: 8px; }
-    .back { text-decoration: none; font-size: 22px; line-height: 1; width: 28px; height: 28px; display: grid; place-items: center; border-radius: 50%; color: var(--fg2); }
-    .back:hover { background: var(--bg3); color: var(--fg); }
-    .langs { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; padding: 0 0 2px 38px; }
-    #scroll { flex: 1; overflow-y: auto; padding: 24px 20px 48px; scroll-behavior: smooth; -webkit-mask-image: linear-gradient(to bottom, transparent, #000 40px); mask-image: linear-gradient(to bottom, transparent, #000 40px); }
-    #text { font-size: var(--size, 24px); line-height: var(--read-lh, 1.45); font-family: var(--read-font, var(--font)); max-width: 820px; margin: 0 auto; font-weight: 400; }
-    #text p { margin: 0 0 .6em; transition: color .6s var(--ease); }
-    #text p.old { color: var(--fg2); }
-    #text .partial { color: var(--fg); }
-    :root[data-theme='contrast'] #text { font-weight: 600; } /* low vision: heavier strokes, nothing dimmed */
-    #text .empty { color: var(--fg2); font-size: 18px; margin-top: 26vh; }
-    #orig { border-top: 1px solid var(--line); padding: 12px 20px; font-size: 16px; color: var(--translation); background: var(--bg2); min-height: 3.2em; }
-    #orig b { color: var(--fg2); font-size: 11px; letter-spacing: .1em; text-transform: uppercase; margin-right: 8px; }
-    footer { display: flex; gap: 6px; padding: 10px 12px calc(10px + env(safe-area-inset-bottom)); border-top: 1px solid var(--line); background: var(--bg); align-items: center; }
-    footer .spacer { flex: 1; }
-    footer button { padding: 8px 11px; font-size: 15px; min-height: 42px; min-width: 42px; justify-content: center; } /* icon buttons as tall as the text ones */
-    #settings { font-family: var(--font-display); font-weight: 800; }
-    #ai { white-space: nowrap; }
-    /* Phones: keep "What did I miss?" readable; "show original" moves into the Aa sheet. */
-    @media (max-width: 440px) { #listen .lbl { display: none; } #dual { display: none; } #pip { display: none; } }
-    @media (max-width: 330px) { #ai .lbl { display: none; } }
-    footer a.btn { text-decoration: none; }
-    /* A break or music: the captions are paused on purpose, and the phone says so (and when they're back). */
-    .pause { margin: 12px 16px 0; padding: 12px 16px; border-radius: 16px; background: var(--bg2); border: 1px solid var(--line); }
-    .pause b { display: block; font-family: var(--font-display); font-weight: 800; font-size: 19px; letter-spacing: -.01em; }
-    .pause span { display: block; color: var(--fg2); font-size: 15px; margin-top: 2px; }
-    .pause.music { display: flex; align-items: center; gap: 12px; }
-    .pause.music b { font-size: 26px; line-height: 1; }
-    .pause.music span { margin: 0; }
-    .pause.note { display: flex; align-items: flex-start; gap: 10px; font-size: 15px; }
-    .pause.note span { flex: 1; color: var(--fg); margin: 0; }
-    .pause.note button { flex: none; padding: 4px 8px; }
-    #tolive { position: fixed; bottom: 86px; left: 50%; transform: translateX(-50%); box-shadow: var(--shadow-lg); border-radius: var(--pill); }
-    #listen[aria-pressed='true'], #pip[aria-pressed='true'] { background: var(--primary-bg); border-color: var(--primary-bg); color: var(--primary-fg); }
-  </style>
+  <link rel="stylesheet" href="/audience.css" />
+  <link rel="preload" href="/tokens.css" as="style" /><link rel="preload" href="/fonts/brand.css" as="style" /><!-- style.css @imports them: fetched together, not one after another -->
 </head>
-<body>
-  <header>
-    <div class="top">
-      <a class="back" href="/" id="back-link">‹</a>
-      <h1 id="stage">…</h1>
-      <span class="chip" id="status"><span class="dot"></span> <span></span></span>
+<body class="watch">
+  <header class="w-head">
+    <div class="w-bar">
+      <a class="au-icon-btn" href="/" id="back-link" data-icon="back"></a>
+      <img class="ev-logo w-logo hidden" id="ev-logo" alt="" />
+      <div class="w-titles"><h1 id="stage">…</h1><p id="talk"></p></div>
+      <span class="chip w-status" id="status"><span class="dot"></span><span></span></span>
     </div>
-    <div class="talk" id="talk"></div>
-    <div class="langs" id="langs" role="group"></div>
+    <div class="w-langs" id="langs" role="group"></div>
   </header>
-  <div id="pause" class="pause hidden" role="status"></div>
-  <div id="listen-note" class="pause note hidden" role="status"><span></span><button id="listen-note-close" data-icon="x"></button></div>
-  <div id="scroll" role="main" aria-live="polite"><div id="text"><div class="empty empty-state"><svg class="oc-logo typing" viewBox="0 0 878 664" aria-hidden="true"><use class="o" href="/brand/sprite.svg#oc-o"/><use class="ln" href="/brand/sprite.svg#oc-line"/></svg><span id="empty"></span></div></div></div>
-  <div id="orig" class="hidden" role="complementary" aria-label="Original"><b></b><span></span></div>
-  <button id="tolive" class="primary hidden"></button>
-  <footer>
-    <button id="settings" aria-haspopup="dialog">Aa</button>
-    <button id="dual" class="pill" aria-pressed="false"></button>
-    <span class="spacer"></span>
-    <button id="ai" class="primary" aria-haspopup="dialog" data-icon="sparkle"><span class="lbl"></span></button>
-    <button id="listen" class="hidden" aria-pressed="false"></button>
-    <button id="pip" class="hidden" data-icon="pin"></button>
-    <a id="doc" class="btn"><button tabindex="-1" data-icon="doc" aria-hidden="true"></button></a>
-  </footer>
+  <div id="pause" class="w-pause hidden" role="status"></div>
+  <div id="listen-note" class="w-pause w-note hidden" role="status"><span></span><button id="listen-note-close" class="au-icon-btn" data-icon="x"></button></div>
+  <div id="scroll" role="main" aria-live="polite"><div id="text"><div class="empty w-empty"><div class="w-skel" aria-hidden="true"><i class="skeleton"></i><i class="skeleton"></i><i class="skeleton"></i></div><span id="empty"></span></div></div></div>
+  <div class="w-bottom" id="bottom">
+    <button id="tolive" class="w-tolive hidden"></button>
+    <div id="orig" class="w-orig hidden" role="complementary" aria-label="Original"><b></b><span></span></div>
+    <footer class="w-dock">
+      <button id="settings" class="au-btn au-aa" aria-haspopup="dialog">Aa</button>
+      <button id="listen" class="au-btn hidden" aria-pressed="false"></button>
+      <button id="dual" class="au-btn" aria-pressed="false"></button>
+      <button id="pip" class="au-btn hidden" data-icon="pin"></button>
+      <button id="ai" class="w-ai hidden" aria-haspopup="dialog" data-icon="sparkle"><span class="lbl"></span></button>
+      <a id="doc" class="au-btn" data-icon="doc"></a>
+    </footer>
+  </div>
 
   <dialog id="dlg-ai" class="sheet" aria-labelledby="ai-title">
-    <div class="sheet-head"><h2 id="ai-title"></h2><button id="ai-close" data-icon="x"></button></div>
+    <div class="sheet-head"><h2 id="ai-title" class="as-title"></h2><button id="ai-close" data-icon="x"></button></div>
     <div id="assistant"></div>
-    <p class="u-m14t"><a id="ai-doc" href="#"></a></p>
+    <a id="ai-doc" class="as-more" href="#" data-icon="doc"></a>
   </dialog>
 
-  <dialog id="dlg-set" class="sheet" aria-labelledby="set-title">
+  <dialog id="dlg-set" class="sheet au-set" aria-labelledby="set-title">
     <div class="sheet-head"><h2 id="set-title"></h2><button id="set-close" data-icon="x"></button></div>
-    <div class="set-row"><span id="l-size"></span><span class="row"><button id="smaller" aria-label="A−">A−</button><b id="size-val" class="u-num"></b><button id="bigger" aria-label="A+">A+</button></span></div>
-    <div class="set-row"><span id="l-font"></span><span class="row" id="font-opts"></span></div>
-    <div class="set-row"><span id="l-lh"></span><span class="row" id="lh-opts"></span></div>
-    <div class="set-row"><span id="l-flow"></span><span class="row" id="flow-opts"></span></div>
-    <div class="set-row"><span id="l-theme"></span><span class="row" id="theme-opts"></span></div>
-    <div class="set-row"><span id="l-dual"></span><span class="row" id="dual-opts"></span></div>
-    <div class="set-row"><span id="l-ui"></span><span id="ui-slot"></span></div>
+    <div class="au-row inline"><span class="au-lbl" id="l-size"></span><span class="au-stepper"><button id="smaller" class="a-sm">A</button><b id="size-val"></b><button id="bigger" class="a-lg">A</button></span></div>
+    <div class="au-row"><span class="au-lbl" id="l-theme"></span><div id="theme-opts" class="au-themes"></div></div>
+    <div class="au-row"><span class="au-lbl" id="l-font"></span><div id="font-opts"></div></div>
+    <div class="au-row"><span class="au-lbl" id="l-lh"></span><div id="lh-opts"></div></div>
+    <div class="au-row"><span class="au-lbl" id="l-flow"></span><div id="flow-opts"></div></div>
+    <label class="au-row inline"><span class="au-lbl" id="l-dual"></span><input type="checkbox" id="dual-sw" /></label>
+    <div class="au-row inline"><span class="au-lbl" id="l-ui"></span><span id="ui-slot"></span></div>
   </dialog>
   <script type="module" src="/pages/watch.js"></script>
 </body>

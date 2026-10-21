@@ -11,6 +11,7 @@
   <link rel="manifest" href="/manifest.webmanifest" />
   <title>Estilo de subtítulos · OpenCaptions</title>
   <link rel="stylesheet" href="/style.css" />
+  <link rel="preload" href="/tokens.css" as="style" /><link rel="preload" href="/fonts/brand.css" as="style" /><!-- style.css @imports them: fetched together, not one after another -->
   <style>
     body { min-height: 100vh; }
     header { display: flex; gap: 12px 16px; align-items: center; padding: 14px 24px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }

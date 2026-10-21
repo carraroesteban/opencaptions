@@ -7,16 +7,21 @@
 // here can delete or change the event's configuration by accident while it's live.
 import { qs, esc, store, copyText, wsUrl, Socket, langLabel, setAccent, LISTEN, listenPort, freeListenPort, serverHost } from '/common.js';
 import { localize, prefsControls, tr, LANG } from '/i18n.js';
+import { advanced } from '/prefs.js';
 import { icon, mountIcons } from '/illustrations.js';
 import { ensureSignedIn, signInScreen, signOut } from '/signin.js';
 import { accessPanel } from '/access.js';
 import { alertsPanel } from '/alerts-ui.js';
 import { keyPanel, tunnelPanel, textApiPanel } from '/connect.js';
 import { localPanel } from '/local-mode.js';
+import { aiBadge } from '/ai-badge.js';
+let aiChip = null, aiSetting = null; // the AI badge in the top bar and in Settings → AI, made on the first status
 import { LANGUAGE_CATALOG } from '/languages.js';
-import { mountNav, setRooms, setCurrent, setCrumbs, home, viewCrumb, helpButton, addCommands, stateOf, stateLabel, onReorder } from '/nav.js';
+import { mountNav, setRooms, setCurrent, setCrumbs, home, viewCrumb, addCommands, stateOf, stateLabel, onReorder, initials } from '/nav.js';
 
 const $ = (id) => document.getElementById(id);
+/** innerHTML, only when it changed: the dashboard redraws every second and most of it stays the same. */
+const setHtml = (el, h) => { if (el._html !== h) { el._html = h; el.innerHTML = h; } };
 mountNav();
 // Rooms dragged in the sidebar (or Move up / down in a room's menu): saved for everyone, and undoable.
 onReorder(async (ids) => {
@@ -24,9 +29,6 @@ onReorder(async (ids) => {
 });
 $('prefs-slot').append(prefsControls());
 mountIcons();
-const viewHelp = helpButton(); // the open view's explanation (its <p popover id="help-<view>">)
-viewHelp.classList.add('hidden');
-$('view-title').after(viewHelp);
 // Signed in with a session cookie (public/signin.js): no password is kept on this page.
 localize(); // the page behind the sign-in screen, in the right language
 const me = await ensureSignedIn();
@@ -37,10 +39,13 @@ setAccent(ev.accent);
 let last = null;
 let locked = false;
 const logs = [];
+let logsQueued = 0; // a frame is booked to redraw them (renderLogsSoon)
 const VIEWS = isCrew ? ['live', 'room', 'transcripts', 'history'] : ['live', 'rooms', 'agenda', 'glossary', 'room', 'integrations', 'transcripts', 'history'];
 const TABS = isCrew ? ['live', 'screens', 'sound'] : ['live', 'screens', 'sound', 'settings'];
 let view = 'live';
 let focusRoom = '';
+const ADV_VIEWS = ['glossary', 'integrations', 'history']; // shown in Advanced mode (data-advanced in the sidebar)
+const calm = matchMedia('(prefers-reduced-motion: reduce)');
 const roomName = (id) => last?.stages.find((x) => x.id === id)?.name || ev.stages?.find((x) => x.id === id)?.name || id;
 let roomTab = 'live';
 let txRoom = null;
@@ -55,15 +60,14 @@ const L = {
     unlockAsk: '¿Desbloquear la configuración?', unlockAskBody: 'Vas a poder cambiar y borrar salas, la agenda y el glosario. Si el evento está en curso, hacelo solo si sabés lo que vas a cambiar: todo queda en el Historial y se puede deshacer.', unlockAskOk: 'Desbloquear',
     lockedToast: 'El modo evento está activado: desbloquealo en Ajustes para cambiar la configuración.',
     undo: 'Deshacer', undone: 'Deshecho', restore: 'Restaurar', saved: 'Guardado.', done: 'Listo.',
+    advLabel: 'Modo avanzado', advOn: 'Modo avanzado: el glosario, las integraciones, el historial y los ajustes técnicos están a la vista.', advOff: 'Modo básico: solo lo esencial.', advAuto: 'Modo avanzado activado para mostrar esta sección.',
     delAsk: (n) => `¿Eliminar «${n}»?`, delAskBody: 'La sala va a la papelera: podés restaurarla tal como estaba desde Salas o el Historial. Sus transcripciones se conservan.', delOk: 'Eliminar sala',
     deleted: (n) => `«${n}» eliminada.`, created: (n) => `«${n}» creada.`, changedRoom: (n) => `«${n}» actualizada.`,
+    endAsk: (n) => `¿Terminar la charla de «${n}»?`, endBody: 'Su transcripción queda guardada. Lo que se diga después empieza una charla nueva, sin nombre (nombrala con Siguiente charla).', endOk: 'Terminar la charla', ended: 'Charla terminada.',
     restartAsk: (n) => `¿Reconectar la IA de «${n}»?`, restartAskBody: 'Los subtítulos de esta sala se pausan unos segundos mientras se reconecta. Usalo si la sala parece trabada.', restartOk: 'Reconectar',
     nextTitle: (n) => `Siguiente charla en «${n}»`, nextNote: 'La transcripción de la charla actual queda guardada y la nueva empieza de cero.', nextOk: 'Empezar la charla',
     renameTitle: (n) => `Renombrar la charla en «${n}»`, renameNote: 'Cambia el título de la charla actual en las pantallas, la transcripción y las descargas.', renameOk: 'Guardar',
     over: (m, t) => `Va ${m} min pasada · le toca a «${t}»`, startDue: (t) => `Empezar «${t}»`, next: (t, h) => `Siguiente: ${t} · ${h}`, noTalk: 'Sin charla anunciada',
-    aiAsk: '¿Cambiar la IA de los subtítulos?', aiAskBody: (l) => `Todas las salas pasan a: ${l}. Los subtítulos se pausan unos segundos en cada sala mientras se reconectan.`, aiOk: 'Cambiar la IA',
-    aiDesc: (f) => (f.mode === 'auto' ? 'Gemini en la nube, y esta computadora toma el control si se corta internet.' : f.mode === 'local' ? 'Siempre esta computadora: Whisper y un modelo local.' : 'Siempre Gemini en la nube.') + (f.localReady ? ' El respaldo local está listo.' : f.backup ? ' El respaldo local no responde: revisá que el servidor de voz Whisper y Ollama sigan abiertos.' : ''),
-    localWhy: '«Esta computadora» necesita el servidor de voz Whisper y Ollama abiertos acá, y este servidor se inició sin ellos. Para tenerla, cerrá el servidor y abrilo de nuevo con: npm run local -- --fallback (Gemini, con esta computadora de respaldo) o npm run local (solo esta computadora).',
     speech: { translate: 'Subtítulos + voz traducida', transcribe: 'Solo subtítulos' },
     upAvail: (v) => `OpenCaptions ${v} ya está disponible`, upNotes: 'Novedades', upDownload: 'Descargar', upCmd: 'Para actualizar:', upNow: 'Actualizar ahora',
     upAsk: (v) => `¿Actualizar a OpenCaptions ${v}?`, upOk: 'Actualizar',
@@ -85,12 +89,16 @@ const L = {
         teams: 'En las opciones de la reunión (calendario de Teams → la reunión → Opciones de reunión): activá «Proporcionar subtítulos CART», guardá y copiá el enlace CART.',
         webhook: 'Una dirección https:// tuya. Cada envío es JSON, firmado con HMAC-SHA256 en el encabezado X-OpenCaptions-Signature; la clave secreta aparece una sola vez, al conectar.',
       },
-      none: 'Todavía no hay nada conectado. Elegí arriba dónde mostrar los subtítulos.',
-      orig: 'Original (lo que se habla)', waiting: 'esperando subtítulos', sent: (n, a) => `✓ ${n} enviados · hace ${a}`, failed: (e) => `✗ ${e}`,
-      deleted: 'sala eliminada', test: 'Probar', remove: 'Quitar', tested: 'Enviamos una línea de prueba.', removed: 'Desconectado.',
-      connected: (n) => `${n} conectado.`, secret: (k) => `Guardá esta clave para verificar los envíos (no se vuelve a mostrar):\n\n${k}`,
+      subs: { zoom: 'En la reunión o el webinar, para todos.', youtube: 'En la transmisión, con el botón CC.', teams: 'Subtítulos CART dentro de la reunión.', webhook: 'Cada subtítulo y cada charla, a tu sistema.' },
+      hint: { zoom: 'Empieza con https://wmcapi.zoom.us/closedcaption', youtube: 'Empieza con http://upload.youtube.com/closedcaption?cid=', teams: 'Empieza con https://api.captions.office.microsoft.com/cartcaption', webhook: 'Una dirección https:// de tu sistema' },
+      good: (n) => `Es un enlace de ${n}.`, bad: (n) => `No parece un enlace de ${n}: copialo de nuevo desde ${n}.`, needHttps: 'Tiene que empezar con https://',
+      count: (n) => (n === 1 ? '1 conectada' : `${n} conectadas`), connect: 'Conectar', connectTo: (n) => `Conectar ${n}`, more: (n) => `Opciones de ${n}`,
+      orig: 'Original (lo que se habla)', waiting: 'Esperando subtítulos', sent: (n, a) => `${n} enviados · hace ${a}`, failed: (e) => e,
+      deleted: 'sala eliminada', test: 'Enviar una prueba', remove: 'Quitar', tested: 'Enviamos una línea de prueba.', removed: 'Desconectado.',
+      connected: (n) => `${n} conectado.`, secretTitle: 'La clave de este webhook', secret: 'Guardala ahora para verificar los envíos: no se vuelve a mostrar.', secretLabel: 'Clave', secretOk: 'Ya la guardé',
+      removeAsk: '¿Quitar esta conexión?', removeBody: 'Los subtítulos dejan de llegar ahí en el acto. Podés volver a conectarla cuando quieras.',
     },
-    txDelete: (n) => `¿Eliminar para siempre la transcripción «${n}»? No se puede deshacer.`,
+    txDelete: (n) => `¿Eliminar para siempre la transcripción «${n}»?`, noUndo: 'No se puede deshacer.',
     addrRtmp: 'En OBS: Ajustes → Emisión → Servicio: Personalizado. En vMix: Settings → Outputs / Streaming → Destination: Custom RTMP Server. Pegá el servidor y la clave, guardá la sala y empezá a transmitir.',
     addrSrt: 'En OBS: Ajustes → Emisión → Servicio: Personalizado. En vMix: Settings → Outputs / Streaming → Destination: SRT, tipo Caller. Pegá la dirección (en vMix, el host y el puerto), guardá la sala y empezá a transmitir.',
     addrServer: 'Servidor', addrKey: 'Clave de retransmisión', addrAddress: 'Dirección', addrId: 'Primero escribí el ID de la sala.',
@@ -98,7 +106,14 @@ const L = {
     addrNoFfmpeg: 'Para esto hace falta ffmpeg, que no se instaló con OpenCaptions en esta computadora. Usá la página de sonido con un micrófono, o instalá ffmpeg y reiniciá.',
     toMe: 'Pasar a Solo para mí', toMeBody: (n) => `${n ? `${n === 1 ? 'Hay una sala en vivo' : `Hay ${n} salas en vivo`}: su público deja de ver los subtítulos. ` : ''}Las páginas del público, la pantalla del escenario y el overlay dejan de mostrar el evento hasta que vuelvas a eventos (desde Solo para mí, «Usarlo para eventos»). No se borra nada: salas, agenda y transcripciones quedan como están.`,
     langInUse: (rooms, langs) => `${rooms.join(', ')} ${rooms.length > 1 ? 'usan' : 'usa'} ${langs.join(', ')}: quitalo de ${rooms.length > 1 ? 'esas salas' : 'esa sala'} primero (Salas → Editar).`,
-    noTalks: 'Todavía no hay transcripciones en esta sala.', read: 'Leer', segs: (n) => `${n} frases`,
+    noTalks: 'Todavía no hay transcripciones en esta sala.', read: 'Leer',
+    tx: {
+      untitled: 'Charla sin título', live: 'En curso', rec: 'Grabación', min: (m) => (m < 60 ? `${m} min` : `${Math.floor(m / 60)} h ${String(m % 60).padStart(2, '0')} min`),
+      words: (n) => `${n.toLocaleString('es')} ${n === 1 ? 'palabra' : 'palabras'}`, talks: (n) => `${n} ${n === 1 ? 'charla' : 'charlas'}`,
+      read: (n) => `Leer «${n}»`, dl: 'Descargar', dlOf: (n) => `Descargar «${n}»`, more: (n) => `Más opciones de «${n}»`,
+      dlNote: 'SRT y VTT: subtítulos para un video. TXT: el texto, para leer o editar.', copyLink: 'Copiar el enlace', del: 'Eliminar…',
+      noMatch: (q) => `Ninguna charla de esta sala coincide con «${q}».`, emptyBody: 'Cada charla queda acá cuando termina, con sus descargas en cada idioma.',
+    },
     k: {
       'room.create': (c) => (c.undoes ? `Sala «${c.after?.name}» restaurada` : `Sala «${c.after?.name}» creada`),
       'room.update': (c) => `Sala «${c.after?.name}» ${c.undoes ? 'vuelta a como estaba' : 'modificada'}${roomDiff(c, 'es')}`,
@@ -106,6 +121,7 @@ const L = {
       'agenda.set': (c) => (c.undoes ? `Agenda vuelta a como estaba (${c.after?.count ?? 0} charlas)` : `Agenda reemplazada (${c.before?.count ?? 0} → ${c.after?.count ?? 0} charlas)`),
       'glossary.set': (c) => (c.undoes ? 'Glosario vuelto a como estaba' : `Glosario guardado (${c.after?.terms ?? 0} términos, ${c.after?.corrections ?? 0} correcciones)`),
       'event.rename': (c) => `Evento renombrado a «${c.after}»`,
+      'event.logo': (c) => (c.after ? (c.before ? 'Logo del evento reemplazado' : 'Logo del evento agregado') : 'Logo del evento quitado'),
       'engine.mode': (c) => `IA: ${aiLabel(c.after)}`,
       'ai.speech': (c) => `Modelo de voz: ${t.speech[c.after] || c.after}`,
       'event.lock': (c) => (c.after ? 'Modo evento activado' : 'Modo evento desactivado'),
@@ -119,6 +135,11 @@ const L = {
     copy: 'Copiar', open: 'Abrir', qrDl: 'Descargar el QR', poster: 'Cartel para imprimir',
     kinds: { browser: 'página de sonido', agent: 'agente de la sala', pull: 'stream o archivo', personal: 'esta computadora' }, audioStream: 'stream o archivo',
     linkMade: (hm) => `Sirve una vez, hasta las ${hm}. Solo deja enviar el sonido de esta sala: no hace falta contraseña.`, linkQr: 'QR del enlace para la computadora junto al escenario',
+    logo: {
+      upload: 'Subir el logo', replace: 'Reemplazar', saved: 'Logo guardado: ya se ve en las páginas del público', removed: 'Logo quitado',
+      type: 'El logo tiene que ser una imagen PNG, JPEG o WebP (SVG no).', big: 'El logo pesa más de 2 MB: exportalo más chico.', fail: 'No se pudo subir el logo. Probá de nuevo.',
+      ask: '¿Quitar el logo del evento?', askBody: 'Los celulares, la pantalla del escenario y los carteles vuelven a mostrar el logo de OpenCaptions.', ok: 'Quitar',
+    },
   },
   en: {
     title: (v) => `${v} · Production`,
@@ -128,15 +149,14 @@ const L = {
     unlockAsk: 'Unlock the setup?', unlockAskBody: 'You’ll be able to change and delete rooms, the agenda and the glossary. If the event is running, only do this if you know what you’re about to change: everything is recorded in History and can be undone.', unlockAskOk: 'Unlock',
     lockedToast: 'Event mode is on: unlock it in Settings to change the setup.',
     undo: 'Undo', undone: 'Undone', restore: 'Restore', saved: 'Saved.', done: 'Done.',
+    advLabel: 'Advanced mode', advOn: 'Advanced mode: the glossary, integrations, history and technical settings are in view.', advOff: 'Basic mode: just the essentials.', advAuto: 'Advanced mode turned on to show this section.',
     delAsk: (n) => `Delete “${n}”?`, delAskBody: 'The room goes to the trash: you can restore it exactly as it was from Rooms or History. Its transcripts are kept.', delOk: 'Delete room',
     deleted: (n) => `“${n}” deleted.`, created: (n) => `“${n}” created.`, changedRoom: (n) => `“${n}” updated.`,
+    endAsk: (n) => `End the talk in “${n}”?`, endBody: 'Its transcript is saved. Whatever is said next starts a new, unnamed talk (name it with Next talk).', endOk: 'End the talk', ended: 'Talk ended.',
     restartAsk: (n) => `Reconnect the AI in “${n}”?`, restartAskBody: 'This room’s captions pause for a few seconds while it reconnects. Use it if the room seems stuck.', restartOk: 'Reconnect',
     nextTitle: (n) => `Next talk in “${n}”`, nextNote: 'The current talk’s transcript is kept and the new one starts fresh.', nextOk: 'Start the talk',
     renameTitle: (n) => `Rename the talk in “${n}”`, renameNote: 'Changes the current talk’s title on screens, in the transcript and in downloads.', renameOk: 'Save',
     over: (m, t) => `${m} min over · “${t}” is due`, startDue: (t) => `Start “${t}”`, next: (t, h) => `Next: ${t} · ${h}`, noTalk: 'No talk announced',
-    aiAsk: 'Switch the captions AI?', aiAskBody: (l) => `Every room switches to: ${l}. Captions pause for a few seconds in each room while they reconnect.`, aiOk: 'Switch the AI',
-    aiDesc: (f) => (f.mode === 'auto' ? 'Gemini in the cloud, and this computer takes over if the internet goes down.' : f.mode === 'local' ? 'Always this computer: Whisper and a local model.' : 'Always Gemini in the cloud.') + (f.localReady ? ' The local backup is ready.' : f.backup ? ' The local backup isn’t answering: check that the Whisper speech server and Ollama are still open.' : ''),
-    localWhy: '“This computer” needs the Whisper speech server and Ollama open here, and this server was started without them. To have it, stop the server and start it again with: npm run local -- --fallback (Gemini, with this computer as the backup) or npm run local (only this computer).',
     speech: { translate: 'Captions + translated voice', transcribe: 'Captions only' },
     upAvail: (v) => `OpenCaptions ${v} is available`, upNotes: 'What’s new', upDownload: 'Download', upCmd: 'To update:', upNow: 'Update now',
     upAsk: (v) => `Update to OpenCaptions ${v}?`, upOk: 'Update',
@@ -158,12 +178,16 @@ const L = {
         teams: 'In the meeting options (Teams calendar → the meeting → Meeting options): turn on "Provide CART captions", save, and copy the CART link.',
         webhook: 'An https:// address of yours. Each request is JSON, signed with HMAC-SHA256 in the X-OpenCaptions-Signature header; the secret is shown once, when you connect.',
       },
-      none: 'Nothing connected yet. Choose above where to show the captions.',
-      orig: 'Original (what is spoken)', waiting: 'waiting for captions', sent: (n, a) => `✓ ${n} sent · ${a} ago`, failed: (e) => `✗ ${e}`,
-      deleted: 'room deleted', test: 'Test', remove: 'Remove', tested: 'Sent a test line.', removed: 'Disconnected.',
-      connected: (n) => `${n} connected.`, secret: (k) => `Keep this secret to verify the requests (it isn't shown again):\n\n${k}`,
+      subs: { zoom: 'In the meeting or webinar, for everyone.', youtube: 'On the stream, with the CC button.', teams: 'CART captions inside the meeting.', webhook: 'Each caption and each talk, to your system.' },
+      hint: { zoom: 'Starts with https://wmcapi.zoom.us/closedcaption', youtube: 'Starts with http://upload.youtube.com/closedcaption?cid=', teams: 'Starts with https://api.captions.office.microsoft.com/cartcaption', webhook: 'An https:// address of your system' },
+      good: (n) => `That’s a ${n} link.`, bad: (n) => `That doesn’t look like a ${n} link: copy it again from ${n}.`, needHttps: 'It must start with https://',
+      count: (n) => `${n} connected`, connect: 'Connect', connectTo: (n) => `Connect ${n}`, more: (n) => `${n} options`,
+      orig: 'Original (what is spoken)', waiting: 'Waiting for captions', sent: (n, a) => `${n} sent · ${a} ago`, failed: (e) => e,
+      deleted: 'room deleted', test: 'Send a test', remove: 'Remove', tested: 'Sent a test line.', removed: 'Disconnected.',
+      connected: (n) => `${n} connected.`, secretTitle: 'This webhook’s secret', secret: 'Keep it now to verify the requests: it isn’t shown again.', secretLabel: 'Secret', secretOk: 'I’ve kept it',
+      removeAsk: 'Remove this connection?', removeBody: 'Captions stop going there right away. You can connect it again any time.',
     },
-    txDelete: (n) => `Delete the transcript “${n}” for good? This can’t be undone.`,
+    txDelete: (n) => `Delete the transcript “${n}” for good?`, noUndo: 'This can’t be undone.',
     addrRtmp: 'In OBS: Settings → Stream → Service: Custom. In vMix: Settings → Outputs / Streaming → Destination: Custom RTMP Server. Paste the server and the key, save the room and start streaming.',
     addrSrt: 'In OBS: Settings → Stream → Service: Custom. In vMix: Settings → Outputs / Streaming → Destination: SRT, type Caller. Paste the address (in vMix, its host and port), save the room and start streaming.',
     addrServer: 'Server', addrKey: 'Stream key', addrAddress: 'Address', addrId: 'Type the room’s ID first.',
@@ -171,7 +195,14 @@ const L = {
     addrNoFfmpeg: 'This needs ffmpeg, which didn’t install with OpenCaptions on this computer. Use the sound page with a microphone instead, or install ffmpeg and restart.',
     toMe: 'Switch to Just for me', toMeBody: (n) => `${n ? `${n === 1 ? 'A room is live' : `${n} rooms are live`}: its audience stops seeing captions. ` : ''}The audience pages, the stage screen and the overlay stop showing the event until you switch back (from Just for me, “Use it for events”). Nothing is deleted: rooms, the agenda and transcripts stay as they are.`,
     langInUse: (rooms, langs) => `${rooms.join(', ')} ${rooms.length > 1 ? 'use' : 'uses'} ${langs.join(', ')}: remove it from ${rooms.length > 1 ? 'those rooms' : 'that room'} first (Rooms → Edit).`,
-    noTalks: 'No transcripts in this room yet.', read: 'Read', segs: (n) => `${n} lines`,
+    noTalks: 'No transcripts in this room yet.', read: 'Read',
+    tx: {
+      untitled: 'Untitled talk', live: 'In progress', rec: 'Recording', min: (m) => (m < 60 ? `${m} min` : `${Math.floor(m / 60)} h ${String(m % 60).padStart(2, '0')} min`),
+      words: (n) => `${n.toLocaleString('en')} ${n === 1 ? 'word' : 'words'}`, talks: (n) => `${n} ${n === 1 ? 'talk' : 'talks'}`,
+      read: (n) => `Read “${n}”`, dl: 'Download', dlOf: (n) => `Download “${n}”`, more: (n) => `More options for “${n}”`,
+      dlNote: 'SRT and VTT: captions for a video. TXT: the text, to read or edit.', copyLink: 'Copy the link', del: 'Delete…',
+      noMatch: (q) => `No talk in this room matches “${q}”.`, emptyBody: 'Each talk lands here when it ends, with its downloads in every language.',
+    },
     k: {
       'room.create': (c) => (c.undoes ? `Room “${c.after?.name}” restored` : `Room “${c.after?.name}” created`),
       'room.update': (c) => `Room “${c.after?.name}” ${c.undoes ? 'put back as it was' : 'changed'}${roomDiff(c, 'en')}`,
@@ -179,6 +210,7 @@ const L = {
       'agenda.set': (c) => (c.undoes ? `Agenda put back (${c.after?.count ?? 0} talks)` : `Agenda replaced (${c.before?.count ?? 0} → ${c.after?.count ?? 0} talks)`),
       'glossary.set': (c) => (c.undoes ? 'Glossary put back' : `Glossary saved (${c.after?.terms ?? 0} terms, ${c.after?.corrections ?? 0} corrections)`),
       'event.rename': (c) => `Event renamed to “${c.after}”`,
+      'event.logo': (c) => (c.after ? (c.before ? 'Event logo replaced' : 'Event logo added') : 'Event logo removed'),
       'engine.mode': (c) => `AI: ${aiLabel(c.after)}`,
       'ai.speech': (c) => `Speech model: ${t.speech[c.after] || c.after}`,
       'event.lock': (c) => (c.after ? 'Event mode turned on' : 'Event mode turned off'),
@@ -192,6 +224,11 @@ const L = {
     copy: 'Copy', open: 'Open', qrDl: 'Download the QR', poster: 'Poster to print',
     kinds: { browser: 'sound page', agent: 'room agent', pull: 'stream or file', personal: 'this computer' }, audioStream: 'stream or file',
     linkMade: (hm) => `Works once, until ${hm}. It only lets that computer send this room’s sound: no password needed.`, linkQr: 'QR code of the link for the computer next to the stage',
+    logo: {
+      upload: 'Upload the logo', replace: 'Replace', saved: 'Logo saved: the audience pages show it now', removed: 'Logo removed',
+      type: 'The logo has to be a PNG, JPEG or WebP image (not SVG).', big: 'The logo is over 2 MB: export a smaller one.', fail: 'Couldn’t upload the logo. Try again.',
+      ask: 'Remove the event logo?', askBody: 'Phones, the stage screen and the posters go back to showing the OpenCaptions logo.', ok: 'Remove',
+    },
   },
 };
 const t = L[LANG] || L.en;
@@ -230,26 +267,34 @@ function askToken() {
 new Socket(() => wsUrl('/ws/admin', {}), {
   message(m) {
     if (m.type === 'status') render(m);
-    else if (m.type === 'log') { logs.push(m); if (logs.length > 400) logs.shift(); renderLogs(); }
-    else if (m.type === 'logs') { logs.splice(0, logs.length, ...m.logs); renderLogs(); }
+    else if (m.type === 'log') { logs.push(m); if (logs.length > 400) logs.shift(); renderLogsSoon(); }
+    else if (m.type === 'logs') { logs.splice(0, logs.length, ...m.logs); renderLogsSoon(); }
     else if (m.type === 'history') { refreshSchedule(); if (view === 'history') loadHistory(); }
   },
   close(e) { if (e.code === 4001) askToken(); },
 });
 
 // ---------- toasts and confirmations ----------
+$('toasts').showPopover(); // the top layer, so a Settings window doesn't cover it
 function toast(msg, { undo = null, error = false, ms = 7000 } = {}) {
   const el = document.createElement('div');
   el.className = `note${error ? ' err' : ''}`;
   el.innerHTML = `<span>${esc(msg)}</span>${undo ? `<button type="button">${esc(t.undo)}</button>` : ''}`;
-  if (undo) el.querySelector('button').onclick = async () => { el.remove(); await undoChange(undo); };
+  const bye = () => { if (calm.matches) return el.remove(); el.classList.add('out'); setTimeout(() => el.remove(), 220); }; // it leaves, it doesn't vanish
+  if (undo) el.querySelector('button').onclick = async () => { bye(); await undoChange(undo); };
   $('toasts').append(el);
-  setTimeout(() => el.remove(), ms);
+  if (document.querySelector('dialog:modal')) { $('toasts').hidePopover(); $('toasts').showPopover(); } // back on top of a window opened since
+  while ($('toasts').children.length > 3) $('toasts').firstElementChild.remove(); // a burst: the newest three
+  setTimeout(bye, ms);
 }
-/** A real dialog instead of window.confirm: says what will happen, with a clearly labelled button. */
-function confirmDialog({ title, body, ok, danger = false }) {
+/**
+ * A real dialog instead of window.confirm: says what will happen, with a clearly labelled button. info: only an OK
+ * (something to read, like a secret shown once); html: more below the text (a copy row).
+ */
+function confirmDialog({ title, body, ok, danger = false, info = false, html = '' }) {
   $('cf-title').textContent = title;
-  $('cf-body').innerHTML = `<p>${esc(body)}</p>`;
+  $('cf-body').innerHTML = `<p>${esc(body)}</p>${html}`;
+  $('cf-ok').previousElementSibling.classList.toggle('hidden', info);
   $('cf-ok').textContent = ok;
   $('cf-ok').className = danger ? 'danger' : 'primary';
   const d = $('dlg-confirm');
@@ -267,13 +312,12 @@ async function undoChange(id) {
 function setLocked(on) {
   locked = on;
   document.body.classList.toggle('locked', on);
-  for (const b of [$('lockbtn'), $('lock2')]) {
-    b.classList.toggle('on', on);
-    b.dataset.state = on ? 'on' : 'off';
-  }
-  $('lockbtn').innerHTML = `${icon('lock')}<span><b>${esc(on ? t.lockOn : t.lockOff)}</b><small>${esc(on ? t.lockOnSub : t.lockOffSub)}</small></span>`;
-  $('lock2').innerHTML = `${icon('lock')} ${esc(on ? t.unlock : t.lockAskOk)}`;
-  $('lock2').className = on ? '' : 'primary';
+  // A switch in the sidebar and one in Settings. Off, one quiet line (what it does is in its tooltip); on, the
+  // sidebar row turns solid and says the setup is locked.
+  $('lockbtn').checked = $('lock2').checked = on;
+  $('lockrow').classList.toggle('on', on);
+  $('lockrow').title = on ? t.lockOn : t.lockOffSub;
+  $('lock-sub').textContent = on ? t.lockOnSub : '';
   const showBar = on && ['rooms', 'agenda', 'glossary', 'history'].includes(view);
   $('lockedbar').classList.toggle('hidden', !showBar);
   $('lockedbar').innerHTML = `${icon('lock')}<span>${esc(t.lockedBar)}</span><button type="button" id="unlock-now">${esc(t.unlock)}</button>`;
@@ -288,9 +332,24 @@ async function toggleLock() {
   setLocked(r.locked);
   refreshView();
 }
-$('lockbtn').onclick = toggleLock;
+// The switches only flip once the change is confirmed (and the server agrees): until then they stay as they were.
+$('lockbtn').onchange = $('lock2').onchange = (e) => { e.target.checked = locked; toggleLock(); };
 if (!isCrew) addCommands(() => [{ ic: 'lock', label: locked ? t.unlock : t.lockAskOk, sub: t.lockOff, run: toggleLock }]);
-$('lock2').onclick = toggleLock;
+
+// ---------- Basic and Advanced ----------
+// Basic: the live rooms, the agenda, transcripts and the essential settings. Advanced adds the glossary, integrations,
+// history, the technical side of each room (costs, AI sessions, translation modes…). Remembered per browser (prefs.js).
+const syncAdvanced = () => { $('adv-sw').checked = $('adv-sw2').checked = advanced.get(); };
+function setAdvanced(on) {
+  const flip = () => { advanced.set(on); syncAdvanced(); };
+  if (document.startViewTransition && !calm.matches) document.startViewTransition(flip); else flip();
+  if (!$('dlg-settings').open) toast(on ? t.advOn : t.advOff, { ms: 3000 }); // in Settings the switch itself says it
+  if (!on && ADV_VIEWS.includes(view)) location.hash = '#live';
+}
+$('adv-sw').onchange = $('adv-sw2').onchange = (e) => setAdvanced(e.target.checked);
+addEventListener('oc:advanced', syncAdvanced); // ⌘K turned it on to open something
+syncAdvanced();
+addCommands(() => [{ ic: 'sliders', label: t.advLabel, sub: advanced.get() ? '✓' : '', run: () => setAdvanced(!advanced.get()) }]);
 
 // ---------- views ----------
 // Old addresses still work: #live/<room>, #screens/<room> and #rooms/<room> are now sections of the room's page.
@@ -302,6 +361,7 @@ function oldHash(h, sub) {
 }
 const gridHome = $('grid').nextElementSibling; // where the rooms' cards live on Live (a room's page borrows its card)
 let formRoom = null; // the room the Settings form was filled for, so live updates don't wipe what's being typed
+let shown = ''; // the view, room and section on screen: a new one crossfades in, the same one just refreshes
 function go() {
   let [h, sub, tab] = location.hash.slice(1).split('?')[0].split('/');
   const moved = oldHash(h, sub);
@@ -310,7 +370,18 @@ function go() {
     openSettings(sub);
     if (document.querySelector('.view.on')) return; // the view behind it stays as it was
   } else if ($('dlg-settings').open) $('dlg-settings').close();
+  const next = VIEWS.includes(h) && (h !== 'room' || sub) ? h : 'live';
+  const key = [next, sub, tab].join('/');
+  const swap = () => show(h, sub, tab);
+  // Another section: the page body crossfades (the sidebar stays; its marker slides). Not on the first draw.
+  if (shown && shown !== key && document.startViewTransition && !calm.matches) {
+    try { document.startViewTransition({ update: swap, types: ['oc-view'] }); } catch { swap(); }
+  } else swap();
+  shown = key;
+}
+function show(h, sub, tab) {
   view = VIEWS.includes(h) && (h !== 'room' || sub) ? h : 'live';
+  if (ADV_VIEWS.includes(view) && !advanced.get()) { advanced.set(true); syncAdvanced(); toast(t.advAuto, { ms: 3000 }); } // opened from ⌘K, a link or a shortcut
   focusRoom = view === 'room' ? decodeURIComponent(sub) : '';
   const isNew = focusRoom === 'new' && !isCrew;
   roomTab = isNew ? 'settings' : TABS.includes(tab) ? tab : 'live';
@@ -318,15 +389,16 @@ function go() {
   if (forRoom) txRoom = forRoom;
   for (const s of document.querySelectorAll('.view')) s.classList.toggle('on', s.dataset.view === view);
   setCurrent(view === 'room' ? 'rooms' : view, focusRoom);
-  const label = view === 'room' ? (isNew ? tr('Nueva sala') : roomName(focusRoom)) : document.querySelector(`#side a[data-view="${view}"] .lbl`).textContent;
+  const link = document.querySelector(`#side a[data-view="${view}"]`); // the Rooms heading is a link with no icon label
+  const label = view === 'room' ? (isNew ? tr('Nueva sala') : roomName(focusRoom)) : (link?.querySelector('.lbl') || link)?.textContent || '';
   $('view-title').textContent = label;
   setCrumbs(view === 'live' ? [home()] : view === 'room' ? [home(), viewCrumb('rooms'), { label }] : forRoom ? [home(), viewCrumb(view), { label: roomName(forRoom) }] : [home(), { label }]);
-  const help = $(`help-${view}`);
-  viewHelp.classList.toggle('hidden', !help);
-  if (help) viewHelp.setAttribute('popovertarget', help.id);
+  const help = $(`help-${view}`); // the view's one-line explanation (its <p id="help-<view>">), under the title
+  $('view-sub').textContent = help?.textContent || '';
+  $('view-sub').classList.toggle('hidden', !help);
   // A room's page: its sections as tabs, and its card from Live in the first one
   if (view === 'room') $('room-live').append($('grid')); else gridHome.before($('grid'));
-  for (const el of $('grid').querySelectorAll('.stage')) el.classList.toggle('hidden', !!focusRoom && el.dataset.id !== focusRoom);
+  for (const el of $('grid').querySelectorAll('.stage')) { el.classList.toggle('hidden', !!focusRoom && el.dataset.id !== focusRoom); foldDetails(el); }
   if (view === 'room') {
     const id = encodeURIComponent(focusRoom);
     $('room-tabs').innerHTML = (isNew ? ['settings'] : TABS).map((k) => `<a href="#room/${id}/${k}"${k === roomTab ? ' aria-current="page"' : ''}>${esc(t.tabs[k])}</a>`).join('');
@@ -342,7 +414,7 @@ function refreshView() {
   else if (view === 'agenda') loadAgenda();
   else if (view === 'glossary') loadGlossary();
   else if (view === 'room' && focusRoom !== 'new') loadRoom(focusRoom);
-  else if (view === 'integrations') { loadIntegrations(); loadSwitchers(); }
+  else if (view === 'integrations') { intgCards(); loadConnections().catch(() => {}); }
   else if (view === 'transcripts') loadTranscripts();
   else if (view === 'history') loadHistory();
 }
@@ -366,7 +438,7 @@ const engChip = (e) => {
   const cls = e.state === 'live' ? 'ok' : e.state === 'reconnecting' || e.state === 'resuming' || e.state === 'connecting' ? 'warn' : e.state === 'idle' ? '' : 'bad';
   return `<span class="chip ${cls}" title="${esc(e.lastError || '')}">${esc(e.target)} · ${esc(e.state)}${e.reconnects ? ` · ${e.reconnects}×` : ''}</span>`;
 };
-const alertText = (a) => tr(({ 'no-audio': 'no llega audio', 'muted?': '¿mic muteado? (60s sin señal)', reconnecting: 'reconectando IA', 'high-latency': 'latencia alta', 'mt-throttled': 'traducción limitada por cuota → usando Live', 'ai-quota': 'la key de Gemini llegó a su límite', 'voice-in-break': 'hay alguien hablando durante la pausa', 'on-backup': 'usando el audio de respaldo', 'not-saving': 'no se guardan las transcripciones (¿disco lleno?)', 'ai-errors': 'la IA está dando errores (ver el registro)' })[a] || a);
+const alertText = (a) => tr(({ 'no-audio': 'no llega audio', 'muted?': '¿mic muteado? (60s sin señal)', reconnecting: 'reconectando IA', 'high-latency': 'latencia alta', 'mt-throttled': 'traducción limitada por cuota → usando Live', 'ai-quota': 'la key de Gemini llegó a su límite', 'voice-in-break': 'hay alguien hablando durante la pausa', 'on-backup': 'usando el audio de respaldo', 'not-saving': 'no se guardan las transcripciones (¿disco lleno?)', 'ai-errors': 'la IA está dando errores (ver el registro)', budget: 'se terminó el presupuesto de IA de esta semana' })[a] || a);
 
 // ---------- first-run guide (Live view, until everything is done) ----------
 let scheduleCount = null;
@@ -448,9 +520,6 @@ $('ob-steps').onclick = (e) => {
 };
 $('ob-hide').onclick = () => { store.set('admin.obHidden', true); $('onboard').classList.add('hidden'); };
 
-// ---------- offline backup banner ----------
-// Commands in <code> so they read and copy right; rewritten only when they change (renderNet runs on every update).
-const aiDesc = (text) => { const el = $('ai-desc'), h = esc(text).replace(/npm run local( -- --fallback)?/g, '<code>$&</code>'); if (el.dataset.html !== h) { el.innerHTML = h; el.dataset.html = h; } };
 // A new version on GitHub (src/updates.js): one quiet line with "Update now" (it asks first; nothing is installed
 // otherwise), or the download, or for a Docker container the command to run.
 let updatingTo = '';
@@ -479,14 +548,9 @@ async function updateNow(v) {
   }
   el.textContent = t.upSlow;
 }
-function renderNet(f, engine) {
-  // Started without the backup: no selector, just how to get "this computer" (npm run local starts it, not the dashboard)
-  $('ai-setting').classList.toggle('hidden', !f && engine === 'local');
-  $('ai-mode').classList.toggle('hidden', !f);
-  if (!f) { aiDesc(t.localWhy); return $('netbar').classList.add('hidden'); }
-  if (document.activeElement !== $('ai-mode')) $('ai-mode').value = f.mode;
-  $('ai-mode').querySelector('[value=local]').disabled = !f.localReady;
-  aiDesc(t.aiDesc(f) + (f.localReady || f.backup ? '' : ` ${t.localWhy}`));
+/** The internet dropped (the offline backup): a banner over the dashboard says what's captioning now. */
+function renderNet(f) {
+  if (!f) return $('netbar').classList.add('hidden');
   let html = '';
   let bad = false;
   if (f.active === 'local') {
@@ -499,114 +563,141 @@ function renderNet(f, engine) {
   $('netbar').classList.toggle('bad', bad);
   if (html && $('netbar').dataset.html !== html) { $('netbar').innerHTML = html; $('netbar').dataset.html = html; }
 }
-$('ai-mode').onchange = async (e) => {
-  const mode = e.target.value;
-  const ok = await confirmDialog({ title: t.aiAsk, body: t.aiAskBody(aiLabel(mode)), ok: t.aiOk });
-  if (!ok) { e.target.value = last?.failover?.mode || 'auto'; return; }
-  try { const r = await api('POST', '/api/engine', { mode }); if (r.change) toast(t.saved, { undo: r.change }); } catch { e.target.value = last?.failover?.mode || 'auto'; }
-};
 
 // ---------- Live ----------
 function render(s) {
   last = s;
   if (s.locked !== locked) setLocked(!!s.locked);
+  renderMini(s); // the floating mini-dashboard stays live while this tab hides behind OBS
+  if (document.hidden) return; // drawn again the moment the tab shows (visibilitychange below)
   $('event').textContent = s.event;
   $('event').classList.toggle('hidden', !s.event || s.event === 'OpenCaptions'); // no event name yet: not the logo twice
   document.title = t.title(s.event);
   renderOnboard(s);
-  $('engine').textContent = s.engine === 'gemini' ? `Gemini · ${t.speech[s.speechModel]}` : s.engine === 'local' ? `Local · ${s.model}` : tr('Modo simulado (sin API key)');
-  $('engine').className = 'chip ' + (s.engine === 'mock' ? 'warn' : s.engine === 'local' && !localOk(s.local) ? 'bad' : 'ok');
-  $('engine').title = s.engine === 'mock' ? tr('Conectar la IA en la nube en Ajustes') : s.model; // the exact model names
-  $('engine').style.cursor = s.engine === 'mock' ? 'pointer' : '';
-  renderNet(s.failover, s.engine);
+  // Which AI makes the captions: the same badge as Just for me's; for an admin, also the switch (ai-badge.js).
+  (aiChip ??= aiBadge($('engine'), { api: isCrew ? undefined : api, settings: '#settings/ai' })).update(s.aiNow);
+  if (!isCrew) (aiSetting ??= aiBadge($('ai-use'), { api })).update(s.aiNow); // the same switch in Settings → AI
+  renderNet(s.failover);
   renderUpdate(isCrew ? null : s.update);
   // A free Gemini key out of quota: offer this computer (public/local-mode.js), and keep it in view while it gets ready.
   const lm = localP?.status();
   const quota = s.engine === 'gemini' && s.stages.some((x) => x.alerts?.includes('ai-quota') || x.alerts?.includes('mt-throttled'));
   $('local-offer').classList.toggle('hidden', isCrew || !(quota || (lm && lm.state !== 'idle' && lm.text !== 'ready')));
-  $('k-live').textContent = `${s.totals.live}/${s.totals.stages}`;
-  $('k-sessions').textContent = s.totals.sessions;
-  $('k-viewers').textContent = s.totals.viewers;
-  $('k-cost').textContent = `US$ ${s.totals.costUsd.toFixed(2)}`;
+  // The numbers count to their new value when they change (never on an update that changes nothing).
+  countTo($('k-live'), s.totals.live);
+  $('k-of').textContent = `/${s.totals.stages}`;
+  $('kpis').classList.toggle('on-air', s.totals.live > 0);
+  // Languages the audience can read, across the rooms (not counting "Original").
+  countTo($('k-langs'), new Set(s.stages.flatMap((x) => x.languages.filter((l) => l !== 'orig'))).size);
+  countTo($('k-viewers'), s.totals.viewers);
+  // A hosted test instance (BUDGET_USD_WEEK): this week's spend against its cap, which renews on Monday.
+  countTo($('k-cost'), s.budget ? s.budget.usedUsd : s.totals.costUsd, (v) => (s.budget ? `US$ ${v.toFixed(2)} / ${s.budget.capUsd}` : `US$ ${v.toFixed(2)}`));
+  $('k-cost').title = s.budget ? tr('Presupuesto de IA de esta semana: se renueva el lunes') : '';
   if (s.system && $('dlg-settings').open) $('sys').textContent = t.sys(s.system, fmtDur(s.uptimeSec));
   if ($('dlg-settings').open && settingsSetup) { settingsSetup = { ...settingsSetup, tunnel: s.tunnel, ai: s.ai, engine: s.engine }; keyP.update(settingsSetup); tunnelP.update(settingsSetup); }
   const alerts = s.stages.filter((x) => x.alerts.some((a) => a !== 'no-ingest') || x.dueTalk).length;
   const navLive = document.querySelector('#nav a[data-view="live"]');
-  navLive.querySelector('.n')?.remove();
-  if (alerts) navLive.insertAdjacentHTML('beforeend', `<span class="n">${alerts}</span>`);
+  const badge = navLive.querySelector('.n');
+  if ((badge?.textContent ?? '0') !== String(alerts)) { badge?.remove(); if (alerts) navLive.insertAdjacentHTML('beforeend', `<span class="n">${alerts}</span>`); }
   setRooms(s.stages);
   if (view === 'room' && focusRoom !== 'new' && $('view-title').textContent !== roomName(focusRoom)) go(); // the room's name arrived, or it was renamed
   if (view === 'rooms') renderRooms(s);
   renderGrid(s);
-  renderMini(s);
 }
+document.addEventListener('visibilitychange', () => { if (!document.hidden && last) render(last); });
+/** Shows a number, counting up (or down) to it over half a second when it changes. */
+function countTo(el, v, fmt = (x) => String(Math.round(x))) {
+  if (el._v === v) return;
+  const from = el._v ?? 0;
+  el._v = v;
+  cancelAnimationFrame(el._raf);
+  if (calm.matches || from === v) { el.textContent = fmt(v); return; }
+  const t0 = performance.now();
+  const step = (now) => {
+    const p = Math.min(1, (now - t0) / 650);
+    el.textContent = fmt(p < 1 ? from + (v - from) * (1 - (1 - p) ** 4) : v);
+    if (p < 1) el._raf = requestAnimationFrame(step);
+  };
+  el._raf = requestAnimationFrame(step);
+}
+/** A card's More: open, its contents usable; closed, out of the tab order too. A room's own page has it always open. */
+const foldDetails = (el) => { el.querySelector('.details > div').inert = !(el.classList.contains('open') || (view === 'room' && el.dataset.id === focusRoom)); };
+let firstGrid = true;
 
 function renderGrid(s) {
   const grid = $('grid');
+  for (const el of grid.querySelectorAll('.sk-card')) el.remove(); // the placeholders, until the first update
+  // The first time, the cards arrive one after another; later, only a room that's new rises in.
+  if (firstGrid && s.stages.length && !calm.matches) { grid.classList.add('stagger'); setTimeout(() => grid.classList.remove('stagger'), 900); }
   // Same order as the rooms (dragged in the sidebar): move cards only when it changed, so nothing jumps every second.
   const order = s.stages.map((x) => x.id).join('\n');
   if ([...grid.children].map((el) => el.dataset.id).filter(Boolean).join('\n') !== order) for (const st of s.stages) { const el = grid.querySelector(`[data-id="${CSS.escape(st.id)}"]`); if (el) grid.append(el); }
   const ids = new Set(s.stages.map((x) => x.id));
   for (const el of [...grid.children]) if (el.dataset.id && !ids.has(el.dataset.id)) el.remove();
-  if (!s.stages.length && !grid.querySelector('.empty-rooms')) grid.innerHTML = `<div class="empty-rooms"><img src="/art/waiting.webp" alt="" /><h3>${esc(tr('Todavía no hay salas'))}</h3><p class="muted u-m0">${esc(tr('Creá una sala por cada escenario o aula: cada una tiene su QR, su pantalla y su overlay.'))}</p><a href="#rooms"><button class="primary" tabindex="-1">${icon('plus')}${esc(tr('Nueva sala'))}</button></a></div>`;
+  if (!s.stages.length && !grid.querySelector('.empty-rooms')) grid.innerHTML = `<div class="empty-rooms rise"><img src="/art/waiting.webp" alt="" width="900" height="900" /><h3>${esc(tr('Todavía no hay salas'))}</h3><p class="muted u-m0">${esc(tr('Creá una sala por cada escenario o aula: cada una tiene su QR, su pantalla y su overlay.'))}</p><a href="#room/new"><button class="primary" tabindex="-1">${icon('plus')}${esc(tr('Nueva sala'))}</button></a></div>`;
   if (s.stages.length) grid.querySelector('.empty-rooms')?.remove();
   for (const st of s.stages) {
-    let el = grid.querySelector(`[data-id="${st.id}"]`);
+    let el = grid.querySelector(`[data-id="${CSS.escape(st.id)}"]`);
     if (!el) {
+      const rid = encodeURIComponent(st.id);
       el = document.createElement('article');
-      el.className = 'card stage';
+      el.className = `card stage${firstGrid ? '' : ' rise'}`;
       el.dataset.id = st.id;
       el.classList.toggle('hidden', !!focusRoom && st.id !== focusRoom);
       el.innerHTML = `
-        <div class="top"><h3 data-no-i18n><a href="#room/${encodeURIComponent(st.id)}"></a></h3><span data-f="state"></span></div>
-        <div class="talkline" data-f="talkline" data-no-i18n></div>
-        <div class="next" data-f="next" data-no-i18n></div>
-        <div class="meter"><i data-f="lvl"></i><b data-f="pk"></b></div>
+        <div class="top"><span class="ini" aria-hidden="true" data-f="ini" data-no-i18n></span><h3 data-no-i18n><a href="#room/${rid}"></a></h3><span data-f="state"></span></div>
+        <div class="talk"><div class="talkline" data-f="talkline" data-no-i18n></div><div class="next" data-f="next" data-no-i18n></div></div>
+        <div class="screen"><div class="said"><span data-f="said" data-no-i18n></span></div><div class="lvl" aria-hidden="true"><i data-f="lvl"></i><b data-f="pk"></b></div></div>
         <div class="nosound hidden" data-f="nosound">
-          <p class="u-m0" data-f="nosound-none"><b>Todavía no llega sonido</b></p>
-          <p class="u-m0" data-f="nosound-pull"><b>Esperando el stream</b></p>
+          <p class="u-m0" data-f="nosound-none">Abrí la página de sonido en la computadora que recibe el micrófono.</p>
+          <p class="u-m0" data-f="nosound-pull">Esperando el stream de OBS, vMix o el archivo.</p>
           <div class="row">
-            <a href="/ingest.html?stage=${encodeURIComponent(st.id)}" target="_blank" data-f="nosound-open"><button type="button" tabindex="-1">${icon('mic')}Abrir la página de sonido</button></a>
-            <a href="#room/${encodeURIComponent(st.id)}/sound" data-f="nosound-link"><button type="button" class="plain" tabindex="-1">${icon('link')}Enlace para otra computadora</button></a>
-            <a href="#room/${encodeURIComponent(st.id)}/sound" data-f="nosound-addr" data-setup><button type="button" tabindex="-1">${icon('link')}Ver la dirección</button></a>
+            <a href="/ingest.html?stage=${rid}" target="_blank" data-f="nosound-open"><button type="button" class="primary" tabindex="-1">${icon('mic')}Abrir la página de sonido</button></a>
+            <a href="#room/${rid}/sound" data-f="nosound-link"><button type="button" class="plain" tabindex="-1">${icon('link')}Enlace para otra computadora</button></a>
+            <a href="#room/${rid}/sound" data-f="nosound-addr" data-setup><button type="button" tabindex="-1">${icon('link')}Ver la dirección</button></a>
           </div>
         </div>
-        <div class="said" data-f="said" data-no-i18n></div>
-        <div class="speakers" data-f="speakers" data-no-i18n></div>
+        <div class="speakers" data-f="speakers" data-no-i18n data-advanced></div>
         <div class="stats" data-f="stats"></div>
         <div class="row" data-f="alerts"></div>
         <div class="actions">
           <button data-a="due" class="primary hidden"></button>
-          <a href="#room/${encodeURIComponent(st.id)}/screens" class="on-live"><button type="button" tabindex="-1">${icon('qr')}Pantallas y QR</button></a>
           <button data-a="break" data-f="brk">${icon('pause')}<span>Pausa</span></button>
           <button data-a="next">${icon('next')}Siguiente charla</button>
-          <button data-a="details" class="more plain" aria-expanded="false" title="${esc(tr('Ver detalles'))}"><span>Ver detalles</span>${icon('chevron')}</button>
+          <a href="#room/${rid}/screens" class="on-live"><button type="button" class="ib" tabindex="-1" title="Pantallas y QR">${icon('qr')}<span class="sr-only">Pantallas y QR</span></button></a>
+          <button data-a="details" class="more" aria-expanded="false" title="Más"><span class="sr-only">Más</span>${icon('chevron')}</button>
         </div>
-        <div class="details">
-          <div class="sub" data-f="sub" data-no-i18n></div>
-          <div class="sub" data-f="ingest"></div>
-          <div class="row" data-f="engines" data-no-i18n></div>
-          <div class="metrics" data-f="metrics"></div>
+        <div class="details"><div><div class="details-body">
           <div class="preview" data-f="preview" data-no-i18n></div>
           <div class="actions">
             <button data-a="fix">${icon('wand')}Corregir subtítulos</button>
             <button data-a="rename">${icon('doc')}Renombrar charla</button>
+            <button data-a="end">${icon('check')}Terminar la charla</button>
             <button data-a="export">${icon('download')}Transcripciones</button>
             <button data-a="restart">${icon('refresh')}Reconectar IA</button>
           </div>
-        </div>`;
+          <details class="diag" data-advanced><summary>Diagnóstico</summary>
+            <div class="sub" data-f="ingest"></div>
+            <div class="sub" data-f="sub" data-no-i18n></div>
+            <div class="row" data-f="engines" data-no-i18n></div>
+            <div class="metrics" data-f="metrics"></div>
+          </details>
+        </div></div></div>`;
       grid.append(el);
+      foldDetails(el);
       if (![...$('logfilter').options].some((o) => o.value === st.id)) $('logfilter').append(new Option(st.name, st.id));
     }
     const f = (k) => el.querySelector(`[data-f="${k}"]`);
     el.querySelector('h3 a').textContent = st.name;
+    f('ini').textContent = initials(st.name);
     f('talkline').textContent = st.talk.title || t.noTalk;
     f('talkline').classList.toggle('none', !st.talk.title);
     const due = st.dueTalk;
     el.classList.toggle('over', !!due);
+    el.classList.toggle('brk', !!st.brk);
     f('next').classList.toggle('over', !!due);
     f('next').textContent = due ? t.over(Math.max(1, Math.round((Date.now() - due.start) / 60000)), due.title) : st.nextTalk ? t.next(st.nextTalk.title, hm(st.nextTalk.start)) : '';
-    // Who's speaking: a tap labels the captions from now on (phones, transcripts, exports).
+    // Who's speaking (Advanced): a tap labels the captions from now on (phones, transcripts, exports).
     const choices = [...new Set([...st.speakers, SPK.host, SPK.qa, ...(st.speaker && !st.speakers.includes(st.speaker) && ![SPK.host, SPK.qa].includes(st.speaker) ? [st.speaker] : [])])];
     const spkKey = JSON.stringify([choices, st.speaker]);
     if (f('speakers').dataset.key !== spkKey) {
@@ -616,12 +707,13 @@ function renderGrid(s) {
     const dueBtn = el.querySelector('[data-a="due"]');
     dueBtn.classList.toggle('hidden', !due);
     if (due) dueBtn.textContent = t.startDue(due.title.length > 28 ? due.title.slice(0, 27) + '…' : due.title);
-    f('said').textContent = (st.preview.orig ?? Object.values(st.preview)[0] ?? '').slice(-220);
+    f('said').textContent = st.said ?? (st.preview.orig ?? Object.values(st.preview)[0] ?? '').slice(-220);
+    // Basic: how many people are reading. Advanced adds the delay, the cost and who's listening to the room's sound.
     const lat = Math.max(st.latency.asr || 0, ...Object.values(st.latency.tr).filter((v) => v != null));
-    f('stats').innerHTML = `<span title="${esc(tr('Público'))}">${icon('eye')}<b>${st.viewers}</b></span><span title="${esc(tr('Latencia'))}">${icon('clock')}<b>${lat ? sec(lat) : '—'}</b></span><span title="${esc(tr('Costo estimado'))}">${icon('coin')}<b>US$ ${st.costUsd.toFixed(2)}</b></span>${st.roomSound ? `<span title="${esc(tr('Escuchando el sonido de la sala'))}">${icon('headphones')}<b>${st.roomSoundListeners}/${st.roomSoundMax}</b></span>` : ''}`;
+    setHtml(f('stats'), `<span title="${esc(tr('Público'))}">${icon('eye')}<b>${st.viewers}</b> ${esc(tr(st.viewers === 1 ? 'persona' : 'personas'))}</span><span data-advanced title="${esc(tr('Latencia'))}">${icon('clock')}<b>${lat ? sec(lat) : '—'}</b></span><span data-advanced title="${esc(tr('Costo estimado'))}">${icon('coin')}<b>US$ ${st.costUsd.toFixed(2)}</b></span>${st.roomSound ? `<span data-advanced title="${esc(tr('Escuchando el sonido de la sala'))}">${icon('headphones')}<b>${st.roomSoundListeners}/${st.roomSoundMax}</b></span>` : ''}`);
     el.classList.toggle('alert', st.alerts.some((a) => a !== 'no-ingest'));
-    f('state').innerHTML = stateChip(st);
-    f('sub').innerHTML = `<code>${esc(st.id)}</code> · <span class="chip">${esc(st.mode)}</span> · ${esc(st.source === 'auto' ? `auto${st.detectedLang ? ` (${st.detectedLang})` : ''}` : st.source)} → ${esc(st.targets.filter((x) => x !== st.source).join(', ') || '—')}`;
+    setHtml(f('state'), stateChip(st));
+    setHtml(f('sub'), `<code>${esc(st.id)}</code> · <span class="chip">${esc(st.mode)}</span> · ${esc(st.source === 'auto' ? `auto${st.detectedLang ? ` (${st.detectedLang})` : ''}` : st.source)} → ${esc(st.targets.filter((x) => x !== st.source).join(', ') || '—')}`);
     const db = 20 * Math.log10(st.level || 1e-6), pct = Math.max(0, Math.min(100, ((db + 60) / 60) * 100));
     const pk = Math.max(0, Math.min(100, ((20 * Math.log10(st.peak || 1e-6) + 60) / 60) * 100));
     f('lvl').style.width = pct + '%';
@@ -631,14 +723,14 @@ function renderGrid(s) {
     for (const [k, on] of [['none', !st.pull], ['open', !st.pull], ['link', !st.pull], ['pull', !!st.pull], ['addr', !!st.pull]]) f(`nosound-${k}`).classList.toggle('hidden', !on);
     f('ingest').textContent = (st.ingest ? `${t.kinds[st.ingest.kind] || st.ingest.kind}${st.ingest.label ? ` · ${st.ingest.label}` : ''} · ${tr('hace')} ${ago(st.ingest.since)}` : st.pull ? `${tr('sonido desde')} ${st.pull}` : tr('Todavía no llega sonido.'))
       + (st.backup ? ` · ${tr(st.backup.active ? 'RESPALDO AL AIRE' : 'respaldo en espera')}: ${st.backup.kind}${st.backup.label ? ` · ${st.backup.label}` : ''}` : '');
-    f('engines').innerHTML = st.engines.length ? st.engines.map(engChip).join('') : `<span class="chip">${esc(tr('sesiones cerradas (0 costo)'))}</span>`;
+    setHtml(f('engines'), st.engines.length ? st.engines.map(engChip).join('') : `<span class="chip">${esc(tr('sesiones cerradas (0 costo)'))}</span>`);
     const trs = Object.entries(st.latency.tr).map(([k, v]) => `${k} ${sec(v)}`).join(' · ');
-    f('metrics').innerHTML = `
+    setHtml(f('metrics'), `
       <div>${esc(tr('Latencia orig.'))}<b>${sec(st.latency.asr)}</b></div>
       <div title="${esc(trs)}">${esc(tr('Latencia trad.'))}<b>${sec(Math.max(0, ...Object.values(st.latency.tr).filter((v) => v != null)) || null)}</b></div>
       <div>${esc(tr('Público'))}<b>${st.viewers}</b></div>
-      <div>Min · US$<b>${st.audioMinIn} · ${st.costUsd.toFixed(2)}</b></div>`;
-    f('preview').innerHTML = Object.entries(st.preview).map(([ch, txt]) => `<div><span class="l">${esc(ch)}</span> ${esc(txt ? (txt.length > 80 ? '…' + txt.slice(-80) : txt) : '…')}</div>`).join('');
+      <div>Min · US$<b>${st.audioMinIn} · ${st.costUsd.toFixed(2)}</b></div>`);
+    setHtml(f('preview'), Object.entries(st.preview).map(([ch, txt]) => `<div><span class="l">${esc(ch === 'orig' ? tr('Original') : langLabel(ch, ev.languages))}</span> ${esc(txt ? (txt.length > 80 ? '…' + txt.slice(-80) : txt) : '…')}</div>`).join(''));
     // Break: the button resumes. Music: captions wait for a voice; "it's a talk" captions anyway.
     const brkBtn = f('brk');
     brkBtn.classList.toggle('primary', !!st.brk);
@@ -651,6 +743,7 @@ function renderGrid(s) {
         + (st.music ? `<span class="muted-note">${esc(tr('Suena música: los subtítulos vuelven solos cuando alguien hable.'))}</span> <button data-a="musicok">${esc(tr('Es una charla: subtitular igual'))}</button>` : '');
     }
   }
+  if (s.stages.length) firstGrid = false;
 }
 
 const SPK = LANG === 'es'
@@ -682,7 +775,8 @@ $('grid').onclick = async (e) => {
   if (a === 'details') {
     const card = b.closest('.stage'), open = card.classList.toggle('open');
     b.setAttribute('aria-expanded', open);
-    b.querySelector('span').textContent = b.title = tr(open ? 'Ocultar detalles' : 'Ver detalles');
+    b.querySelector('span').textContent = b.title = tr(open ? 'Menos' : 'Más');
+    foldDetails(card);
   } else if (a === 'break') {
     await api('POST', `/api/stages/${id}/break`, { on: !st.brk });
     toast(tr(st.brk ? 'Subtítulos reanudados.' : 'Pausa: las pantallas y los celulares lo muestran.'), { ms: 3000 });
@@ -699,6 +793,9 @@ $('grid').onclick = async (e) => {
   } else if (a === 'rename') {
     const r = await talkDialog({ title: t.renameTitle(st.name), note: t.renameNote, ok: t.renameOk, name: st.talk.title || '', speaker: st.talk.speaker || '', speakerField: false });
     if (r) { await api('PATCH', `/api/stages/${id}`, { title: r.name }); toast(t.saved, { ms: 3000 }); }
+  } else if (a === 'end') {
+    // A new, empty talk: the one that ends keeps its transcript and leaves "in progress" (an empty talk isn't listed).
+    if (await confirmDialog({ title: t.endAsk(st.name), body: t.endBody, ok: t.endOk })) { await api('POST', `/api/stages/${id}/talk`, { title: '', speaker: '' }); toast(t.ended, { ms: 3000 }); }
   } else if (a === 'restart') {
     if (await confirmDialog({ title: t.restartAsk(st.name), body: t.restartAskBody, ok: t.restartOk })) { await api('POST', `/api/stages/${id}/restart`); toast(t.done, { ms: 3000 }); }
   } else if (a === 'export') openExport(st);
@@ -707,11 +804,13 @@ $('grid').onclick = async (e) => {
 
 // ---------- Live corrections: fix a misheard caption everywhere at once (PATCH /api/stages/:id/captions/:seg) ----------
 let fixRoom = null, fixCaps = [];
+const mmss = (ms) => { const sec = Math.max(0, Math.round((ms || 0) / 1000)); return `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}`; };
 async function loadFix() {
   const r = await api('GET', `/api/stages/${fixRoom.id}/captions?channel=${encodeURIComponent($('fix-ch').value)}&n=8`);
   fixCaps = r.captions;
   $('fix-list').innerHTML = fixCaps.length
-    ? fixCaps.map((c) => `<textarea class="fix-row" rows="2" data-id="${esc(c.id)}" aria-label="${esc(c.text)}" spellcheck="true">${esc(c.text)}</textarea>`).join('')
+    // Newest first (what was just said is what needs fixing), each with when it was said in the talk.
+    ? [...fixCaps].reverse().map((c) => `<label class="fix-item"><span class="fix-t">${esc(mmss(c.start))}</span><textarea class="fix-row" rows="2" data-id="${esc(c.id)}" aria-label="${esc(c.text)}" spellcheck="true">${esc(c.text)}</textarea></label>`).join('')
     : `<p class="muted-note">${esc(tr('Todavía no hay frases en esta charla.'))}</p>`;
 }
 async function openFix(st) {
@@ -769,6 +868,8 @@ function renderLogs() {
   if (atEnd) box.scrollTop = box.scrollHeight;
 }
 $('logfilter').onchange = renderLogs;
+// A burst of log lines (an incident) redraws the list once per frame, and not at all while the tab is hidden.
+function renderLogsSoon() { logsQueued ||= requestAnimationFrame(() => { logsQueued = 0; renderLogs(); }); }
 
 // ---------- floating mini-dashboard (Document Picture-in-Picture): every room, on top of OBS / vMix ----------
 let mini = null;
@@ -827,8 +928,8 @@ function renderRooms(s) {
     box.dataset.key = key;
     const href = (st) => `#room/${encodeURIComponent(st.id)}`;
     const name = (st) => `<b><i class="dot" aria-hidden="true"></i>${esc(st.name)}<span class="sr-only" data-f="state"></span></b>`;
-    box.innerHTML = !s.stages.length ? `<p class="card empty">${esc(tr('Todavía no hay salas'))}</p>`
-      : mode === 'gallery' ? `<ul class="rooms-gallery">${s.stages.map((st) => `<li><a class="card tile" href="${href(st)}" data-id="${esc(st.id)}">${name(st)}<span class="said" data-f="said"></span></a></li>`).join('')}</ul>`
+    box.innerHTML = !s.stages.length ? `<div class="card empty-art rise"><img src="/art/waiting.webp" alt="" width="900" height="900" /><h3>${esc(tr('Todavía no hay salas'))}</h3><p>${esc(tr('Creá una sala por cada escenario o aula: cada una tiene su QR, su pantalla y su overlay.'))}</p></div>`
+      : mode === 'gallery' ? `<ul class="rooms-gallery stagger">${s.stages.map((st) => `<li><a class="card tile lift" href="${href(st)}" data-id="${esc(st.id)}"><span class="tile-top"><span class="ini" aria-hidden="true">${esc(initials(st.name))}</span>${name(st)}</span><span class="said" data-f="said"></span><span class="tl" data-f="langs"></span></a></li>`).join('')}</ul>`
         : `<div class="card flush"><table class="table rooms-list"><thead><tr><th>${esc(tr('Sala'))}</th><th>${esc(tr('Subtítulos'))}</th><th class="hide-sm">${esc(tr('Idiomas'))}</th><th class="hide-sm">${esc(tr('Audio'))}</th></tr></thead><tbody>${s.stages.map((st) => `<tr data-id="${esc(st.id)}"><td><a href="${href(st)}">${name(st)}</a></td><td class="muted-note" data-f="said"></td><td class="hide-sm" data-f="langs"></td><td class="hide-sm" data-f="audio"></td></tr>`).join('')}</tbody></table></div>`;
   }
   for (const st of s.stages) {
@@ -838,7 +939,7 @@ function renderRooms(s) {
     el.querySelector('.dot').className = `dot ${state}`;
     f('state').textContent = `, ${stateLabel(state)}`;
     f('said').textContent = said(st);
-    if (f('langs')) f('langs').textContent = langsOf(st);
+    if (f('langs')) f('langs').textContent = el.matches('.tile') ? st.languages.filter((l) => l !== 'orig').map((l) => l.toUpperCase()).join(' · ') : langsOf(st);
     if (f('audio')) f('audio').textContent = st.ingest ? `${t.kinds[st.ingest.kind] || st.ingest.kind}${st.ingest.label ? ` · ${st.ingest.label}` : ''}` : st.pull ? t.audioStream : t.audioNone;
   }
   for (const b of document.querySelectorAll('[data-rooms-view]')) b.setAttribute('aria-pressed', String(b.dataset.roomsView === mode));
@@ -863,6 +964,7 @@ async function openEdit(id) {
   fe.id.value = st?.id || '';
   fe.id.disabled = !!st;
   fe.id.closest('label').classList.toggle('hidden', !!st); // the id is only chosen once, for a new room
+  idTyped = false;
   fe.name.value = st?.name || '';
   fe.source.value = st?.source || 'auto';
   fe.pull.value = st?.pull || '';
@@ -874,7 +976,7 @@ async function openEdit(id) {
   fe.translation.value = st?.translationDef || '';
   fe.vocabulary.value = (st?.vocabulary || []).join(', ');
   $('room-del').classList.toggle('hidden', !st);
-  $('edit-targets').innerHTML = Object.entries(ev.languages).map(([c, n]) => `<label class="row"><input type="checkbox" value="${c}" ${(st?.targets || ['es', 'en']).includes(c) ? 'checked' : ''}/> ${esc(n)}</label>`).join('');
+  $('edit-targets').innerHTML = Object.entries(ev.languages).map(([c, n]) => `<label><input type="checkbox" value="${esc(c)}" ${(st?.targets || ['es', 'en']).includes(c) ? 'checked' : ''}/> ${esc(n)}</label>`).join('');
   $('ingest-link').innerHTML = '';
   renderAddr();
   setLocked(locked);
@@ -900,17 +1002,32 @@ document.querySelector('.view[data-view="room"]').addEventListener('click', (e) 
   fe.pull.value = LISTEN[p].pull(freeListenPort(editStages, room, p), room); // saved with the room
   renderAddr();
 });
-fe.id.oninput = () => renderAddr();
+// A new room's id (its addresses: /s/<id>) comes from its name, unless typed in Advanced mode.
+let idTyped = false;
+const slug = (x) => x.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40);
+function freeId(name) {
+  const base = slug(name) || 'room', taken = new Set(editStages.map((x) => x.id));
+  let id = base;
+  for (let i = 2; taken.has(id); i++) id = `${base.slice(0, 36)}-${i}`;
+  return id;
+}
+fe.name.addEventListener('input', () => { if (!editing && !idTyped) { fe.id.value = freeId(fe.name.value); renderAddr(); } });
+fe.id.oninput = () => { idTyped = true; renderAddr(); };
 $('add').onclick = () => { location.hash = '#rooms/new'; };
 fe.roomSound.onchange = () => { fe.roomSoundMax.disabled = !fe.roomSound.checked; };
 // Saving keeps the form as it is when the server says no (a taken id, a bad stream address), so nothing typed is lost.
 fe.onsubmit = async (e) => {
   e.preventDefault();
-  const body = {
-    name: fe.name.value, source: fe.source.value, translation: fe.translation.value || '', pull: fe.pull.value.trim(), loop: fe.loop.checked, musicGuard: fe.musicGuard.checked,
+  // Each tab saves its own fields: Save on Sound sends only the stream, Save on Settings everything but the stream (a
+  // stream address picked on Sound and not saved there must never switch the room's sound from Settings).
+  const sound = { pull: fe.pull.value.trim(), loop: fe.loop.checked };
+  const onSound = editing && e.submitter?.closest('[data-tab="sound"]');
+  const body = onSound ? sound : {
+    name: fe.name.value, source: fe.source.value, translation: fe.translation.value || '', musicGuard: fe.musicGuard.checked,
     roomSound: fe.roomSound.checked, roomSoundMax: fe.roomSound.checked && fe.roomSoundMax.value ? Number(fe.roomSoundMax.value) : undefined,
     targets: [...$('edit-targets').querySelectorAll('input:checked')].map((i) => i.value),
     vocabulary: [...new Set(fe.vocabulary.value.split(/[,\n]/).map((w) => w.trim()).filter(Boolean))],
+    ...(editing ? {} : sound),
   };
   const r = editing ? await api('PATCH', `/api/stages/${editing.id}`, body) : await api('POST', '/api/stages', { id: fe.id.value, ...body });
   if (r.change) toast(editing ? t.changedRoom(body.name) : t.created(body.name), { undo: r.change });
@@ -939,6 +1056,7 @@ async function loadAgenda() {
   $('agenda-current').innerHTML = list.length
     ? Object.entries(byRoom).map(([room, es]) => `<section class="card flush"><table class="table"><thead><tr><th colspan="3">${esc(names[room] || room)}</th></tr></thead><tbody>${es.map((e) => `<tr><td class="u-w120">${esc(when(e.start))}</td><td><b>${esc(e.title)}</b>${brkTag(e)}</td><td class="hide-sm muted-note">${esc(e.speaker || '')}</td></tr>`).join('')}</tbody></table></section>`).join('')
     : `<p class="muted-note">${esc(t.agendaNone)}</p>`;
+  $('agenda-h').textContent = tr(list.length ? 'Reemplazar la agenda' : 'Cargar la agenda'); // nothing to replace yet
   $('agenda-diff').classList.add('hidden');
   loadImportSource();
   setLocked(locked);
@@ -991,25 +1109,102 @@ async function loadImportSource() {
   if (src) $('import-again').title = `${src.source === 'sessionize' ? 'Sessionize' : tr('Calendario')} · ${src.label}`;
 }
 
-// ---------- Integrations: captions into Zoom, YouTube Live, Teams; webhooks (src/integrations.js) ----------
-let conns = [];
-async function loadIntegrations() {
-  conns = (await api('GET', '/api/integrations')).connectors;
+// ---------- Integrations: captions into Zoom, YouTube Live, Teams, webhooks (src/integrations.js); breaks from vMix /
+// OBS (src/switcher.js). What's connected comes first, one row each with its state and a ⋯ menu; then a gallery.
+const DOTS = '<svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="1.6" fill="currentColor"/><circle cx="12" cy="12" r="1.6" fill="currentColor"/><circle cx="19" cy="12" r="1.6" fill="currentColor"/></svg>';
+const LOGOS = { zoom: 'Z', youtube: icon('play'), teams: 'T', webhook: icon('link'), vmix: 'vM', obs: 'OBS' };
+const SW_NAMES = { vmix: 'vMix', obs: 'OBS Studio' };
+const logo = (type) => `<span class="logo ${type}" aria-hidden="true">${LOGOS[type]}</span>`;
+const DEFAULT_SCENES = 'break, pausa, intervalo, receso, almuerzo, lunch, coffee, cafe, publicidad, tanda, comercial, commercial, ads, sponsor, brb, be right back, volvemos, starting soon, empezamos, intermission';
+let conns = [], sws = [];
+function intgCards() {
+  const n = (type) => (type in SW_NAMES ? sws : conns).filter((c) => c.type === type).length;
+  const card = (type, name, sub, data) => `<article class="card intg lift" data-type="${type}">${logo(type)}<div><h3>${esc(name)}</h3><p>${sub}</p></div>
+    <div class="intg-foot">${n(type) ? `<span class="count"><i class="dot"></i>${esc(t.conn.count(n(type)))}</span>` : '<span></span>'}<button type="button" class="connect-btn" ${data}="${type}" aria-label="${esc(t.conn.connectTo(name))}">${esc(t.conn.connect)}</button></div></article>`;
+  setHtml($('intg-caps'), ['zoom', 'youtube', 'teams', 'webhook'].map((k) => card(k, k === 'teams' ? 'Microsoft Teams' : t.conn.names[k], esc(t.conn.subs[k]), 'data-connect')).join(''));
+  setHtml($('intg-sw'), [['vmix', 'Lee qué entrada está al aire (Web Controller, puerto 8088).'], ['obs', 'Lee la escena al aire (servidor WebSocket de OBS 28 o más nuevo, puerto 4455).']].map(([k, sub]) => card(k, SW_NAMES[k], esc(tr(sub)), 'data-switcher')).join(''));
+}
+/** Both lists at once; each row is kept and updated in place (a ⋯ button keeps its focus while the states tick). */
+async function loadConnections() {
+  [conns, sws] = await Promise.all([api('GET', '/api/integrations').then((r) => r.connectors), api('GET', '/api/switchers').then((r) => r.switchers)]);
   const names = Object.fromEntries(ev.stages.map((x) => [x.id, x.name]));
   const langName = (l) => (l === 'orig' ? t.conn.orig : langLabel(l, ev.languages));
-  const status = (s) => (s.state === 'error' ? `<span class="chip bad">${esc(t.conn.failed(s.lastError || '?'))}</span>` : s.sent ? `<span class="chip ok">${esc(t.conn.sent(s.sent, ago(s.lastAt)))}</span>` : `<span class="chip">${esc(t.conn.waiting)}</span>`);
-  $('conn-list').innerHTML = conns.length
-    ? `<table class="table">${conns.map((c) => `<tr><td><b>${esc(t.conn.names[c.type])}</b><div class="muted-note">${esc(names[c.stage] || `${c.stage} · ${t.conn.deleted}`)} · ${esc(langName(c.lang))}</div><div class="muted-note hide-sm"><code>${esc(c.link)}</code></div></td>
-      <td>${status(c.status)}</td>
-      <td class="r"><button data-conn-test="${esc(c.id)}">${esc(t.conn.test)}</button> <button class="danger" data-conn-del="${esc(c.id)}">${esc(t.conn.remove)}</button></td></tr>`).join('')}</table>`
-    : `<p class="empty">${esc(t.conn.none)}</p>`;
+  const st = (cls, text) => `<span class="st ${cls}" title="${esc(text)}"><i class="dot"></i><span>${esc(text)}</span></span>`;
+  const rows = [
+    ...conns.map((c) => ({ id: `c${c.id}`, kind: 'conn', type: c.type, name: t.conn.names[c.type], where: `${names[c.stage] || `${c.stage} · ${t.conn.deleted}`} · ${langName(c.lang)}`, code: c.link,
+      state: c.status.state === 'error' ? st('bad', t.conn.failed(c.status.lastError || '?')) : c.status.sent ? st('ok', t.conn.sent(c.status.sent, ago(c.status.lastAt))) : st('wait', t.conn.waiting) })),
+    ...sws.map((w) => ({ id: `s${w.id}`, kind: 'sw', type: w.type, name: SW_NAMES[w.type], where: names[w.stage] || w.stage, code: w.address,
+      state: w.status.state === 'ok' ? st('ok', `${tr('conectado')}${w.status.scene ? ` · ${tr('al aire:')} ${w.status.scene}` : ''}`) : w.status.state === 'error' ? st('bad', w.status.lastError || tr('error')) : st('wait', tr('conectando…')) })),
+  ];
+  const box = $('conn-list');
+  $('conn-sec').classList.toggle('hidden', !rows.length);
+  for (const el of [...box.children]) if (!rows.some((r) => r.id === el.dataset.id)) el.remove();
+  for (const r of rows) {
+    let el = box.querySelector(`[data-id="${r.id}"]`);
+    if (!el) {
+      el = document.createElement('div');
+      el.className = 'conn rise';
+      el.dataset.id = r.id;
+      el.innerHTML = `${logo(r.type)}<div class="what"><b>${esc(r.name)}</b><span data-f="where"></span><code data-f="code"></code></div><span data-f="state"></span>
+        <button type="button" class="kebab" data-menu="${esc(r.id)}" aria-haspopup="menu" aria-expanded="false" aria-label="${esc(t.conn.more(r.name))}" title="${esc(t.conn.more(r.name))}">${DOTS}</button>`;
+      box.append(el);
+    }
+    el.querySelector('[data-f="where"]').textContent = r.where;
+    el.querySelector('[data-f="code"]').textContent = r.code;
+    setHtml(el.querySelector('[data-f="state"]'), r.state);
+  }
+  intgCards();
 }
-setInterval(() => { if (view === 'integrations' && !$('dlg-conn').open && !$('dlg-sw').open) { loadIntegrations().catch(() => {}); loadSwitchers().catch(() => {}); } }, 3000);
-$('conn-list').onclick = async (e) => {
-  const test = e.target.closest('[data-conn-test]')?.dataset.connTest, del = e.target.closest('[data-conn-del]')?.dataset.connDel;
-  if (test) { await api('POST', `/api/integrations/${test}/test`); toast(t.conn.tested); setTimeout(loadIntegrations, 1500); }
-  if (del) { await api('DELETE', `/api/integrations/${del}`); toast(t.conn.removed); loadIntegrations(); }
+setInterval(() => { if (view === 'integrations' && !document.hidden && !$('dlg-conn').open && !$('dlg-sw').open) loadConnections().catch(() => {}); }, 3000);
+/**
+ * A small menu by the button that opens it (⋯ on a connection, Download and ⋯ on a transcript): under the button (or
+ * above it near the bottom of the window), its right edge on the button's. The same button again closes it; from the
+ * keyboard, focus goes straight in, the arrows move, Esc closes and focus returns to the button.
+ */
+function popMenu(m, b, html, e) {
+  if (m._for === b && (m.matches(':popover-open') || performance.now() - (m._closedAt || 0) < 300)) return m.hidePopover(); // its own button closes it (a press outside already did)
+  if (m.matches(':popover-open')) m.hidePopover();
+  m._for = b;
+  m.innerHTML = html;
+  m.showPopover();
+  const r = b.getBoundingClientRect(), h = m.offsetHeight;
+  m.style.top = `${r.bottom + 6 + h > innerHeight - 8 ? Math.max(8, r.top - h - 6) : r.bottom + 6}px`;
+  m.style.left = `${Math.max(8, Math.min(r.right - m.offsetWidth, innerWidth - m.offsetWidth - 8))}px`;
+  b.setAttribute('aria-expanded', 'true');
+  if (!e.detail) m.querySelector('a, button')?.focus(); // opened from the keyboard: straight into the menu
+}
+for (const m of [$('conn-menu'), $('tx-menu')]) {
+  m.addEventListener('toggle', (e) => {
+    if (e.newState !== 'closed') return;
+    m._closedAt = performance.now();
+    m._for?.setAttribute('aria-expanded', 'false');
+    if (m.contains(document.activeElement) || document.activeElement === document.body) m._for?.focus();
+  });
+  m.addEventListener('keydown', (e) => {
+    const all = [...m.querySelectorAll('a, button')], i = all.indexOf(document.activeElement);
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); all[(i + (e.key === 'ArrowDown' ? 1 : -1) + all.length) % all.length]?.focus(); }
+  });
+}
+addEventListener('scroll', () => { for (const m of [$('conn-menu'), $('tx-menu')]) if (m.matches(':popover-open')) m.hidePopover(); }, { passive: true }); // it would float away from its button
+// ⋯ on a row: Send a test (captions) and Remove
+$('conn-list').onclick = (e) => {
+  const b = e.target.closest('[data-menu]');
+  if (!b) return;
+  popMenu($('conn-menu'), b, `${b.dataset.menu[0] === 'c' ? `<button type="button" role="menuitem" data-do="test">${icon('play')}${esc(t.conn.test)}</button>` : ''}<button type="button" role="menuitem" class="danger" data-do="remove">${icon('x')}${esc(t.conn.remove)}</button>`, e);
 };
+$('conn-menu').onclick = async (e) => {
+  const what = e.target.closest('[data-do]')?.dataset.do, id = $('conn-menu')._for?.dataset.menu;
+  if (!what || !id) return;
+  $('conn-menu').hidePopover();
+  const [kind, n] = [id[0], id.slice(1)];
+  if (what === 'test') { await api('POST', `/api/integrations/${n}/test`); toast(t.conn.tested); setTimeout(() => loadConnections().catch(() => {}), 1500); return; }
+  if (!(await confirmDialog({ title: t.conn.removeAsk, body: t.conn.removeBody, ok: t.conn.remove, danger: true }))) return;
+  await api('DELETE', kind === 'c' ? `/api/integrations/${n}` : `/api/switchers/${n}`);
+  toast(t.conn.removed);
+  loadConnections();
+};
+
+// The connect dialogs: where to find the link, the room and language, the link itself checked as it's pasted.
 let connType = '';
 const fc = $('f-conn');
 function connLangs() {
@@ -1017,16 +1212,31 @@ function connLangs() {
   fc.lang.innerHTML = (st?.languages || ['orig']).map((l) => `<option value="${esc(l)}">${esc(l === 'orig' ? t.conn.orig : langLabel(l, ev.languages))}</option>`).join('');
 }
 fc.stage.onchange = connLangs;
+// The same rules as the server (src/integrations.js), said before Connect is pressed.
+const LINKS = { zoom: [/(^|\.)zoom\.us$/i, /^\/closedcaption/i], youtube: [/^upload\.youtube\.com$/i, /^\/closedcaption/i], teams: [/^api\.captions\.office\.microsoft\.com$/i, /^\/cartcaption/i] };
+function connHint() {
+  const v = fc.url.value.trim(), name = t.conn.names[connType], h = $('conn-hint');
+  let u = null;
+  try { u = new URL(v); } catch { /* not a link yet */ }
+  const ok = !!u && (connType === 'webhook' ? u.protocol === 'https:' : LINKS[connType][0].test(u.hostname) && LINKS[connType][1].test(u.pathname) && (connType !== 'youtube' || u.searchParams.has('cid')));
+  h.className = `hint${!v ? '' : ok ? ' ok' : ' warn'}`;
+  h.innerHTML = !v ? esc(t.conn.hint[connType]) : ok ? `${icon('check')}${esc(connType === 'webhook' ? t.conn.hint.webhook : t.conn.good(name))}` : `${icon('alert')}${esc(connType === 'webhook' ? t.conn.needHttps : t.conn.bad(name))}`;
+}
+fc.url.oninput = connHint;
 document.querySelector('section.view[data-view="integrations"]').addEventListener('click', (e) => {
   const type = e.target.closest('[data-connect]')?.dataset.connect;
   if (!type) return;
   connType = type;
+  $('conn-logo').className = `logo ${type}`;
+  $('conn-logo').innerHTML = LOGOS[type];
   $('conn-title').textContent = t.conn.titles[type];
+  $('conn-sub').textContent = t.conn.subs[type];
   $('conn-help').textContent = t.conn.help[type];
   fc.stage.innerHTML = ev.stages.map((x) => `<option value="${esc(x.id)}">${esc(x.name)}</option>`).join('');
   connLangs();
   fc.url.value = '';
   fc.url.placeholder = { zoom: 'https://wmcapi.zoom.us/closedcaption?id=…', youtube: 'http://upload.youtube.com/closedcaption?cid=…', teams: 'https://api.captions.office.microsoft.com/cartcaption?meetingid=…', webhook: 'https://…' }[type];
+  connHint();
   $('conn-events').classList.toggle('hidden', type !== 'webhook');
   $('conn-err').textContent = '';
   $('dlg-conn').showModal();
@@ -1039,41 +1249,40 @@ fc.addEventListener('submit', async (e) => {
     const c = await api('POST', '/api/integrations', { type: connType, stage: fc.stage.value, lang: fc.lang.value, url: fc.url.value.trim(), events }, { quiet: true });
     $('dlg-conn').close();
     toast(t.conn.connected(t.conn.names[connType]));
-    if (c.secret) alert(t.conn.secret(c.secret));
-    loadIntegrations();
+    if (c.secret) await confirmDialog({ title: t.conn.secretTitle, body: t.conn.secret, ok: t.conn.secretOk, info: true, html: copyRow(t.conn.secretLabel, c.secret, false) });
+    loadConnections();
   } catch (err) { $('conn-err').textContent = tr(err.message); }
 });
 
-// ---------- Vision mixers: vMix / OBS break scenes pause a room (src/switcher.js) ----------
-const DEFAULT_SCENES = 'break, pausa, intervalo, receso, almuerzo, lunch, coffee, cafe, publicidad, tanda, comercial, commercial, ads, sponsor, brb, be right back, volvemos, starting soon, empezamos, intermission';
-async function loadSwitchers() {
-  const { switchers } = await api('GET', '/api/switchers');
-  const names = Object.fromEntries(ev.stages.map((x) => [x.id, x.name]));
-  const status = (st) => (st.state === 'ok' ? `<span class="chip ok">${esc(tr('conectado'))}${st.scene ? ` · ${esc(tr('al aire:'))} ${esc(st.scene)}` : ''}</span>` : st.state === 'error' ? `<span class="chip bad">${esc(st.lastError || tr('error'))}</span>` : `<span class="chip">${esc(tr('conectando…'))}</span>`);
-  $('sw-list').innerHTML = switchers.length
-    ? `<table class="table">${switchers.map((w) => `<tr><td><b>${w.type === 'obs' ? 'OBS Studio' : 'vMix'}</b><div class="muted-note">${esc(names[w.stage] || w.stage)} · <code>${esc(w.address)}</code></div><div class="muted-note hide-sm">${esc(tr('Escenas de pausa:'))} ${esc(w.scenes)}</div></td>
-      <td>${status(w.status)}</td><td class="r"><button class="danger" data-sw-del="${esc(w.id)}">${esc(tr('Quitar'))}</button></td></tr>`).join('')}</table>`
-    : `<p class="empty">${esc(tr('Ninguna mezcla conectada.'))}</p>`;
-}
-$('sw-list').onclick = async (e) => {
-  const id = e.target.closest('[data-sw-del]')?.dataset.swDel;
-  if (id) { await api('DELETE', `/api/switchers/${id}`); toast(tr('Desconectado.')); loadSwitchers(); }
-};
+// vMix / OBS: their break scenes pause a room
 let swType = '';
 const fs = $('f-sw');
+function swHint() {
+  const v = fs.url.value.trim(), h = $('sw-hint'), port = swType === 'obs' ? 4455 : 8088;
+  const host = /^(?:[a-z]+:\/\/)?([\w.-]+)(?::(\d+))?\/?$/i.exec(v);
+  h.className = `hint${!v ? '' : host ? ' ok' : ' warn'}`;
+  h.innerHTML = !v ? esc(tr(swType === 'obs' ? 'La IP de la computadora con OBS (puerto 4455).' : 'La IP de la computadora con vMix (puerto 8088).'))
+    : host ? `${icon('check')}${esc(`${host[1]}:${host[2] || port}`)}` : `${icon('alert')}${esc(tr('Solo la dirección, por ejemplo 192.168.1.20'))}`;
+}
+fs.url.oninput = swHint;
 document.querySelector('section.view[data-view="integrations"]').addEventListener('click', (e) => {
   const type = e.target.closest('[data-switcher]')?.dataset.switcher;
   if (!type) return;
   swType = type;
-  $('sw-title').textContent = type === 'obs' ? 'OBS Studio' : 'vMix';
+  $('sw-logo').className = `logo ${type}`;
+  $('sw-logo').innerHTML = LOGOS[type];
+  $('sw-title').textContent = `${tr('Conectar')} ${SW_NAMES[type]}`;
+  $('sw-sub').textContent = tr('Los subtítulos se pausan solos en las escenas de pausa.');
   $('sw-help').textContent = tr(type === 'obs'
     ? 'En OBS: Herramientas → Configuración del servidor WebSocket → Habilitar. Copiá la contraseña. La dirección es la IP de la computadora con OBS (puerto 4455).'
     : 'En vMix: Settings → Web Controller → Enable. La dirección es la IP de la computadora con vMix (puerto 8088). Se usa el título de la entrada al aire.');
   fs.stage.innerHTML = ev.stages.map((x) => `<option value="${esc(x.id)}">${esc(x.name)}</option>`).join('');
   fs.url.value = '';
   fs.url.placeholder = type === 'obs' ? '192.168.1.20:4455' : '192.168.1.20:8088';
+  swHint();
   fs.password.value = '';
   fs.scenes.value = DEFAULT_SCENES;
+  fs.querySelector('details').open = false;
   $('sw-pass').classList.toggle('hidden', type !== 'obs');
   $('sw-err').textContent = '';
   $('dlg-sw').showModal();
@@ -1085,7 +1294,7 @@ fs.addEventListener('submit', async (e) => {
     await api('POST', '/api/switchers', { type: swType, stage: fs.stage.value, url: fs.url.value.trim(), password: fs.password.value, scenes: fs.scenes.value }, { quiet: true });
     $('dlg-sw').close();
     toast(tr('Conectado. Al pasar a una escena de pausa, los subtítulos de la sala se pausan.'));
-    loadSwitchers();
+    loadConnections();
   } catch (err) { $('sw-err').textContent = tr(err.message); }
 });
 
@@ -1179,23 +1388,79 @@ async function loadTranscripts() {
   renderTranscripts();
   if (!isCrew) pollRec();
 }
+// The room's talks, newest first, with their word counts from the event report (the talk list doesn't count words).
+let txTalks = [], txSeq = 0;
 async function renderTranscripts() {
   const st = ev.stages.find((s) => s.id === $('tx-room').value);
-  $('tx-zip').disabled = true;
-  if (!st) { $('tx-list').innerHTML = ''; return; }
-  const talks = await api('GET', `/api/stages/${encodeURIComponent(st.id)}/talks`);
-  $('tx-zip').disabled = !talks.length;
-  $('tx-list').innerHTML = talks.length ? `<table class="table">${talks.map((x) => `<tr><td><b>${esc(x.title || tr('Sin título'))}</b>${x.source === 'recording' ? ` <span class="chip">${esc(tr('Grabación'))}</span>` : ''}<div class="muted-note">${esc(when(x.startedAt))} · ${esc(t.segs(x.segments))}</div></td>
-    <td class="hide-sm">${(x.languages || st.languages).map((l) => `<div class="muted-note"><b>${esc(langLabel(l, ev.languages))}</b>: ${['srt', 'vtt', 'txt'].map((f) => `<a href="/api/stages/${st.id}/export.${f}?lang=${l}&talk=${encodeURIComponent(x.id)}">${f}</a>`).join(' · ')}</div>`).join('')}</td>
-    <td class="r"><a href="/talk.html?stage=${encodeURIComponent(st.id)}&talk=${encodeURIComponent(x.id)}" target="_blank"><button tabindex="-1">${icon('doc')} ${esc(t.read)}</button></a>${isCrew ? '' : ` <button class="danger" data-tx-del="${esc(x.id)}" data-tx-title="${esc(x.title || '')}">${esc(tr('Eliminar'))}</button>`}</td></tr>`).join('')}</table>` : `<p class="empty">${esc(t.noTalks)}</p>`;
+  const seq = ++txSeq;
+  const [talks, report] = st ? await Promise.all([api('GET', `/api/stages/${encodeURIComponent(st.id)}/talks`), api('GET', '/api/report', null, { quiet: true }).catch(() => null)]) : [[], null];
+  if (seq !== txSeq) return; // another room was picked meanwhile
+  const more = new Map((report?.rooms.find((r) => r.id === st?.id)?.talks || []).map((x) => [x.id, x]));
+  txTalks = talks.map((x) => ({ ...x, words: more.get(x.id)?.words, current: !!more.get(x.id)?.current }));
+  drawTranscripts();
 }
-$('tx-list').onclick = async (e) => {
-  const b = e.target.closest('[data-tx-del]');
-  if (!b || !confirm(t.txDelete(b.dataset.txTitle || tr('Sin título')))) return;
-  await api('DELETE', `/api/stages/${encodeURIComponent($('tx-room').value)}/talks/${encodeURIComponent(b.dataset.txDel)}`);
+/** A talk's languages, in the room's order: the original first when asked, then each translation it has. */
+const talkLangs = (x, orig) => [...new Set([...(x.languages || []), ...(x.channels || [])])].filter((l) => (x.channels || [l]).includes(l) && (orig || l !== 'orig')).sort((a, b) => (b === 'orig') - (a === 'orig'));
+const txUrl = (x) => `/talk.html?stage=${encodeURIComponent($('tx-room').value)}&talk=${encodeURIComponent(x.id)}`;
+function drawTranscripts() {
+  const st = ev.stages.find((s) => s.id === $('tx-room').value);
+  const q = $('tx-q').value.trim();
+  const list = txTalks.filter((x) => !q || `${x.title} ${x.speaker || ''}`.toLowerCase().includes(q.toLowerCase()));
+  const mins = (ms) => Math.max(1, Math.round((ms || 0) / 60000));
+  const words = txTalks.reduce((a, x) => a + (x.words || 0), 0);
+  $('tx-sum').textContent = [st?.name, t.tx.talks(txTalks.length), txTalks.length && t.tx.min(mins(txTalks.reduce((a, x) => a + (x.durationMs || 0), 0))), words && t.tx.words(words)].filter(Boolean).join(' · ');
+  $('tx-zip').disabled = !txTalks.length;
+  const row = (x) => {
+    const name = x.title || t.tx.untitled, d = new Date(x.startedAt), langs = talkLangs(x, false);
+    return `<div class="tx-row" data-id="${esc(x.id)}">
+      <span class="tx-ic" aria-hidden="true">${icon(x.source === 'recording' ? 'film' : 'doc')}</span>
+      <div class="tx-main">
+        <div class="tx-title"><a href="${txUrl(x)}" target="_blank"${x.title ? '' : ' class="untitled"'}>${esc(name)}</a>${x.current ? `<span class="chip live"><span class="dot live"></span>${esc(t.tx.live)}</span>` : ''}${x.source === 'recording' ? `<span class="chip">${esc(t.tx.rec)}</span>` : ''}</div>
+        <div class="tx-meta">${x.speaker ? `<span>${esc(x.speaker)}</span>` : ''}<span>${esc(d.toLocaleDateString(LANG, { weekday: 'short', day: 'numeric', month: 'short' }))}, ${esc(hm(x.startedAt))}</span><span>${esc(t.tx.min(mins(x.durationMs)))}</span>${x.words != null ? `<span>${esc(t.tx.words(x.words))}</span>` : ''}${langs.length ? `<span class="tx-langs">${langs.map((l) => `<span class="chip" title="${esc(langLabel(l, ev.languages))}">${esc(l.toUpperCase())}</span>`).join('')}</span>` : ''}</div>
+      </div>
+      <div class="tx-acts">
+        <a class="tx-read" href="${txUrl(x)}" target="_blank" aria-label="${esc(t.tx.read(name))}">${icon('doc')}${esc(t.read)}</a>
+        <button type="button" class="tx-dlb" data-tx-dl="${esc(x.id)}" aria-haspopup="true" aria-expanded="false" aria-label="${esc(t.tx.dlOf(name))}">${icon('download')}<span>${esc(t.tx.dl)}</span></button>
+        <button type="button" class="kebab" data-tx-more="${esc(x.id)}" aria-haspopup="menu" aria-expanded="false" aria-label="${esc(t.tx.more(name))}" title="${esc(t.tx.more(name))}">${DOTS}</button>
+      </div>
+    </div>`;
+  };
+  $('tx-list').innerHTML = !txTalks.length ? `<div class="empty-art rise"><img src="/art/empty-library.webp" alt="" width="900" height="900" /><h3>${esc(t.noTalks)}</h3><p>${esc(t.tx.emptyBody)}</p></div>`
+    : !list.length ? `<p class="empty">${esc(t.tx.noMatch(q))}</p>` : list.map(row).join('');
+}
+$('dlg-confirm').addEventListener('click', (e) => { const c = e.target.closest('[data-copy]'); if (c) copy(c.dataset.copy); });
+// Download: each language's SRT, VTT and TXT. ⋯: copy the link, delete (with a confirmation).
+$('tx-list').onclick = (e) => {
+  const b = e.target.closest('[data-tx-dl], [data-tx-more]');
+  const x = b && txTalks.find((y) => y.id === (b.dataset.txDl || b.dataset.txMore));
+  if (!x) return;
+  const m = $('tx-menu'), room = encodeURIComponent($('tx-room').value);
+  if (b.dataset.txDl) {
+    m.removeAttribute('role');
+    m.setAttribute('aria-label', t.tx.dlOf(x.title || t.tx.untitled));
+    return popMenu(m, b, `${talkLangs(x, true).map((l) => {
+      const n = langLabel(l, ev.languages);
+      return `<div class="tx-dl" role="group" aria-label="${esc(n)}"><span>${esc(n)}</span>${['srt', 'vtt', 'txt'].map((f) => `<a href="/api/stages/${room}/export.${f}?lang=${encodeURIComponent(l)}&talk=${encodeURIComponent(x.id)}" download aria-label="${esc(`${n} · ${f.toUpperCase()}`)}">${f.toUpperCase()}</a>`).join('')}</div>`;
+    }).join('')}<p class="tx-dl-note">${esc(t.tx.dlNote)}</p>`, e);
+  }
+  m.setAttribute('role', 'menu');
+  m.removeAttribute('aria-label');
+  popMenu(m, b, `<button type="button" role="menuitem" data-do="copy">${icon('link')}${esc(t.tx.copyLink)}</button>${isCrew ? '' : `<button type="button" role="menuitem" class="danger" data-do="del">${icon('x')}${esc(t.tx.del)}</button>`}`, e);
+};
+$('tx-menu').onclick = async (e) => {
+  const m = $('tx-menu');
+  if (e.target.closest('a')) return m.hidePopover(); // a download starts
+  const what = e.target.closest('[data-do]')?.dataset.do, x = txTalks.find((y) => y.id === m._for?.dataset.txMore);
+  if (!what || !x) return;
+  m.hidePopover();
+  if (what === 'copy') return copy(`${origin()}${txUrl(x)}`);
+  if (!(await confirmDialog({ title: t.txDelete(x.title || t.tx.untitled), body: t.noUndo, ok: tr('Eliminar'), danger: true }))) return;
+  await api('DELETE', `/api/stages/${encodeURIComponent($('tx-room').value)}/talks/${encodeURIComponent(x.id)}`);
+  toast(t.done, { ms: 3000 });
   renderTranscripts();
 };
 $('tx-room').onchange = () => { txRoom = $('tx-room').value; renderTranscripts(); };
+$('tx-q').oninput = drawTranscripts;
 // Every talk of the room in one .zip (SRT, VTT and TXT in each language). Fetched rather than linked, so a refusal
 // (too big, nothing yet) shows as a message instead of downloading an error.
 $('tx-zip').onclick = async () => {
@@ -1246,7 +1511,7 @@ const RL = {
       'not-media': 'Ese archivo no es de audio ni de video.', 'no-audio': 'Ese archivo no tiene sonido.', 'too-big': (mb) => `El archivo pasa el máximo de ${mb} MB (RECORDING_MAX_MB).`,
       'no-ffmpeg': 'Para leer este tipo de archivo, el servidor necesita ffmpeg (brew install ffmpeg). Los WAV de 16 kHz mono funcionan sin él.',
       busy: 'Ya hay varias grabaciones en curso: esperá a que terminen o cancelá alguna.', 'no-speech': 'No se encontró a nadie hablando en la grabación.',
-      'asr-down': 'El servidor de voz local no responde: arrancalo con npm run local.', quota: 'Gemini limitó las consultas (cuota). Probá de nuevo en un rato.',
+      'asr-down': 'El servidor de voz local no responde: arrancalo con npm run local.', quota: 'Gemini limitó las consultas (cuota). Probá de nuevo en un rato.', budget: 'Se terminó el presupuesto de IA de esta semana: se renueva el lunes.',
       'no-store': 'Este servidor no guarda transcripciones (STORE_TRANSCRIPTS=false).', upload: 'Se cortó la subida. Elegí el archivo de nuevo.',
     },
   },
@@ -1266,7 +1531,7 @@ const RL = {
       'not-media': 'That file isn’t audio or video.', 'no-audio': 'That file has no sound.', 'too-big': (mb) => `The file is over the ${mb} MB limit (RECORDING_MAX_MB).`,
       'no-ffmpeg': 'To read this kind of file the server needs ffmpeg (brew install ffmpeg). 16 kHz mono WAV files work without it.',
       busy: 'Several recordings are already in progress: wait for them to finish or cancel one.', 'no-speech': 'Nobody was found speaking in the recording.',
-      'asr-down': 'The local speech server isn’t answering: start it with npm run local.', quota: 'Gemini limited the requests (quota). Try again in a while.',
+      'asr-down': 'The local speech server isn’t answering: start it with npm run local.', quota: 'Gemini limited the requests (quota). Try again in a while.', budget: 'This week’s AI budget is used up: it renews on Monday.',
       'no-store': 'This server doesn’t keep transcripts (STORE_TRANSCRIPTS=false).', upload: 'The upload broke off. Choose the file again.',
     },
   },
@@ -1298,7 +1563,7 @@ function mediaDuration(file) {
 
 function recTargets(st) {
   const on = (st?.languages || ['orig', ...(ev.defaultTargets || ['es', 'en'])]).filter((l) => l !== 'orig');
-  $('rec-targets').innerHTML = Object.entries(ev.languages).map(([c, n]) => `<label class="row"><input type="checkbox" value="${esc(c)}" ${on.includes(c) ? 'checked' : ''}/> ${esc(n)}</label>`).join('');
+  $('rec-targets').innerHTML = Object.entries(ev.languages).map(([c, n]) => `<label><input type="checkbox" value="${esc(c)}" ${on.includes(c) ? 'checked' : ''}/> ${esc(n)}</label>`).join('');
 }
 const recChosen = () => [...$('rec-targets').querySelectorAll('input:checked')].map((i) => i.value);
 
@@ -1530,7 +1795,7 @@ addEventListener('hashchange', recFromHash);
 recFromHash();
 
 // ---------- History ----------
-const KIND_ICON = { 'room.create': 'plus', 'room.update': 'gear', 'room.delete': 'x', 'agenda.set': 'calendar', 'glossary.set': 'book', 'event.rename': 'doc', 'engine.mode': 'cloud', 'ai.speech': 'cloud', 'event.lock': 'lock' };
+const KIND_ICON = { 'room.create': 'plus', 'room.update': 'gear', 'room.delete': 'x', 'agenda.set': 'calendar', 'glossary.set': 'book', 'event.rename': 'doc', 'event.logo': 'palette', 'engine.mode': 'cloud', 'ai.speech': 'cloud', 'event.lock': 'lock' };
 const UNDOABLE = new Set(['room.create', 'room.update', 'room.delete', 'agenda.set', 'glossary.set', 'event.rename', 'engine.mode', 'ai.speech']);
 async function loadHistory() {
   hist = await api('GET', '/api/history');
@@ -1550,9 +1815,11 @@ $('history-list').onclick = async (e) => {
 // ---------- Settings ----------
 // API key and public address (public/connect.js): set up here instead of in .env.
 // Who is signed in, in the sidebar, with Sign out (not on the server computer itself: it needs no sign-in).
-$('me').innerHTML = `${icon(isCrew ? 'headphones' : 'shield')}<span><b>${esc(me.label)}</b><small>${esc(isCrew ? (LANG === 'es' ? 'Equipo · controles en vivo' : 'Crew · live controls') : (LANG === 'es' ? 'Administración' : 'Admin'))}</small></span>${me.via === 'session' ? `<button type="button" id="signout">${esc(LANG === 'es' ? 'Salir' : 'Sign out')}</button>` : ''}`;
+// The server names a local or password-less sign-in in English: say it in the page's language.
+const whoLabel = { 'this computer': LANG === 'es' ? 'Esta computadora' : 'This computer', 'no sign-in (AUTH=off)': LANG === 'es' ? 'Sin inicio de sesión' : 'No sign-in' }[me.label] || me.label;
+$('me-av').innerHTML = icon(isCrew ? 'headphones' : 'shield');
+$('me').innerHTML = `<b title="${esc(whoLabel)}">${esc(whoLabel)}</b><small>${esc(isCrew ? (LANG === 'es' ? 'Equipo · controles en vivo' : 'Crew · live controls') : (LANG === 'es' ? 'Administración' : 'Admin'))}</small>${me.via === 'session' ? `<button type="button" id="signout">${esc(LANG === 'es' ? 'Salir' : 'Sign out')}</button>` : ''}`;
 $('signout')?.addEventListener('click', signOut);
-$('engine').onclick = () => { if (last?.engine === 'mock') location.hash = '#settings/ai'; };
 const quietApi = (m, u, b) => api(m, u, b, { quiet: true });
 const askFirst = (msg) => { const i = msg.indexOf('?') + 1; return confirmDialog({ title: msg.slice(0, i) || msg, body: msg.slice(i).trim(), ok: LANG === 'es' ? 'Continuar' : 'Continue', danger: true }); };
 const keyP = keyPanel($('key-panel'), { api: quietApi, confirm: askFirst });
@@ -1560,7 +1827,7 @@ const tunnelP = tunnelPanel($('tunnel-panel'), { api: quietApi, confirm: askFirs
 const textP = textApiPanel($('text-api-panel'), { api: quietApi, confirm: askFirst });
 const localP = isCrew ? null : localPanel($('local-offer'), { api: quietApi, quota: true });
 const accessP = isCrew ? null : accessPanel($('access-panel'), { api: quietApi, confirm: askFirst, toast, me });
-const alertsP = isCrew ? null : alertsPanel($('alerts-panel'), { api: quietApi, toast });
+const alertsP = isCrew ? null : alertsPanel($('alerts-panel'), { api: quietApi, confirm: confirmDialog });
 // The Settings window: sections on the left, one at a time on the right (on a phone, the list first), and a search
 // box that shows every option that matches. A native modal <dialog>: it keeps focus inside, and Esc closes it.
 const SET = $('dlg-settings');
@@ -1635,12 +1902,12 @@ async function loadSettings() {
   if (s.publicTranscriptsFixed) $('tx-access').disabled = true;
   renderSpeech(s);
   textP.update(s);
-  $('upd-check').value = s.updateCheck ? 'on' : 'off';
+  $('upd-check').checked = !!s.updateCheck;
   $('upd-check').disabled = !!s.updateCheckFixed;
   if (s.updateCheckFixed) $('upd-note').textContent = tr('Lo fija UPDATE_CHECK=0 en el archivo .env.');
 }
 $('upd-check').onchange = async (e) => {
-  try { await api('PUT', '/api/setup', { updateCheck: e.target.value === 'on' }); toast(t.saved); } catch { /* toast shown */ }
+  try { await api('PUT', '/api/setup', { updateCheck: e.target.checked }); toast(t.saved); } catch { /* toast shown */ }
   await loadSettings();
 };
 // Speech model: Live Translate (captions + translated voice) or Transcribe Live (captions only, cheaper).
@@ -1663,12 +1930,50 @@ $('name-form').onsubmit = async (e) => {
   if (r.change) toast(t.renamed(name), { undo: r.change });
   ev = await (await fetch('/api/event')).json();
 };
+// Event logo: the audience pages show it instead of OpenCaptions' (the server checks the file's bytes, not just its type).
+function renderLogo() {
+  for (const img of $('logo-prev').querySelectorAll('img')) if (ev.logo) img.src = ev.logo;
+  $('logo-prev').classList.toggle('hidden', !ev.logo);
+  $('logo-empty').classList.toggle('hidden', !!ev.logo);
+  $('logo-del').classList.toggle('hidden', !ev.logo);
+  $('logo-pick').lastChild.nodeValue = ev.logo ? t.logo.replace : t.logo.upload;
+}
+// What went wrong is said in the row itself: a toast would sit behind the Settings window.
+const logoErr = (msg = '') => { $('logo-err').textContent = msg; $('logo-err').classList.toggle('hidden', !msg); };
+async function uploadLogo(file) {
+  if (!file) return;
+  if (!['image/png', 'image/jpeg', 'image/webp'].includes(file.type)) return logoErr(t.logo.type);
+  if (file.size > 2 * 1024 * 1024) return logoErr(t.logo.big);
+  const r = await fetch('/api/event/logo', { method: 'POST', headers: { 'content-type': file.type }, body: file }).catch(() => null);
+  if (r?.status === 401) return askToken();
+  if (r?.status === 423) setLocked(true);
+  if (!r?.ok) return logoErr(r?.status === 423 ? t.lockedToast : r?.status === 415 ? t.logo.type : r?.status === 413 ? t.logo.big : t.logo.fail);
+  logoErr();
+  ev = await (await fetch('/api/event')).json();
+  renderLogo();
+  toast(t.logo.saved);
+}
+$('logo-pick').onclick = () => $('logo-file').click();
+$('logo-file').onchange = () => { uploadLogo($('logo-file').files[0]); $('logo-file').value = ''; };
+const logoDrop = $('logo-drop');
+logoDrop.addEventListener('dragover', (e) => { e.preventDefault(); logoDrop.classList.add('over'); }); // locked: the server says so
+logoDrop.addEventListener('dragleave', () => logoDrop.classList.remove('over'));
+logoDrop.addEventListener('drop', (e) => { e.preventDefault(); logoDrop.classList.remove('over'); uploadLogo(e.dataTransfer.files[0]); });
+$('logo-del').onclick = async () => {
+  if (!(await confirmDialog({ title: t.logo.ask, body: t.logo.askBody, ok: t.logo.ok, danger: true }))) return;
+  try { await api('DELETE', '/api/event/logo'); } catch { return; /* toast shown */ }
+  ev = await (await fetch('/api/event')).json();
+  logoErr();
+  renderLogo();
+  toast(t.logo.removed);
+};
+renderLogo();
 // Languages: any of them can be removed while no room uses it (the server says which room does), and added back.
 function renderLanguages(s) {
   const many = Object.keys(s.languages).length > 1;
   $('langs-list').innerHTML = Object.entries(s.languages).map(([c, n]) => `<span class="chip">${esc(n)} <code>${esc(c)}</code>${many ? `<button type="button" class="x" data-lang-del="${esc(c)}" data-setup aria-label="${esc(tr('Quitar'))} ${esc(n)}">${icon('x')}</button>` : ''}</span>`).join('');
   const free = Object.entries(LANGUAGE_CATALOG).filter(([c]) => !(c in s.languages)).sort((a, b) => a[1].localeCompare(b[1]));
-  $('lang-add').innerHTML = free.map(([c, n]) => `<option value="${c}">${esc(n)} (${c})</option>`).join('');
+  $('lang-add').innerHTML = `<option value="">${esc(tr('Agregar un idioma…'))}</option>` + free.map(([c, n]) => `<option value="${c}">${esc(n)} (${c})</option>`).join('');
   setLocked(locked);
 }
 async function saveLanguages(body) {

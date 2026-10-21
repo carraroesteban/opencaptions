@@ -117,7 +117,7 @@ TRANSCRIBE_MODEL=off
 | Words wrong (English / Spanish sample) | 0–1.1 % / 0 % | 0.6–2.2 % / 0 %: one real slip ("listen" for "listened"), the rest were missing spaces, now fixed |
 | Speech → first provisional words | 2.8–3.3 s | **1.2–1.3 s** |
 | Speech → finished text (median) | 3.2–3.3 s | 2.9–3.3 s (p90 9.5 s on the talk with long sentences) |
-| Language of each piece of speech | yes | **no** |
+| Language of each piece of speech | yes | **no**: the app tells it from the words (`src/langid.js`), so the speaker's own language is shown as spoken, not translated into itself |
 | Usage reported in the session | yes, but it doesn't add up to the bill | none: check Google's billing page |
 
 On its own, Transcribe Live waits for a long silence before finishing text (23 s and 48 s on the samples, whose pauses are 0.3–0.6 s), and it ignores `VAD_SILENCE_MS`. So the app tells it when the speaker stops, after 0.3 s of quiet (`VAD_SILENCE_MS` if set), which is how Google says to make it finish text at once ("hybrid VAD"). That brought finished text down to Live Translate's delay.

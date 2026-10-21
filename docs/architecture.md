@@ -64,6 +64,7 @@ flowchart LR
 | `src/voice.js` | Voice or music: how much the sound's spectral brightness moves over 2 s tells speech from music, so a room playing music between talks pauses its captions |
 | `src/switcher.js` | Breaks from the vision mixer: vMix (Web Controller API) or OBS (obs-websocket v5) switching to a break scene pauses that room |
 | `src/languages.js` | Every caption language's English name, for the AI's instructions ("Guarani", not "gn") |
+| `src/langid.js` | Which language a sentence is in, from its words or its script, for models that don't say (Transcribe Live): the speaker's own language is passed through instead of translated into itself |
 | `src/engines/gemini.js` | One Gemini Live Translate session: config fallbacks, session resumption, reconnect with backoff, 12 s audio buffer while reconnecting |
 | `src/engines/local.js` | Local engine: cuts audio into utterances and makes Whisper stream (re-transcription about once a second, words committed when two passes agree, a final pass per utterance). See [Local mode](local.md#how-it-works). |
 | `src/local/` | Clients for the local speech server (`asr.js`: whisper.cpp and OpenAI dialects, hallucination filter, request queue) and the local text model (`llm.js`: Ollama and OpenAI dialects, priorities) |

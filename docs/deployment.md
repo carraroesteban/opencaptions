@@ -303,6 +303,29 @@ This is topology B on Google Cloud.
 
 **Cloud Run and other serverless platforms** aren't recommended. OpenCaptions keeps room state in memory and holds long-lived WebSockets. Serverless platforms cap request duration and can start extra instances that don't share state. If you must use one, set minimum and maximum instances to 1 and allocate CPU always. Clients reconnect automatically when a socket is cut.
 
+## Hosted test instances
+
+To let people try OpenCaptions without installing anything, run one instance per tester on a Linux server, on your Gemini key, with a weekly spending cap each. `deploy/hosted/testers.sh` does it with Docker and Caddy:
+
+- Each tester gets `https://<name>.<your domain>`, with their own rooms, passwords and transcripts. They're the admin of their own instance and can't see anyone else's: each runs in its own container, on its own network.
+- Each instance stops using the AI when it reaches `BUDGET_USD_WEEK` (US$ 3 by default) and starts again on Monday. US$ 3 is about 3 hours of captions a week with one translation language. The spend is the app's own estimate, not Google's bill: watch the real one in AI Studio the first weeks.
+- A tester who pastes their own Gemini key in the dashboard has no cap: it's their money.
+
+A 4 GB server fits about 15 testers (an idle instance uses about 100 MB; each is limited to 512 MB and one CPU).
+
+1. Install Docker on the server (`curl -fsSL https://get.docker.com | sh`), and make sure ports 80 and 443 are free and open.
+2. Point a wildcard DNS record, such as `*.try.example.com`, to the server's IP.
+3. Copy the `deploy/hosted` folder to the server, then `cp .env.example .env` and set `DOMAIN` (`try.example.com`), `GEMINI_API_KEY` and, if you want, `BUDGET_USD_WEEK` and `TZ`.
+4. Add a tester:
+
+   ```bash
+   ./testers.sh add ana
+   ```
+
+   It prints a sign-in link that works once, within 30 minutes: send it to them. Their first visit takes a few seconds while Caddy gets the certificate.
+
+`./testers.sh list` shows every tester and this week's spend; `link ana` makes a new sign-in link, `rm ana` deletes a tester with everything they made, and `upgrade` moves everyone to the newest version.
+
 ## Run the agent as a service
 
 The headless agent (`scripts/agent.js`) captures a sound card on the room PC and streams it to the server. It reconnects forever and keeps up to about 15 seconds of audio while the network is down.

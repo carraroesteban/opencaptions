@@ -1,5 +1,6 @@
 /* OpenCaptions UI components. Colours, type and motion come from tokens.css (light + dark). */
 @import url('/tokens.css');
+@import url('/controls.css');
 
 * { box-sizing: border-box; }
 html, body { margin: 0; background: var(--bg); color: var(--fg); font-family: var(--font); -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; text-rendering: optimizeLegibility; }
@@ -12,6 +13,8 @@ a:hover { text-decoration-thickness: 2px; }
 code { font-family: var(--mono); font-size: .9em; background: var(--bg3); padding: .1em .35em; border-radius: 6px; }
 pre code { background: none; color: inherit; padding: 0; border-radius: 0; font-size: inherit; }
 ::selection { background: var(--hl); color: var(--hl-ink); }
+/* width/height on <img> reserve its space while it loads; a page that sets only a width keeps the picture's shape. */
+:where(img[width][height]) { height: auto; }
 button, select, input, textarea { font: inherit; color: inherit; }
 /* Buttons: a quiet tinted fill (no outline, no shadow), one primary per screen, a short press. */
 button {
@@ -39,7 +42,31 @@ select {
 }
 select::-ms-expand { display: none; }
 input::placeholder, textarea::placeholder { color: color-mix(in srgb, var(--fg2) 75%, transparent); }
-input[type='checkbox'], input[type='radio'], input[type='range'] { accent-color: var(--fg); }
+input[type='radio'], input[type='range'] { accent-color: var(--fg); }
+/* Every on/off is a switch (iOS, macOS, Linear): a track and a knob that springs across. Ink on paper, lime on ink. */
+input[type='checkbox'] {
+  -webkit-appearance: none; appearance: none; flex: none; position: relative; width: 40px; height: 24px; margin: 0; padding: 0; border: 0;
+  border-radius: var(--pill); background: var(--line-strong); cursor: pointer; vertical-align: middle;
+  transition: background-color var(--dur) var(--ease-out), box-shadow var(--dur) var(--ease-out);
+}
+input[type='checkbox']::before {
+  content: ''; position: absolute; top: 3px; left: 3px; width: 18px; height: 18px; border-radius: 50%; background: #fff;
+  box-shadow: 0 1px 2px rgb(0 0 0 / .18), 0 2px 6px rgb(0 0 0 / .12); transition: transform .32s var(--spring);
+}
+input[type='checkbox']:checked { background: var(--primary-bg); }
+input[type='checkbox']:checked::before { transform: translateX(16px); background: var(--primary-fg); }
+input[type='checkbox']:active::before { width: 22px; } /* the knob stretches under the finger, as on iOS */
+input[type='checkbox']:checked:active::before { transform: translateX(12px); }
+input[type='checkbox']:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+input[type='checkbox']:disabled { opacity: .45; cursor: default; }
+/* Several to pick from (languages, events): pills that light up, the box hidden. <div class="pick"><label><input type=checkbox> English</label>… */
+.pick { display: flex; flex-wrap: wrap; gap: 8px; }
+.pick label { display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; border-radius: var(--pill); background: var(--fill); color: var(--fg); font-size: 14px; font-weight: 600; cursor: pointer; user-select: none; transition: background-color var(--dur) var(--ease-out), color var(--dur) var(--ease-out), transform var(--dur-fast) var(--ease-out); }
+.pick label:hover { background: var(--fill-hover); }
+.pick label:active { transform: scale(.96); }
+.pick label:has(input:checked) { background: var(--primary-bg); color: var(--primary-fg); }
+.pick label:has(input:focus-visible) { outline: 2px solid var(--focus); outline-offset: 2px; }
+.pick input { position: absolute; opacity: 0; pointer-events: none; width: 1px; height: 1px; }
 input:focus, select:focus, textarea:focus { outline: none; border-color: var(--focus); box-shadow: 0 0 0 3px color-mix(in srgb, var(--focus) 18%, transparent); }
 button:focus-visible, a:focus-visible, summary:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
 .muted { color: var(--fg2); }
@@ -69,8 +96,9 @@ button.x svg.i { width: 14px; height: 14px; }
 .card { background: var(--bg2); border: 1px solid var(--line); border-radius: 18px; padding: 20px; box-shadow: var(--shadow-sm); }
 a.card { transition: border-color var(--dur) var(--ease), box-shadow var(--dur) var(--ease), transform var(--dur) var(--ease); }
 a.card:hover { border-color: var(--line-strong); box-shadow: var(--shadow); transform: translateY(-1px); }
-.meter { height: 8px; background: var(--bg3); border-radius: 4px; overflow: hidden; position: relative; }
-.meter > i { position: absolute; inset: 0 auto 0 0; background: linear-gradient(90deg, var(--ok), var(--ok) 70%, var(--warn) 85%, var(--bad)); width: 0; transition: width .12s linear; border-radius: 4px; }
+.meter { height: 8px; background: var(--bg3); border-radius: 4px; overflow: hidden; position: relative; container-type: inline-size; }
+/* The colours belong to the track, not the bar: a quiet level is green, only a loud one reaches red. */
+.meter > i { position: absolute; inset: 0 auto 0 0; background: linear-gradient(90deg, var(--ok), var(--ok) 70%, var(--warn) 85%, var(--bad)) 0 0 / 100cqw 100% no-repeat; width: 0; transition: width .12s linear; border-radius: 4px; }
 .meter > b { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--fg); opacity: .7; transition: left .3s; }
 
 /* ---- logo + wordmark ---- */
@@ -102,12 +130,22 @@ a.brand { color: inherit; text-decoration: none; }
 dialog { background: var(--bg2); color: var(--fg); border: 1px solid var(--line); border-radius: var(--radius-lg); padding: 22px; max-width: min(640px, 92vw); width: 100%; box-shadow: var(--shadow-lg); }
 dialog::backdrop { background: var(--scrim); backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px); }
 dialog h3 { font-size: 20px; }
+/* Dialogs and menus arrive and leave, they don't pop: fade and scale in, fade out (the sheets slide, below). */
+dialog, [popover] {
+  opacity: 0; transform: translateY(6px) scale(.97);
+  transition: opacity .2s var(--ease-out), transform .28s var(--ease-out), overlay .28s allow-discrete, display .28s allow-discrete;
+}
+dialog[open], [popover]:popover-open { opacity: 1; transform: none; }
+@starting-style { dialog[open], [popover]:popover-open { opacity: 0; transform: translateY(6px) scale(.97); } }
+dialog::backdrop { transition: opacity .25s var(--ease-out), overlay .25s allow-discrete, display .25s allow-discrete; opacity: 0; }
+dialog[open]::backdrop { opacity: 1; }
+@starting-style { dialog[open]::backdrop { opacity: 0; } }
 label.field { display: grid; gap: 5px; font-size: 13px; color: var(--fg2); }
 label.field > * { color: var(--fg); }
 .prefs { gap: 6px; flex-wrap: nowrap; }
 .prefs select { padding: 5px 28px 5px 10px; font-size: 13px; background-position: right 10px center; border-radius: 9px; }
 .prefs button { padding: 5px 10px; border-radius: 9px; }
-.toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); background: var(--fg); color: var(--bg); padding: 10px 18px; border-radius: 12px; z-index: 50; box-shadow: var(--shadow-lg); font-weight: 700; animation: oc-rise .24s var(--ease); }
+.toast { position: fixed; left: 50%; bottom: calc(24px + var(--toast-lift, 0px)); transform: translateX(-50%); width: max-content; max-width: calc(100vw - 32px); text-align: center; background: var(--fg); color: var(--bg); padding: 10px 18px; border-radius: 12px; z-index: 50; box-shadow: var(--shadow-lg); font-weight: 700; animation: oc-rise .24s var(--ease); }
 @keyframes oc-rise { from { opacity: 0; transform: translate(-50%, 8px); } }
 .empty-state { display: grid; justify-items: center; gap: 14px; text-align: center; color: var(--fg2); }
 .empty-state .oc-logo { width: 64px; }
@@ -115,26 +153,21 @@ label.field > * { color: var(--fg); }
 /* ---------- audience: sheets, assistant, reading ---------- */
 dialog.sheet { margin: auto auto 0; width: 100%; max-width: 720px; max-height: 88dvh; border-radius: var(--radius-lg) var(--radius-lg) 0 0; padding: 10px 20px calc(20px + env(safe-area-inset-bottom)); overflow: auto; border-bottom: 0; }
 dialog.sheet::before { content: ''; display: block; width: 40px; height: 4px; border-radius: 4px; background: var(--line-strong); margin: 0 auto 12px; }
-dialog.sheet[open] { animation: oc-sheet .28s var(--ease); }
+dialog.sheet { transform: translateY(32px); }
+dialog.sheet[open] { transform: none; }
+@starting-style { dialog.sheet[open] { transform: translateY(32px); } }
 @keyframes oc-sheet { from { transform: translateY(24px); opacity: .4; } }
+/* On a computer a sheet is a dialog in the middle (a drag handle at the bottom edge is for thumbs). */
+@media (min-width: 900px) and (pointer: fine) {
+  dialog.sheet { margin: auto; max-width: 560px; border-radius: var(--radius-lg); border-bottom: 1px solid var(--line); padding: 18px 22px 22px; }
+  dialog.sheet::before { display: none; }
+}
 dialog.sheet .sheet-head { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
 dialog.sheet .sheet-head h2 { font-size: 21px; margin: 0; flex: 1; }
 dialog.sheet .sheet-head button { display: grid; place-items: center; border-radius: var(--pill); width: 36px; height: 36px; padding: 0; box-shadow: none; border: 0; background: var(--bg3); }
 .seg { display: inline-flex; background: var(--bg3); border-radius: 12px; padding: 3px; gap: 3px; }
 .seg button { border: 0; background: transparent; padding: 6px 12px; border-radius: 9px; font-size: 14px; box-shadow: none; }
 .seg button[aria-pressed='true'] { background: var(--bg2); box-shadow: var(--shadow-sm); font-weight: 700; }
-.as-sum { margin: 14px 0 6px; min-height: 60px; }
-.as-sum h3 { font-size: 19px; margin: 0 0 8px; line-height: 1.3; }
-.as-sum ul { margin: 0; padding-left: 20px; display: grid; gap: 6px; font-size: 16px; line-height: 1.5; }
-.as-terms { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
-.as-note { font-size: 12px; color: var(--fg2); margin-top: 10px; }
-.as-ask { margin-top: 16px; border-top: 1px solid var(--line); padding-top: 14px; }
-.as-ask label { font-weight: 700; display: block; margin-bottom: 8px; }
-.as-ask .row { flex-wrap: nowrap; }
-.as-ask input { flex: 1; font-size: 16px; min-width: 0; width: 100%; }
-.as-ans { margin-top: 12px; font-size: 16px; line-height: 1.55; }
-.as-ans blockquote { margin: 8px 0 0; padding: 8px 12px; border-left: 3px solid var(--fg); background: var(--bg3); border-radius: 0 10px 10px 0; font-size: 15px; }
-.as-ans blockquote b { font-family: var(--mono); font-size: 12px; color: var(--fg2); margin-right: 6px; }
 .skeleton { background: linear-gradient(90deg, var(--bg3), var(--bg2), var(--bg3)); background-size: 200% 100%; animation: shimmer 1.2s infinite; border-radius: 8px; height: 14px; margin: 8px 0; }
 @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
 .set-row { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 10px; padding: 12px 0; border-bottom: 1px solid var(--line); }
@@ -249,44 +282,12 @@ dialog.signin button.sso { width: 100%; justify-content: center; }
 .u-noscript { color: #fff; padding: 20px; }
 .u-btn-sm { padding: 3px 12px !important; font-size: 13px !important; box-shadow: none !important; }
 .u-danger-outline { border-color: color-mix(in srgb, var(--bad) 50%, var(--line)) !important; color: var(--bad) !important; }
-.u-fixed-bottom { position: fixed !important; bottom: 20px; left: 50%; transform: translateX(-50%); }
+.u-fixed-bottom { position: fixed !important; bottom: 20px; left: 50%; transform: translateX(-50%); width: max-content; max-width: calc(100vw - 32px); }
 .u-help-list { margin: 8px 0 0; padding-left: 18px; display: grid; gap: 6px; }
 .u-code-input { font-size: 24px !important; letter-spacing: .2em; }
 .u-bg-setup { background-image: url(/art/setup.webp) !important; }
 
-/* Settings → Alerts (public/alerts-ui.js): what triggers an alert, the destinations as tiles, and a dialog per
-   destination with room for its steps. */
-.alerts { display: grid; gap: 18px; }
-.alerts .al-when { padding: 14px 16px; border-radius: 14px; background: var(--bg2); border: 1px solid var(--line); }
-.alerts .al-when > p:first-child { margin: 0 0 10px; font-weight: 700; }
-.alerts .al-when ul { margin: 0; padding: 0; list-style: none; display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 8px 18px; }
-.alerts .al-when li { display: flex; gap: 10px; align-items: center; font-size: 14px; }
-.alerts .al-when li svg { color: var(--fg2); }
-.alerts .al-when .cx-fine { margin: 10px 0 0; }
-.alerts .al-h { margin: 0 0 -6px; font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--fg2); }
-.alerts .al-grid { grid-template-columns: repeat(auto-fill, minmax(168px, 1fr)); }
-.alerts .al-tile { align-content: start; gap: 6px; text-align: left; padding: 16px; min-height: 132px; }
-.alerts .al-tile b { font-size: 15px; font-weight: 700; }
-.alerts .al-tile b svg { width: 18px; height: 18px; }
-.alerts .al-tile:hover { border-color: var(--line-strong); box-shadow: var(--shadow); }
-.alerts .al-tile.on { border-color: color-mix(in srgb, var(--ok) 45%, var(--line)); }
-.alerts .al-state { margin-top: auto; padding-top: 6px; font-size: 13px; font-weight: 600; color: var(--accent-fg); display: flex; gap: 6px; align-items: center; min-width: 0; }
-.alerts .al-state.ok { color: var(--ok); }
-.alerts .al-state code { font-weight: 400; color: var(--fg2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
-.alerts .al-foot { display: flex; flex-wrap: wrap; gap: 12px 18px; align-items: end; justify-content: space-between; padding-top: 14px; border-top: 1px solid var(--line); }
-.alerts .al-foot .field { min-width: 200px; }
-.al-dlg { max-width: min(600px, 94vw); }
-.al-dlg:not([open]) { display: none; } /* .connect lays panels out as a grid: a closed dialog must still hide */
-.al-dlg .al-title { display: flex; gap: 10px; align-items: center; margin: 0; font-size: 20px; }
-.al-dlg .al-title svg { width: 22px; height: 22px; }
-.al-dlg .al-steps { margin: 4px 0 0; padding-left: 22px; display: grid; gap: 14px; font-size: 15px; line-height: 1.5; }
-.al-dlg .al-steps li::marker { font-weight: 700; }
-.al-dlg .al-copy { display: flex; gap: 8px; margin-top: 8px; }
-.al-dlg .al-copy code { flex: 1; padding: 10px 12px; border-radius: 10px; background: var(--bg3); font-size: 15px; overflow-wrap: anywhere; }
-.al-dlg .field small { color: var(--fg2); font-size: 13px; line-height: 1.4; }
-.al-dlg .al-err { margin: 0; padding: 10px 12px; border-radius: 10px; color: var(--bad); background: color-mix(in srgb, var(--bad) 10%, transparent); font-size: 14px; }
-.al-dlg .dlg-actions { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; margin-top: 6px; }
-.al-dlg .al-remove { margin-right: auto; color: var(--bad); }
+/* Settings → Alerts (public/alerts-ui.js): styled with the rest of the dashboard, in admin.html. */
 
 /* Speaker labels (set on the dashboard): a small name where the speaker changes */
 p[data-spk]::before { content: attr(data-spk); display: block; margin-bottom: .15em; font-family: var(--font); font-size: max(12px, .5em); font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--fg2); }
@@ -294,6 +295,8 @@ p[data-spk]::before { content: attr(data-spk); display: block; margin-bottom: .1
 
 /* Text for screen readers only (a page's heading where the design shows none) */
 .sr-only { position: absolute !important; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+.fix-item { display: grid; grid-template-columns: 3.2em minmax(0, 1fr); gap: 10px; align-items: start; }
+.fix-t { padding-top: 9px; font-size: 13px; color: var(--fg2); font-variant-numeric: tabular-nums; text-align: right; }
 .fix-row { width: 100%; box-sizing: border-box; resize: vertical; font: inherit; line-height: 1.4; } /* dashboard: live caption corrections */
 
 /* ---- organizer pages: the shared navigation (public/nav.js, docs/adr/0012) ---- */
@@ -304,6 +307,7 @@ body.has-side > :not(.side) { grid-column: 2; min-width: 0; }
 .side-top .brand { font-size: 15px; padding: 2px 8px 0; min-width: 0; }
 .side-last { display: grid; padding-top: 8px; border-top: 1px solid var(--line); }
 .side-main + .side-last { margin-top: auto; }
+.side-main + .side-last:not(:last-child) { margin-top: 4px; } /* the dashboard: right under the sections; who's signed in sits at the bottom */
 .side-main { display: grid; gap: 4px; }
 .side-jump { display: flex; align-items: center; gap: 10px; width: 100%; margin: 8px 0 6px; padding: 8px 10px; border-radius: 10px; background: var(--bg); color: var(--fg2); box-shadow: none; font-size: 14px; text-align: left; }
 .side-jump kbd { margin-left: auto; font: 12px var(--font); }
@@ -368,6 +372,8 @@ body.has-side > :not(.side) { grid-column: 2; min-width: 0; }
 .crumbs a:hover { color: var(--fg); text-decoration: underline; }
 .crumbs [aria-current] { color: var(--fg); font-weight: 700; }
 /* "?": the explanation of a control, one click away (a native popover) */
+.view-sub { margin: 4px 0 0; color: var(--fg2); font-size: 15px; line-height: 1.5; max-width: 72ch; }
+.help-inline { margin: -2px 0 12px; color: var(--fg2); font-size: 14px; line-height: 1.5; max-width: 68ch; }
 .help-q { display: inline-grid; place-items: center; width: 24px; height: 24px; padding: 0; margin-left: 8px; border-radius: 50%; border: 0; box-shadow: none; background: var(--bg3); color: var(--fg2); font: 700 13px/1 var(--font); letter-spacing: 0; vertical-align: middle; flex: none; }
 .help-q:hover { color: var(--fg); background: color-mix(in srgb, var(--fg) 12%, var(--bg3)); }
 [popover].help-pop { max-width: min(360px, calc(100vw - 32px)); margin: auto; padding: 12px 14px; border: 1px solid var(--line-strong); border-radius: 12px; background: var(--bg2); color: var(--fg); box-shadow: var(--shadow-lg); font: 400 14px/1.5 var(--font); letter-spacing: 0; text-transform: none; text-align: left; }
@@ -401,3 +407,84 @@ dialog.keys { max-width: min(460px, calc(100vw - 32px)); }
 .keys dl div { display: grid; grid-template-columns: 9em minmax(0, 1fr); gap: 12px; align-items: center; padding: 8px 0; border-top: 1px solid var(--line); }
 .keys dt { white-space: nowrap; }
 .keys dd { margin: 0; font-size: 14px; }
+
+/* ---------- motion and surfaces shared by every page ---------- */
+/* Moving between pages crossfades instead of flashing white (browsers that support it; the others just navigate). */
+@view-transition { navigation: auto; }
+::view-transition-old(root), ::view-transition-new(root) { animation-duration: .22s; animation-timing-function: var(--ease-out); }
+
+/* Things that arrive: a short rise and fade. Lists stagger their first items (.stagger > *). */
+@keyframes oc-in { from { opacity: 0; transform: translateY(8px); } }
+.rise { animation: oc-in .42s var(--ease-out) both; }
+.stagger > * { animation: oc-in .42s var(--ease-out) both; }
+.stagger > :nth-child(2) { animation-delay: .03s; } .stagger > :nth-child(3) { animation-delay: .06s; }
+.stagger > :nth-child(4) { animation-delay: .09s; } .stagger > :nth-child(5) { animation-delay: .12s; }
+.stagger > :nth-child(6) { animation-delay: .15s; } .stagger > :nth-child(n + 7) { animation-delay: .18s; }
+
+/* Loading: a soft shimmer where the content will be, never a spinner in the middle of nothing. */
+.skeleton { border-radius: 10px; background: linear-gradient(90deg, var(--fill) 25%, var(--fill-hover) 37%, var(--fill) 63%); background-size: 400% 100%; animation: oc-shimmer 1.4s ease infinite; min-height: 1em; }
+@keyframes oc-shimmer { from { background-position: 100% 50%; } to { background-position: 0 50%; } }
+
+/* A floating control bar over full-screen content (captions): frosted glass, centred, out of the way when idle
+   (.dock.away: the page adds it after a few seconds without the pointer moving). */
+.dock {
+  position: fixed; left: 50%; bottom: calc(18px + env(safe-area-inset-bottom)); translate: -50% 0; z-index: 20;
+  display: flex; align-items: center; gap: 6px; padding: 7px; max-width: calc(100vw - 24px);
+  border: 1px solid color-mix(in srgb, var(--line-strong) 70%, transparent); border-radius: var(--pill);
+  background: color-mix(in srgb, var(--bg2) 78%, transparent); -webkit-backdrop-filter: blur(22px) saturate(1.5); backdrop-filter: blur(22px) saturate(1.5);
+  box-shadow: var(--shadow-lg); transition: opacity .35s var(--ease-out), translate .45s var(--ease-out);
+}
+.dock.away { opacity: 0; translate: -50% 16px; pointer-events: none; }
+.dock button, .dock .btn, .dock select { border-radius: var(--pill); }
+.dock .sep { width: 1px; align-self: stretch; margin: 6px 2px; background: var(--line); }
+
+/* The one big action of a screen (Start captions): round, generous, pressable. */
+.hero-btn { display: inline-flex; align-items: center; justify-content: center; gap: 12px; min-height: 64px; padding: 0 34px; border-radius: var(--pill); font-size: 19px; font-weight: 800; letter-spacing: -.005em; box-shadow: 0 10px 30px -10px color-mix(in srgb, var(--primary-bg) 70%, transparent); transition: transform .25s var(--spring), box-shadow var(--dur) var(--ease-out), background-color var(--dur) var(--ease-out); }
+.hero-btn:hover { transform: translateY(-1px) scale(1.015); }
+.hero-btn:active { transform: scale(.97); }
+.hero-btn svg.i { width: 22px; height: 22px; }
+
+/* Cards that can be pressed lift a little; panels that expand slide open (details[open] content). */
+.lift { transition: transform var(--dur) var(--ease-out), box-shadow var(--dur) var(--ease-out), border-color var(--dur) var(--ease-out); }
+.lift:hover { transform: translateY(-2px); box-shadow: var(--shadow); border-color: var(--line-strong); }
+details[open] > :not(summary) { animation: oc-in .3s var(--ease-out) both; }
+
+/* Basic and Advanced: anything marked data-advanced shows only in Advanced mode (body.advanced). The choice is per
+   browser: store 'advanced' (common.js store), off for new users. */
+body:not(.advanced) [data-advanced] { display: none !important; }
+
+/* The AI badge (ai-badge.js): what makes the captions, the same on every organizer page; a switch for an admin. */
+.ai-badge { position: relative; display: inline-flex; }
+.ai-chip { display: inline-flex; align-items: center; gap: 7px; padding: 6px 12px; border-radius: var(--pill); font-size: 13px; font-weight: 600; background: var(--fill); color: var(--fg); white-space: nowrap; }
+.ai-chip:disabled { opacity: 1; cursor: default; }
+.ai-chip b { font-weight: 700; }
+.ai-chip span { color: var(--fg2); font-weight: 500; }
+.ai-chip svg.i { width: 15px; height: 15px; }
+.ai-chip > svg.i:first-child { color: var(--ok); }
+.ai-chip.warn { background: color-mix(in srgb, var(--warn) 14%, transparent); }
+.ai-chip.warn > svg.i:first-child, .ai-chip.warn span { color: var(--warn); }
+.ai-chip > svg.i:last-child:not(:first-child) { color: var(--fg2); width: 12px; height: 12px; }
+[popover].ai-pop { position: fixed; inset: auto; margin: 0; width: min(380px, calc(100vw - 24px)); padding: 10px; border: 1px solid var(--line-strong); border-radius: 16px; background: var(--bg2); color: var(--fg); box-shadow: var(--shadow-lg); display: none; flex-direction: column; gap: 6px; }
+[popover].ai-pop:popover-open { display: flex; }
+@supports (position-anchor: --x) { [popover].ai-pop { position-area: bottom span-left; margin-top: 6px; position-try-fallbacks: flip-block, flip-inline; } }
+.ai-pop-h { margin: 4px 6px 4px; font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--fg2); }
+.ai-pop-note { margin: 0 6px 4px; font-size: 13px; color: var(--warn); line-height: 1.45; }
+.ai-opt { display: grid; gap: 3px; text-align: left; padding: 10px 12px; border-radius: 12px; background: transparent; border: 1px solid transparent; font-weight: 400; }
+.ai-opt:hover:not(:disabled) { background: var(--fill); }
+.ai-opt.on { background: var(--fill); border-color: var(--line-strong); }
+.ai-opt-t { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-weight: 700; font-size: 15px; }
+.ai-opt-t svg.i { color: var(--ok); }
+.ai-opt-d { font-size: 13px; color: var(--fg2); line-height: 1.45; }
+.ai-opt:disabled .ai-opt-t { color: var(--fg2); }
+.ai-pop-more { margin: 4px 6px 2px; font-size: 13px; color: var(--fg2); }
+@media (max-width: 560px) { .ai-chip span { display: none; } } /* a phone: the AI's name is enough */
+
+/* A page shows itself once its script has built it (common.js adds html.ready when the page's scripts have run): no
+   flash of untranslated text, of a page without its sidebar, or of layout jumping; with the crossfade between pages
+   (@view-transition above) moving around feels like one app. If a script never gets there, it shows after a second. */
+@media (prefers-reduced-motion: no-preference) {
+  html:not(.ready) body { opacity: 0; animation: oc-reveal .2s 1s forwards; }
+  html.ready body { animation: oc-shown .22s var(--ease-out); }
+}
+@keyframes oc-reveal { to { opacity: 1; } }
+@keyframes oc-shown { from { opacity: 0; } }

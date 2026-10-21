@@ -76,8 +76,9 @@ const engine = flag('mock') ? 'mock' : flag('local') ? 'local' : (env.ENGINE || 
 const engineDefaults = (eng) => ({
   // Give up on (and retry) a translation request after this long.
   mtTimeoutMs: Number(env.MT_TIMEOUT_MS ?? event.mtTimeoutMs ?? (eng === 'local' ? 30000 : 5000)),
-  // Show the model's low-latency interim transcription as provisional text on the original channel.
-  useInterim: (env.USE_INTERIM ?? String(event.useInterim ?? (eng === 'local' ? '1' : '0'))) === '1', // local: on (Whisper's provisional words)
+  // Show the model's low-latency interim transcription as provisional text (the original and the speaker's own
+  // language): Whisper's provisional words, and Transcribe Live's, 1.2 s after speech instead of ~3 s for the sentence.
+  useInterim: (env.USE_INTERIM ?? String(event.useInterim ?? '1')) === '1',
 });
 
 export const config = {
