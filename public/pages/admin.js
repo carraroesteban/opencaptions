@@ -7,6 +7,7 @@
 // here can delete or change the event's configuration by accident while it's live.
 import { qs, esc, store, copyText, wsUrl, Socket, langLabel, setAccent, LISTEN, listenPort, freeListenPort, serverHost } from '/common.js';
 import { localize, prefsControls, tr, LANG } from '/i18n.js';
+import { menu, popMenu } from '/menu.js';
 import { advanced } from '/prefs.js';
 import { icon, mountIcons } from '/illustrations.js';
 import { ensureSignedIn, signInScreen, signOut } from '/signin.js';
@@ -74,7 +75,7 @@ const L = {
     upAskBody: (live) => `OpenCaptions descarga la versión nueva y se reinicia: los subtítulos se pausan cerca de un minuto${live ? ` en ${live === 1 ? 'la sala en vivo' : `las ${live} salas en vivo`}` : ''}, y los celulares, las pantallas y las computadoras de las salas se reconectan solos. Tus ajustes y transcripciones no cambian.`,
     upWorking: (v) => `Descargando OpenCaptions ${v}…`, upRestarting: 'Reiniciando con la versión nueva… esta página se recarga sola.',
     upSlow: 'OpenCaptions tarda en volver. Si su ventana se cerró, abrilo de nuevo.',
-    speechHint: { translate: 'Cada sala también puede ofrecer la voz traducida, y cuesta unas cuatro veces más. Elegilo solo si alguien la necesita.', transcribe: 'Recomendado si nadie necesita la voz traducida. Si el orador cambia de idioma en medio de la charla, los subtítulos lo manejan peor.' },
+    speechHint: { translate: 'Cada sala también puede ofrecer la voz traducida, y cuesta unas cuatro veces más. Elegilo solo si alguien la necesita.', transcribe: 'Para cuando nadie necesita la voz traducida. Si el orador cambia de idioma en medio de la charla, los subtítulos lo manejan peor.' },
     speechAsk: '¿Cambiar el modelo de voz?', speechAskBody: (n) => `Hay ${n} ${n === 1 ? 'sala' : 'salas'} en vivo: los subtítulos se pausan unos segundos mientras se reconectan.`, speechOk: 'Cambiar el modelo',
     agendaNone: 'Todavía no hay agenda. Pegala abajo.', agendaPreview: (a, r, k) => `${a} ${a === 1 ? 'charla nueva' : 'charlas nuevas'} · ${r} ${r === 1 ? 'se quita' : 'se quitan'} · ${k} ${k === 1 ? 'sigue igual' : 'siguen igual'}`, agendaUnknown: (l) => `Salas que no existen: ${l}`, agendaSkipped: (n, l) => `${n} ${n === 1 ? 'fila' : 'filas'} de otras salas ${n === 1 ? 'se ignora' : 'se ignoran'} (${l})`,
     agendaSave: 'Reemplazar la agenda', agendaSame: 'Es igual a la agenda actual: no hay nada que cambiar.', agendaSaved: (n) => `Agenda guardada: ${n} charlas.`, more: (n) => `y ${n} más`,
@@ -163,7 +164,7 @@ const L = {
     upAskBody: (live) => `OpenCaptions downloads the new version and restarts: captions pause for about a minute${live ? ` in ${live === 1 ? 'the live room' : `the ${live} live rooms`}` : ''}, and phones, screens and the rooms’ computers reconnect by themselves. Your settings and transcripts don’t change.`,
     upWorking: (v) => `Downloading OpenCaptions ${v}…`, upRestarting: 'Restarting with the new version… this page reloads by itself.',
     upSlow: 'OpenCaptions is taking a while to come back. If its window closed, open it again.',
-    speechHint: { translate: 'Each room can also offer the translated voice, and it costs about four times more. Pick it only if someone needs it.', transcribe: 'Recommended when nobody needs the translated voice. Speakers who switch language mid-talk get less clever captions.' },
+    speechHint: { translate: 'Each room can also offer the translated voice, and it costs about four times more. Pick it only if someone needs it.', transcribe: 'For when nobody needs the translated voice. Speakers who switch language mid-talk get less clever captions.' },
     speechAsk: 'Change the speech model?', speechAskBody: (n) => `${n} ${n === 1 ? 'room is' : 'rooms are'} live: captions pause for a few seconds while they reconnect.`, speechOk: 'Change the model',
     agendaNone: 'No agenda yet. Paste it below.', agendaPreview: (a, r, k) => `${a} new ${a === 1 ? 'talk' : 'talks'} · ${r} removed · ${k} unchanged`, agendaUnknown: (l) => `Rooms that don’t exist: ${l}`, agendaSkipped: (n, l) => `${n} ${n === 1 ? 'row' : 'rows'} for other rooms ${n === 1 ? 'is' : 'are'} ignored (${l})`,
     agendaSave: 'Replace the agenda', agendaSame: 'It’s the same as the current agenda: nothing to change.', agendaSaved: (n) => `Agenda saved: ${n} talks.`, more: (n) => `and ${n} more`,
@@ -341,8 +342,8 @@ if (!isCrew) addCommands(() => [{ ic: 'lock', label: locked ? t.unlock : t.lockA
 // history, the technical side of each room (costs, AI sessions, translation modes…). Remembered per browser (prefs.js).
 const syncAdvanced = () => { $('adv-sw').checked = $('adv-sw2').checked = advanced.get(); };
 function setAdvanced(on) {
-  const flip = () => { advanced.set(on); syncAdvanced(); };
-  if (document.startViewTransition && !calm.matches) document.startViewTransition(flip); else flip();
+  advanced.set(on); // no page-wide transition: it froze the live captions and flashed the whole page
+  syncAdvanced();
   if (!$('dlg-settings').open) toast(on ? t.advOn : t.advOff, { ms: 3000 }); // in Settings the switch itself says it
   if (!on && ADV_VIEWS.includes(view)) location.hash = '#live';
 }
@@ -431,7 +432,7 @@ const stateChip = (s) => {
   if (s.music) return `<span class="chip warn">${icon('music')} ${esc(tr('Música · en pausa'))}</span>`;
   if (!s.ingest) return `<span class="chip">${esc(tr(s.pull ? 'Esperando el stream' : 'Todavía no llega sonido'))}</span>`;
   if (s.engines.length && !s.gated) return `<span class="chip live"><span class="dot live"></span> ${esc(tr('En vivo'))}</span>`;
-  if (s.engines.length) return `<span class="chip">${esc(tr('En pausa · silencio'))}</span>`;
+  if (s.engines.length) return `<span class="chip">${esc(tr('Escuchando · nadie habla'))}</span>`;
   return `<span class="chip">${esc(tr('Esperando voz'))}</span>`;
 };
 const engChip = (e) => {
@@ -1156,36 +1157,8 @@ async function loadConnections() {
   intgCards();
 }
 setInterval(() => { if (view === 'integrations' && !document.hidden && !$('dlg-conn').open && !$('dlg-sw').open) loadConnections().catch(() => {}); }, 3000);
-/**
- * A small menu by the button that opens it (⋯ on a connection, Download and ⋯ on a transcript): under the button (or
- * above it near the bottom of the window), its right edge on the button's. The same button again closes it; from the
- * keyboard, focus goes straight in, the arrows move, Esc closes and focus returns to the button.
- */
-function popMenu(m, b, html, e) {
-  if (m._for === b && (m.matches(':popover-open') || performance.now() - (m._closedAt || 0) < 300)) return m.hidePopover(); // its own button closes it (a press outside already did)
-  if (m.matches(':popover-open')) m.hidePopover();
-  m._for = b;
-  m.innerHTML = html;
-  m.showPopover();
-  const r = b.getBoundingClientRect(), h = m.offsetHeight;
-  m.style.top = `${r.bottom + 6 + h > innerHeight - 8 ? Math.max(8, r.top - h - 6) : r.bottom + 6}px`;
-  m.style.left = `${Math.max(8, Math.min(r.right - m.offsetWidth, innerWidth - m.offsetWidth - 8))}px`;
-  b.setAttribute('aria-expanded', 'true');
-  if (!e.detail) m.querySelector('a, button')?.focus(); // opened from the keyboard: straight into the menu
-}
-for (const m of [$('conn-menu'), $('tx-menu')]) {
-  m.addEventListener('toggle', (e) => {
-    if (e.newState !== 'closed') return;
-    m._closedAt = performance.now();
-    m._for?.setAttribute('aria-expanded', 'false');
-    if (m.contains(document.activeElement) || document.activeElement === document.body) m._for?.focus();
-  });
-  m.addEventListener('keydown', (e) => {
-    const all = [...m.querySelectorAll('a, button')], i = all.indexOf(document.activeElement);
-    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); all[(i + (e.key === 'ArrowDown' ? 1 : -1) + all.length) % all.length]?.focus(); }
-  });
-}
-addEventListener('scroll', () => { for (const m of [$('conn-menu'), $('tx-menu')]) if (m.matches(':popover-open')) m.hidePopover(); }, { passive: true }); // it would float away from its button
+menu($('conn-menu'));
+menu($('tx-menu'));
 // ⋯ on a row: Send a test (captions) and Remove
 $('conn-list').onclick = (e) => {
   const b = e.target.closest('[data-menu]');
@@ -1932,8 +1905,10 @@ $('name-form').onsubmit = async (e) => {
 };
 // Event logo: the audience pages show it instead of OpenCaptions' (the server checks the file's bytes, not just its type).
 function renderLogo() {
-  for (const img of $('logo-prev').querySelectorAll('img')) if (ev.logo) img.src = ev.logo;
-  $('logo-prev').classList.toggle('hidden', !ev.logo);
+  const img = $('logo-prev').querySelector('img');
+  if (ev.logo) img.src = ev.logo;
+  img.classList.toggle('hidden', !ev.logo);
+  $('logo-prev').classList.toggle('empty', !ev.logo);
   $('logo-empty').classList.toggle('hidden', !!ev.logo);
   $('logo-del').classList.toggle('hidden', !ev.logo);
   $('logo-pick').lastChild.nodeValue = ev.logo ? t.logo.replace : t.logo.upload;

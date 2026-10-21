@@ -22,7 +22,7 @@ const T = {
       discord: 'Un mensaje en un canal de tu servidor.',
       webhook: 'Un POST con JSON, para Zapier, Make, n8n o un script propio.',
     },
-    recommended: 'Recomendado', added: 'Agregado',
+    added: 'Agregado',
     steps: {
       ntfy: ['Instalá la app ntfy:', 'Tocá «+» y suscribite a este tema:', 'Guardá: te llega una prueba.'],
       telegram: ['En Telegram, abrí @BotFather, mandá /newbot y copiá el token que te da.', 'Escribile algo a tu bot nuevo (o sumalo al grupo del equipo).', 'Pegá el token y el ID del chat:'],
@@ -58,7 +58,7 @@ const T = {
       discord: 'A message in a channel of your server.',
       webhook: 'A JSON POST, for Zapier, Make, n8n or your own script.',
     },
-    recommended: 'Recommended', added: 'Added',
+    added: 'Added',
     steps: {
       ntfy: ['Install the ntfy app:', 'Tap “+” and subscribe to this topic:', 'Save: a test message arrives.'],
       telegram: ['In Telegram, open @BotFather, send /newbot and copy the token it gives you.', 'Send your new bot any message (or add it to the team’s group).', 'Paste the token and the chat ID:'],
@@ -119,7 +119,7 @@ export function alertsPanel(el, { api, confirm }) {
     };
     const card = (k) => `<button type="button" class="al-card" data-open="${k}" aria-pressed="${editing === k}" aria-controls="al-form">
         ${mark(k)}<span class="al-card-t"><b>${esc(t.names[k])}</b><small>${esc(t.descs[k])}</small></span>
-        ${has(k) ? `<span class="chip ok">${icon('check')}${esc(t.added)}</span>` : k === 'ntfy' ? `<span class="chip">${esc(t.recommended)}</span>` : ''}
+        ${has(k) ? `<span class="chip ok">${icon('check')}${esc(t.added)}</span>` : ''}
       </button>`;
     const on = cfg.channels.length > 0;
     const typing = el.querySelector(`#al-form[data-type="${editing}"]`); // what's being typed survives a redraw (a test, a pause)

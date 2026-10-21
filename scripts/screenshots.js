@@ -22,6 +22,15 @@ try { execFileSync('cwebp', ['-version'], { stdio: 'ignore' }); } catch { tty.fa
 const TITLE = 'Telehealth for rural clinics'; // what the recorded talk (test/fixtures/talk-en.json) is about
 /** Each shot: the page, its size in CSS pixels (photographed at 2×), and what to do before the picture. */
 const SHOTS = {
+  dashboard: { url: '/admin.html?dashboard&ui=en#live', width: 1080, height: 675, theme: 'dark',
+    prep: `document.getElementById('onboard')?.remove();` }, // the first-time checklist isn't what the dashboard is for
+  projector: { url: '/screen.html?stage=main&ui=en', width: 1000, height: 563, theme: 'dark', prep: '' },
+  // Two phones side by side, Spanish and English: the audience page itself, framed in this page.
+  phones: { url: '/watch.html?stage=main&ui=en', width: 900, height: 750, theme: 'dark', wait: 3500,
+    prep: `document.body.innerHTML = '<div id="duo">' + ['es', 'en'].map((l) => '<iframe src="/watch.html?stage=main&ui=' + l + '&lang=' + l + '"></iframe>').join('') + '</div>';
+      const duo = document.createElement('style');
+      duo.textContent = 'body { background: #111014 !important; box-shadow: none !important; } #duo { position: fixed; inset: 36px 0 0; display: flex; justify-content: center; gap: 64px; } #duo iframe { flex: none; width: 360px; height: 700px; border: 0; border-radius: 40px; box-shadow: 0 0 0 9px #26252b, 0 0 0 10px rgba(255,255,255,.14); }';
+      document.head.append(duo);` },
   transcript: { url: '/talk.html?stage=main&lang=es', width: 1080, height: 675, theme: 'light',
     prep: `document.getElementById('q').value = 'clínicas'; document.getElementById('q').dispatchEvent(new Event('input'));` },
 };
@@ -52,10 +61,13 @@ await fetch(`${base}/api/stages/main/talk`, { method: 'POST', headers: auth, bod
 tty.info('playing the sample talk (30 s)…');
 const ingest = new WebSocket(`ws://127.0.0.1:${appPort}/ws/ingest?stage=main&kind=cli&label=screenshots`, { headers: { authorization: 'Bearer shots' } });
 await new Promise((r) => ingest.once('open', r));
-const pcm = fs.readFileSync(path.join(ROOT, 'samples/talk-en.wav')).subarray(44, 44 + 30 * 32000);
+const talk = fs.readFileSync(path.join(ROOT, 'samples/talk-en.wav')).subarray(44);
+const pcm = talk.subarray(0, 30 * 32000);
 for (let o = 0; o < pcm.length; o += 3200) { ingest.send(pcm.subarray(o, o + 3200)); await sleep(100); }
 await sleep(5000); // the last translations
-ingest.close();
+// The rest of the talk keeps the room live while the pictures are taken: the dashboard shows it captioning.
+(async () => { for (let o = pcm.length; o + 3200 <= talk.length && ingest.readyState === WebSocket.OPEN; o += 3200) { ingest.send(talk.subarray(o, o + 3200)); await sleep(100); } })();
+done.push(() => ingest.close());
 
 // 3. Chrome over the DevTools protocol (as in a11y.js).
 const port = 9400 + Math.floor(Math.random() * 400);
@@ -89,7 +101,7 @@ for (const [name, s] of shots) {
   await c('Page.navigate', { url: base + s.url });
   await sleep(3500);
   await c('Runtime.evaluate', { expression: `${s.prep}; const st = document.createElement('style'); st.textContent = ${JSON.stringify(FRAME)}; document.head.append(st);` });
-  await sleep(1200);
+  await sleep(s.wait || 1200);
   await c('Runtime.evaluate', { expression: 'window.scrollTo(0, 0)' }); // a search scrolls to its first match
   await sleep(300);
   const { data } = await c('Page.captureScreenshot', { format: 'png' });

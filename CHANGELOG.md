@@ -4,6 +4,27 @@ All notable changes to this project are documented in this file. The format foll
 
 ## [Unreleased]
 
+## [0.9.1] - 2026-10-21
+
+Fixes from using 0.9 for real: Just for me keeps captioning a video played low or a voice over music, organizer pages ask for the password, one kind of menu everywhere, Settings regrouped, and a website with up-to-date screenshots.
+
+### Changed
+
+- **One kind of menu everywhere.** The page language and theme are a globe button with a menu (languages by name; Like the system, Light, Dark) on every page, instead of a loose select and a ◐ button. A room's right-click menu, ⋯ and Download on transcripts, and the AI badge all open, move with the arrows and close the same way.
+- **Settings regrouped.** Event (name, logo, languages, public transcripts, Event mode), AI, Public address, Security, Alerts, This browser (language and theme, Advanced mode) and, in Advanced mode, System. Each setting sits in its own box.
+- **The event logo** is one preview with Upload/Change and Remove; no advice text. No more "recommended" labels.
+- A room with sound but nobody speaking says **Listening** instead of "Paused · silence": its captions come back the moment someone talks.
+
+- **The website** shows the current dashboard, stage screen and phones, and lists Basic/Advanced modes and the event logo.
+
+### Fixed
+
+- **Just for me paused its captions while people talked:** "Music playing" for a voice over music, "Paused (silence)" for a video played low or a quiet call. It never pauses for music now, and anything audible counts as speech. The event's rooms keep both guards, so a stage microphone picking up chatter or walk-in music doesn't keep the AI running.
+- **Kit, Caption style and Sound check opened without the password** from outside this computer: they ask to sign in first.
+- On 360 px phones (many Androids) the captions page cut off the last button of its bottom bar.
+- An uploaded event logo spilled out of its preview in Settings.
+- A long option (Speech model) squeezed its setting's text into a narrow column. Turning on Advanced mode flashed the whole page and froze the captions for half a second.
+
 ## [0.9.0] - 2026-10-21
 
 Easier to run and nicer to use: Basic and Advanced modes, one clear badge for which AI is captioning, "Automatic" language that works on a Mac even when the speaker switches languages, your event's logo on every screen, the app's own dropdowns everywhere, and a redesign of every page with smooth motion.

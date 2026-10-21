@@ -143,8 +143,8 @@ dialog[open]::backdrop { opacity: 1; }
 label.field { display: grid; gap: 5px; font-size: 13px; color: var(--fg2); }
 label.field > * { color: var(--fg); }
 .prefs { gap: 6px; flex-wrap: nowrap; }
-.prefs select { padding: 5px 28px 5px 10px; font-size: 13px; background-position: right 10px center; border-radius: 9px; }
-.prefs button { padding: 5px 10px; border-radius: 9px; }
+.prefs-btn { display: inline-flex; align-items: center; gap: 6px; padding: 6px 11px 6px 9px; border-radius: var(--pill); font-size: 13px; font-weight: 700; letter-spacing: .02em; }
+.prefs-btn svg.i { width: 17px; height: 17px; }
 .toast { position: fixed; left: 50%; bottom: calc(24px + var(--toast-lift, 0px)); transform: translateX(-50%); width: max-content; max-width: calc(100vw - 32px); text-align: center; background: var(--fg); color: var(--bg); padding: 10px 18px; border-radius: 12px; z-index: 50; box-shadow: var(--shadow-lg); font-weight: 700; animation: oc-rise .24s var(--ease); }
 @keyframes oc-rise { from { opacity: 0; transform: translate(-50%, 8px); } }
 .empty-state { display: grid; justify-items: center; gap: 14px; text-align: center; color: var(--fg2); }
@@ -349,7 +349,6 @@ body.has-side > :not(.side) { grid-column: 2; min-width: 0; }
   body.rail .side-jump kbd, body.rail .side .event, body.rail .side .me { display: none; }
   body.rail .side nav a .n { position: absolute; top: 2px; right: 2px; padding: 0 5px; font-size: 11px; }
   body.rail .side .foot { padding-inline: 0; justify-items: center; }
-  body.rail .side .prefs { flex-direction: column; }
 }
 /* A phone: the sidebar is a menu that ☰ opens above the page */
 @media (max-width: 900px) {
@@ -396,9 +395,12 @@ kbd { display: inline-block; min-width: 1.6em; padding: 1px 6px; border: 1px sol
 .side-jump kbd { border: 0; background: none; color: var(--fg2); padding: 0; min-width: 0; font-weight: 400; }
 /* A room's right-click menu */
 [popover].ctx { position: fixed; inset: auto; margin: 0; padding: 6px; min-width: 220px; border: 1px solid var(--line-strong); border-radius: 12px; background: var(--bg2); color: var(--fg); box-shadow: var(--shadow-lg); }
-.ctx a { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 8px; text-decoration: none; font-size: 14px; }
-.ctx a:hover, .ctx a:focus-visible { background: var(--bg3); outline: none; }
-.ctx a:focus-visible { box-shadow: inset 0 0 0 2px var(--focus); }
+.ctx :is(a, button) { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 36px; padding: 8px 10px; border: 0; border-radius: 8px; background: none; box-shadow: none; color: inherit; font-size: 14px; font-weight: 500; text-align: start; text-decoration: none; }
+.ctx :is(a, button):hover, .ctx :is(a, button):focus-visible { background: var(--bg3); outline: none; }
+.ctx :is(a, button):focus-visible { box-shadow: inset 0 0 0 2px var(--focus); }
+.ctx button.danger { color: var(--bad); }
+.ctx [aria-checked='true'] { font-weight: 700; }
+.ctx [aria-checked] svg.i:last-child { margin-left: auto; }
 /* The keyboard cheat sheet */
 dialog.keys { max-width: min(460px, calc(100vw - 32px)); }
 .keys-head { display: flex; align-items: center; gap: 10px; }
@@ -466,7 +468,6 @@ body:not(.advanced) [data-advanced] { display: none !important; }
 .ai-chip > svg.i:last-child:not(:first-child) { color: var(--fg2); width: 12px; height: 12px; }
 [popover].ai-pop { position: fixed; inset: auto; margin: 0; width: min(380px, calc(100vw - 24px)); padding: 10px; border: 1px solid var(--line-strong); border-radius: 16px; background: var(--bg2); color: var(--fg); box-shadow: var(--shadow-lg); display: none; flex-direction: column; gap: 6px; }
 [popover].ai-pop:popover-open { display: flex; }
-@supports (position-anchor: --x) { [popover].ai-pop { position-area: bottom span-left; margin-top: 6px; position-try-fallbacks: flip-block, flip-inline; } }
 .ai-pop-h { margin: 4px 6px 4px; font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--fg2); }
 .ai-pop-note { margin: 0 6px 4px; font-size: 13px; color: var(--warn); line-height: 1.45; }
 .ai-opt { display: grid; gap: 3px; text-align: left; padding: 10px 12px; border-radius: 12px; background: transparent; border: 1px solid transparent; font-weight: 400; }

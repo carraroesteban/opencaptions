@@ -49,8 +49,6 @@
     .me .who small { color: var(--fg2); font-size: 12px; }
     .me .who button { justify-self: start; padding: 0; margin-top: 1px; background: none; border: 0; color: var(--fg2); font-size: 12px; font-weight: 600; text-decoration: underline; text-underline-offset: 2px; }
     .me .who button:hover { color: var(--fg); background: none; }
-    .me .prefs select { padding: 3px 20px 3px 7px; font-size: 12px; background-position: right 6px center; background-size: 9px 6px; border-radius: 8px; }
-    .me .prefs button { padding: 3px 8px; font-size: 13px; border-radius: 8px; }
     @media (min-width: 901px) {
       body.rail .side-opt { justify-content: center; padding-inline: 0; }
       body.rail #adv-row { display: none; }
@@ -89,9 +87,6 @@
     @media (max-width: 560px) { .tools-btn { padding: 8px 10px; } .tools-btn .tl { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; } }
     .topbar #engine + .tools-btn { margin-left: 0; }
     .topbar #engine:empty + .tools-btn { margin-left: auto; }
-    .ctx button { display: flex; align-items: center; gap: 10px; width: 100%; padding: 8px 10px; border: 0; border-radius: 8px; background: none; box-shadow: none; font-size: 14px; text-align: left; }
-    .ctx button:hover { background: var(--bg3); }
-    .ctx button.danger { color: var(--bad); }
 
     /* ---------- Live: the numbers, then one card per room ---------- */
     .kpis { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); background: var(--bg2); border: 1px solid var(--line); border-radius: 18px; box-shadow: var(--shadow-sm); }
@@ -255,14 +250,15 @@
     .setting p { margin: 0; font-size: 13.5px; line-height: 1.5; color: var(--fg2); max-width: 600px; }
     @media (max-width: 700px) { .setting:not(.sw) { grid-template-columns: minmax(0, 1fr); } }
     /* Event logo (Settings › General): a drop zone, and the logo on a light and a dark chip (the pages and the stage screen) */
-    .logo-drop { display: grid; justify-items: center; gap: 10px; width: 300px; padding: 14px; border: 1.5px dashed var(--line-strong); border-radius: 14px; color: var(--fg2); font-size: 14px; text-align: center; transition: border-color var(--dur) var(--ease-out), background var(--dur) var(--ease-out); }
-    .logo-drop.over { border-color: var(--fg); background: var(--bg3); }
-    .logo-prev { display: flex; gap: 8px; }
-    .logo-chip { display: block; width: 132px; height: 64px; padding: 10px; border-radius: 12px; background: #FAF8F3; box-shadow: inset 0 0 0 1px rgb(17 16 20 / .12); }
-    .logo-chip.dark { background: #111014; box-shadow: inset 0 0 0 1px rgb(250 248 243 / .16); }
-    .logo-chip img { display: block; width: 100%; height: 100%; object-fit: contain; }
+    .logo-drop { display: grid; grid-template-columns: auto auto; align-items: center; justify-content: end; gap: 8px 16px; }
+    .logo-drop .logo-err { grid-column: 1 / -1; }
+    .logo-chip { display: grid; grid-template: minmax(0, 1fr) / minmax(0, 1fr); place-items: center; width: 132px; height: 64px; padding: 10px; border-radius: 12px; background: var(--bg3); box-shadow: inset 0 0 0 1px var(--line); color: var(--fg2); font-size: 12.5px; text-align: center; line-height: 1.3; transition: box-shadow var(--dur) var(--ease); }
+    .logo-chip.empty { box-shadow: none; border: 1.5px dashed var(--line-strong); }
+    .logo-drop.over .logo-chip { box-shadow: inset 0 0 0 2px var(--fg); }
+    .logo-chip img { width: 100%; height: 100%; min-height: 0; object-fit: contain; } /* a big logo shrinks into the tile */
+    .logo-acts { display: grid; gap: 4px; justify-items: start; }
     .logo-drop .logo-err { margin: 0; color: var(--bad); }
-    @media (max-width: 700px) { .logo-drop { width: auto; } }
+    @media (max-width: 700px) { .logo-drop { justify-content: start; } }
     .srow { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 24px; align-items: center; padding: 14px 0; border-top: 1px solid var(--line); }
     label.srow { cursor: pointer; }
     .srow > span b { display: block; font-size: 15px; font-weight: 600; }
@@ -348,10 +344,11 @@
     .set-pane.on, .settings.searching .set-pane.set-hit { display: grid; animation: oc-in .32s var(--ease-out) both; }
     .settings.searching .set-pane:not(.set-hit) { display: none; }
     .set-h { font-size: 24px; margin: 18px 0 6px; }
-    .set-panes .card { background: none; border: 0; border-top: 1px solid var(--line); border-radius: 0; box-shadow: none; padding: 18px 0; }
-    .set-h + .card, .set-sub + .card { border-top: 0; }
+    .set-pane { gap: 10px; } /* each setting in its own box, the groups under their own heading */
+    .set-panes .card { background: var(--bg2); border: 1px solid var(--line); border-radius: 14px; box-shadow: none; padding: 16px 18px; margin: 0; }
     .set-panes .card > h3 { margin: 0 0 4px; font: 600 15.5px/1.3 var(--font); letter-spacing: 0; }
-    .set-panes select { max-width: 100%; }
+    .set-panes :is(select, .oc-select) { max-width: 100%; }
+    .setting > :is(select, .oc-select) { width: 340px; } /* a long option is cut with "…" instead of squeezing the text beside it */
     .set-miss { display: none !important; }
     .set-none { color: var(--fg2); padding: 24px 0; }
     .settings .set-back { display: none; margin-top: 12px; }
@@ -455,7 +452,7 @@
 
     /* ---------- Transcripts: a room's talks as a list. What and when on the left; Read, Download and ⋯ on the right ---------- */
     .tx-bar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
-    .tx-bar select { min-width: 180px; }
+    .tx-bar :is(select, .oc-select) { min-width: 180px; }
     .tx-q { flex: 1 1 240px; max-width: 400px; }
     .tx-bar #tx-rec { margin-left: auto; }
     .tx-box { display: grid; }
@@ -495,7 +492,7 @@
     .tx-dl-note { margin: 4px 0 0; padding: 8px 10px 4px; border-top: 1px solid var(--line); font-size: 12px; line-height: 1.4; color: var(--fg2); max-width: 260px; }
     @media (max-width: 640px) {
       .tx-q { max-width: none; }
-      .tx-bar select { flex: 1 1 100%; }
+      .tx-bar :is(select, .oc-select) { flex: 1 1 100%; }
       .tx-bar #tx-rec { margin-left: 0; }
       .tx-head { gap: 0 2px; padding: 8px 8px 6px 14px; }
       .tx-head .tx-sum { flex-basis: 100%; padding: 4px 0; }
@@ -579,7 +576,7 @@
     <div class="foot">
       <label class="side-opt" id="adv-row"><span data-icon="sliders"></span><span class="lbl">Modo avanzado</span><input type="checkbox" role="switch" id="adv-sw" /></label>
       <label class="side-opt lockrow" id="lockrow" data-admin><span data-icon="lock"></span><span class="lbl"><span>Modo evento</span><small id="lock-sub" data-no-i18n></small></span><input type="checkbox" role="switch" id="lockbtn" /></label>
-      <div class="me"><span class="av" id="me-av"></span><span class="who" id="me" data-no-i18n></span><span id="prefs-slot"></span></div>
+      <div class="me"><span class="av" id="me-av"></span><span class="who" id="me" data-no-i18n></span></div>
     </div>
   </aside>
 
@@ -786,27 +783,28 @@
     </div>
     <div class="set-body">
       <nav class="set-nav" aria-label="Secciones de los ajustes">
-        <a href="#settings/general" data-pane="general" data-icon="gear">General</a>
+        <a href="#settings/general" data-pane="general" data-icon="calendar">Evento</a>
         <a href="#settings/ai" data-pane="ai" data-icon="spark">IA</a>
         <a href="#settings/address" data-pane="address" data-icon="cloud">Dirección pública</a>
         <a href="#settings/security" data-pane="security" data-icon="shield">Seguridad</a>
         <a href="#settings/alerts" data-pane="alerts" data-icon="alert">Alertas</a>
+          <a href="#settings/browser" data-pane="browser" data-icon="monitor">Este navegador</a>
+          <a href="#settings/system" data-pane="system" data-icon="sliders" data-advanced>Sistema</a>
       </nav>
       <div class="set-panes">
         <button type="button" class="set-back" id="set-back" data-icon="chevron">Secciones</button>
         <section class="set-pane" data-pane="general" aria-labelledby="set-h-general">
-          <h3 class="set-h" id="set-h-general">General</h3>
+          <h3 class="set-h" id="set-h-general">Evento</h3>
           <section class="card setting">
             <div><h3>Nombre del evento</h3><p data-help>Aparece en los celulares, en la pantalla del escenario y en los carteles.</p></div>
             <form class="rowbar" id="name-form"><input id="name-in" maxlength="80" class="u-minw220" aria-label="Nombre del evento" /><button data-icon="check">Guardar</button></form>
           </section>
           <section class="card setting">
-            <div><h3>Logo del evento</h3><p data-help>Va en lugar del de OpenCaptions en celulares, pantalla y carteles. PNG, JPEG o WebP de hasta 2 MB, legible en claro y en oscuro.</p></div>
+            <div><h3>Logo del evento</h3><p data-help>Va en lugar del de OpenCaptions en celulares, pantalla y carteles. PNG, JPEG o WebP de hasta 2 MB.</p></div>
             <div class="logo-drop" id="logo-drop">
-              <div class="logo-prev hidden" id="logo-prev"><span class="logo-chip"><img alt="" /></span><span class="logo-chip dark"><img alt="" /></span></div>
-              <span id="logo-empty">Arrastrá la imagen acá</span>
+              <span class="logo-chip empty" id="logo-prev"><img alt="" class="hidden" /><span id="logo-empty">Arrastrá la imagen acá</span></span>
               <input type="file" id="logo-file" accept="image/png,image/jpeg,image/webp" class="sr-only" tabindex="-1" aria-hidden="true" />
-              <div class="rowbar"><button type="button" id="logo-pick" data-icon="palette" data-setup>Subir el logo</button><button type="button" id="logo-del" class="danger hidden" data-icon="x" data-setup>Quitar</button></div>
+              <div class="logo-acts"><button type="button" id="logo-pick" data-setup>Subir el logo</button><button type="button" id="logo-del" class="danger hidden" data-setup>Quitar</button></div>
               <p class="logo-err hidden" id="logo-err" role="alert" data-no-i18n></p>
             </div>
           </section>
@@ -825,23 +823,6 @@
           <section class="card setting sw">
             <div><h3 id="lock2-l">Modo evento</h3><p id="lock2-d" data-help>Bloquea las salas, la agenda y el glosario para que nada cambie por error. Los controles en vivo siguen funcionando.</p></div>
             <input type="checkbox" role="switch" id="lock2" aria-labelledby="lock2-l" aria-describedby="lock2-d" />
-          </section>
-          <section class="card setting sw">
-            <div><h3><label for="adv-sw2" id="adv2-l">Modo avanzado</label></h3><p id="adv2-d" data-help>Muestra el glosario, las integraciones, el historial, el costo y los ajustes técnicos de cada sala. Se recuerda en este navegador.</p></div>
-            <input type="checkbox" role="switch" id="adv-sw2" aria-labelledby="adv2-l" aria-describedby="adv2-d" />
-          </section>
-          <h4 class="set-sub" data-advanced>Avanzado</h4>
-          <section class="card setting sw" data-advanced>
-            <div><h3 id="upd-l">Versiones nuevas</h3><p id="upd-note">Una vez por día, OpenCaptions le pregunta a GitHub si salió una versión nueva y lo avisa arriba del panel, con un botón para instalarla. No envía nada sobre vos ni instala nada sin que lo toques.</p></div>
-            <input type="checkbox" role="switch" id="upd-check" aria-labelledby="upd-l" aria-describedby="upd-note" />
-          </section>
-          <section class="card setting" data-advanced>
-            <div><h3>Solo para mí</h3><p data-help>Usá OpenCaptions solo para vos: tus llamadas, videos y conversaciones en esta compu. Las salas, la agenda y las transcripciones quedan guardadas para cuando vuelvas.</p></div>
-            <button type="button" id="to-me" data-icon="headphones" data-setup>Pasar a Solo para mí</button>
-          </section>
-          <section class="card setting" data-advanced>
-            <div><h3>Servidor</h3><p id="sys" data-no-i18n></p></div>
-            <span></span>
           </section>
         </section>
         <section class="set-pane" data-pane="ai" aria-labelledby="set-h-ai">
@@ -864,7 +845,7 @@
           <section class="card setting" data-advanced>
             <div><h3>Modelo de voz</h3><p id="speech-note" data-help>Con qué modelo de Gemini se escucha al orador en las salas que traducen los subtítulos como texto (el modo normal).</p></div>
             <select id="speech-model" aria-label="Modelo de voz" class="u-minw220" data-setup>
-              <option value="transcribe">Solo subtítulos (Transcribe Live, unos US$ 0,54 por hora de sala; recomendado)</option>
+              <option value="transcribe">Solo subtítulos (Transcribe Live, unos US$ 0,54 por hora de sala)</option>
               <option value="translate">Subtítulos + voz traducida (Live Translate, unos US$ 2,2 por hora de sala)</option>
             </select>
           </section>
@@ -891,6 +872,32 @@
             <h3>Alertas en tu celular</h3>
             <p data-help>Para cuando nadie está mirando el panel.</p>
             <div id="alerts-panel" data-no-i18n></div>
+          </section>
+        </section>
+        <section class="set-pane" data-pane="browser" aria-labelledby="set-h-browser">
+          <h3 class="set-h" id="set-h-browser">Este navegador</h3>
+          <section class="card setting">
+            <div><h3>Idioma y tema</h3><p data-help>De esta página, solo en este navegador.</p></div>
+            <span id="prefs-slot"></span>
+          </section>
+          <section class="card setting sw">
+            <div><h3><label for="adv-sw2" id="adv2-l">Modo avanzado</label></h3><p id="adv2-d" data-help>Muestra el glosario, las integraciones, el historial, el costo y los ajustes técnicos de cada sala. Se recuerda en este navegador.</p></div>
+            <input type="checkbox" role="switch" id="adv-sw2" aria-labelledby="adv2-l" aria-describedby="adv2-d" />
+          </section>
+        </section>
+        <section class="set-pane" data-pane="system" aria-labelledby="set-h-system" data-advanced>
+          <h3 class="set-h" id="set-h-system">Sistema</h3>
+          <section class="card setting sw" data-advanced>
+            <div><h3 id="upd-l">Versiones nuevas</h3><p id="upd-note">Una vez por día, OpenCaptions le pregunta a GitHub si salió una versión nueva y lo avisa arriba del panel, con un botón para instalarla. No envía nada sobre vos ni instala nada sin que lo toques.</p></div>
+            <input type="checkbox" role="switch" id="upd-check" aria-labelledby="upd-l" aria-describedby="upd-note" />
+          </section>
+          <section class="card setting" data-advanced>
+            <div><h3>Solo para mí</h3><p data-help>Usá OpenCaptions solo para vos: tus llamadas, videos y conversaciones en esta compu. Las salas, la agenda y las transcripciones quedan guardadas para cuando vuelvas.</p></div>
+            <button type="button" id="to-me" data-icon="headphones" data-setup>Pasar a Solo para mí</button>
+          </section>
+          <section class="card setting" data-advanced>
+            <div><h3>Servidor</h3><p id="sys" data-no-i18n></p></div>
+            <span></span>
           </section>
         </section>
         <p class="set-none hidden" id="set-none" role="status">Ningún ajuste coincide.</p>
