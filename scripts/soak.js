@@ -27,18 +27,26 @@ const srv = spawn(process.execPath, ['src/server.js', '--mock'], {
   env: { ...process.env, PORT: String(port), ENGINE: 'mock', DATA_DIR: dataDir, SCHEDULE: path.join(dataDir, 's.json'), AUTH: 'auto', ADMIN_TOKEN: '', PUBLIC_URL: '', TUNNEL: '', FALLBACK: '', UPDATE_CHECK: '0' },
   stdio: ['ignore', 'ignore', 'inherit'],
 });
-const stop = (code) => { srv.once('exit', () => { fs.rmSync(dataDir, { recursive: true, force: true }); process.exit(code); }); srv.kill(); };
+let stopping = false;
+const stop = (code) => {
+  stopping = true;
+  const done = () => { fs.rmSync(dataDir, { recursive: true, force: true, maxRetries: 3 }); process.exit(code); };
+  if (srv.exitCode !== null) return done();
+  srv.once('exit', done);
+  srv.kill();
+};
+srv.once('exit', (c) => { if (!stopping) { console.error(`the server stopped (exit ${c}): that's a finding`); stop(1); } });
 process.on('SIGINT', () => stop(130));
 for (let i = 0; ; i++) {
   try { if ((await fetch(`${base}/healthz`)).ok) break; } catch { /* starting */ }
-  if (i > 100) { console.error('server did not start'); stop(1); }
+  if (i > 100) { console.error('server did not start'); stop(1); await new Promise(() => {}); }
   await new Promise((r) => setTimeout(r, 100));
 }
 
 const ids = Array.from({ length: rooms }, (_, i) => `soak-${i + 1}`);
 for (const id of ids) {
   const r = await fetch(`${base}/api/stages`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id, name: id, source: 'auto', targets: ['es', 'en'] }) });
-  if (!r.ok) { console.error(`room ${id}: ${r.status} ${await r.text()}`); stop(1); }
+  if (!r.ok) { console.error(`room ${id}: ${r.status} ${await r.text()}`); stop(1); await new Promise(() => {}); }
 }
 
 // Audio in: each room hears a bundled talk on a loop, in real time, like a room computer.
@@ -48,8 +56,8 @@ ids.forEach((id, i) => {
   ws.on('error', (e) => console.error(`ingest ${id}:`, e.message));
 });
 
-// Phones: they read captions, and every few seconds one of them "sleeps" (its socket dies without a goodbye) and
-// another comes back, getting the history again, the way phones in a hall do.
+// Phones: they read captions, and every few seconds one of them leaves (half abruptly, no closing handshake, half
+// politely) and comes back, getting the history again, the way phones in a hall do.
 let captions = 0, hellos = 0;
 const phones = [];
 const phone = (id) => {
@@ -65,7 +73,8 @@ const churn = setInterval(() => {
   p.ws = phone(p.id);
 }, 5000);
 
-// Measure: every 10 s, kept per minute as the lowest heap, the highest RSS and the worst loop lag.
+// Measure every 2 s (the server's loop-lag window, src/system.js), kept per minute as the lowest heap, the highest RSS
+// and the worst loop lag.
 const rows = [];
 let cur = null;
 const t0 = Date.now();
@@ -80,7 +89,7 @@ const sample = async () => {
   } catch (e) { console.error('sample failed:', e.message); }
 };
 const slope = (k, from) => { // least squares, MB per hour
-  const pts = rows.filter((r) => r.min > from);
+  const pts = rows.filter((r) => r.min > from && Number.isFinite(r[k]));
   if (pts.length < 3) return null;
   const n = pts.length, mx = pts.reduce((s, r) => s + r.min, 0) / n, my = pts.reduce((s, r) => s + r[k], 0) / n;
   const b = pts.reduce((s, r) => s + (r.min - mx) * (r[k] - my), 0) / pts.reduce((s, r) => s + (r.min - mx) ** 2, 0);
@@ -90,6 +99,7 @@ console.log(`soak: ${rooms} rooms, ${phones.length} phones, ${minutes} min · mi
 const tick = setInterval(async () => {
   await sample();
   if (Date.now() - t0 < (rows.length + 1) * 60_000) return;
+  if (!cur) { console.error(`minute ${rows.length + 1}: no sample answered`); cur = { min: rows.length + 1, heapMB: NaN, rssMB: NaN, lagP99Ms: NaN, lagMaxMs: NaN }; }
   rows.push({ ...cur, captions, hellos });
   console.log(`${String(cur.min).padStart(4)}  ${String(cur.heapMB).padStart(5)}  ${String(cur.rssMB).padStart(5)}  ${String(cur.lagP99Ms).padStart(6)}  ${String(cur.lagMaxMs).padStart(6)}  ${captions}`);
   cur = null;
@@ -100,4 +110,4 @@ const tick = setInterval(async () => {
   fs.writeFileSync(out, JSON.stringify(report, null, 2));
   console.log(`after warm-up: heap ${report.heapMBPerHour} MB/h, RSS ${report.rssMBPerHour} MB/h · report: ${out}`);
   stop(0);
-}, 10_000);
+}, 2000);
