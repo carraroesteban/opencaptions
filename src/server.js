@@ -21,7 +21,7 @@ import { startChecks, checkNow, updateInfo, installUpdate, RESTART } from './upd
 import { Tunnel, tunnelOrigin } from './tunnel.js';
 import * as tty from './tty.js';
 import { Alerts, publicConfig, mergeChannels } from './alerts.js';
-import { identify, allows, sameOrigin, isSessionActive, actor, roleFor, startupSignIn, spendStartupCode, createSession, clearCookie, cookieValue, listSessions, endSessions, changePassword, passwordFromEnv, twoFactorOn, twoFactorSecret, checkCode, startTwoFactor, confirmTwoFactor, disableTwoFactor, cleanDevice } from './auth.js';
+import { identify, allows, sameOrigin, isSessionActive, actor, roleFor, claimState, claimAdmin, startupSignIn, spendStartupCode, createSession, clearCookie, cookieValue, listSessions, endSessions, changePassword, passwordFromEnv, twoFactorOn, twoFactorSecret, checkCode, startTwoFactor, confirmTwoFactor, disableTwoFactor, cleanDevice } from './auth.js';
 import { oidc, oidcEnabled, roleForEmail, startFlow, finishFlow, redirectFor } from './oidc.js';
 import { resetClient } from './genai.js';
 import { Glossary } from './glossary.js';
@@ -924,7 +924,17 @@ app.post('/api/alerts/snooze', crew, (req, res) => {
 
 // ---------------- sign-in (src/auth.js, src/oidc.js) ----------------
 // What the sign-in screen offers. Public: it reveals nothing but which ways in exist.
-app.get('/api/auth/config', (req, res) => res.json({ password: !oidc.only, sso: oidcEnabled ? oidc.label : null }));
+app.get('/api/auth/config', (req, res) => res.json({ password: !oidc.only, sso: oidcEnabled ? oidc.label : null, claim: oidc.only ? 'no' : claimState(!!setup.done) }));
+// First run (src/auth.js claimState): the person who installed it chooses the admin password and is signed in.
+app.post('/api/auth/claim', (req, res) => {
+  if (!originAllowed(req)) return res.status(403).json({ error: 'refused: this request came from another website' });
+  const password = String(req.body?.password || '');
+  if (password.length < 10 || password.length > 200) return res.status(400).json({ error: 'the password needs at least 10 characters' });
+  if (oidc.only || !claimAdmin(password, !!setup.done)) return res.status(409).json({ error: 'this install already has an admin password' });
+  const { session, cookie } = createSession({ role: 'admin', device: String(req.body?.device || ''), via: 'password' }, req);
+  recordChange({ kind: 'event', summary: 'Admin password chosen (first run)' });
+  res.set('Set-Cookie', cookie).json({ ok: true, role: 'admin', device: session.device, crew: tokens.crew });
+});
 // Who this browser is signed in as ({ role: null } when it isn't).
 app.get('/api/auth/me', (req, res) => {
   const who = identify(req, reqUrl(req));
@@ -1978,7 +1988,9 @@ server.listen(config.port, config.host, () => {
   } else {
     // A log (Docker, a cloud platform): no passwords in it. The browser there counts as another device, so hand over
     // a link that signs in once; the passwords are in Dashboard → Settings → Security and in data/secrets.json.
-    console.log(`${tty.sym.arrow} Open the dashboard (this link signs in once, within 30 minutes; restart for a new one): ${config.publicUrl || `http://localhost:${config.port}`}/admin.html?token=${startupSignIn()}`);
+    const base = config.publicUrl || `http://localhost:${config.port}`;
+    if (claimState(!!setup.done) === 'open') console.log(`${tty.sym.arrow} Open ${base}/admin.html and choose the admin password (within the next hour)`);
+    else console.log(`${tty.sym.arrow} Open the dashboard (this link signs in once, within 30 minutes; restart for a new one): ${base}/admin.html?token=${startupSignIn()}`);
   }
   if (!tls && !config.publicUrl && config.host !== '127.0.0.1' && config.host !== 'localhost') {
     console.log(`\n  ${tty.c.gray('Plain HTTP: fine on the venue Wi-Fi. For phones on any network, turn on Dashboard → Settings → Public address.')}`);

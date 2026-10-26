@@ -50,7 +50,7 @@ test('a newer release: a link to its notes and the right download for each insta
   assert.equal(updateInfo({ platform: 'win32', docker: false, git: false, supervised: false }).download, `${base}/download/${tag}/OpenCaptions-windows.zip`);
   assert.equal(updateInfo({ platform: 'linux', docker: false, git: false, supervised: false }).download, `${base}/tag/${tag}`);
   // A Docker container can't replace itself, even when something restarts it.
-  assert.deepEqual(updateInfo({ platform: 'linux', docker: true, git: false, supervised: true }), { version: tag.slice(1), notes: `${base}/tag/${tag}`, whatsNew: '', canUpdate: false, command: 'git pull && docker compose up -d --build', download: '', app: '' });
+  assert.deepEqual(updateInfo({ platform: 'linux', docker: true, git: false, supervised: true }), { version: tag.slice(1), notes: `${base}/tag/${tag}`, whatsNew: '', canUpdate: false, command: 'docker compose up -d', download: '', app: '' });
   assert.equal(updateInfo({ platform: 'darwin', docker: false, git: true, supervised: false }).command, 'git pull && npm ci --omit=dev');
 });
 

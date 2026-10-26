@@ -86,7 +86,7 @@ export function updateInfo({ platform = process.platform, docker = !!process.env
     notes: `https://github.com/${REPO}/releases/tag/${tag}`,
     whatsNew,
     canUpdate,
-    command: canUpdate ? '' : docker ? 'git pull && docker compose up -d --build' : git ? 'git pull && npm ci --omit=dev' : '',
+    command: canUpdate ? '' : docker ? 'docker compose up -d' : git ? 'git pull && npm ci --omit=dev' : '',
     download: canUpdate || docker || git ? '' : url,
     app: canUpdate && !git && latestShell > (Number(shell) || 0) ? url : '',
   };

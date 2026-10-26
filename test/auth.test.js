@@ -107,7 +107,7 @@ test('without signing in, the dashboard API answers 401; a wrong password too', 
   const b = browser();
   assert.equal((await b.call('GET', '/api/status')).status, 401);
   assert.equal((await b.call('POST', '/api/auth/login', { password: 'nope' })).status, 401);
-  assert.deepEqual((await b.call('GET', '/api/auth/config')).body, { password: true, sso: 'Test ID' });
+  assert.deepEqual((await b.call('GET', '/api/auth/config')).body, { password: true, sso: 'Test ID', claim: 'no' }); // ADMIN_TOKEN is set: no first-run password step
 });
 
 test('signing in gives an HttpOnly, SameSite=Strict cookie; the password is never needed again', async () => {

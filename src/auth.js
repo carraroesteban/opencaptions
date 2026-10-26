@@ -66,6 +66,7 @@ export function createSession(who, req) {
   const s = { hash: sha(id), pid: crypto.randomBytes(6).toString('hex'), role: who.role, device: cleanDevice(who.device), via: who.via, createdAt: now, lastSeen: now, expiresAt: now + SESSION_HOURS * 3600_000, ip: String(req.ip || ''), stage: who.stage };
   sessions.set(s.hash, s);
   save(true);
+  if (s.role === 'admin' && readSecret('unclaimed')) saveSecret('unclaimed', ''); // an admin is in: no first-run password step any more
   return { session: s, cookie: cookieFor(id, req, SESSION_HOURS * 3600) };
 }
 
@@ -161,6 +162,27 @@ export function startupSignIn() {
 }
 /** Signed in with the startup link: it's used up. */
 export function spendStartupCode(password) { if (startup && safeEqual(password, startup.code)) startup = null; }
+
+// First run on a server, like WordPress: whoever installed it chooses the admin password in the browser instead of
+// reading it in the logs. Only a brand-new install (marked in data/secrets.json when its passwords were generated),
+// only while the welcome wizard isn't done and nobody has signed in as admin, and only in the first hour after
+// starting: a stranger would have to find the address before its owner does, and an old install never asks.
+const STARTED = Date.now();
+export const CLAIM_MS = 60 * 60_000;
+/** @param {boolean} setupDone  @returns {'open' | 'expired' | 'no'} */
+export function claimState(setupDone, now = Date.now()) {
+  if (!tokens.adminGenerated || setupDone || !readSecret('unclaimed')) return 'no';
+  return now - STARTED < CLAIM_MS ? 'open' : 'expired';
+}
+/** Set the chosen admin password. Synchronous, so two people at once can't both get it. */
+export function claimAdmin(password, setupDone) {
+  if (claimState(setupDone) !== 'open') return false;
+  saveSecret('adminToken', password);
+  saveSecret('adminChosen', '1');
+  saveSecret('unclaimed', '');
+  tokens.admin = password;
+  return true;
+}
 
 const ENV_NAME = { admin: 'ADMIN_TOKEN', crew: 'CREW_TOKEN', ingest: 'INGEST_TOKEN' };
 /** A password set in .env can only be changed there. */

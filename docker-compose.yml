@@ -1,7 +1,7 @@
 # OpenCaptions with Docker Compose.
 #
 #   cp .env.example .env            # optional settings: the API key can also be pasted in the dashboard
-#   docker compose up -d --build    # server on http://localhost:8080
+#   docker compose up -d            # server on http://localhost:8080 (also how you update: it gets the newest image)
 #   docker compose logs opencaptions | grep "Open the dashboard"   # a link that signs you in
 #   docker compose --profile tunnel up -d   # + Cloudflare Tunnel (set TUNNEL_TOKEN in .env)
 #
@@ -12,8 +12,8 @@ services:
       context: .
       args:
         WITH_YTDLP: "${WITH_YTDLP:-0}"
-    image: opencaptions:latest
-    pull_policy: build # `docker compose up` always builds from this folder: never an old local image
+    image: ghcr.io/carraroesteban/opencaptions:latest
+    pull_policy: always # `docker compose up -d` gets the newest release; `up -d --build` builds this folder instead
     restart: unless-stopped
     init: true
     env_file: .env

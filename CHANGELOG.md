@@ -4,6 +4,19 @@ All notable changes to this project are documented in this file. The format foll
 
 ## [Unreleased]
 
+## [0.9.3] - 2026-10-26
+
+Easier to start on a server: choose the admin password in the browser the first time, update Docker with one line, and language and theme each get their own button again.
+
+### Added
+
+- **Choose the admin password the first time you open it, like WordPress.** A new install on a server (Docker, a VPS) asks for the admin password in the dashboard instead of making you find it in the logs, then shows the crew password with a **Copy** button and opens the setup wizard. Only a brand-new install asks, only within an hour of starting and before anyone signs in; an install that already has a password never asks. `ADMIN_TOKEN` in `.env` still works and skips it.
+
+### Changed
+
+- **Language and theme are two buttons again,** on every page: the globe only changes the language, and the button next to it (its icon is the current theme) chooses Like the system, Light, Dark or High contrast.
+- **Docker Compose updates in one line: `docker compose up -d`.** The compose file now uses the published image and gets the newest release each time, so there's no code to download or build. `docker compose up -d --build` still builds the folder (for `WITH_YTDLP=1` or your own changes). An older compose folder needs the new `docker-compose.yml` once.
+
 ## [0.9.2] - 2026-10-25
 
 A security update: every computer now needs a Node.js with the October 2026 fixes (the apps get one by themselves). Also cleaner captions, captions over music, Check for Updates… in the apps, language and theme in one globe button, and a simpler website.

@@ -3,7 +3,7 @@
 // Nothing is kept in localStorage and no password stays in a link: an old ?token= link, or a password a previous
 // version stored in this browser, is swapped for a session and forgotten.
 import { LANG } from '/prefs.js';
-import { store } from '/common.js';
+import { store, copyText, esc } from '/common.js';
 
 const T = {
   es: {
@@ -24,6 +24,18 @@ const T = {
     badCode: 'Ese código no es correcto o ya se usó. Esperá el siguiente y probá de nuevo.',
     slow: 'Demasiados intentos fallidos. Esperá 10 minutos.',
     offline: 'No se pudo contactar al servidor. ¿Sigue encendido?',
+    claimTitle: 'Creá la contraseña de administración',
+    claimLead: 'Este OpenCaptions es nuevo. Elegí la contraseña que abre este panel: se pide una sola vez.',
+    newPw: 'Contraseña (10 caracteres o más)',
+    againPw: 'Repetila',
+    mismatch: 'Las dos contraseñas no coinciden.',
+    create: 'Crear y entrar',
+    expired: 'Para crear la contraseña de administración, reiniciá OpenCaptions y volvé a abrir esta página dentro de la hora.',
+    crewTitle: 'La contraseña del equipo',
+    crewLead: 'Dásela a voluntarios y técnicos: con ella manejan los controles en vivo, sin poder cambiar la configuración. Está también en Ajustes → Seguridad.',
+    copy: 'Copiar',
+    copied: 'Copiada',
+    next: 'Seguir',
   },
   en: {
     title: 'Sign in to the dashboard',
@@ -43,6 +55,18 @@ const T = {
     badCode: 'That code isn’t right or was already used. Wait for the next one and try again.',
     slow: 'Too many failed attempts. Wait 10 minutes.',
     offline: 'Couldn’t reach the server. Is it still running?',
+    claimTitle: 'Create the admin password',
+    claimLead: 'This OpenCaptions is new. Choose the password that opens this dashboard: it’s only asked once.',
+    newPw: 'Password (10 characters or more)',
+    againPw: 'Type it again',
+    mismatch: 'The two passwords don’t match.',
+    create: 'Create and sign in',
+    expired: 'To create the admin password, restart OpenCaptions and open this page again within the hour.',
+    crewTitle: 'The crew password',
+    crewLead: 'Give it to volunteers and technicians: it opens the live controls, without changing the setup. It’s also in Settings → Security.',
+    copy: 'Copy',
+    copied: 'Copied',
+    next: 'Continue',
   },
 };
 const t = T[LANG] || T.en;
@@ -145,6 +169,34 @@ export async function signInScreen({ message = '', password = '' } = {}) {
     f.querySelector('.back').onclick = () => { pw = ''; wire(passwordStep()); };
     return f;
   };
+  const claimStep = () => {
+    dlg.innerHTML = `<form method="dialog" class="u-stack14">
+      <h3 class="u-m0">${t.claimTitle}</h3>
+      <p class="muted-note u-m0">${t.claimLead}</p>
+      <p class="err u-m0 u-bad" role="alert"></p>
+      <label class="field">${t.newPw}<input name="pw" type="password" autocomplete="new-password" minlength="10" required spellcheck="false" /></label>
+      <label class="field">${t.againPw}<input name="pw2" type="password" autocomplete="new-password" minlength="10" required spellcheck="false" /></label>
+      <label class="field">${t.device}<input name="device" maxlength="60" autocomplete="off" /><small class="u-fg2">${t.deviceHint}</small></label>
+      <div class="dlg-actions"><button class="primary" type="submit">${t.create}</button></div>
+    </form>`;
+    const f = dlg.querySelector('form');
+    f.device.value = savedDevice();
+    f.pw.focus();
+    return f;
+  };
+  const crewStep = (crew, body) => {
+    dlg.innerHTML = `<form method="dialog" class="u-stack14">
+      <h3 class="u-m0">${t.crewTitle}</h3>
+      <p class="muted-note u-m0">${t.crewLead}</p>
+      <div class="row"><code class="u-grow">${esc(crew)}</code><button type="button" class="copy">${t.copy}</button></div>
+      <div class="dlg-actions"><button class="primary" type="submit">${t.next}</button></div>
+    </form>`;
+    const f = dlg.querySelector('form');
+    const c = f.querySelector('.copy');
+    c.onclick = () => copyText(crew).then(() => { c.textContent = t.copied; }, () => {});
+    f.onsubmit = (e) => { e.preventDefault(); dlg.close(); dlg.remove(); finish(body); };
+    f.querySelector('.primary').focus();
+  };
   dlg.showModal();
   let device = savedDevice();
   let finish;
@@ -164,8 +216,26 @@ export async function signInScreen({ message = '', password = '' } = {}) {
       (f.code || f.pw)?.select?.();
     });
   };
+  if (cfg.claim === 'open' && !pw) {
+    const f = claimStep();
+    f.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const err = f.querySelector('.err');
+      if (f.pw.value !== f.pw2.value) { err.textContent = t.mismatch; return; }
+      device = f.device.value.trim() || guessDevice();
+      store.set('device.name', device);
+      let r;
+      try { r = await fetch('/api/auth/claim', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ password: f.pw.value, device }) }); } catch { err.textContent = t.offline; return; }
+      const body = await r.json().catch(() => ({}));
+      if (r.ok) return crewStep(body.crew, body);
+      if (r.status === 409) { wire(passwordStep()); return; } // someone else just did it, or it's already set: sign in
+      err.textContent = body.error || t.bad;
+    });
+    return done;
+  }
   const first = pw ? codeStep() : passwordStep();
   if (message) first.querySelector('.err').textContent = message;
+  else if (cfg.claim === 'expired') first.querySelector('.err').textContent = t.expired;
   wire(first);
   return done;
 }

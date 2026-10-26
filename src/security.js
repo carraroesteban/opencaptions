@@ -23,9 +23,11 @@ function loadSecrets() {
   const file = path.join(config.dataDir, 'secrets.json');
   const s = readSecretsFile(config.dataDir);
   let dirty = false;
+  const firstRun = !s.adminToken;
   for (const k of ['adminToken', 'ingestToken', 'crewToken']) {
     if (!s[k]) { s[k] = crypto.randomBytes(18).toString('base64url'); dirty = true; }
   }
+  if (firstRun && !config.adminToken && !fs.existsSync(path.join(config.dataDir, 'sessions.json'))) s.unclaimed = '1'; // a new install: its admin can choose the password in the browser (src/auth.js claimState)
   if (dirty) {
     fs.mkdirSync(config.dataDir, { recursive: true });
     writeFileAtomic(file, JSON.stringify(s, null, 2), { mode: 0o600 });

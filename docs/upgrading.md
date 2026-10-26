@@ -9,7 +9,7 @@ Every update keeps your settings, passwords, rooms and transcripts: they live in
 | The Mac app or the Windows launcher | **Check for Updates…** in the app's menu, then **Update and Restart**. The dashboard's line **Update…** does the same. [Details](deployment.md#updates) |
 | `npm run app` from a clone | **Update…** in the dashboard (it runs `git pull --ff-only`), or `git pull` and start it again |
 | `npm start` from a clone, or a service | `git pull`, `npm ci --omit=dev`, then restart |
-| Docker Compose | `git pull && docker compose up -d --build` |
+| Docker Compose | `docker compose up -d` (it gets the newest release). Building it yourself: `git pull && docker compose up -d --build` |
 | The published Docker image | `docker rm -f opencaptions`, then the same `docker run --pull always …` line again |
 
 ## 0.9.1 → 0.9.2

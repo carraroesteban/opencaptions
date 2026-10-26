@@ -1,4 +1,4 @@
-// The page language and the language + theme switcher of page headers. Kept apart from i18n.js (the operator
+// The page language and the language and theme buttons of page headers. Kept apart from i18n.js (the operator
 // dictionary, ~40 KB) so the audience's phones and the pages without a dictionary don't download it.
 import { store, qs, setTheme } from '/common.js';
 import { menu, popMenu } from '/menu.js';
@@ -14,9 +14,9 @@ export const LANG = (() => {
 
 const NAMES = { es: 'Español', en: 'English', pt: 'Português' }; // in their own language: findable by someone who can't read this one
 const PREFS_LABELS = {
-  es: { lang: 'Idioma de la página', theme: 'Tema', both: 'Idioma y tema', auto: 'Como el sistema', light: 'Claro', dark: 'Oscuro', contrast: 'Alto contraste' },
-  en: { lang: 'Page language', theme: 'Theme', both: 'Language and theme', auto: 'Like the system', light: 'Light', dark: 'Dark', contrast: 'High contrast' },
-  pt: { lang: 'Idioma da página', theme: 'Tema', both: 'Idioma e tema', auto: 'Como o sistema', light: 'Claro', dark: 'Escuro', contrast: 'Alto contraste' },
+  es: { lang: 'Idioma de la página', theme: 'Tema', auto: 'Como el sistema', light: 'Claro', dark: 'Oscuro', contrast: 'Alto contraste' },
+  en: { lang: 'Page language', theme: 'Theme', auto: 'Like the system', light: 'Light', dark: 'Dark', contrast: 'High contrast' },
+  pt: { lang: 'Idioma da página', theme: 'Tema', auto: 'Como o sistema', light: 'Claro', dark: 'Escuro', contrast: 'Alto contraste' },
 };
 
 const GLOBE = '<svg class="i" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.4 2.6 3.6 5.6 3.6 9s-1.2 6.4-3.6 9c-2.4-2.6-3.6-5.6-3.6-9S9.6 5.6 12 3z"/></svg>';
@@ -32,8 +32,9 @@ const THEME_ICON = {
 const themeSvg = (k) => `<svg class="i" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${THEME_ICON[k]}</svg>`;
 
 /**
- * The page's language and theme in the header, on every page: one globe button (the code, e.g. EN) whose menu lists
- * the languages by name, then the themes (Like the system / Light / Dark / High contrast). One tap opens, one chooses.
+ * The page's language and theme in the header, on every page: a globe button (the code, e.g. EN) whose menu lists
+ * the languages by name, and next to it a theme button (its icon is the current theme) with Like the system / Light /
+ * Dark / High contrast. One tap opens, one chooses.
  * @param {{ langs?: string[] }} [o]  languages to offer (audience pages add 'pt'); default: Spanish and English
  * (a language that gets a dictionary in i18n.js goes in the default too).
  */
@@ -43,20 +44,30 @@ export function prefsControls({ langs = ['es', 'en'] } = {}) {
   wrap.setAttribute('data-no-i18n', '');
   const cur = langs.includes(LANG) ? LANG : 'es';
   const L = PREFS_LABELS[cur] || PREFS_LABELS.en;
-  const id = `prefs-menu-${++n}`;
+  const id = ++n;
   const th = () => document.documentElement.dataset.theme || 'auto';
-  wrap.innerHTML = `<button type="button" class="prefs-btn" aria-haspopup="true" aria-expanded="false" aria-controls="${id}" aria-label="${L.both}: ${cur.toUpperCase()}" title="${L.both}">${GLOBE}<span>${cur.toUpperCase()}</span></button>
-    <div class="ctx" popover id="${id}" role="menu" aria-label="${L.both}"></div>`;
-  const b = wrap.querySelector('button'), m = wrap.querySelector('[popover]');
+  wrap.innerHTML = `<button type="button" class="prefs-btn" data-p="lang" aria-haspopup="true" aria-expanded="false" aria-controls="prefs-lang-${id}" aria-label="${L.lang}: ${cur.toUpperCase()}" title="${L.lang}">${GLOBE}<span>${cur.toUpperCase()}</span></button>
+    <button type="button" class="prefs-btn prefs-theme" data-p="theme" aria-haspopup="true" aria-expanded="false" aria-controls="prefs-theme-${id}"></button>
+    <div class="ctx" popover id="prefs-lang-${id}" role="menu" aria-label="${L.lang}"></div>
+    <div class="ctx" popover id="prefs-theme-${id}" role="menu" aria-label="${L.theme}"></div>`;
+  const [lb, tb] = wrap.querySelectorAll('button'), [lp, tp] = wrap.querySelectorAll('[popover]');
+  const showTheme = () => { tb.innerHTML = themeSvg(th()); tb.setAttribute('aria-label', `${L.theme}: ${L[th()]}`); tb.title = L.theme; };
+  showTheme();
   const item = (k, label, on, ic = '') => `<button type="button" role="menuitemradio" aria-checked="${on}" data-k="${k}">${ic}<span>${label}</span>${on ? CHECK : ''}</button>`;
-  const lm = menu(m);
-  b.onclick = (e) => popMenu(lm, b, `<div role="group" aria-label="${L.lang}">${[...new Set(langs)].map((k) => item(`ui:${k}`, NAMES[k] || k, k === cur)).join('')}</div>`
-    + `<span class="ctx-sep" role="separator"></span><div role="group" aria-label="${L.theme}">${Object.keys(THEME_ICON).map((k) => item(`th:${k}`, L[k], k === th(), themeSvg(k))).join('')}</div>`, e);
-  lm.onclick = (e) => {
-    const [kind, v] = e.target.closest('[data-k]')?.dataset.k.split(':') || [];
+  const lm = menu(lp), tm = menu(tp);
+  lb.onclick = (e) => popMenu(lm, lb, [...new Set(langs)].map((k) => item(k, NAMES[k] || k, k === cur)).join(''), e);
+  tb.onclick = (e) => popMenu(tm, tb, Object.keys(THEME_ICON).map((k) => item(k, L[k], k === th(), themeSvg(k))).join(''), e);
+  tm.onclick = (e) => {
+    const v = e.target.closest('[data-k]')?.dataset.k;
     if (!v) return;
-    m.hidePopover();
-    if (kind === 'th') return setTheme(v);
+    tp.hidePopover();
+    setTheme(v);
+    showTheme();
+  };
+  lm.onclick = (e) => {
+    const v = e.target.closest('[data-k]')?.dataset.k;
+    if (!v) return;
+    lp.hidePopover();
     if (v === cur) return;
     store.set('ui', v);
     const u = new URL(location.href);

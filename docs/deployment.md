@@ -178,13 +178,14 @@ TZ=<your time zone, e.g. America/Argentina/Buenos_Aires>
 Then start it:
 
 ```bash
-docker compose up -d --build
-docker compose logs -f          # shows the URLs and a dashboard link that signs you in
+docker compose up -d
 ```
+
+Then open the dashboard (`https://<your address>/admin.html`). A new install asks you to choose the admin password there, within an hour of starting, and then shows the crew password to hand over; nobody has to read the logs. (Missed the hour? Restart it. Prefer to set it yourself? Put `ADMIN_TOKEN=` in `.env`.)
 
 By default the container is published only on `127.0.0.1:8080`, ready for a tunnel or reverse proxy on the same host. To reach it from the LAN directly, set `BIND_ADDR=0.0.0.0` in `.env`.
 
-To include `yt-dlp` for YouTube demos and `npm run multi`, set `WITH_YTDLP=1` in `.env` and rebuild.
+To include `yt-dlp` for YouTube demos and `npm run multi`, set `WITH_YTDLP=1` in `.env` and build it yourself: `docker compose up -d --build` (also for running your own changes to the code).
 
 For HTTPS, the dashboard's [public address](#one-click-public-address) works inside the container (the image includes `cloudflared`). Or add the Cloudflare Tunnel as a second container:
 
@@ -197,10 +198,10 @@ For HTTPS, the dashboard's [public address](#one-click-public-address) works ins
    docker compose --profile tunnel up -d
    ```
 
-Upgrade:
+Upgrade (it gets the newest release; your `.env`, `config/` and `data/` stay):
 
 ```bash
-git pull && docker compose up -d --build
+docker compose up -d
 ```
 
 ### Node.js directly
@@ -378,6 +379,6 @@ Rooms share no state, so no message bus is needed. See [Architecture](architectu
 ## Backups and upgrades
 
 - **Back up the data folder.** It holds transcripts, rooms created from the dashboard, the History, and the passwords and API key (`secrets.json`): `data/` in a clone or Docker, `~/Library/Application Support/OpenCaptions/data` with the Mac app, `%LOCALAPPDATA%\OpenCaptions\data` with the Windows launcher. In a clone, also back up `config/`.
-- **Upgrade:** download the new Mac or Windows version; or `git pull`, then `npm ci --omit=dev` and restart; or `git pull && docker compose up -d --build`; with the published image, `docker pull ghcr.io/carraroesteban/opencaptions` and start the container again with your `docker run` line. The dashboard says when a new version is out; in the Mac and Windows apps, **Check for Updates…** or the dashboard's **Update…** (also with `npm run app`) does it in one click: see [Updates](#updates). `UPDATE_CHECK=0` turns the check off; see [New versions](reference/configuration.md#new-versions). Check [CHANGELOG.md](../CHANGELOG.md) for breaking changes first.
+- **Upgrade:** download the new Mac or Windows version; or `git pull`, then `npm ci --omit=dev` and restart; or `docker compose up -d` with Docker Compose (`git pull && docker compose up -d --build` if you build it yourself); with `docker run`, `docker pull ghcr.io/carraroesteban/opencaptions` and start the container again with your `docker run` line. The dashboard says when a new version is out; in the Mac and Windows apps, **Check for Updates…** or the dashboard's **Update…** (also with `npm run app`) does it in one click: see [Updates](#updates). `UPDATE_CHECK=0` turns the check off; see [New versions](reference/configuration.md#new-versions). Check [CHANGELOG.md](../CHANGELOG.md) for breaking changes first.
 - **Roll back:** `git checkout <previous tag>` and restart.
 - Screens, phones and agents reconnect by themselves after a restart. A restart during a talk loses a few seconds of captions.

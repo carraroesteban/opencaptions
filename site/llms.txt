@@ -3,7 +3,7 @@
 > Free, open-source software for live captions and real-time translation at events: conferences, classrooms, public meetings, festivals and places of worship. Attendees scan a QR code and read the captions on their own phone, in their own language, with no app. Captions also appear on a screen beside the stage and in the livestream (OBS, vMix). Self-hosted; the AI is Google's Gemini (about US$0.54 per room-hour of speech) or a local model on a laptop at the venue (free, works offline). MIT license.
 
 Key facts:
-- Version 0.9.2. Download the app for macOS 13+ (Apple Silicon) or Windows 10/11 (64-bit), or run the Docker image or Node.js from source on Linux. It updates itself from the dashboard ("Update now") or the app's menu ("Check for Updates…"), keeping settings and transcripts; nothing installs until the user agrees.
+- Version 0.9.3. Download the app for macOS 13+ (Apple Silicon) or Windows 10/11 (64-bit), or run the Docker image or Node.js from source on Linux. It updates itself from the dashboard ("Update now") or the app's menu ("Check for Updates…"), keeping settings and transcripts; nothing installs until the user agrees.
 - Cost: the software is free (MIT, no paid plan, no limit on rooms or attendees). The cloud AI is Google's Gemini on the organizer's own API key, billed by Google: about US$0.54 per room-hour of speech, plus US$0.4–0.6 per extra language; silence is not billed; a 40-minute English talk captioned into Spanish costs about US$0.70. Local mode is free and works offline, about one room per laptop, a few seconds slower.
 - Captions appear about 2–3 seconds after the words are spoken; translations 3–5 seconds after (measured in a three-room rehearsal with 150 phones).
 - One small server (1 CPU, 512 MB) handles about 10 rooms.

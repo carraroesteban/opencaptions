@@ -48,7 +48,8 @@
 .au-btn svg.i { width: 20px; height: 20px; }
 .au-btn[aria-pressed='true'] { background: var(--primary-bg); color: var(--primary-fg); }
 .au-aa { font-family: var(--font-display); font-weight: 800; font-size: 18px; letter-spacing: -.01em; }
-.w-dock .prefs-btn { height: 48px; padding: 0 14px 0 12px; border-radius: 16px; font-size: 15px; } /* the globe: page language and theme, a dock button like its neighbours */
+.w-dock .prefs-btn { height: 48px; padding: 0 14px 0 12px; border-radius: 16px; font-size: 15px; } /* the globe and the theme: dock buttons like their neighbours */
+.w-dock .prefs-theme { width: 48px; padding: 0; }
 @keyframes au-pop { from { opacity: 0; transform: scale(.9); } }
 @keyframes au-breathe { 50% { opacity: .35; } }
 
@@ -215,7 +216,7 @@ body.watch { display: flex; flex-direction: column; height: 100dvh; overflow: hi
 /* 360 px phones (many Androids): the bar fits without cutting off its last button; a longer label shortens with "…" */
 .w-ai { min-width: 0; }
 .w-ai .lbl { overflow: hidden; text-overflow: ellipsis; }
-@media (max-width: 380px) { .w-dock { gap: 6px; } .w-dock :is(.au-btn, .prefs-btn) { min-width: 44px; height: 44px; padding: 0 10px; } .w-ai { height: 44px; padding: 0 14px; font-size: 14.5px; } }
+@media (max-width: 380px) { .w-dock { gap: 6px; } .w-dock :is(.au-btn, .prefs-btn) { min-width: 44px; height: 44px; padding: 0 10px; } .w-dock .prefs-theme { width: 44px; padding: 0; } .w-ai { height: 44px; padding: 0 14px; font-size: 14.5px; } }
 .w-ai:active { transform: scale(.96); }
 .w-ai svg.i { width: 19px; height: 19px; color: var(--spark); animation: w-twinkle .7s var(--spring) .35s both; }
 @keyframes w-twinkle { from { opacity: 0; transform: scale(.4) rotate(-40deg); } }
