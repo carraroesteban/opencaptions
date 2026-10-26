@@ -34,7 +34,7 @@ OpenCaptions is free, open-source software for live captions and translation at 
 |---|---|
 | [Requirements](requirements.md) | Check operating systems, hardware, network and accounts. |
 | [Deployment](deployment.md) | Choose between a venue computer and a cloud server, then install with the app, Docker, Node.js or a system service; updates and backups. |
-| [Upgrading](upgrading.md) | Update any kind of install, and what changes in the next version. |
+| [Upgrading](upgrading.md) | Update any kind of install, and what changes in 0.9.2. |
 | [Networking](networking.md) | Know which ports and domains are used, and what to do when the venue network blocks something. |
 | [Security guide](security-guide.md) | The threat model, who can see what, and the hardening checklist. |
 | [Local mode](local.md) | Run speech recognition and translation on your own computer: no API key, no internet, no cost per hour; and the offline backup. |

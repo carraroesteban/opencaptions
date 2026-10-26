@@ -12,11 +12,11 @@ Every update keeps your settings, passwords, rooms and transcripts: they live in
 | Docker Compose | `git pull && docker compose up -d --build` |
 | The published Docker image | `docker rm -f opencaptions`, then the same `docker run --pull always …` line again |
 
-## 0.9.1 → the next version (not released yet)
+## 0.9.1 → 0.9.2
 
-What's below is in the code, listed under *Unreleased* in the [changelog](../CHANGELOG.md), and applies once that version is out.
+**Nothing to change in your settings.** Your `.env`, `config/` files and data folder work as they are.
 
-**Nothing to change.** Your `.env`, `config/` files and data folder work as they are; the changelog lists no breaking changes since 0.9.
+**Node.js with the October 2026 security fixes is required** (22.23.4, 24.22.1 or 26.12.1 and newer; Node 20 is no longer supported). The Mac and Windows apps download one by themselves; on a server or from source, update Node first or OpenCaptions won't start and will say how.
 
 **Updating the app itself, once.** The 0.9 apps don't have **Check for Updates…** in their menu yet. Click **Update now** in the dashboard as before, or download the new app and use it instead of the old one (on a Mac, drag it to Applications and replace the old copy). When an update also changes the app's window, the update dialog says so and offers **Download the App**. From then on, the menu does it all.
 

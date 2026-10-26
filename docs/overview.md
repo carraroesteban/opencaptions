@@ -91,19 +91,18 @@ The design details are in [Architecture](architecture.md), and the reasons behin
 | Local mode on a Mac (Apple's speech recognition and translation) | Implemented, the default on Macs with Apple chips and macOS 26+; measured on a MacBook Pro M3 Pro against Whisper: about as accurate, first words sooner, about 60 times less processor time, no download. One room measured ([Local mode](local.md#apples-speech-recognition-compared-with-whisper)) |
 | Local mode (Whisper + Ollama) | Implemented, also from a button in the app (captions about a minute after the click on a MacBook Pro M3 Pro; translations about 5½ more minutes the first time, while the 3.1 GB model downloads); measured on CPUs with the bundled speech server (one room). GPU and Neural Engine backends, and several rooms per machine, not measured yet ([Local mode](local.md#measured-results)) |
 | Automated tests | About 300 tests on Linux, macOS and Windows: captions, exports, live corrections, breaks, recordings, restarts, sign-in and roles, security rules, alerts, reconnection edge cases, the assistant, the agenda, AI assistants over MCP, local mode, and an end-to-end test that replays a recorded Gemini session. Every page is checked against WCAG 2.2 AA (`npm run a11y`). `npm run local -- --check` tests local models end to end. |
-| Version | 0.9.1 (1.0 is planned, not out yet). Changes, and anything breaking, are listed in the [changelog](../CHANGELOG.md); [upgrade notes](upgrading.md). |
+| Version | 0.9.2. Changes, and anything breaking, are listed in the [changelog](../CHANGELOG.md); [upgrade notes](upgrading.md). |
 
 ## Roadmap
 
 1. **Signed apps and more ways to install:** sign the Mac app and Windows launcher (no first-launch warning), `npx opencaptions`, a Homebrew tap and a winget entry.
 2. **Closed captions inside the video stream** (CEA-608/708) for broadcasters and YouTube Live.
-3. **Telling voices apart** automatically, so the crew doesn't have to label speakers.
+3. **Telling voices apart** automatically, so transcripts can say who said what without an agenda.
 4. **Local mode:** closer to the cloud's delay on computers other than Macs (today about 5–10 s behind it on a laptop's processor; on a Mac, Apple's speech shows first words in about 1 s), measure several rooms per machine, and a local translated voice on computers other than Macs.
 
-## Coming in the next version
+## New in 0.9.2
 
-Already in the code, not released yet (*Unreleased* in the changelog):
-
+- Every computer needs a Node.js with the October 2026 security fixes; the apps get one by themselves.
 - The Mac and Windows apps update themselves from their menu (**Check for Updates…**).
 - Original captions without glued words or stray capitals.
 - Talks over loud music are captioned instead of paused.

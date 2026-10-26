@@ -4,6 +4,10 @@ All notable changes to this project are documented in this file. The format foll
 
 ## [Unreleased]
 
+## [0.9.2] - 2026-10-25
+
+A security update: every computer now needs a Node.js with the October 2026 fixes (the apps get one by themselves). Also cleaner captions, captions over music, Check for Updates… in the apps, language and theme in one globe button, and a simpler website.
+
 ### Added
 
 - **Check for Updates… in the Mac and Windows apps.** The Mac app's OpenCaptions menu and the Windows launcher's icon next to the clock ask GitHub for a new version right away (even with the daily check off) and install it, like the dashboard's **Update now**. The 0.9 apps don't have it yet: update them once from the dashboard ([Upgrading](docs/upgrading.md)).

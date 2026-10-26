@@ -71,7 +71,7 @@ The apps aren't signed with a paid Apple or Microsoft certificate yet, so the fi
 
 ### Updates
 
-OpenCaptions updates itself from inside the app: in 0.9.1, click **Update now** on the dashboard's line when a new version is out. From the next version on, like Zoom, you can also choose **Check for Updates…** in the app's menu (on a Mac, the **OpenCaptions** menu; on Windows, the OpenCaptions icon in the taskbar's notification area). It shows what's new, and **Update and Restart** downloads the new version and restarts it in about a minute; your settings, rooms and transcripts stay. The dashboard also shows one quiet line when a new version is out. Nothing is installed until you click. [How updates work](docs/deployment.md#updates).
+OpenCaptions updates itself from inside the app, like Zoom: click **Update now** on the dashboard's line when a new version is out, or choose **Check for Updates…** in the app's menu (on a Mac, the **OpenCaptions** menu; on Windows, the OpenCaptions icon in the taskbar's notification area). It shows what's new, and **Update and Restart** downloads the new version and restarts it in about a minute; your settings, rooms and transcripts stay. The dashboard also shows one quiet line when a new version is out. Nothing is installed until you click. [How updates work](docs/deployment.md#updates).
 
 ### On a server: Docker, a VPS or the cloud
 
@@ -213,7 +213,7 @@ All the docs, by who you are: **[docs/README.md](docs/README.md)**.
 2. El asistente pregunta el nombre del evento, las salas y los idiomas, conecta Gemini con tu API key y crea una dirección pública con HTTPS en un clic.
 3. ¿Sin key, o tu key gratis se quedó sin cuota en pleno evento? Hacé clic en **Usar esta computadora (gratis, más lento)**.
 
-Para actualizar, hacé clic en **Actualizar ahora** en el panel cuando sale una versión nueva (desde la próxima versión, también **Buscar actualizaciones…** en el menú de la app): se descarga y se reinicia en cerca de un minuto, sin perder ajustes ni transcripciones.
+Para actualizar, hacé clic en **Actualizar ahora** en el panel cuando sale una versión nueva (o **Buscar actualizaciones…** en el menú de la app): se descarga y se reinicia en cerca de un minuto, sin perder ajustes ni transcripciones.
 
 En un servidor, con Docker: el mismo comando de [arriba](#on-a-server-docker-a-vps-or-the-cloud). Guía para el día del evento: [event-day.es.md](docs/operations/event-day.es.md).
 
