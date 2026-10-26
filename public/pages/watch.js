@@ -109,15 +109,20 @@ const sock = new Socket(() => wsUrl('/ws/view', { stage: stageId, langs: wants()
   binary(ab) { if (listening) (listenWith === 'room' ? roomPlayer : player).push(ab); },
   close(e) { if (e.code === 4004) location.href = '/'; },
 });
-// A phone waking from sleep can hold a dead socket for minutes: after a long absence, reconnect (history comes back).
+// Back from the background, however briefly: a phone suspends the page and its socket can be dead while it still
+// looks open (iOS), so reconnect at once and get the history, instead of showing the old text as if it were live.
+// Until the new hello, the status says Reconnecting and the text is dimmed. Same on a restore from the back/forward cache.
 let hiddenAt = 0;
+const comeBack = () => { sock.reconnect(); showStatus(); };
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'hidden') hiddenAt = Date.now();
-  else if (hiddenAt && Date.now() - hiddenAt > 20000) sock.reconnect();
+  else if (hiddenAt && Date.now() - hiddenAt > 1000) comeBack();
 });
+addEventListener('pageshow', (e) => { if (e.persisted) comeBack(); });
 
 let langsKey = '';
 function onHello(m) {
+  const sameTalk = !!hello && hello.talk === m.talk; // a reconnect in the same talk: keep the scrollback (CaptionState.load)
   hello = m;
   document.title = `${m.stage.name} · ${ev.name}`;
   $('stage').textContent = m.stage.name;
@@ -136,8 +141,9 @@ function onHello(m) {
   fitLangs();
   $('text').classList.remove('stale');
   for (const [ch, hist] of Object.entries(m.history)) {
-    (states[ch] ??= new CaptionState()).load(hist, m.partial[ch]);
-    pacer(ch).load([...hist, m.partial[ch]].filter(Boolean)); // already said: shown at once
+    const s = (states[ch] ??= new CaptionState());
+    s.load(hist, m.partial[ch], sameTalk);
+    pacer(ch).load([...s.finals, m.partial[ch]].filter(Boolean)); // already said: shown at once
   }
   $('listen').classList.toggle('hidden', !listenMode());
   if (m.listen) onListen(m.listen);
@@ -287,7 +293,7 @@ function showStatus() {
   $('text').classList.toggle('down', down && connected);
 }
 showStatus();
-setInterval(showStatus, 1000);
+setInterval(() => document.hidden || showStatus(), 1000); // nothing to show in the background
 // The phone's network: say so at once, and come back the moment it's there (not after the retry's wait).
 addEventListener('offline', showStatus);
 addEventListener('online', () => { sock.reconnect(); showStatus(); });

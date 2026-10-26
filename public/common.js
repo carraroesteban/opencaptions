@@ -248,7 +248,17 @@ export function langLabel(code, names = {}) {
 /** Keeps finals + current partial for one channel. */
 export class CaptionState {
   constructor(max = 200) { this.finals = []; this.partial = null; this.max = max; this.updatedAt = 0; }
-  load(history = [], partial = null) { this.finals = history.slice(); this.partial = partial; this.updatedAt = Date.now(); }
+  /**
+   * The server's recent history (on connecting). keep: same talk, after a reconnect: when it overlaps what's here, the
+   * older lines stay (the history is only the last few), so a phone that slept doesn't lose its scrollback; with no
+   * overlap (away longer than the history reaches) it starts over, rather than join two parts with a gap between.
+   */
+  load(history = [], partial = null, keep = false) {
+    const at = keep && history.length ? this.finals.findIndex((f) => f.id === history[0].id) : -1;
+    this.finals = (at > 0 ? [...this.finals.slice(0, at), ...history] : history.slice()).slice(-this.max);
+    this.partial = partial;
+    this.updatedAt = Date.now();
+  }
   apply(seg) {
     this.updatedAt = Date.now();
     if (seg.final) {
@@ -298,7 +308,9 @@ export class CaptionFlow {
       let p = this.box.lastElementChild;
       const lastText = p?.lastElementChild?.textContent || '';
       const spk = seg.spk || '';
-      if (!p || p.tagName !== 'P' || (spk && spk !== (p.dataset.who || '')) || (endsSentence(lastText) && p.textContent.length >= this.chars)) {
+      // A sentence that never ends (no punctuation, some languages and engines) still breaks at 4× the length, so the
+      // paragraph cap (max) bounds the page however long the talk runs.
+      if (!p || p.tagName !== 'P' || (spk && spk !== (p.dataset.who || '')) || (endsSentence(lastText) && p.textContent.length >= this.chars) || p.textContent.length >= this.chars * 4) {
         const prev = p?.tagName === 'P' ? p.dataset.who || '' : '';
         p = document.createElement('p');
         p.dataset.who = spk || prev;
