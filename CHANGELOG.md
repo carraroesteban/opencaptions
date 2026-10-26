@@ -4,6 +4,16 @@ All notable changes to this project are documented in this file. The format foll
 
 ## [Unreleased]
 
+### Fixed
+
+- **A phone back from the background shows live captions again at once, never old text that looks live.** It used to reconnect only after more than 20 seconds away, so a phone locked for a few seconds (iOS can cut its connection that fast) could keep showing the last lines as if the talk had stopped. Now any return, and a page restored from the back/forward cache, reconnects at once; until the new captions arrive it says **Reconnecting** and dims the text.
+- **Reconnecting keeps the scrollback.** In the same talk, the lines already on screen stay and the history continues after them, instead of the page dropping to the last 40 lines.
+- **Speech that never ends a sentence** (no punctuation) no longer grows one paragraph without limit on phones: it breaks at four times the usual length, so the page stays a bounded size over a long talk.
+
+### Added
+
+- **`npm run soak`**, a long-run check: rooms hearing speech the whole time on the mock engine and phones coming and going, measured every minute (memory and event-loop lag).
+
 ## [0.9.4] - 2026-10-26
 
 Every room in its colour on every page, language and theme buttons on the sign-in screen too, and updates that reach phones right away instead of hours later.

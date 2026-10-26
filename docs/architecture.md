@@ -180,7 +180,7 @@ stateDiagram-v2
 | Session alive but silent while people talk | Watchdog: 20 s of speech without text | Force a fresh session |
 | Translation throttled (HTTP 429) or slow | Error or timeout | Back off and retry. Provisional updates are dropped first. The primary language temporarily falls back to Live's own translation. |
 | Venue network drop | Agent socket closes, or no server message for 6 s (half-dead connection) | The agent reconnects forever and keeps about 15 s of audio |
-| Phone vanishes without closing (Wi-Fi roam, sleep) | No pong to the 25 s ping | The server drops it after about 50 s; slow clients with over 1 MB queued are dropped too. They reconnect and get the history. The phone page also reconnects by itself when it comes back after more than 20 s in the background, so a phone that slept never shows a frozen page. |
+| Phone vanishes without closing (Wi-Fi roam, sleep) | No pong to the 25 s ping | The server drops it after about 50 s; slow clients with over 1 MB queued are dropped too. They reconnect and get the history. The phone page also reconnects by itself whenever it comes back from the background (over a second) or from the back/forward cache: until the new history arrives it says **Reconnecting** and dims the text, so a phone that slept never shows a frozen page as live. In the same talk it keeps what was on screen and adds the history after it; away longer than the history reaches, it starts again from the history. |
 | Malformed input (oversized frame, bad URL, stream that isn't live yet) | Socket/stream error | Logged; the connection or pull is closed or retried, the process keeps serving every other room |
 | Talk rollover while a translation is in flight | — | Translators are bound to their talk: the late sentence is stored in the talk it belongs to, never duplicated or moved to the next one |
 | Server restart | Clients see the socket close | Pages, projectors and agents reconnect automatically. Rooms are reloaded from config or `data/stages.json`. |
@@ -217,6 +217,8 @@ There is no database. That's deliberate ([ADR 0001](adr/0001-single-process-node
 | Documentation | Every relative link and anchor is checked by `npm test` |
 | Latency | Dashboard metrics and `npm run multi` reports |
 | Load | `npm run loadtest` (mock engine, many rooms) |
+| Long runs (memory, loop lag) | `npm run soak -- --minutes 60` (mock engine, rooms hearing speech the whole time, phones coming and going; growth per hour after warm-up) |
+| The phone page coming back from the background, its size over a long talk | `test/phone.test.js` (headless Chrome, as `npm run a11y`; skipped without Chrome) |
 | Real model behavior | `npm run check`, and rehearsals with real audio and simulated phones |
 
 The tests don't call the real model on every change, because of cost and quota; the recorded session stands in for it.
