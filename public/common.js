@@ -218,13 +218,15 @@ export class Socket {
   retry() {
     if (this.closed) return;
     // Jitter spreads reconnects when hundreds of phones lose the server at the same moment.
-    setTimeout(() => this.open(), this.backoff * (0.5 + Math.random()));
+    clearTimeout(this.retryTimer);
+    this.retryTimer = setTimeout(() => this.open(), this.backoff * (0.5 + Math.random()));
     this.backoff = Math.min(this.backoff * 2, 8000);
   }
   get ready() { return this.ws?.readyState === 1; }
   send(obj) { if (this.ready) this.ws.send(typeof obj === 'string' || obj instanceof ArrayBuffer || ArrayBuffer.isView(obj) ? obj : JSON.stringify(obj)); }
   /** Open a new connection now (new parameters): no waiting, as there would be after a drop. */
   reconnect() {
+    clearTimeout(this.retryTimer); // a retry already waiting would replace this new connection with another
     const old = this.ws;
     this.ws = null;
     try { old?.close(); } catch { /* ignore */ }

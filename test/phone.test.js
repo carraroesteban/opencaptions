@@ -19,6 +19,11 @@ const base = `http://127.0.0.1:${PORT}`;
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 let srv, chrome, ingest, audio, dataDir, profile, page;
 
+const up = async (url, what) => {
+  for (let i = 0; i < 150; i++) { try { if ((await fetch(url)).ok) return; } catch { /* starting */ } await sleep(100); }
+  throw new Error(`${what} didn't start (${url})`);
+};
+
 /** One Chrome tab over the DevTools protocol: evaluate scripts, wait for conditions. */
 async function tab() {
   const t = await (await fetch(`http://127.0.0.1:${CDP}/json/new?about:blank`, { method: 'PUT' })).json();
@@ -47,14 +52,14 @@ before(async () => {
     env: { ...process.env, PORT: String(PORT), HOST: '127.0.0.1', ENGINE: 'mock', GEMINI_API_KEY: '', DATA_DIR: dataDir, SCHEDULE: path.join(dataDir, 's.json'), AUTH: 'auto', ADMIN_TOKEN: '', PUBLIC_URL: '', TUNNEL: '', FALLBACK: '', UPDATE_CHECK: '0' },
     stdio: 'ignore',
   });
-  for (let i = 0; i < 100; i++) { try { if ((await fetch(`${base}/healthz`)).ok) break; } catch { /* starting */ } await sleep(100); }
+  await up(`${base}/healthz`, 'the server');
   // The room hears a talk the whole time (mock engine): captions keep coming.
   ingest = new WebSocket(`ws://127.0.0.1:${PORT}/ws/ingest?stage=main&kind=cli&label=test`);
   await new Promise((r) => ingest.once('open', r));
   audio = openAudio('samples/talk-en.wav', { realtime: true, loop: true }).on('data', (b) => ingest.readyState === 1 && ingest.send(b, { binary: true }));
   profile = fs.mkdtempSync(path.join(os.tmpdir(), 'oc-phone-chrome-'));
   chrome = spawn(CHROME, ['--headless=new', `--remote-debugging-port=${CDP}`, `--user-data-dir=${profile}`, '--no-first-run', ...(process.env.CI ? ['--no-sandbox'] : []), 'about:blank'], { stdio: 'ignore' });
-  for (let i = 0; i < 100; i++) { try { if ((await fetch(`http://127.0.0.1:${CDP}/json/version`)).ok) break; } catch { /* starting */ } await sleep(100); }
+  await up(`http://127.0.0.1:${CDP}/json/version`, 'Chrome');
   page = await tab();
   await page.send('Page.enable');
   await page.send('Page.navigate', { url: `${base}/watch.html?stage=main&lang=orig` });
@@ -69,17 +74,19 @@ after(async () => {
 
 // What the reader has on screen: the captions' ids in order, and whether any is there twice.
 const SHOWN = "(() => { const ids = [...document.querySelectorAll('#text span[data-id]')].map((s) => s.dataset.id); return { ids, dup: ids.length !== new Set(ids).size, status: document.querySelector('#status span:last-child').textContent, down: document.getElementById('text').classList.contains('down') }; })()";
-// The page as the browser sees it after the phone was in the background: hidden, then visible again.
-const BACKGROUND = (ms) => `(async () => {
+// The page as the browser sees it after the phone was in the background: hidden, then visible again (and, for a
+// back/forward cache restore, pageshow too). Returns what the reader sees in that same instant, before any answer.
+const BACKGROUND = (ms, bfcache = false) => `(async () => {
   const set = (v) => { Object.defineProperty(document, 'visibilityState', { value: v, configurable: true }); Object.defineProperty(document, 'hidden', { value: v === 'hidden', configurable: true }); document.dispatchEvent(new Event('visibilitychange')); };
-  set('hidden'); await new Promise((r) => setTimeout(r, ${ms})); set('visible'); return true;
+  set('hidden'); await new Promise((r) => setTimeout(r, ${ms})); set('visible');
+  ${bfcache ? "dispatchEvent(new PageTransitionEvent('pageshow', { persisted: true }));" : ''}
+  return ${SHOWN};
 })()`;
 
 test('back from a few seconds in the background: Reconnecting at once, then live captions within 2 s, nothing lost or doubled', { skip }, async () => {
   const before = await page.evaluate(SHOWN);
   assert.equal(before.dup, false);
-  await page.evaluate(BACKGROUND(3000)); // shorter than the old 20 s threshold: a phone that went to the lock screen
-  const right = await page.evaluate(SHOWN);
+  const right = await page.evaluate(BACKGROUND(3000)); // shorter than the old 20 s threshold: a phone that went to the lock screen
   assert.equal(right.down, true, 'the old text is dimmed while it reconnects');
   assert.match(right.status, /reconnect/i, 'and the status says so');
   const t0 = Date.now();
@@ -93,11 +100,25 @@ test('back from a few seconds in the background: Reconnecting at once, then live
   assert.ok(kept.length >= Math.min(before.ids.length, 40), 'the scrollback is kept, not cut to the last few lines');
 });
 
-test('back from the back/forward cache: reconnects the same way', { skip }, async () => {
-  await page.evaluate("dispatchEvent(new PageTransitionEvent('pageshow', { persisted: true })); true");
-  assert.equal((await page.evaluate(SHOWN)).down, true);
+test('back from the back/forward cache: reconnects the same way, once (it fires visibilitychange and pageshow)', { skip }, async () => {
+  await sleep(1100); // not straight after the previous return
+  await page.evaluate(`(() => { window.__opened = 0; const W = window.WebSocket; window.WebSocket = class extends W { constructor(...a) { super(...a); window.__opened++; } }; return true; })()`);
+  assert.equal((await page.evaluate(BACKGROUND(1500, true))).down, true);
   await page.until(`(${SHOWN}).down === false`, 2000);
+  await sleep(1500);
+  assert.equal(await page.evaluate('window.__opened'), 1, 'one new connection, not two');
   assert.equal((await page.evaluate(SHOWN)).dup, false);
+});
+
+test('a reader scrolled up to re-read keeps their place when the phone comes back', { skip }, async () => {
+  await page.until("document.getElementById('scroll').scrollHeight > document.getElementById('scroll').clientHeight + 200", 30000);
+  const at = await page.evaluate("(() => { const s = document.getElementById('scroll'); s.scrollTop = 40; s.dispatchEvent(new Event('scroll')); return s.scrollTop; })()");
+  await sleep(1100);
+  await page.evaluate(BACKGROUND(1500));
+  await page.until(`(${SHOWN}).down === false`, 2000);
+  const r = await page.evaluate("({ top: document.getElementById('scroll').scrollTop, tolive: !document.getElementById('tolive').classList.contains('hidden') })");
+  assert.equal(r.top, at, 'still where they were reading');
+  assert.equal(r.tolive, true, 'with the button back to live');
 });
 
 test('a long talk keeps the page bounded: at most 120 paragraphs, even when the speech never ends a sentence', { skip }, async () => {

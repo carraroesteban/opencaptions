@@ -113,7 +113,16 @@ const sock = new Socket(() => wsUrl('/ws/view', { stage: stageId, langs: wants()
 // looks open (iOS), so reconnect at once and get the history, instead of showing the old text as if it were live.
 // Until the new hello, the status says Reconnecting and the text is dimmed. Same on a restore from the back/forward cache.
 let hiddenAt = 0;
-const comeBack = () => { sock.reconnect(); showStatus(); };
+let backAt = 0;
+const comeBack = () => {
+  if (Date.now() - backAt < 1000) return; // a bfcache restore fires both events: one reconnect
+  backAt = Date.now();
+  // The old socket may still count as a listener of the room's sound on the server until it times out (≈ 50 s):
+  // a "full" answer in that minute is that ghost, not a full room (onListen tries again).
+  if (listening && listenWith === 'room') soundRetryUntil = Date.now() + 60000;
+  sock.reconnect();
+  showStatus();
+};
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'hidden') hiddenAt = Date.now();
   else if (hiddenAt && Date.now() - hiddenAt > 1000) comeBack();
@@ -123,6 +132,8 @@ addEventListener('pageshow', (e) => { if (e.persisted) comeBack(); });
 let langsKey = '';
 function onHello(m) {
   const sameTalk = !!hello && hello.talk === m.talk; // a reconnect in the same talk: keep the scrollback (CaptionState.load)
+  if (hello && !sameTalk) { for (const s of Object.values(states)) s.clear(); for (const p of Object.values(pacers)) p.clear(); toast(t('talkChanged')); } // a new talk while away
+  const place = sameTalk && !follow ? $('scroll').scrollTop : null; // reading further up: stay there
   hello = m;
   document.title = `${m.stage.name} · ${ev.name}`;
   $('stage').textContent = m.stage.name;
@@ -152,6 +163,7 @@ function onHello(m) {
   $('ai-doc').href = docUrl();
   showPause(m.pause);
   renderAll();
+  if (place != null) { follow = false; $('scroll').scrollTop = place; $('tolive').classList.remove('hidden'); }
   showStatus(); // connected now: say so at once, not at the next tick
 }
 
@@ -348,9 +360,11 @@ async function setListen(on) {
 $('listen').onclick = () => setListen(!listening);
 
 /** The server's answer about the room's sound: refused (full, or turned off) → stop and say why. */
+let soundRetryUntil = 0;
 function onListen(l) {
   if (l.channel !== 'orig' || listenWith !== 'room' || !listening) return;
-  if (l.ok) return showListenNote(null);
+  if (l.ok) { soundRetryUntil = 0; return showListenNote(null); }
+  if (l.why === 'full' && Date.now() < soundRetryUntil) { setTimeout(() => listening && resubscribe(), 5000); return; } // our own old connection, still counted (comeBack)
   listening = false;
   listenWith = null;
   roomPlayer.stop();
