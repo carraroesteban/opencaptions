@@ -4,6 +4,10 @@ All notable changes to this project are documented in this file. The format foll
 
 ## [Unreleased]
 
+## [0.9.4] - 2026-10-26
+
+Every room in its colour on every page, language and theme buttons on the sign-in screen too, and updates that reach phones right away instead of hours later.
+
 ### Changed
 
 - **Every room has its colour on every page.** The phones' list of rooms, the captions page and the transcripts now show each room in the same colour as the dashboard. A room without a chosen colour gets one from its place in the list (the picker's first option is now **Automatic**).
