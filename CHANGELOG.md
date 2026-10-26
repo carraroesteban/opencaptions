@@ -7,7 +7,7 @@ All notable changes to this project are documented in this file. The format foll
 ### Fixed
 
 - **A phone back from the background shows live captions again at once, never old text that looks live.** It used to reconnect only after more than 20 seconds away, so a phone locked for a few seconds (iOS can cut its connection that fast) could keep showing the last lines as if the talk had stopped. Now any return, and a page restored from the back/forward cache, reconnects at once; until the new captions arrive it says **Reconnecting** and dims the text.
-- **Reconnecting keeps the scrollback.** In the same talk, the lines already on screen stay and the history continues after them, instead of the page dropping to the last 40 lines.
+- **Reconnecting keeps the scrollback and your place.** In the same talk, the lines already on screen stay and the history continues after them, instead of the page dropping to the last 40 lines; someone who had scrolled up to re-read stays where they were, with the button back to live. Screen readers now hear the status (Live, Reconnecting) when it changes.
 - **Speech that never ends a sentence** (no punctuation) no longer grows one paragraph without limit on phones: it breaks at four times the usual length, so the page stays a bounded size over a long talk.
 
 ### Added
