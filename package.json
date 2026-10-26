@@ -36,6 +36,7 @@
     "compare-transcribe": "node scripts/compare-transcribe.js",
     "feed": "node scripts/feed.js",
     "loadtest": "node scripts/loadtest.js",
+    "soak": "node scripts/soak.js",
     "test": "node scripts/run-tests.js",
     "lint": "eslint .",
     "typecheck": "tsc -p tsconfig.json",
