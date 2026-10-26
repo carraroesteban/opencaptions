@@ -15,7 +15,7 @@ const T = {
     optCloud: 'Gemini, en la nube', optCloudD: 'La mejor calidad, en cualquier idioma, y detecta solo el idioma que se habla. Usa tu key de Gemini (se paga por uso).',
     optLocal: (apple) => (apple ? 'Esta Mac (voz de Apple)' : 'Esta computadora (Whisper)'),
     optLocalD: 'Gratis y sin internet: no sale nada de esta computadora. Si sabés el idioma que se habla, elegilo en la sala: es más preciso.',
-    optAuto: 'Gemini, con esta compu de respaldo', optAutoD: 'Gemini mientras haya internet; si se corta, sigue en esta computadora y vuelve sola.',
+    optAuto: 'Gemini, con esta computadora de respaldo', optAutoD: 'Gemini mientras haya internet; si se corta, sigue en esta computadora y vuelve sola.',
     needKey: 'Primero conectá una key de Gemini', forcedNote: 'OpenCaptions se inició en modo de prueba (--mock): los subtítulos son simulados aunque haya una key. Inicialo normalmente para usar la IA.',
     more: 'Más en Ajustes → IA', failed: 'No se pudo cambiar',
   },
@@ -27,7 +27,7 @@ const T = {
     optCloud: 'Gemini, in the cloud', optCloudD: 'The best quality, in any language, and it tells by itself which language is spoken. Uses your Gemini key (paid by use).',
     optLocal: (apple) => (apple ? 'This Mac (Apple speech)' : 'This computer (Whisper)'),
     optLocalD: 'Free and offline: nothing leaves this computer. If you know the language spoken, set it in the room: it’s more accurate.',
-    optAuto: 'Gemini, this computer as backup', optAutoD: 'Gemini while there’s internet; if it drops, captions carry on on this computer and come back by themselves.',
+    optAuto: 'Gemini, with this computer as backup', optAutoD: 'Gemini while there’s internet; if it drops, captions carry on on this computer and come back by themselves.',
     needKey: 'Connect a Gemini key first', forcedNote: 'OpenCaptions was started in test mode (--mock): captions are simulated even with a key. Start it normally to use the AI.',
     more: 'More in Settings → AI', failed: 'Couldn’t switch',
   },
@@ -69,8 +69,8 @@ export function aiBadge(el, { api, settings = '', onChange = () => {} } = {}) {
     pop.innerHTML = `<p class="ai-pop-h">${esc(t.title)}</p>
       ${ai.forced ? `<p class="ai-pop-note">${esc(t.forcedNote)}</p>` : ''}
       ${opt('cloud', t.optCloud, t.optCloudD, ai.hasKey, t.needKey)}
-      ${opt('local', t.optLocal(ai.apple), t.optLocalD, true)}
-      ${ai.canAuto ? opt('auto', t.optAuto, t.optAutoD, ai.hasKey, t.needKey) : ''}
+      ${ai.canLocal === false ? '' : opt('local', t.optLocal(ai.apple), t.optLocalD, true)}
+      ${ai.canBackup ? opt('auto', t.optAuto, ai.backupPreparing === 'working' ? t.preparing : t.optAutoD, ai.hasKey, t.needKey) : ''}
       ${settings ? `<a class="ai-pop-more" href="${esc(settings)}">${esc(t.more)} →</a>` : ''}`;
   }
   pop?.addEventListener('click', async (e) => {

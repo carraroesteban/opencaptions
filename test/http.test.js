@@ -7,6 +7,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import http from 'node:http';
+import zlib from 'node:zlib';
 
 const PORT = 18000 + Math.floor(Math.random() * 2000);
 const base = `http://127.0.0.1:${PORT}`;
@@ -275,4 +276,26 @@ test('rooms can be put in any order, saved for everyone, and the order can be un
   await fetch(`${base}/api/stages/order`, { method: 'PUT', headers: json, body: JSON.stringify({ ids: ['hall-c', 'nope'] }) });
   assert.deepEqual(await order(), ['hall-c', ...was.filter((id) => id !== 'hall-c')]);
   assert.equal((await fetch(`${base}/api/stages/order`, { method: 'PUT', headers: json, body: JSON.stringify({ ids: 'hall-c' }) })).status, 400);
+});
+
+test('undoing a room change puts back its spoken languages too', async () => {
+  const json = { 'content-type': 'application/json' };
+  assert.equal((await fetch(`${base}/api/stages`, { method: 'POST', headers: json, body: JSON.stringify({ id: 'hall-s', name: 'hall-s', source: 'auto', spoken: ['en', 'es'], targets: ['fr'] }) })).status, 200);
+  const spoken = async () => (await (await fetch(`${base}/api/status`)).json()).stages.find((s) => s.id === 'hall-s').spoken;
+  const was = await spoken();
+  const r = await (await fetch(`${base}/api/stages/hall-s`, { method: 'PATCH', headers: json, body: JSON.stringify({ spoken: ['en', 'de'] }) })).json();
+  assert.notDeepEqual(await spoken(), was);
+  assert.equal((await fetch(`${base}/api/history/${r.change}/undo`, { method: 'POST' })).status, 200);
+  assert.deepEqual(await spoken(), was);
+});
+
+test('a malformed room change is a 400, and a text AI on a private address is refused', async () => {
+  const json = { 'content-type': 'application/json' };
+  assert.equal((await fetch(`${base}/api/stages/main`, { method: 'PATCH', headers: json, body: JSON.stringify({ targets: 'es' }) })).status, 400);
+  assert.equal((await fetch(`${base}/api/ai/text`, { method: 'PUT', headers: json, body: JSON.stringify({ url: 'http://127.0.0.1:9/v1', model: 'm', key: 'k' }) })).status, 400);
+});
+
+test('compressed request bodies are refused before any decompression (Node zlib Brotli CVE-2026-111497)', async () => {
+  const h = { 'content-type': 'application/json', 'content-encoding': 'br', 'x-admin-token': 't' };
+  assert.equal((await fetch(`${base}/api/setup`, { method: 'PUT', headers: h, body: zlib.brotliCompressSync('{"name":"x"}') })).status, 415);
 });

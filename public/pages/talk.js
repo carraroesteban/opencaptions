@@ -1,5 +1,5 @@
 // talk.html: page script (kept out of the HTML so the Content-Security-Policy can forbid inline scripts).
-import { qs, t, UI, esc, store, wsUrl, Socket, langLabel, getEvent, applyReadingPrefs, setReadingPref, setTheme, fmtClock, liveHtml, endsSentence, copyText, segment, readingItems, previewFonts } from '/common.js';
+import { qs, t, UI, esc, store, wsUrl, Socket, langLabel, getEvent, applyReadingPrefs, setReadingPref, fmtClock, liveHtml, endsSentence, copyText, segment, readingItems, previewFonts } from '/common.js';
 import { mountAssistant } from '/assist-ui.js';
 import { icon, mountIcons } from '/illustrations.js';
 import { prefsControls } from '/prefs.js';
@@ -256,10 +256,9 @@ new IntersectionObserver(([e]) => $('toolbar').classList.toggle('stuck', e.inter
 
 // ---- reading settings ----
 $('set-title').textContent = t('settings');
-$('l-size').textContent = t('textSize'); $('l-font').textContent = t('font'); $('l-lh').textContent = t('lineSpacing'); $('l-theme').textContent = t('theme');
+$('l-size').textContent = t('textSize'); $('l-font').textContent = t('font'); $('l-lh').textContent = t('lineSpacing');
 segment($('font-opts'), readingItems.font(), prefs.font || 'default', (v) => { prefs = setReadingPref('font', v); });
 segment($('lh-opts'), readingItems.lh(), prefs.lh || 1.5, (v) => { prefs = setReadingPref('lh', Number(v)); });
-segment($('theme-opts'), readingItems.theme(), store.get('theme', null) || 'auto', setTheme);
 const setSize = (d) => { size = Math.min(40, Math.max(14, size + d)); store.set('docSize', size); document.documentElement.style.setProperty('--size', size + 'px'); $('size-val').textContent = size; };
 $('size-val').textContent = size;
 $('smaller').onclick = () => setSize(-1);

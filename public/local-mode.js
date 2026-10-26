@@ -52,30 +52,31 @@ const T = {
 };
 const t = T[LANG] || T.en;
 const mb = (n) => (n >= 1e9 ? `${(n / 1e9).toFixed(1)} GB` : `${Math.round(n / 1e6)} MB`);
-const bar = (s) => `<p class="cx-fine">${esc(s.step || t.working)}${s.total ? ` · ${mb(s.done)} / ${mb(s.total)}` : ''}</p>
+/** The preparation's step and download bar (also the wizard's offline backup, public/pages/welcome.js). */
+export const localProgress = (s) => `<p class="cx-fine">${esc(s.step || t.working)}${s.total ? ` · ${mb(s.done)} / ${mb(s.total)}` : ''}</p>
   <progress max="${s.total || 1}" ${s.total ? `value="${s.done}"` : ''} class="cx-progress"></progress>`;
 
 /**
  * @param {HTMLElement} el
  * @param {{ api: (method: string, url: string, body?: any) => Promise<any>, quota?: boolean, onChange?: (s: any) => void }} o
  *   quota: the dashboard's banner wording ("your free key reached its limit") instead of "no key?"
- * @returns {{ status: () => any }}
+ * @returns {{ status: () => any, refresh: () => Promise<void> }}
  */
 export function localPanel(el, { api, quota = false, onChange = () => {} }) {
   let s = null;
   let timer = null;
   el.classList.add('connect');
   function render() {
-    if (!s) { el.innerHTML = ''; return; }
+    if (!s || s.standby || s.canLocal === false) { el.innerHTML = ''; return; } // standby: the offline backup, not captioning here (welcome.js shows it)
     let html = '';
     if (s.state === 'idle' || s.state === 'error') {
       if (quota) html += `<p class="cx-status warn">${icon('alert')}<span>${esc(t.quota)}</span></p>`;
       html += `<div class="cx-row"><button type="button" class="${quota ? 'primary' : ''}" data-lm="start">${esc(quota ? t.go : t.noKey)}</button></div><p class="cx-fine">${esc(s.apple ? t.fineMac : t.fine)}</p>`;
       if (s.state === 'error') html += `<p class="cx-msg bad" role="status">${esc(t.failed)} ${esc(s.error)}</p>`;
-    } else if (s.state === 'working') html += bar(s);
+    } else if (s.state === 'working') html += localProgress(s);
     else {
       html += `<p class="cx-status ok">${icon('check')}<span>${esc(t.ready)}${s.text === 'ready' ? ` ${esc(t.textReady)}` : ''}</span></p>`;
-      if (s.text === 'working') html += `<p class="cx-fine">${esc(t.textWorking)}</p>${bar(s)}`;
+      if (s.text === 'working') html += `<p class="cx-fine">${esc(t.textWorking)}</p>${localProgress(s)}`;
       if (s.text === 'error') html += `<p class="cx-msg bad" role="status">${esc(t.textFailed)} ${esc(s.error)} <button type="button" class="cx-link" data-lm="retry">${esc(t.retry)}</button></p>`;
       if (s.text === 'missing') {
         html += `<p>${esc(t.missing)}</p><ol class="cx-steps">
@@ -101,5 +102,5 @@ export function localPanel(el, { api, quota = false, onChange = () => {} }) {
     if (a) set(await api('POST', `/api/local/${a}`).catch((err) => ({ ...s, state: 'error', error: err.message })));
   });
   load();
-  return { status: () => s };
+  return { status: () => s, refresh: load };
 }

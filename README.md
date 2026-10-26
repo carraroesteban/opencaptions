@@ -13,10 +13,10 @@ On every phone, on the big screen and in your livestream. Free and open source.
 [![Release](https://img.shields.io/github/v/release/carraroesteban/opencaptions?color=111014)](https://github.com/carraroesteban/opencaptions/releases/latest)
 [![CI](https://github.com/carraroesteban/opencaptions/actions/workflows/ci.yml/badge.svg)](https://github.com/carraroesteban/opencaptions/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-111014)](LICENSE)
-[![Node.js ≥ 20](https://img.shields.io/badge/node-%E2%89%A5%2020-339933?logo=nodedotjs&logoColor=white)](docs/requirements.md)
-[![Docker](https://img.shields.io/badge/docker-ready-2496ED?logo=docker&logoColor=white)](#install)
+[![Node.js ≥ 22.23.4](https://img.shields.io/badge/node-%E2%89%A5%2022.23.4-339933?logo=nodedotjs&logoColor=white)](docs/requirements.md)
+[![Docker](https://img.shields.io/badge/docker-ready-2496ED?logo=docker&logoColor=white)](#on-a-server-docker-a-vps-or-the-cloud)
 
-**[Website](https://opencaptions.kvza.ar)** · [30-second demo](https://opencaptions.kvza.ar/#screens) · [Quick start](#quick-start) · [Features](#features) · [Pricing](#what-it-costs) · [Docs](#documentation) · [En español](#en-español)
+**[Website](https://opencaptions.kvza.ar)** · [30-second demo](https://opencaptions.kvza.ar/#screens) · [Download](#quick-start) · [Features](#features) · [Pricing](#what-it-costs) · [Docs](#documentation) · [En español](#en-español)
 
 <img src="docs/images/hero.png" width="920" alt="A livestream with bilingual captions on screen, next to a phone showing live captions of the same talk in Spanish" />
 
@@ -26,142 +26,65 @@ On every phone, on the big screen and in your livestream. Free and open source.
 
 Someone speaks into a microphone. A few seconds later, everyone in the room can read it **in their own language**: on their phone, on the screen next to the stage, and in the livestream. People who arrive late catch up with one tap. When the session ends, the full transcript is ready to read, search and share.
 
-OpenCaptions is the complete toolkit for doing that at a real event. It is free, it runs on your own server, and it needs no app, no accounts and no per-seat licences.
+- **For the audience:** scan the room's QR code, pick a language. No app, no sign-up.
+- **For the organizer:** one dashboard for every room. Rooms run by themselves: they pause in silence, resume when someone speaks and take talk titles from your agenda.
+- **Yours to own:** MIT-licensed, runs on your own computer or server, no accounts, no per-seat licenses, no tracking.
+- **Your choice of AI:** Google Gemini for the best quality, or run everything on your own computer. **Run it on your own computer and nothing leaves it: no audio uploaded, nothing billed per minute.** (With Gemini, the audio goes to Google.)
 
-## Why OpenCaptions
-
-**Inclusive by design.** Captions help people who are deaf or hard of hearing, people listening in a second language, and anyone in a noisy room. Attendees choose their language, text size, a high-legibility font and light or dark mode.
-
-**Effortless on the day.** Rooms run without an operator. They pause during silence, resume when someone speaks and pick up talk titles from your agenda. One dashboard shows every room's audio, delay, audience and cost, and raises an alert if something needs attention.
-
-**Every screen covered.** The audience reads on their phones after scanning a QR code. The presenter screen shows large captions next to the speaker. A transparent overlay drops into OBS or vMix for the livestream.
-
-**Yours to own.** MIT-licensed and self-hosted, with no lock-in and no tracking. Use Google Gemini for the best quality, or run everything on your own hardware so that no audio leaves the building.
-
-## Also just for you
-
-Not running an event? Choose **Just for me** the first time you open the app, and OpenCaptions captions whatever you're listening to on your own computer: a video call in another language, a class, a video, or the conversation around you. Translated into your language if you like, in big text and in a small window that floats over everything. Three short steps the first time (your AI, your language, the sound), then just your captions. Nothing is shared with anyone. [How it works](docs/personal.md).
-
-## Made for every kind of event
-
-<p align="center"><img src="public/art/hero.webp" width="820" alt="An audience following live captions on their phones while a speaker presents on stage" /></p>
-
-Conferences and summits · universities and schools · places of worship · town halls and public meetings · company all-hands · festivals and cultural events · trade shows · hybrid and livestreamed events.
-
-## Features
-
-<table>
-<tr>
-<td width="33%" valign="top">
-
-<img src="public/art/audience.webp" width="100%" alt="" />
-
-**For your audience**
-
-- **Captions on any phone.** Scan the room's QR code and pick a language. No app, no sign-up.
-- **Smooth to read:** words appear at the speaker's pace and lines roll up like TV captions, on phones, the presenter screen, the overlay and the floating window. Nothing jumps or re-wraps.
-- **Listen in any language:** the translation read aloud in headphones, in the AI's natural voice or the phone's own voice, in any of 82 languages.
-- **What did I miss?** A summary of the last five minutes, or the whole session, in the reader's language.
-- **Ask the talk.** Questions answered only from what was said, with quotes and timestamps.
-- **Transcripts** to read, search, print and download (TXT, SRT, VTT).
-- **Hear the room:** with hearing aids, a cochlear implant or earbuds, pick **Original → 🎧 Listen** to hear the room's own sound on your phone, when the organizer turns it on. [Accessibility](docs/accessibility.md)
-- **Who's speaking:** the crew taps the speaker's name (from the agenda, the host or Q&A) and captions, transcripts and exports say who said what.
-- **Accessibility settings:** text size, high-legibility fonts, line spacing, light and dark themes, floating captions, and a translated voice in headphones when the organizer turns it on.
-
-</td>
-<td width="33%" valign="top">
-
-<img src="public/art/stage.webp" width="100%" alt="" />
-
-**For the stage and the stream**
-
-- **Presenter screen** with full-screen captions and the room's QR code.
-- **Livestream overlay** for OBS and vMix, transparent or chroma key, in one or two languages.
-- **Breaks and music:** a break in the agenda, a break scene in vMix or OBS, or the B key on the room's computer pauses the captions; screens and phones show when the talk resumes and what's next. Music between talks is recognized and not captioned (♪ on the overlay).
-- **Visual style editor** for fonts, colors and layout. It builds the URL for you.
-- **Multilingual speakers.** When a host switches language mid-sentence, every caption language follows.
-- **Any audio source:** the sound desk through a PC, a browser tab, or OBS/vMix streaming straight to the server (RTMP, SRT, HLS).
-- **Captions in Zoom, YouTube Live and Microsoft Teams:** paste the meeting's or stream's caption link and the room's captions, in any language, appear inside it. Webhooks send them anywhere else.
-- **Ask your AI assistant about the event:** Claude, ChatGPT or Cursor can read the rooms, transcripts and report through MCP and answer *"what did the keynote say about pricing?"* with the room, talk and minute. Read-only, with the crew password ([how](docs/integrations.md#use-it-from-an-ai-assistant-mcp)).
-
-</td>
-<td width="33%" valign="top">
-
-<img src="public/art/organizer.webp" width="100%" alt="" />
-
-**For organizers**
-
-- **Guided setup:** the first time you open the dashboard, a short illustrated wizard asks for the event name, rooms and languages. Skip anything you're not sure about.
-- **Production dashboard** with every room's status, audio level, delay, audience, cost and alerts, plus a floating mini-dashboard. It warns when a talk runs over and starts the next one in one click.
-- **Find anything in a keystroke:** ⌘K / Ctrl+K jumps to any room, page or setting; the sidebar lists the rooms with a live dot and folds away to icons; every page has a back button.
-- **Safe on event day:** Event mode locks the setup while you're live, every change can be undone from History, and deleted rooms come back from the trash.
-- **Agenda import** from Swapcard, Sessionize or any spreadsheet: titles and speaker names appear automatically.
-- **Printable QR posters** for every room, in one click.
-- **Glossary** so names, brands and specialist terms are spelled right.
-- **Fix a caption live:** the crew corrects a misheard word from the dashboard and it changes on every screen and phone; one click adds it to the glossary. Admins can clean up any transcript afterwards.
-- **Backup audio:** a second computer (or another output of the sound desk) stands by for each room and takes over by itself if the main one stops or goes silent.
-- **Offline backup:** if the venue loses internet, captions switch to AI running on your laptop and come back to the cloud on their own.
-- **Agenda from Sessionize or a calendar link** (Google, Outlook): talks get their titles and speakers by themselves.
-- **Alerts on your phone** through ntfy, Telegram, Slack, Discord or a webhook, when a room loses its sound, the AI keeps failing, a talk runs over or the internet drops.
-- **Event report:** every talk with its length, words, audience and AI cost, printable or as a spreadsheet.
-- **Pick the speech model in Settings:** *Captions only* (about US$ 0.54 per room-hour, the default) or *Captions + translated voice* (about US$ 2.2). [Which one](docs/latency.md#which-speech-model)
-- **Any AI for translations:** keep Gemini, or translate, summarize and answer questions with OpenAI, OpenRouter, Groq, Mistral or any service compatible with OpenAI's API. Paste its address, key and model in **Settings → AI**. [How](docs/reference/configuration.md#use-another-ai-for-translations)
-- **Updates in one click:** when a new version is out, one quiet line in the dashboard says so, with what's new and an **Update now** button. OpenCaptions downloads it and restarts in about a minute; your settings and transcripts stay. Nothing is installed until you click, and you can turn the check off.
-- **Caption a recording:** drop a video or audio file in **Transcripts**. Its transcript and subtitles are ready in minutes, much faster than playing it. [How](docs/recording.md)
-- **Every transcript in one .zip,** a folder per room and per talk, for the archive or the sponsors.
-- **Secure by default:** signed-in sessions, a crew role for volunteers, optional two-factor or company sign-in, and no inbound ports needed.
-
-</td>
-</tr>
-</table>
+Not running an event? Choose **Just for me** the first time you open the app, and OpenCaptions captions whatever you're listening to on your own computer (a video call in another language, a class, a video), translated if you like, in a small window that floats over everything. [How it works](docs/personal.md).
 
 ## Screenshots
 
 | Production dashboard | On the audience's phone | Transcript, search and summary |
 |---|---|---|
 | ![Dashboard with live rooms, audience, delay and cost](docs/images/dashboard.png) | ![Phone with live captions and the What did I miss? summary](docs/images/phones.png) | ![Transcript with search highlights and an AI summary](docs/images/transcript.png) |
-| **Presenter screen** | **QR poster** | **Caption style editor** |
+| **Stage screen** | **QR poster** | **Caption style editor** |
 | ![Full-screen captions next to the stage, with a QR code](docs/images/projector.png) | ![Printable A4 poster with the room's QR code](docs/images/kit.png) | ![Style editor with a live overlay preview](docs/images/style.png) |
 
 <sub>Shown in demo mode, which uses the same interface with simulated captions.</sub>
 
 ## Quick start
 
-### Without the terminal
+<a name="without-the-terminal"></a>
 
-1. Download **[OpenCaptions for Mac](https://github.com/carraroesteban/opencaptions/releases/latest/download/OpenCaptions-mac.zip)** or **[OpenCaptions for Windows](https://github.com/carraroesteban/opencaptions/releases/latest/download/OpenCaptions-windows.zip)**.
-2. **Mac:** unzip it, drag **OpenCaptions** to Applications and open it. **Windows:** extract the ZIP and double-click **Start OpenCaptions**.
+### Download the app
 
-The first time, it installs what it needs (about a minute, and Node.js too if this computer doesn't have it), then opens the dashboard in your browser. The welcome wizard asks for the event name, rooms and languages, connects Gemini with your API key, and can create a public HTTPS address for the QR codes with one click. A small OpenCaptions window shows it running: keep it open during the event, and quit it to stop. Your settings and transcripts are kept outside the app, so they survive updates.
+**[⬇ OpenCaptions for Mac](https://github.com/carraroesteban/opencaptions/releases/latest/download/OpenCaptions-mac.zip)** · **[⬇ OpenCaptions for Windows](https://github.com/carraroesteban/opencaptions/releases/latest/download/OpenCaptions-windows.zip)**
 
-No Gemini key, or your free key ran out mid-event? Click **Run it on this computer (free, slower)** in the wizard, on the **Just for me** page or on the dashboard's banner. It downloads a free speech model once (about 670 MB, about a minute) and captions start; translations also need the free [Ollama](https://ollama.com/download) app, and the page shows how to add it. No terminal. Details in [Local mode](docs/local.md#without-a-terminal-one-button).
+1. **Mac:** unzip it, drag **OpenCaptions** to Applications and open it. **Windows:** extract the ZIP and double-click **Start OpenCaptions**.
+2. The first time, it installs what it needs (about a minute, and Node.js too if this computer doesn't have it), then opens the dashboard in your browser.
+3. The welcome wizard asks for the event name, rooms and languages, connects Gemini with your API key ([free from Google AI Studio](https://aistudio.google.com/apikey)), and can create a public HTTPS address for the QR codes with one click.
+
+A small OpenCaptions window shows it running: keep it open during the event, and quit it to stop. Your settings and transcripts are kept outside the app, so they survive updates.
+
+No Gemini key, or your free key ran out mid-event? Click **Use this computer (free, slower)** in the wizard, on the **Just for me** page or on the dashboard's banner. It downloads a free speech model once (nothing to download on a Mac with macOS 26) and captions start, with no terminal. [Local mode](docs/local.md#without-a-terminal-one-button).
 
 <details>
 <summary>The computer warns about the app the first time</summary>
 
-The launchers aren't signed with a paid Apple or Microsoft certificate yet, so the first launch asks you to confirm, once. [Step by step, in English and Spanish](docs/first-launch.md).
+The apps aren't signed with a paid Apple or Microsoft certificate yet, so the first launch asks you to confirm, once. [Step by step, in English and Spanish](docs/first-launch.md).
 
 - **Mac, "Apple could not verify…":** click **Done**, then open **System Settings → Privacy & Security**, scroll down and click **Open Anyway** next to OpenCaptions.
 - **Windows, "Windows protected your PC":** click **More info → Run anyway**. If an antivirus blocks the launcher, open the `app` folder and double-click `Start OpenCaptions.bat`.
 
 </details>
 
-### In the cloud, in a few minutes
+### Updates
 
-[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/carraroesteban/opencaptions)
+OpenCaptions updates itself from inside the app: in 0.9.1, click **Update now** on the dashboard's line when a new version is out. From the next version on, like Zoom, you can also choose **Check for Updates…** in the app's menu (on a Mac, the **OpenCaptions** menu; on Windows, the OpenCaptions icon in the taskbar's notification area). It shows what's new, and **Update and Restart** downloads the new version and restarts it in about a minute; your settings, rooms and transcripts stay. The dashboard also shows one quiet line when a new version is out. Nothing is installed until you click. [How updates work](docs/deployment.md#updates).
 
-A public server with HTTPS and a disk for your data, nothing to install. Fly.io and Railway are ready too: [Cloud platforms](docs/deployment.md#cloud-platforms-render-flyio-railway).
-
-### With Docker, without downloading the code
+### On a server: Docker, a VPS or the cloud
 
 ```bash
 docker run -d --pull always --name opencaptions --restart unless-stopped -p 127.0.0.1:8080:8080 -v opencaptions-data:/app/data -v opencaptions-config:/app/config ghcr.io/carraroesteban/opencaptions
-```
-```bash
 docker logs opencaptions | grep "Open the dashboard"
 ```
 
-The second command prints a link that opens the dashboard already signed in; the wizard does the rest, API key and public address included. The link works once, within 30 minutes: restart the container for a new one (the newest line is the one that works). The passwords never go to the logs; they are in **Settings → Security**.
+The second command prints a link that opens the dashboard already signed in (it works once, within 30 minutes; restart the container for a new one). The wizard does the rest, API key and public address included. The passwords are in **Settings → Security**, never in the logs.
+
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/carraroesteban/opencaptions)
+
+Docker Compose, a Linux service, Render, Fly.io, Railway and a cloud VM: [Deployment](docs/deployment.md).
 
 ### For developers
 
@@ -171,107 +94,46 @@ See it working in two minutes, **no API key needed** (captions are simulated):
 git clone https://github.com/carraroesteban/opencaptions.git
 cd opencaptions
 npm install
-npm run mock
+npm run mock                                              # http://localhost:8080
+npm run feed -- --stage main --input samples/talk-en.wav  # in a second terminal: play a sample talk into the room
 ```
 
-Open <http://localhost:8080>, pick a room, and in a second terminal play a sample talk into it:
+For real captions, paste a Gemini key in **Settings → AI**, or `npm run setup`, then `npm run check` (a 25-second end-to-end test) and `npm start`. Everything on your own machine instead: `npm run local` ([Local mode](docs/local.md)). The full walkthrough is in [Getting started](docs/getting-started.md); the code is explained in [Architecture](docs/architecture.md).
 
-```bash
-npm run feed -- --stage main --input samples/talk-en.wav
-```
+**What you need:** one computer or small server for the whole event (macOS, Linux or Windows; with Gemini, one CPU core and 1 GB of RAM are enough for 20 rooms or more), outbound internet on port 443 (no inbound ports), and a Gemini API key or [local mode](docs/local.md). Details: [Requirements](docs/requirements.md).
 
-Ready for real captions? Get a free API key from [Google AI Studio](https://aistudio.google.com/apikey) and paste it in **Dashboard → Settings**, or from the terminal:
+## Features
 
-```bash
-npm run setup   # event name, rooms, languages and your API key, in about a minute
-npm run check   # a 25-second end-to-end test with a sample talk
-npm start       # http://localhost:8080
-```
+**For your audience**
 
-Prefer to keep everything on your own machine? [Local mode](docs/local.md) runs speech recognition and translation offline. From the app it's one button (above); from a terminal:
+- **Captions on any phone**, in any of 82 languages, smooth to read: words appear at the speaker's pace and lines roll up like TV captions.
+- **What did I miss?** A summary of the last five minutes, or the whole session. **Ask the talk:** questions answered only from what was said.
+- **Listen:** the translation read aloud in headphones, or the room's own sound for hearing aids and cochlear implants, when the organizer turns it on. [Accessibility](docs/accessibility.md)
+- **Transcripts** to read, search, print and download (TXT, SRT, VTT), with who said what.
 
-```bash
-brew install ollama        # Linux: curl -fsSL https://ollama.com/install.sh | sh · Windows: ollama.com/download
-npm run local -- --check   # downloads the models once (~4 GB) and tests them
-npm run local              # http://localhost:8080
-```
+**For the stage and the stream**
 
-Or get the best of both: Gemini as usual, with your laptop ready to take over if the venue's internet goes down:
+- **A stage screen** with big captions and the room's QR code; a **livestream overlay** for OBS and vMix, in one or two languages.
+- **Any audio source:** the sound desk through a computer, a browser tab, or OBS/vMix streaming to the server (RTMP, SRT, HLS).
+- **Speakers who switch languages** mid-sentence: every caption language follows.
+- **Captions inside Zoom, YouTube Live and Microsoft Teams**, and webhooks for anything else. [Integrations](docs/integrations.md)
 
-```bash
-npm run local -- --fallback
-```
+**For organizers**
 
-| Screen | Address |
-|---|---|
-| Audience (the QR code points here) | `/` |
-| Production dashboard | `/admin.html` |
-| Presenter screen | `/screen.html?stage=main` |
-| Livestream overlay | `/overlay.html?stage=main&lang=es` |
-| Sound check with your microphone | `/demo.html?mode=mic` |
+- **Guided setup**, agenda import (Sessionize, Swapcard, any spreadsheet or a calendar link) and printable **QR posters**.
+- **A production dashboard** with every room's sound, delay, audience, cost and alerts, plus **alerts on your phone** (ntfy, Telegram, Slack, Discord).
+- **Safe on the day:** Event mode locks the setup, every change can be undone, a backup computer takes over a room's sound, and if the internet drops, captions move to your laptop and come back by themselves.
+- **Fix a caption live** and it changes on every screen; a **glossary** spells names and brands right.
+- **Caption a recording** in minutes, an **event report** for sponsors, and every transcript in one .zip.
+- **Any AI for translations:** Gemini, or OpenAI, OpenRouter, Groq, Mistral or any OpenAI-compatible service. [How](docs/reference/configuration.md#use-another-ai-for-translations)
 
-Every page and endpoint is listed in the [API reference](docs/reference/api.md#static-pages).
-
-## Install
-
-**What you need**
-
-- **One server for the whole event:** a laptop at the venue or a small cloud server, on macOS, Linux or Windows. With Gemini the AI runs in Google's cloud, so one CPU core and 1 GB of RAM are enough for 20 rooms or more.
-- **Node.js 20 or later** (the Mac app and Windows launcher tell you if it's missing), or Docker.
-- **A Gemini API key** ([AI Studio](https://aistudio.google.com/apikey)) or a Google Cloud project with Vertex AI. In [local mode](docs/local.md) you need no account at all.
-- **Outbound internet on port 443.** No inbound ports are needed; the dashboard can create a public HTTPS address through Cloudflare Tunnel.
-
-**Option A: Node.js**
-
-```bash
-git clone https://github.com/carraroesteban/opencaptions.git
-cd opencaptions
-npm install
-npm run setup
-npm start
-```
-
-To keep it running across reboots, use the service files in [`deploy/`](deploy/) (systemd, launchd) or follow [Deployment](docs/deployment.md#systemd-service-linux-without-docker).
-
-**Option B: Docker Compose**
-
-```bash
-git clone https://github.com/carraroesteban/opencaptions.git
-cd opencaptions
-cp .env.example .env     # optional settings; the API key can also be pasted in the dashboard
-mkdir -p data            # where transcripts and settings are kept
-docker compose up -d --build
-docker compose logs opencaptions | grep "Open the dashboard"
-```
-
-The last command prints a link that opens the dashboard already signed in. In Docker, even your own browser counts as another device, so the dashboard asks for a password otherwise. The link works once, within 30 minutes: restart the container for a new one (the newest line is the one that works). The passwords never go to the logs; they are in **Settings → Security**.
-
-To skip the build, use the published image `ghcr.io/carraroesteban/opencaptions` (see [Quick start](#with-docker-without-downloading-the-code)). Public HTTPS: **Dashboard → Settings → Public address**, or add `--profile tunnel` and a `TUNNEL_TOKEN`. The image runs as a non-root user on a read-only filesystem.
-
-| Platform | Server | Room audio agent |
-|---|---|---|
-| macOS 13+ (Apple Silicon) | ✅ | ✅ |
-| Linux (Debian 12, Ubuntu 22.04+; x86-64, arm64) | ✅ | ✅ |
-| Windows 10/11 x64 | ✅ | ✅ |
-| Docker (Linux image) | ✅ | — |
-
-Full details: [Requirements](docs/requirements.md).
-
-## Going live
-
-1. **Server.** Run it at the venue or in the cloud. For HTTPS, click **Settings → Public address** (free, through Cloudflare), or put your own HTTPS in front and set `PUBLIC_URL`. [Choosing a setup](docs/deployment.md#choose-a-topology).
-2. **Rooms.** The welcome wizard asks for them the first time you open the dashboard. Then paste your agenda and print the QR posters.
-3. **Sound.** The wizard's last step (later, each room's panel in **Rooms**) shows each way in, on screen: a computer next to the stage opens the room's sound page (from another computer, a one-time link or QR code, with no password to type), OBS or vMix stream to an address it makes for the room, or the small agent runs on the PC connected to the sound desk.
-4. **Screens.** Open the presenter screen next to the stage and add the overlay to your stream.
-5. **Showtime.** Nothing to press: rooms pause in silence, resume on speech and follow the agenda.
-
-The **[event-day runbook](docs/operations/runbook.md)** has a sound-check list and explains every alert ([en español](docs/operations/event-day.es.md)).
+Everything, with its status: [Project overview](docs/overview.md).
 
 ## How it works
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/images/diagrams/how-it-works-dark.png" />
-  <img src="docs/images/diagrams/how-it-works-light.png" alt="How it works: room audio (sound desk, browser tab, OBS or vMix) goes to the OpenCaptions server, which sends it to a speech model and each sentence to a translation model, then delivers captions to phones, the presenter screen, the livestream and the dashboard." />
+  <img src="docs/images/diagrams/how-it-works-light.png" alt="How it works: room audio (sound desk, browser tab, OBS or vMix) goes to the OpenCaptions server, which sends it to a speech model and each sentence to a translation model, then delivers captions to phones, the stage screen, the livestream and the dashboard." />
 </picture>
 
 <details><summary>Text version of this diagram</summary>
@@ -279,84 +141,85 @@ The **[event-day runbook](docs/operations/runbook.md)** has a sound-check list a
 ```mermaid
 flowchart LR
   A["🎤 Room audio<br/>agent · browser · OBS/vMix"] --> S["OpenCaptions server"]
-  S -->|"one session per room"| G["Speech model<br/>Gemini Live Translate or Whisper"]
+  S -->|"one session per room"| G["Speech model<br/>Gemini or Whisper"]
   G --> S
   S -->|"sentence + context + glossary"| F["Translation model<br/>Gemini Flash-Lite or an open model"]
   F --> S
   S --> P["📱 Phones"]
-  S --> R["🖥️ Presenter screen"]
+  S --> R["🖥️ Stage screen"]
   S --> O["🎬 Livestream"]
   S --> D["📊 Dashboard"]
 ```
 
 </details>
 
-- A speech model transcribes each room continuously and detects the language being spoken.
-- Each sentence is translated with the previous sentences and your glossary as context. A provisional translation updates while the sentence is still being spoken, so captions never wait for a full stop.
-- If the speaker is already using a caption language, that text goes straight through and is never translated twice.
-- Rooms are independent, so an event grows one room at a time.
-
-Captions typically appear a few seconds after the words are spoken ([where the time goes](docs/latency.md)). Design decisions are recorded in [ADRs](docs/adr/); internals are in [Architecture](docs/architecture.md).
+A speech model transcribes each room continuously; each sentence is translated with the previous ones and your glossary as context. Captions typically appear a few seconds after the words are spoken ([where the time goes](docs/latency.md)). Internals: [Architecture](docs/architecture.md) and the [design decisions](docs/adr/).
 
 ## What it costs
 
 **The software is free.** You only pay for the AI you choose to use.
 
-| | Gemini (cloud) | Local mode |
-|---|---|---|
-| Price | About **US$ 0.54 per room-hour of speech**, plus US$ 0.4–0.6 per extra language. With a translated voice in headphones (🎧), about US$ 2.2. | **Free.** Runs on your own hardware |
-| Silence | Never billed | — |
-| Best for | Highest accuracy and lowest delay, many rooms | Privacy, no internet, no budget |
+| | OpenCaptions, cloud (Gemini) | OpenCaptions, your computer | Human captioner |
+|---|---|---|---|
+| Price per room-hour | About **US$ 0.54**, +US$ 0.4–0.6 per extra language | **Free** | US$ 90–300 |
+| Needs internet | Yes | No | If remote |
+| Accuracy · delay | Good · 2–3 s | Good · a few seconds more | Highest |
+| Audio goes to | Google | Nowhere | The captioner |
+| App for attendees | None: a QR code | None: a QR code | Depends on the service |
+| Languages | Several at once | Several at once | One per captioner |
 
-For example, a 40-minute talk captioned from English into Spanish costs about **US$ 0.70** with Gemini. A human live captioner typically costs US$ 90–300 per room-hour, for a single language. The dashboard shows a running cost estimate for every room.
+Silence is never billed; a translated voice in headphones (🎧) brings Gemini to about US$ 2.2. On your own computer, plan on about one room per laptop. More options compared: [the website](https://opencaptions.kvza.ar/alternatives/).
+
+For example, a 40-minute talk captioned from English into Spanish costs about **US$ 0.70** with Gemini. The dashboard shows a running cost estimate for every room.
 
 ## Privacy and security
 
-- **Self-hosted:** transcripts stay on your server. In local mode, audio never leaves the building.
-- **Sign-in for the dashboard** with expiring sessions, an admin and a crew role, signed-in devices you can sign out, two-factor codes, and company sign-in (Google, Microsoft, any OpenID Connect provider). The audience pages are read-only.
-- **No telemetry.** OpenCaptions never reports to us. Once a day it asks GitHub whether a new version is out, sending nothing about you or the event, and downloads it from GitHub only when you click **Update now**; turn it off in **Settings → General** or with `UPDATE_CHECK=0`.
-- **No inbound ports, rate limits and strict security headers** by default. Details in the [security guide](docs/security-guide.md).
-- **With Gemini, the room's audio goes to Google.** On the free tier Google may use it to improve its products; for events with personal information, use a paid key or Vertex AI. What organizers should tell speakers and the audience, with a ready-made notice: [Licenses and responsibilities](docs/legal.md).
+- **Self-hosted:** transcripts stay on your computer or server. Audio is never written to disk.
+- **With Gemini, the room's audio goes to Google.** On the free tier Google may use it to improve its products; for events with personal information, use a paid key or Vertex AI. In local mode, nothing leaves the computer.
+- **No telemetry.** Once a day OpenCaptions asks GitHub whether a new version is out, sending nothing about you or the event; turn it off in **Settings → System → New versions** or with `UPDATE_CHECK=0`.
+- **Signed-in dashboard** with an admin and a crew role, two-factor codes and company sign-in; no inbound ports needed.
+
+Exactly what leaves the machine, and when: [Privacy and data](docs/privacy.md). Hardening: [Security guide](docs/security-guide.md). What to tell speakers and the audience: [Licenses and responsibilities](docs/legal.md).
 
 ## Documentation
 
-| I want to… | Read |
-|---|---|
-| Understand the product | [Overview](docs/overview.md) |
-| Run it for the first time | [Getting started](docs/getting-started.md) |
-| Check hardware and operating systems | [Requirements](docs/requirements.md) |
-| Deploy it for an event | [Deployment](docs/deployment.md) · [Networking](docs/networking.md) · [Security](docs/security-guide.md) |
-| Run the event day | [Runbook](docs/operations/runbook.md) · [Troubleshooting](docs/operations/troubleshooting.md) |
-| Look up a setting or an endpoint | [Configuration](docs/reference/configuration.md) · [API](docs/reference/api.md) |
-| Run it without the cloud | [Local mode](docs/local.md) |
-| Send captions to Zoom, YouTube, Teams or a webhook; import the agenda | [Integrations](docs/integrations.md) |
-| Caption your own calls, videos and conversations | [Just for me](docs/personal.md) |
-| Customize the look | [Brand and design system](docs/brand.md) |
-| Change the code | [Architecture](docs/architecture.md) · [Contributing](.github/CONTRIBUTING.md) · [ADRs](docs/adr/) |
-| Check licenses and what you must tell people | [Licenses and responsibilities](docs/legal.md) |
+All the docs, by who you are: **[docs/README.md](docs/README.md)**.
+
+- **Trying it out:** [Getting started](docs/getting-started.md) · [FAQ](docs/faq.md)
+- **On the day:** [Checklist](docs/operations/day-of-event.md) · [Troubleshooting](docs/operations/troubleshooting.md)
+- **On a server:** [Deployment](docs/deployment.md) · [Security](docs/security-guide.md)
+- **Developers:** [Architecture](docs/architecture.md) · [API](docs/reference/api.md) · [Changelog](CHANGELOG.md)
 
 ## Current limitations
 
-- Gemini Live Translate is a preview model; its behavior and quotas may change.
+- Gemini's live speech models are previews; their behavior and quotas may change.
 - Accuracy with strong accents or very rapid language switching depends on the model. The glossary and pinning a room's language help.
-- Speakers are labeled by the crew with one tap; voices aren't told apart automatically yet.
+- Voices aren't told apart; transcripts name the speaker the agenda lists for each talk.
 - The Mac app and Windows launcher aren't signed yet, so the first launch shows a warning to confirm.
 - In local mode a laptop handles about one room, and captions run a few seconds further behind than with Gemini.
 
 ## En español
 
-**OpenCaptions** lleva subtítulos y traducción en vivo a cualquier evento: congresos, universidades, iglesias, sesiones públicas, eventos corporativos y festivales. Es gratis, open source (MIT) y corre en tu propio servidor.
+**OpenCaptions** lleva subtítulos y traducción en vivo a cualquier evento: congresos, universidades, iglesias, sesiones públicas, eventos corporativos y festivales. Es gratis, open source (MIT) y corre en tu propia computadora o servidor.
 
 - **El público** escanea el QR, elige su idioma y sigue la charla en el celular. Si llegó tarde, toca **¿Qué me perdí?**. Quien usa audífonos o un implante puede escuchar el sonido de la sala en su celular. Al final, la transcripción queda para leer, buscar y descargar.
 - **En el escenario**, una pantalla con subtítulos grandes junto al orador y un overlay para OBS o vMix, en uno o dos idiomas.
-- **Para la organización**, un panel con el estado, la demora, el público y el costo de cada sala. Las salas funcionan solas y toman los títulos de la agenda. Una grabación se subtitula en minutos, y todas las transcripciones se descargan juntas en un .zip. Para traducir podés usar Gemini u otra IA (OpenAI, OpenRouter, Groq, Mistral), y cuando sale una versión nueva el panel la instala con un clic en **Actualizar ahora**.
-- **Costo:** el software es gratis. Con Gemini, unos US$ 0,54 por hora de charla por sala (US$ 2,2 con voz traducida en auriculares; el silencio no se cobra). En modo local, nada: corre en tu propia compu y el audio no sale del edificio.
+- **Para la organización**, un panel con el estado, la demora, el público y el costo de cada sala. Las salas funcionan solas y toman los títulos de la agenda. Para traducir podés usar Gemini u otra IA (OpenAI, OpenRouter, Groq, Mistral).
+- **Costo:** el software es gratis. Con Gemini, unos US$ 0,54 por hora de charla por sala (US$ 2,2 con voz traducida en auriculares; el silencio no se cobra). En modo local, nada: corre en tu propia computadora, no se sube audio y no se cobra por minuto.
 
-Para empezar sin terminal: descargá [OpenCaptions para Mac](https://github.com/carraroesteban/opencaptions/releases/latest/download/OpenCaptions-mac.zip) o [para Windows](https://github.com/carraroesteban/opencaptions/releases/latest/download/OpenCaptions-windows.zip). En Mac, arrastrá OpenCaptions a Aplicaciones y abrilo; en Windows, descomprimí el ZIP y hacé doble clic en **Start OpenCaptions**. El asistente pregunta el nombre del evento, las salas y los idiomas, conecta Gemini con tu API key y crea una dirección pública con HTTPS en un clic. ¿Sin key, o tu key gratis se quedó sin cuota en pleno evento? Hacé clic en **Usar esta computadora (gratis, más lento)**: descarga una vez un modelo de voz gratis (unos 670 MB, cerca de un minuto) y arrancan los subtítulos; para traducir hace falta además la app gratis [Ollama](https://ollama.com/download), y la página explica cómo. Sin terminal. Con Docker: `docker run -d -p 127.0.0.1:8080:8080 -v opencaptions-data:/app/data -v opencaptions-config:/app/config ghcr.io/carraroesteban/opencaptions`. Guía para el día del evento: [event-day.es.md](docs/operations/event-day.es.md).
+**Para empezar sin terminal:**
+
+1. Descargá [OpenCaptions para Mac](https://github.com/carraroesteban/opencaptions/releases/latest/download/OpenCaptions-mac.zip) o [para Windows](https://github.com/carraroesteban/opencaptions/releases/latest/download/OpenCaptions-windows.zip). En Mac, arrastrá OpenCaptions a Aplicaciones y abrilo; en Windows, descomprimí el ZIP y hacé doble clic en **Start OpenCaptions**. Si la computadora te avisa que no puede verificar la app: [paso a paso](docs/first-launch.md#en-español).
+2. El asistente pregunta el nombre del evento, las salas y los idiomas, conecta Gemini con tu API key y crea una dirección pública con HTTPS en un clic.
+3. ¿Sin key, o tu key gratis se quedó sin cuota en pleno evento? Hacé clic en **Usar esta computadora (gratis, más lento)**.
+
+Para actualizar, hacé clic en **Actualizar ahora** en el panel cuando sale una versión nueva (desde la próxima versión, también **Buscar actualizaciones…** en el menú de la app): se descarga y se reinicia en cerca de un minuto, sin perder ajustes ni transcripciones.
+
+En un servidor, con Docker: el mismo comando de [arriba](#on-a-server-docker-a-vps-or-the-cloud). Guía para el día del evento: [event-day.es.md](docs/operations/event-day.es.md).
 
 ## Contributing
 
-Issues and pull requests are welcome. See [CONTRIBUTING.md](.github/CONTRIBUTING.md) for the development setup, tests and documentation style. Please report vulnerabilities privately: [SECURITY.md](.github/SECURITY.md).
+Issues and pull requests are welcome. See [CONTRIBUTING.md](.github/CONTRIBUTING.md) for the development setup, tests and documentation style, and the [Code of Conduct](.github/CODE_OF_CONDUCT.md). Please report vulnerabilities privately: [SECURITY.md](.github/SECURITY.md).
 
 ## License
 

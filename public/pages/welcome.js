@@ -4,7 +4,7 @@ import { prefsControls, LANG } from '/prefs.js';
 import { icon } from '/illustrations.js';
 import { ensureSignedIn, signInScreen } from '/signin.js';
 import { keyPanel, tunnelPanel } from '/connect.js';
-import { localPanel } from '/local-mode.js';
+import { localPanel, localProgress } from '/local-mode.js';
 import { LANGUAGE_CATALOG } from '/languages.js';
 const $ = (id) => document.getElementById(id);
 $('prefs-slot').append(prefsControls());
@@ -21,7 +21,7 @@ const T = {
     k1: 'Your event', nameH: 'What’s your event called?', namePh: 'e.g. City Design Week 2026', nameHint: 'Shown on phones, the stage screen and the QR posters.', skipName: 'Skip, decide later',
     k2: 'Rooms', roomsH: 'Where will people speak?', roomsP: 'Each room gets its own captions link and QR code.', addRoom: 'Add a room', skipRooms: 'Skip, keep these rooms', roomPh: (i) => `Room ${i}`, remove: 'Remove room',
     presets: [['One room', ['Main Stage']], ['Two rooms', ['Main Stage', 'Room A']], ['Main stage + 3 rooms', ['Main Stage', 'Room A', 'Room B', 'Room C']]],
-    k3: 'Languages', langsH: 'Which languages?', spokenQ: 'What language will the talks be in?', auto: 'Detect automatically', captionsQ: 'Which captions can the audience choose?', langsHint: 'Not sure? “Detect automatically” follows the speaker, even when they switch.', notSure: 'I’m not sure, skip',
+    k3: 'Languages', langsH: 'Which languages?', spokenQ: 'What language will the talks be in?', auto: 'Detect automatically', betweenQ: 'Only these languages', captionsQ: 'Which captions can the audience choose?', langsHint: 'Not sure? “Detect automatically” follows the speaker, even when they switch.', notSure: 'I’m not sure, skip',
     k4: 'The AI', aiLedeMock: 'Right now captions are simulated. To caption real talks, connect Google’s Gemini with an API key: it takes about two minutes.', aiLedeOn: 'Captions come from Google’s Gemini, in the cloud.',
     kS: 'Phones', shareH: 'How will phones reach the captions?', sAddr: 'Address',
     kR: 'Review', reviewH: 'Check before anything changes', reviewP: 'Nothing has changed yet. Switch off what you don’t want.', apply: 'Apply changes', skipReview: 'Skip, change nothing',
@@ -38,7 +38,8 @@ const T = {
     mock: 'Demo mode: captions are simulated', mockD: 'Everything works so you can explore, but the words are made up. To caption real talks, pick one of these and restart:',
     mockGemini: 'Cloud (best quality): add a Gemini API key', mockLocal: 'On this computer, no account needed:',
     backupOn: 'Offline backup is ready', backupOnD: 'If the internet goes down, captions keep running on this computer and switch back when it returns.',
-    backupOff: 'Optional: an offline backup', backupOffD: 'Start the server with this command and captions keep running on this computer if the venue loses internet:',
+    backupOff: 'Optional: an offline backup', backupOffD: 'If the venue loses internet, captions keep running on this computer and switch back when it returns.',
+    backupGo: 'Turn on offline backup', backupFine: 'The first time it downloads about 650 MB.', backupFineMac: 'Uses the speech recognition built into this Mac, so there’s usually nothing big to download.', backupFailed: 'Couldn’t get it ready:',
     k5: 'Sound', audioH: 'Connect the sound', audioP: 'Pick how each room’s sound gets here.',
     whichRoom: 'Which room?',
     mic: 'A microphone or the sound desk, into a computer', micD: 'A computer next to the stage gets the sound by cable and sends it from a browser page.',
@@ -65,7 +66,7 @@ const T = {
     test: 'Just try it first', testD: 'Talk into your microphone and watch the captions appear.',
     more: 'More details: every way to connect the sound, in the guide',
     k6: 'All set', doneH: 'You’re ready.', doneP: 'Open the dashboard to start captioning, or print the QR codes for the rooms.',
-    stepOf: (n, m) => `Step ${n} of ${m}`, close: 'Close setup', sEvent: 'Event', sRooms: 'Rooms', sLangs: 'Captions', sAI: 'AI',
+    stepOf: (n, m) => `Step ${n} of ${m}`, close: 'Close setup', leaveQ: 'Leave setup?', leaveP: 'Nothing you chose here is saved.', keepOn: 'Keep setting up', leave: 'Leave', sEvent: 'Event', sRooms: 'Rooms', sLangs: 'Captions', sAI: 'AI',
     openDash: 'Open the dashboard', printQr: 'Print the QR codes', seeAudience: 'See what the audience sees', autoL: 'auto-detected',
     aiG: 'In the cloud', aiL: 'This computer', aiM: 'Demo mode', withBackup: ' + offline backup',
   },
@@ -78,7 +79,7 @@ const T = {
     k1: 'Tu evento', nameH: '¿Cómo se llama tu evento?', namePh: 'Ej: Semana del Diseño 2026', nameHint: 'Aparece en los celulares, la pantalla del escenario y los carteles con QR.', skipName: 'Saltar, lo decido después',
     k2: 'Salas', roomsH: '¿Dónde va a hablar la gente?', roomsP: 'Cada sala tiene su link de subtítulos y su QR.', addRoom: 'Agregar una sala', skipRooms: 'Saltar, dejar estas salas', roomPh: (i) => `Sala ${i}`, remove: 'Quitar sala',
     presets: [['Una sala', ['Escenario principal']], ['Dos salas', ['Escenario principal', 'Sala A']], ['Principal + 3 salas', ['Escenario principal', 'Sala A', 'Sala B', 'Sala C']]],
-    k3: 'Idiomas', langsH: '¿Qué idiomas?', spokenQ: '¿En qué idioma van a ser las charlas?', auto: 'Detectar automáticamente', captionsQ: '¿Qué subtítulos puede elegir el público?', langsHint: '¿No sabés? “Detectar automáticamente” sigue al orador, aunque cambie de idioma.', notSure: 'No sé, saltar',
+    k3: 'Idiomas', langsH: '¿Qué idiomas?', spokenQ: '¿En qué idioma van a ser las charlas?', auto: 'Detectar automáticamente', betweenQ: 'Solo entre estos idiomas', captionsQ: '¿Qué subtítulos puede elegir el público?', langsHint: '¿No sabés? “Detectar automáticamente” sigue al orador, aunque cambie de idioma.', notSure: 'No sé, saltar',
     k4: 'La IA', aiLedeMock: 'Por ahora los subtítulos son simulados. Para subtitular charlas reales, conectá Gemini de Google con una API key: son unos dos minutos.', aiLedeOn: 'Los subtítulos vienen de Gemini de Google, en la nube.',
     kS: 'Celulares', shareH: '¿Cómo llegan los celulares a los subtítulos?', sAddr: 'Dirección',
     kR: 'Revisión', reviewH: 'Revisá antes de cambiar nada', reviewP: 'Todavía no cambió nada. Apagá lo que no quieras.', apply: 'Aplicar cambios', skipReview: 'Saltar, no cambiar nada',
@@ -95,7 +96,8 @@ const T = {
     mock: 'Modo demo: los subtítulos son simulados', mockD: 'Todo funciona para que lo recorras, pero las palabras son inventadas. Para subtitular charlas reales, elegí una opción y reiniciá:',
     mockGemini: 'En la nube (mejor calidad): agregá una API key de Gemini', mockLocal: 'En esta computadora, sin cuenta:',
     backupOn: 'Respaldo sin internet listo', backupOnD: 'Si se corta internet, los subtítulos siguen en esta computadora y vuelven a la nube cuando regresa.',
-    backupOff: 'Opcional: un respaldo sin internet', backupOffD: 'Iniciá el servidor con este comando y los subtítulos siguen en esta computadora si el lugar se queda sin internet:',
+    backupOff: 'Opcional: un respaldo sin internet', backupOffD: 'Si el lugar se queda sin internet, los subtítulos siguen en esta computadora y vuelven a la nube cuando regresa.',
+    backupGo: 'Activar el respaldo sin internet', backupFine: 'La primera vez descarga unos 650 MB.', backupFineMac: 'Usa el reconocimiento de voz que trae esta Mac, así que normalmente no hay que descargar nada grande.', backupFailed: 'No se pudo preparar:',
     k5: 'Sonido', audioH: 'Conectá el sonido', audioP: 'Elegí cómo llega el sonido de cada sala.',
     whichRoom: '¿Qué sala?',
     mic: 'Un micrófono o la consola, a una computadora', micD: 'Una computadora junto al escenario recibe el sonido por cable y lo envía desde una página del navegador.',
@@ -122,7 +124,7 @@ const T = {
     test: 'Probarlo primero', testD: 'Hablá al micrófono y mirá cómo aparecen los subtítulos.',
     more: 'Más detalles: todas las formas de conectar el sonido, en la guía',
     k6: 'Listo', doneH: 'Ya está todo.', doneP: 'Abrí el panel para empezar a subtitular, o imprimí los QR de las salas.',
-    stepOf: (n, m) => `Paso ${n} de ${m}`, close: 'Cerrar la configuración', sEvent: 'Evento', sRooms: 'Salas', sLangs: 'Subtítulos', sAI: 'IA',
+    stepOf: (n, m) => `Paso ${n} de ${m}`, close: 'Cerrar la configuración', leaveQ: '¿Salir de la configuración?', leaveP: 'Nada de lo que elegiste se guarda.', keepOn: 'Seguir configurando', leave: 'Salir', sEvent: 'Evento', sRooms: 'Salas', sLangs: 'Subtítulos', sAI: 'IA',
     openDash: 'Abrir el panel', printQr: 'Imprimir los QR', seeAudience: 'Ver lo que ve el público', autoL: 'detección automática',
     aiG: 'En la nube', aiL: 'Esta computadora', aiM: 'Modo demo', withBackup: ' + respaldo sin internet',
   },
@@ -164,9 +166,21 @@ const A = {
   name: S.named === false ? '' : S.name, // a new install has no name yet: leave the field empty
   rooms: S.stages.map((s) => ({ id: s.id, name: s.name })),
   spoken: S.stages[0]?.source || 'auto',
+  between: [...(S.stages[0]?.spoken || [])], // 'auto' only among these; none: any language
   targets: [...(S.stages[0]?.targets || S.defaultTargets)],
 };
 $('name').value = A.name;
+const A0 = JSON.stringify({ ...A, name: '' }), name0 = A.name;
+// The X leaves without applying anything: ask first if an answer was changed.
+$('lv-title').textContent = t.leaveQ; $('lv-body').textContent = t.leaveP; $('lv-stay').textContent = t.keepOn; $('lv-go').textContent = t.leave;
+$('close').onclick = (e) => {
+  if (JSON.stringify({ ...A, name: '' }) === A0 && $('name').value.trim() === name0) return;
+  e.preventDefault();
+  const d = $('dlg-leave');
+  d.returnValue = '';
+  d.addEventListener('close', () => { if (d.returnValue === 'leave') location.href = $('close').href; }, { once: true });
+  d.showModal();
+};
 
 // ---------- steps ----------
 const steps = [...document.querySelectorAll('.step')];
@@ -230,7 +244,7 @@ for (const s of steps) new Image().src = `/art/${s.dataset.art}.webp`;
 const save = {
   async name() { A.name = $('name').value.trim() || S.name; },
   async rooms() {
-    if (!A.rooms.some((r) => r.name.trim())) throw new Error(LANG === 'es' ? 'Dejá al menos una sala.' : 'Keep at least one room.');
+    if (!A.rooms.length) throw new Error(LANG === 'es' ? 'Dejá al menos una sala.' : 'Keep at least one room.');
   },
   async langs() {
     if (!A.targets.length) throw new Error(LANG === 'es' ? 'Elegí al menos un idioma de subtítulos.' : 'Pick at least one caption language.');
@@ -238,8 +252,9 @@ const save = {
 };
 
 // ---------- review: every change listed, each one can be unticked ----------
-const cfgKey = (src, tg) => `${src}|${[...tg].sort().join(',')}`;
-const langText = (src, tg) => `${src === 'auto' ? t.auto : langNames[src] || src} → ${tg.map((k) => langNames[k] || k).join(', ')}`;
+const spokenSet = () => (A.spoken === 'auto' ? A.between : []);
+const cfgKey = (src, tg, sp = []) => `${src}|${src === 'auto' ? [...sp].sort().join(',') : ''}|${[...tg].sort().join(',')}`;
+const langText = (src, tg, sp = []) => `${src === 'auto' ? `${t.auto}${sp.length ? ` (${sp.map((k) => langNames[k] || k).join(', ')})` : ''}` : langNames[src] || src} → ${tg.map((k) => langNames[k] || k).join(', ')}`;
 let ops = [];
 async function buildPlan() {
   S = await api('GET', '/api/setup');
@@ -249,7 +264,8 @@ async function buildPlan() {
   const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
   if (tz && S.timezone && tz !== S.timezone && !S.timezoneFixed) ops.push({ type: 'timezone', tz, label: t.opTz(tz), note: t.opTzNote, on: true });
   if (Object.keys(extraLangs).length) ops.push({ type: 'languages', label: t.opLangsAdd(Object.values(extraLangs).join(', ')), on: true });
-  const want = A.rooms.filter((r) => r.name.trim());
+  // A box left empty shows "Room 2": that is the room it makes (an existing room keeps its name), never a room silently dropped.
+  const want = A.rooms.map((r, i) => ({ ...r, name: r.name.trim() || S.stages.find((x) => x.id === r.id)?.name || t.roomPh(i + 1) }));
   const keep = new Set(want.filter((r) => r.id).map((r) => r.id));
   for (const r of want) {
     const old = r.id && S.stages.find((x) => x.id === r.id);
@@ -259,12 +275,12 @@ async function buildPlan() {
   // Languages: rooms set up like most of the others follow the new answer; a room with its own setup
   // (say, the only one with Portuguese) is listed unticked so it isn't overwritten by accident.
   const counts = {};
-  for (const x of S.stages) counts[cfgKey(x.source, x.targets)] = (counts[cfgKey(x.source, x.targets)] || 0) + 1;
+  for (const x of S.stages) counts[cfgKey(x.source, x.targets, x.spoken)] = (counts[cfgKey(x.source, x.targets, x.spoken)] || 0) + 1;
   const common = Object.entries(counts).sort((a, b) => b[1] - a[1])[0]?.[0];
   for (const x of S.stages.filter((x) => keep.has(x.id))) {
-    if (cfgKey(x.source, x.targets) === cfgKey(A.spoken, A.targets)) continue;
-    const custom = cfgKey(x.source, x.targets) !== common && S.stages.length > 1;
-    ops.push({ type: 'langs', id: x.id, label: t.opLangs(x.name, langText(x.source, x.targets), langText(A.spoken, A.targets)), note: custom ? t.opCustom : '', on: !custom });
+    if (cfgKey(x.source, x.targets, x.spoken) === cfgKey(A.spoken, A.targets, spokenSet())) continue;
+    const custom = cfgKey(x.source, x.targets, x.spoken) !== common && S.stages.length > 1;
+    ops.push({ type: 'langs', id: x.id, label: t.opLangs(x.name, langText(x.source, x.targets, x.spoken), langText(A.spoken, A.targets, spokenSet())), note: custom ? t.opCustom : '', on: !custom });
   }
   for (const x of S.stages.filter((x) => !keep.has(x.id))) {
     let talks;
@@ -290,10 +306,10 @@ async function applyPlan() {
     let id = slug(o.name) || 'room', n = 2;
     while (taken.has(id)) id = `${slug(o.name) || 'room'}-${n++}`;
     taken.add(id);
-    await api('POST', '/api/stages', { id, name: o.name, source: A.spoken, targets: A.targets });
+    await api('POST', '/api/stages', { id, name: o.name, source: A.spoken, spoken: spokenSet(), targets: A.targets });
   }
   for (const o of todo.filter((o) => o.type === 'renameRoom')) await api('PATCH', `/api/stages/${encodeURIComponent(o.id)}`, { name: o.name });
-  for (const o of todo.filter((o) => o.type === 'langs')) await api('PATCH', `/api/stages/${encodeURIComponent(o.id)}`, { source: A.spoken, targets: A.targets });
+  for (const o of todo.filter((o) => o.type === 'langs')) await api('PATCH', `/api/stages/${encodeURIComponent(o.id)}`, { source: A.spoken, spoken: spokenSet(), targets: A.targets });
   for (const o of todo.filter((o) => o.type === 'delete')) await api('DELETE', `/api/stages/${encodeURIComponent(o.id)}`);
   S = await api('GET', '/api/setup');
   A.name = S.name;
@@ -347,6 +363,8 @@ renderRooms();
 function renderLangs() {
   const opts = [['auto', t.auto], ...Object.entries(langNames)];
   $('spoken').innerHTML = opts.map(([k, v]) => `<button type="button" class="pill" role="radio" aria-pressed="${A.spoken === k}" aria-checked="${A.spoken === k}" data-k="${esc(k)}">${esc(v)}</button>`).join('');
+  $('between').classList.toggle('hidden', A.spoken !== 'auto');
+  $('between-pills').innerHTML = Object.entries(langNames).map(([k, v]) => `<button type="button" class="pill" aria-pressed="${A.between.includes(k)}" data-k="${esc(k)}">${esc(v)}</button>`).join('');
   $('targets').innerHTML = Object.entries(langNames).map(([k, v]) => `<button type="button" class="pill" aria-pressed="${A.targets.includes(k)}" data-k="${esc(k)}">${esc(v)}</button>`).join('');
   const free = Object.entries(LANGUAGE_CATALOG).filter(([c]) => !(c in langNames)).sort((a, b) => a[1].localeCompare(b[1]));
   $('more-lang').innerHTML = `<option value="">${esc(t.moreLang)}</option>` + free.map(([c, n]) => `<option value="${c}">${esc(n)}</option>`).join('');
@@ -362,6 +380,12 @@ $('more-lang-form').onsubmit = (e) => {
   renderLangs();
 };
 $('spoken').onclick = (e) => { const k = e.target.closest('[data-k]')?.dataset.k; if (k) { A.spoken = k; renderLangs(); } };
+$('between-pills').onclick = (e) => {
+  const k = e.target.closest('[data-k]')?.dataset.k;
+  if (!k) return;
+  A.between = A.between.includes(k) ? A.between.filter((x) => x !== k) : [...A.between, k];
+  renderLangs();
+};
 $('targets').onclick = (e) => {
   const k = e.target.closest('[data-k]')?.dataset.k;
   if (!k) return;
@@ -372,7 +396,6 @@ renderLangs();
 
 // ---------- AI ----------
 const opt = (ic, title, desc, extra = '', cls = '') => `<div class="opt ${cls}"><div class="ic">${icon(ic)}</div><div><b>${title}</b><span>${desc}</span>${extra}</div></div>`;
-const cmd = (c) => `<pre class="cmd"><code>${esc(c)}</code></pre>`;
 const keyP = keyPanel($('ai-key'), { api, onChange: (s) => { S = { ...S, ...s, primaryEngine: s.engine === 'gemini' && S.primaryEngine === 'mock' ? 'gemini' : S.primaryEngine }; renderAi(); } });
 function renderAi() {
   const f = S.failover;
@@ -381,17 +404,34 @@ function renderAi() {
   $('ai-lede').textContent = S.primaryEngine === 'mock' ? (S.ai?.set ? '' : t.aiLedeMock) : S.primaryEngine === 'gemini' ? t.aiLedeOn : '';
   $('ai-key').classList.toggle('hidden', S.primaryEngine === 'local');
   keyP.update(S);
-  if (S.primaryEngine === 'gemini') {
-    html += f?.mode === 'auto' && f.localReady
+  // Offline backup (POST /api/ai/use 'auto'): this computer gets ready as the backup, its progress from GET /api/local.
+  // Not offered in Docker / on a cloud server (canBackup): phones would lose that server with the internet anyway.
+  const lm = localP.status();
+  const prep = lm?.standby ? lm.state : '';
+  if (S.primaryEngine === 'gemini' && S.aiNow?.canBackup) {
+    html += (f?.mode === 'auto' && f.localReady) || prep === 'ready'
       ? opt('shield', t.backupOn, t.backupOnD, '', 'good')
-      : opt('shield', t.backupOff, t.backupOffD, cmd('npm run local -- --fallback'));
+      : opt('shield', t.backupOff, t.backupOffD, `<div class="connect">${prep === 'working' ? localProgress(lm)
+        : `${prep === 'error' || backupErr ? `<p class="cx-msg bad" role="status">${esc(t.backupFailed)} ${esc(prep === 'error' ? lm.error : backupErr)}</p>` : ''}
+          <p class="cx-fine">${esc(S.aiNow.apple ? t.backupFineMac : t.backupFine)}</p>
+          <div class="cx-row"><button type="button" data-backup>${esc(t.backupGo)}</button></div>`}</div>`);
   } else if (S.primaryEngine === 'local') {
     html += opt('shield', t.local, t.localD, '', 'good');
   }
   $('ai').innerHTML = html;
   // No key: "Run it on this computer" (public/local-mode.js); it stays while it gets ready.
-  $('local-offer').classList.toggle('hidden', S.primaryEngine !== 'mock' && (localP.status()?.state || 'idle') === 'idle');
+  $('local-offer').classList.toggle('hidden', S.primaryEngine !== 'mock' && ((lm?.state || 'idle') === 'idle' || !!lm?.standby));
 }
+let backupErr = '';
+$('ai').onclick = async (e) => {
+  const b = e.target.closest('[data-backup]');
+  if (!b) return;
+  b.disabled = true;
+  backupErr = '';
+  try { await api('POST', '/api/ai/use', { use: 'auto' }); S = await api('GET', '/api/setup'); } catch (err) { backupErr = err.message; }
+  await localP.refresh(); // follows the preparation (local-mode.js) and redraws through onChange
+  renderAi();
+};
 const localP = localPanel($('local-offer'), { api, onChange: (s) => { if (s.engine === 'local') S = { ...S, engine: 'local', primaryEngine: 'local' }; renderAi(); } });
 renderAi();
 
@@ -439,11 +479,11 @@ function renderSound() {
   if (!S.stages.some((x) => x.id === soundRoom)) soundRoom = S.stages[0]?.id || ''; // rooms changed on the review step
   const open = new Set([...$('audio').querySelectorAll('details[open]')].map((d) => d.dataset.k));
   const card = (k, ic, title, desc, body) => `<details class="opt sound" data-k="${k}"${open.has(k) ? ' open' : ''}><summary><div class="ic">${icon(ic)}</div><div><b>${esc(title)}</b><span>${esc(desc)}</span></div><span class="chev">${icon('chevron')}</span></summary><div class="sound-body">${body}</div></details>`;
-  $('audio').innerHTML = (S.stages.length > 1 ? `<div><p class="q">${esc(t.whichRoom)}</p><div class="pills u-m0" role="radiogroup" aria-label="${esc(t.whichRoom)}">${S.stages.map((x) => `<button type="button" class="pill" role="radio" aria-checked="${x.id === soundRoom}" aria-pressed="${x.id === soundRoom}" data-room="${esc(x.id)}">${esc(x.name)}</button>`).join('')}</div></div>` : '')
+  $('audio').innerHTML = `<a class="opt" href="/demo.html?mode=mic" target="_blank" rel="noopener"><div class="ic">${icon('play')}</div><div><b>${esc(t.test)}</b><span>${esc(t.testD)}</span></div></a>`
+    + (S.stages.length ? `<div><p class="q">${esc(t.whichRoom)}</p><div class="pills u-m0" role="radiogroup" aria-label="${esc(t.whichRoom)}">${S.stages.map((x) => `<button type="button" class="pill" role="radio" aria-checked="${x.id === soundRoom}" aria-pressed="${x.id === soundRoom}" data-room="${esc(x.id)}">${esc(x.name)}</button>`).join('')}</div></div>` : '')
     + card('mic', 'mic', t.mic, t.micD, micBody())
     + card('stream', 'monitor', t.stream, t.streamD, streamBody())
     + card('rec', 'film', t.rec, t.recD, recBody())
-    + `<a class="opt" href="/demo.html?mode=mic" target="_blank" rel="noopener"><div class="ic">${icon('play')}</div><div><b>${esc(t.test)}</b><span>${esc(t.testD)}</span></div></a>`
     + `<p class="hint u-m0"><a href="${RUNBOOK}" target="_blank" rel="noopener">${esc(t.more)}</a></p>`;
 }
 $('audio').addEventListener('click', async (e) => {

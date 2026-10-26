@@ -20,6 +20,6 @@ Option 1, using `inputAudioTranscription` as the source of truth for the origina
 ## Consequences
 
 - Good: about 3 s to the first original-language words, automatic language detection, vocabulary hints, session resumption for long talks.
-- Bad: it's a preview model, so behaviour and quotas can change. Mitigated by config fallback levels and the engine interface, which allows swapping engines.
+- Bad: it's a preview model, so behavior and quotas can change. Mitigated by config fallback levels and the engine interface, which allows swapping engines.
 - Bad: interim transcription isn't delivered by this model today, so partial captions depend on how often the model emits text.
 - Follow-up: a local engine (Gemma) for offline events, behind the same interface.

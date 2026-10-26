@@ -82,6 +82,7 @@
     .update-note { margin: 0; font-size: 13px; color: var(--fg2); }
     .update-note code { user-select: all; }
     .update-note .update-btn { font-size: 13px; padding: 3px 10px; margin-left: 2px; }
+    .update-notes { max-height: 240px; overflow: auto; margin: 12px 0 0; padding: 10px 12px; border-radius: 8px; background: var(--bg3); font: 13px/1.5 var(--font); white-space: pre-wrap; overflow-wrap: anywhere; }
     .muted-note { font-size: 13px; color: var(--fg2); }
     .tools-btn { margin-left: auto; }
     @media (max-width: 560px) { .tools-btn { padding: 8px 10px; } .tools-btn .tl { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; } }
@@ -89,8 +90,11 @@
     .topbar #engine:empty + .tools-btn { margin-left: auto; }
 
     /* ---------- Live: the numbers, then one card per room ---------- */
-    .kpis { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); background: var(--bg2); border: 1px solid var(--line); border-radius: 18px; box-shadow: var(--shadow-sm); }
-    .kpi { padding: 16px 20px 18px; display: grid; gap: 8px; min-width: 0; }
+    .kpis { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); background: var(--bg2); border: 1px solid var(--line); border-radius: 18px; box-shadow: var(--shadow-sm); overflow: hidden; }
+    /* each number has its hue: its icon, and a soft wash from the top corner (the words say what it is) */
+    .kpi { padding: 16px 20px 18px; display: grid; gap: 8px; min-width: 0; background: radial-gradient(120% 90% at 0 0, color-mix(in srgb, var(--hue, transparent) 12%, transparent), transparent 70%); }
+    .kpi > span svg.i { color: var(--hue); }
+    .kpis.stagger > .kpi { animation-duration: .5s; }
     .kpi + .kpi { border-left: 1px solid var(--line); }
     .kpi > span { display: flex; align-items: center; gap: 7px; font-size: 13px; font-weight: 600; color: var(--fg2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .kpi > span svg.i { width: 15px; height: 15px; }
@@ -112,11 +116,14 @@
     .sk-card { height: 300px; border-radius: 20px; }
     /* A room: its name and state, what's being said on a small caption monitor, and the three controls a live room needs */
     .stage { display: flex; flex-direction: column; gap: 14px; padding: 18px; min-width: 0; border-radius: 20px; transition: border-color .4s var(--ease-out), box-shadow .4s var(--ease-out); }
+    :is(.stage, .tile)[class*='rc-'] { background-image: linear-gradient(180deg, color-mix(in srgb, var(--rc) 22%, transparent), transparent 96px); }
+    :root[data-theme='contrast'] :is(.stage, .tile) { background-image: none; }
     .stage.alert { border-color: color-mix(in srgb, var(--bad) 45%, var(--line)); box-shadow: 0 0 0 3px color-mix(in srgb, var(--bad) 9%, transparent); }
     .stage.over { border-color: color-mix(in srgb, var(--warn) 55%, var(--line)); box-shadow: 0 0 0 3px color-mix(in srgb, var(--warn) 10%, transparent); }
-    .stage .top { display: flex; gap: 10px; align-items: center; min-width: 0; }
+    .stage .top { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; min-width: 0; }
     .stage .ini, .tile .ini { flex: none; display: grid; place-items: center; width: 32px; height: 32px; border-radius: 10px; background: var(--bg3); color: var(--fg); font: 800 11px/1 var(--font); letter-spacing: .02em; }
-    .stage h3 { margin: 0; font: 800 19px/1.2 var(--font-display); letter-spacing: -.02em; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .stage h3 { margin: 0; font: 800 19px/1.2 var(--font-display); letter-spacing: -.02em; flex: 1 1 150px; min-width: 0; overflow-wrap: break-word; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; } /* two lines, words only broken if one is longer than the card; the state chip drops below when short of room */
+    .stage .top > [data-f="state"] { margin-left: auto; }
     .stage h3 a { text-decoration: none; }
     .stage h3 a:hover { text-decoration: underline; }
     .stage .talk { display: grid; gap: 2px; margin-top: -4px; min-width: 0; }
@@ -134,23 +141,22 @@
     .stage .said { font-size: 15.5px; line-height: 1.5; height: 4.5em; display: flex; flex-direction: column; justify-content: flex-end; overflow: hidden; -webkit-mask-image: linear-gradient(to bottom, transparent, #000 1.5em); mask-image: linear-gradient(to bottom, transparent, #000 1.5em); }
     .stage .said span:empty::before { content: '…'; opacity: .5; }
     .stage .lvl { position: absolute; left: 0; right: 0; bottom: 0; height: 3px; background: rgb(250 248 243 / .1); }
-    .stage .lvl i { position: absolute; inset: 0 auto 0 0; width: 0; background: var(--lime); transition: width .3s var(--ease-out); }
+    .stage .lvl i { position: absolute; inset: 0 auto 0 0; width: 0; background: linear-gradient(90deg, #5DD6C2, var(--lime)); transition: width .3s var(--ease-out); } /* teal into lime, on ink only */
+    .stage.on-air .lvl i { box-shadow: 0 0 10px rgb(212 255 58 / .55); }
     .stage .lvl b { position: absolute; top: 0; bottom: 0; width: 2px; background: rgb(250 248 243 / .55); transition: left .4s var(--ease-out); }
     /* No sound yet: one next step, right on the card */
     .stage .nosound { display: grid; gap: 12px; padding: 16px; border-radius: 14px; border: 1.5px dashed var(--line-strong); font-size: 14px; line-height: 1.45; color: var(--fg2); }
     .stage .nosound .row { gap: 8px; flex-wrap: wrap; }
     .stage .nosound button { font-size: 13.5px; padding: 7px 12px; }
-    .stage.idle .screen, .stage.idle .speakers, .stage.idle .stats, .stage.idle [data-a="break"] { display: none; }
+    .stage.idle .screen, .stage.idle .stats, .stage.idle [data-a="break"] { display: none; }
     .stage .stats { display: flex; gap: 6px 16px; flex-wrap: wrap; font-size: 13px; color: var(--fg2); }
     .stage .stats span { display: inline-flex; align-items: center; gap: 6px; }
     .stage .stats b { color: var(--fg); font-variant-numeric: tabular-nums; font-weight: 600; }
     .stage .row[data-f="alerts"]:empty { display: none; }
-    .stage .speakers { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; font-size: 13px; color: var(--fg2); }
-    .stage .speakers .pill { font-size: 13px; padding: 4px 11px; }
     .stage .actions { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
     .stage .actions button { padding: 7px 12px; font-size: 13.5px; }
     .stage .actions .ib { padding: 7px 9px; }
-    @media (pointer: coarse) { .stage .actions button, .stage .speakers .pill, .crumbbar .nav-btn { min-height: 44px; } } /* a finger, not a mouse */
+    @media (pointer: coarse) { .stage .actions button, .crumbbar .nav-btn { min-height: 44px; } } /* a finger, not a mouse */
     /* More: a round chevron (its words stay for screen readers and as the tooltip) */
     .stage .actions .more { margin-left: auto; display: grid; place-items: center; width: 34px; height: 34px; padding: 0; border-radius: var(--pill); background: transparent; color: var(--fg2); }
     .stage .actions .more:hover { color: var(--fg); background: var(--fill); }
@@ -235,7 +241,10 @@
     /* history */
     .change { display: grid; grid-template-columns: 38px minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 12px 18px; border-bottom: 1px solid var(--line); }
     .change:last-child { border-bottom: 0; }
-    .change .ic { width: 36px; height: 36px; border-radius: 10px; background: var(--bg3); display: grid; place-items: center; }
+    .change .ic { width: 36px; height: 36px; border-radius: 10px; background: color-mix(in srgb, var(--hue, var(--fg2)) 14%, transparent); color: var(--hue, var(--fg)); display: grid; place-items: center; }
+    .change[data-k='room'] { --hue: var(--c-blue); } .change[data-k='agenda'] { --hue: var(--c-orange); } .change[data-k='glossary'] { --hue: var(--c-violet); }
+    .change[data-k='event'] { --hue: var(--c-rose); } .change:is([data-k='engine'], [data-k='ai']) { --hue: var(--c-teal); }
+    .change.undone .ic { --hue: var(--fg2); }
     .change .ic svg.i { width: 18px; height: 18px; }
     .change small { display: block; color: var(--fg2); font-size: 12px; margin-top: 2px; }
     .change.undone > div:nth-child(2) { opacity: .55; }
@@ -284,7 +293,7 @@
     .ob-head .spacer { flex: 1; }
     .ob-head button { padding: 5px 11px; font-size: 13px; }
     .ob-bar { height: 4px; border-radius: 4px; background: var(--fill); overflow: hidden; }
-    .ob-bar i { display: block; height: 100%; width: 0; border-radius: 4px; background: var(--ok); transition: width .6s var(--ease-out); }
+    .ob-bar i { display: block; height: 100%; width: 0; border-radius: 4px; background: linear-gradient(90deg, var(--c-teal), var(--ok)); transition: width .6s var(--ease-out); }
     #onboard ol { list-style: none; padding: 0; margin: 0; display: grid; gap: 2px; font-size: 14px; }
     #onboard li { display: flex; gap: 10px; align-items: baseline; padding: 5px 0; }
     #onboard:not(.all) li:not(.next) { display: none; }
@@ -339,6 +348,9 @@
     .set-nav a { display: flex; align-items: center; gap: 10px; padding: 9px 10px; border-radius: 10px; color: var(--fg2); text-decoration: none; font-size: 15px; transition: background-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out); }
     .set-nav a:hover { background: var(--bg3); color: var(--fg); }
     .set-nav a[aria-current] { background: var(--primary-bg); color: var(--primary-fg); font-weight: 700; }
+    .set-nav a:not([aria-current]) svg.i { color: var(--hue); }
+    .set-nav [data-pane='general'] { --hue: var(--c-orange); } .set-nav [data-pane='ai'] { --hue: var(--c-violet); } .set-nav [data-pane='address'] { --hue: var(--c-blue); }
+    .set-nav [data-pane='security'] { --hue: var(--c-green); } .set-nav [data-pane='alerts'] { --hue: var(--c-rose); } .set-nav [data-pane='browser'] { --hue: var(--c-teal); }
     .set-panes { overflow: auto; min-width: 0; padding: 6px 30px 30px; }
     .set-pane { display: none; align-content: start; grid-template-columns: minmax(0, 1fr); }
     .set-pane.on, .settings.searching .set-pane.set-hit { display: grid; animation: oc-in .32s var(--ease-out) both; }
@@ -363,6 +375,7 @@
       .set-nav { border-right: 0; background: none; padding: 10px 16px; gap: 0; }
       .set-nav a { padding: 14px 8px; font-size: 16px; border-radius: 0; border-bottom: 1px solid var(--line); }
       .settings:not(.picked) .set-nav a[aria-current] { background: none; color: var(--fg2); font-weight: 400; }
+      .settings:not(.picked) .set-nav a[aria-current] svg.i { color: var(--hue); }
       .settings.picked .set-nav, .settings.searching .set-nav { display: none; }
       .settings:not(.picked):not(.searching) .set-panes { display: none; }
       .settings.picked:not(.searching) .set-back { display: inline-flex; }
@@ -569,7 +582,7 @@
     fieldset.field legend { padding: 0; margin-bottom: 8px; font-size: 13px; color: var(--fg2); }
   </style>
 </head>
-<body>
+<body data-gate>
   <aside class="side" id="side">
     <a class="brand" href="#live">OpenCaptions</a>
     <div class="event" id="event" data-no-i18n></div>
@@ -581,7 +594,7 @@
   </aside>
 
     <main class="content">
-      <div class="crumbbar" id="crumbbar"></div>
+      <div class="crumbbar" id="crumbbar"><span id="prefs-slot"></span></div>
       <div class="topbar"><h1 id="view-title">En vivo</h1><span id="engine"></span>
         <button type="button" class="tools-btn" popovertarget="tools-menu" data-icon="sliders" title="Herramientas"><span class="tl">Herramientas</span></button>
         <div class="ctx" popover id="tools-menu">
@@ -598,11 +611,11 @@
 
       <!-- LIVE -->
       <section class="view" data-view="live">
-        <div class="kpis" id="kpis">
-          <div class="kpi"><span><i class="dot live"></i>Salas en vivo</span><b><span id="k-live">–</span><small id="k-of" data-no-i18n></small></b></div>
-          <div class="kpi"><span data-icon="eye">Espectadores</span><b id="k-viewers">–</b></div>
-          <div class="kpi"><span data-icon="chat">Idiomas</span><b id="k-langs">–</b></div>
-          <div class="kpi" data-advanced><span data-icon="coin">Costo estimado</span><b id="k-cost">–</b></div>
+        <div class="kpis stagger" id="kpis">
+          <div class="kpi hue-rose"><span><i class="dot live"></i>Salas en vivo</span><b><span id="k-live">–</span><small id="k-of" data-no-i18n></small></b></div>
+          <div class="kpi hue-blue"><span data-icon="eye">Espectadores</span><b id="k-viewers">–</b></div>
+          <div class="kpi hue-violet"><span data-icon="chat">Idiomas</span><b id="k-langs">–</b></div>
+          <div class="kpi hue-green" data-advanced><span data-icon="coin">Costo estimado</span><b id="k-cost">–</b></div>
         </div>
         <section class="card hidden" id="onboard">
           <div class="ob-head"><h2>Primeros pasos</h2><span class="spacer"></span>
@@ -698,8 +711,11 @@
           <form id="f-edit" class="room-form">
             <section class="card">
               <label class="field">Nombre<input name="name" required maxlength="80" autocomplete="off" /></label>
+              <div class="fld"><span id="color-l">Color de la sala</span><div class="swatches" id="room-colors" role="radiogroup" aria-labelledby="color-l"></div><small>Se ve en la insignia de la barra lateral y en la tarjeta de la sala.</small></div>
+              <div class="fld"><span id="tag-l">Etiqueta (opcional)</span><input name="tag" maxlength="24" autocomplete="off" list="tag-list" aria-labelledby="tag-l" placeholder="Workshops, Online, Konex…" /><datalist id="tag-list"></datalist><small>Las salas con la misma etiqueta se agrupan en la barra lateral.</small></div>
               <label class="field hidden" data-advanced id="id-field">ID (en las direcciones de la sala)<input name="id" required pattern="[a-z0-9_-]+" maxlength="40" autocomplete="off" spellcheck="false" /></label>
               <label class="field">Idioma que se habla<select name="source"><option value="auto">Detectar automáticamente</option></select></label>
+              <div class="fld" id="spoken-fld"><span id="spoken-l">Solo entre estos idiomas</span><div class="pick" id="edit-spoken" role="group" aria-labelledby="spoken-l"></div><small>La IA reconoce cuál se habla, solo entre los marcados. Ninguno marcado: cualquier idioma.</small></div>
               <div class="fld"><span id="targets-l">Idiomas para el público</span><div class="pick" id="edit-targets" role="group" aria-labelledby="targets-l"></div><small>Cada persona elige el suyo en el celular. Más idiomas, más costo de IA.</small></div>
             </section>
             <section class="card" data-advanced>
@@ -813,7 +829,7 @@
             <form class="rowbar" id="lang-form"><select id="lang-add" aria-label="Idioma para agregar" class="u-minw220"></select><button data-icon="plus">Agregar</button></form>
           </section>
           <section class="card setting">
-            <div><h3>Transcripciones para el público</h3><p id="tx-access-note" data-help>Qué puede leer y descargar el público sin iniciar sesión. Pedí permiso a los oradores antes de publicar charlas anteriores.</p></div>
+            <div><h3>Transcripciones para el público</h3><p id="tx-access-note" data-help>Qué puede leer y descargar el público sin iniciar sesión. Pedí permiso a los speakers antes de publicar charlas anteriores.</p></div>
             <select id="tx-access" aria-label="Transcripciones para el público" class="u-minw220">
               <option value="current">Solo la charla en curso</option>
               <option value="all">Todas las charlas</option>
@@ -876,10 +892,6 @@
         </section>
         <section class="set-pane" data-pane="browser" aria-labelledby="set-h-browser">
           <h3 class="set-h" id="set-h-browser">Este navegador</h3>
-          <section class="card setting">
-            <div><h3>Idioma y tema</h3><p data-help>De esta página, solo en este navegador.</p></div>
-            <span id="prefs-slot"></span>
-          </section>
           <section class="card setting sw">
             <div><h3><label for="adv-sw2" id="adv2-l">Modo avanzado</label></h3><p id="adv2-d" data-help>Muestra el glosario, las integraciones, el historial, el costo y los ajustes técnicos de cada sala. Se recuerda en este navegador.</p></div>
             <input type="checkbox" role="switch" id="adv-sw2" aria-labelledby="adv2-l" aria-describedby="adv2-d" />
@@ -946,12 +958,6 @@
     <p class="muted-note u-m0 u-bad" id="fix-err" role="alert"></p>
     <div class="dlg-actions"><button value="cancel" formnovalidate>Cerrar</button><button class="primary" value="ok" data-icon="check">Guardar correcciones</button></div>
   </form></dialog>
-  <dialog id="dlg-spk"><form method="dialog" class="u-stack12">
-    <h3 class="u-m0" id="spk-title" data-no-i18n></h3>
-    <label class="field">Nombre<input id="spk-name" maxlength="60" autocomplete="off" /></label>
-    <div class="dlg-actions"><button value="cancel" formnovalidate>Cancelar</button><button class="primary" value="ok">Guardar</button></div>
-  </form></dialog>
-
   <dialog id="dlg-talk"><form method="dialog" class="u-stack12">
     <h3 class="u-m0" id="talk-title"></h3>
     <p class="muted-note u-m0" id="talk-note"></p>

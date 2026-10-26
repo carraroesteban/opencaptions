@@ -4,7 +4,7 @@ OpenCaptions exists so that everyone in the room can follow the talk. Its own pa
 
 ## What's checked automatically
 
-`npm run a11y` opens every page in headless Chrome and runs [axe-core](https://github.com/dequelabs/axe-core) against **WCAG 2.2 level AA** plus axe's best practices: colour contrast, names and labels for every control, headings and landmarks, ARIA use, and more. It runs each page in light and dark themes, in Spanish and English, and CI runs it on every push. It also builds the website ([opencaptions.kvza.ar](https://opencaptions.kvza.ar)) and checks every page in its sitemap (`npm run a11y -- site:` checks only the website). Every page passes. The public [accessibility statement](https://opencaptions.kvza.ar/accessibility/) summarizes this page for readers.
+`npm run a11y` opens every page in headless Chrome and runs [axe-core](https://github.com/dequelabs/axe-core) against **WCAG 2.2 level AA** plus axe's best practices: color contrast, names and labels for every control, headings and landmarks, ARIA use, and more. It runs each page in light and dark themes, in Spanish and English, and CI runs it on every push. It also builds the website ([opencaptions.kvza.ar](https://opencaptions.kvza.ar)) and checks every page in its sitemap (`npm run a11y -- site:` checks only the website). Every page passes. The public [accessibility statement](https://opencaptions.kvza.ar/accessibility/) summarizes this page for readers.
 
 | Page | What it is |
 |---|---|
@@ -25,7 +25,7 @@ Automated tools find roughly a third to a half of real accessibility problems. T
 - **Captions that screen readers read once.** The caption area is a live region, but the line being spoken (rewritten as the speaker talks) is hidden from screen readers. They read each finished sentence once, instead of every word several times.
 - **Reading preferences** on phones: text size, line spacing, high-legibility fonts (Atkinson Hyperlegible, Lexend), light and dark themes, and floating captions over other apps. They're remembered on the device.
 - **Who is speaking**: when the crew sets it, captions and transcripts name the speaker, and WebVTT exports carry standard voice tags.
-- **Colour is never the only signal:** room states have text ("LIVE", "NO AUDIO"), alerts have words, checklists strike through what's done.
+- **Color is never the only signal:** room states have text ("LIVE", "NO AUDIO"), alerts have words, checklists strike through what's done.
 - **Keyboard:** every control is a real button, link or form field; focus is always visible (ink in light mode, lime in dark mode); dialogs are native `<dialog>` elements, so focus stays inside them and Esc closes them (except the sign-in screen, which must be completed). On organizer pages, ☰ hides or shows the sidebar (it says whether it's expanded; with icons only, each link keeps its name for screen readers), Back is a labelled button, the breadcrumb marks the current page, **?** lists the keyboard shortcuts, ⌘K / Ctrl+K opens a search box that works with the arrow keys, and a room's menu opens with Shift+F10 as well as a right-click.
 - **Motion:** captions don't blink or move at the end of the line: each new word fades in once, and a paragraph is never redrawn while you read it. The fade and page animations stop with the system's "reduce motion" setting.
 - **Contrast:** text meets 4.5:1 (large text 3:1) on every surface, in both themes.

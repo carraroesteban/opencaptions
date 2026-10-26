@@ -33,7 +33,7 @@ flowchart LR
 
 </details>
 
-One machine at the venue runs the server. Room PCs send audio to it over the local network. A Cloudflare Tunnel publishes it at an HTTPS address without opening any inbound port. The same machine can also be the capture PC for one room.
+One machine at the venue runs the server. Venue PCs send audio to it over the local network. A Cloudflare Tunnel publishes it at an HTTPS address without opening any inbound port. The same machine can also be the capture PC for one room.
 
 ### Topology B: cloud server, venue PCs only send audio
 
@@ -58,7 +58,7 @@ flowchart LR
 
 </details>
 
-The server runs on a small cloud VM with a real domain and TLS certificate. Each room PC only makes an outbound connection to it. Nothing at the venue accepts incoming connections.
+The server runs on a small cloud VM with a real domain and TLS certificate. Each venue PC only makes an outbound connection to it. Nothing at the venue accepts incoming connections.
 
 ### Decision table
 
@@ -73,7 +73,7 @@ The server runs on a small cloud VM with a real domain and TLS certificate. Each
 | Data location | Audio and transcripts stay on hardware you control, apart from Gemini. | On the VM, in the cloud region you choose. |
 | Good for | Small events, rehearsals, a single room, demos | Multi-room conferences, multi-day events, companies |
 
-**Hybrid:** you can start with A for rehearsals and move to B for the event. Nothing changes on the room PCs except the `--server` address.
+**Hybrid:** you can start with A for rehearsals and move to B for the event. Nothing changes on the venue PCs except the `--server` address.
 
 ### Is it safe to expose the main PC to the internet?
 
@@ -114,9 +114,25 @@ For **a laptop demo**, it's optional. `npm start` is simpler.
 1. Download [OpenCaptions for Mac](https://github.com/carraroesteban/opencaptions/releases/latest/download/OpenCaptions-mac.zip) or [OpenCaptions for Windows](https://github.com/carraroesteban/opencaptions/releases/latest/download/OpenCaptions-windows.zip) from the latest release.
 2. **Mac:** unzip, drag **OpenCaptions** to Applications and open it. **Windows:** extract the ZIP and double-click **Start OpenCaptions**.
 
-A window shows OpenCaptions running: it installs the libraries the first time (about a minute), and Node.js too if the computer doesn't have version 20 or later, starts the server and opens the dashboard, where the welcome wizard asks for the API key and can create the public address. Keep the window open; closing it stops the server. The first launch asks you to confirm an unsigned app: see the README's [Quick start](../README.md#without-the-terminal).
+A window shows OpenCaptions running: it installs the libraries the first time (about a minute), and Node.js too if the computer doesn't have 22.23.4 or later (24.22.1+ and 26.12.1+ also count), starts the server and opens the dashboard, where the welcome wizard asks for the API key and can create the public address. Keep the window open; closing it stops the server. The first launch asks you to confirm an unsigned app: see the README's [Quick start](../README.md#without-the-terminal).
 
-Settings, passwords and transcripts are kept outside the app, so a new version keeps them: `~/Library/Application Support/OpenCaptions/data` on a Mac, `%LOCALAPPDATA%\OpenCaptions\data` on Windows. To update, download the new version and open it. Developers get the same from a clone with `npm run app`.
+Settings, passwords and transcripts are kept outside the app, so a new version keeps them: `~/Library/Application Support/OpenCaptions/data` on a Mac, `%LOCALAPPDATA%\OpenCaptions\data` on Windows. Developers get the same from a clone with `npm run app`.
+
+#### Updates
+
+Install once; after that the app updates itself:
+
+- **Check for Updates…** is in the **OpenCaptions** menu on a Mac, and in the menu of the OpenCaptions icon in the taskbar's notification area on Windows. It asks GitHub now, then says "You're up to date" or shows what's new with **Update and Restart** / **Later**. The dashboard shows the same, once a day, as a line at the top with **Update…**.
+- **Update and restart** downloads the release's app files over this copy (`src/updates.js`; your data isn't touched), and OpenCaptions restarts in the same window. Captions pause for about a minute, and the dialog says how many rooms are live: nothing installs by itself, so pick a moment between talks. It's refused while Event mode is on.
+- The menus talk to the running server's `POST /api/updates/check` and `POST /api/update`. Both are organizer-only: from the same computer that's automatic with `AUTH=auto` (the default); otherwise the app offers to open the dashboard, which asks for the password.
+- What this can't replace is the native part around the files: the Mac app's window and `Info.plist`, `launch.sh`, the Windows launcher. Each says which version it is (`OC_SHELL`); a release whose `deploy/desktop/shell.json` has a higher `version` makes the dialogs say "download the app once", with the link. Raise that number (and the one in `OpenCaptions.swift` and `Launcher.cs`, which a test keeps equal) only when a change there matters.
+
+**Later, with an Apple Developer ID and a Windows code-signing certificate** (not done: the apps are unsigned today):
+
+1. **Mac signing and notarization in `release.yml`:** import the Developer ID certificate from repository secrets into a temporary keychain, `codesign --options runtime --timestamp` the app (the speech helper first), `xcrun notarytool submit --wait` the ZIP, then `xcrun stapler staple` the app and zip it again. macOS stops asking to confirm an unsigned app.
+2. **Full native updates with [Sparkle 2](https://sparkle-project.org):** add Sparkle to the Mac app, publish an `appcast.xml` (EdDSA-signed, `generate_appcast`) with each release, and point "Check for Updates…" at Sparkle's updater. The whole app, window included, then updates in place, and `shell.json` is no longer needed on a Mac. The in-app file update can stay for the JavaScript in between.
+3. **Windows:** sign `Start OpenCaptions.exe` with `signtool` (an OV/EV certificate or Azure Trusted Signing) so SmartScreen stops warning, then either publish to WinGet (`winget upgrade OpenCaptions`) or package as MSIX (App Installer updates it), or use a Squirrel-style installer (Velopack) that swaps the whole app folder.
+4. Once releases are signed, check the signature in `installUpdate` before copying (it trusts GitHub over HTTPS today).
 
 ### Published Docker image
 
@@ -328,7 +344,7 @@ A 4 GB server fits about 15 testers (an idle instance uses about 100 MB; each is
 
 ## Run the agent as a service
 
-The headless agent (`scripts/agent.js`) captures a sound card on the room PC and streams it to the server. It reconnects forever and keeps up to about 15 seconds of audio while the network is down.
+The headless agent (`scripts/agent.js`) captures a sound card on the venue PC and streams it to the server. It reconnects forever and keeps up to about 15 seconds of audio while the network is down.
 
 Find the input device first:
 
@@ -362,6 +378,6 @@ Rooms share no state, so no message bus is needed. See [Architecture](architectu
 ## Backups and upgrades
 
 - **Back up the data folder.** It holds transcripts, rooms created from the dashboard, the History, and the passwords and API key (`secrets.json`): `data/` in a clone or Docker, `~/Library/Application Support/OpenCaptions/data` with the Mac app, `%LOCALAPPDATA%\OpenCaptions\data` with the Windows launcher. In a clone, also back up `config/`.
-- **Upgrade:** download the new Mac or Windows version; or `git pull`, then `npm ci --omit=dev` and restart; or `git pull && docker compose up -d --build`; with the published image, `docker pull ghcr.io/carraroesteban/opencaptions` and start the container again with your `docker run` line. The dashboard says when a new version is out; in the Mac and Windows apps (and with `npm run app`), **Update now** does it in one click. `UPDATE_CHECK=0` turns the check off; see [New versions](reference/configuration.md#new-versions). Check [CHANGELOG.md](../CHANGELOG.md) for breaking changes first.
+- **Upgrade:** download the new Mac or Windows version; or `git pull`, then `npm ci --omit=dev` and restart; or `git pull && docker compose up -d --build`; with the published image, `docker pull ghcr.io/carraroesteban/opencaptions` and start the container again with your `docker run` line. The dashboard says when a new version is out; in the Mac and Windows apps, **Check for Updates…** or the dashboard's **Update…** (also with `npm run app`) does it in one click: see [Updates](#updates). `UPDATE_CHECK=0` turns the check off; see [New versions](reference/configuration.md#new-versions). Check [CHANGELOG.md](../CHANGELOG.md) for breaking changes first.
 - **Roll back:** `git checkout <previous tag>` and restart.
 - Screens, phones and agents reconnect by themselves after a restart. A restart during a talk loses a few seconds of captions.

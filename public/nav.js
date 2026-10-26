@@ -172,19 +172,61 @@ function syncMenu() {
 /** A room's state for its dot: live, pause, off (no sound) or bad (needs attention), and how to say it. */
 export const stateOf = (st) => (st.alerts?.some((a) => a !== 'no-ingest') || st.dueTalk ? 'bad' : !st.ingest ? 'off' : st.engines?.length && !st.gated ? 'live' : 'pause');
 export const stateLabel = (state) => L.state[state];
-export const initials = (name) => name.split(/\s+/).filter((w) => /\p{L}|\d/u.test(w[0] || '')).slice(0, 2).map((w) => w[0]).join('').toUpperCase() || '·';
+/**
+ * Initials that tell rooms apart (the one helper every badge uses): "Workshops in-person 2" is W2, "Sala Abasto" SA.
+ * A name ending in a number is its first letter and that number; any other, the first letters of its first two words
+ * (or a one-word name's first two letters). A clash takes the next spelling that is free (the distinguishing word's
+ * letter: "Workshops virtuales 2" is V2; "Stream azul" next to "Sala Abasto" is ST), so setRooms() hands over all names.
+ */
+const wordsOf = (name) => String(name).split(/\s+/).filter((w) => /\p{L}|\d/u.test(w[0] || ''));
+const cap = (s) => Array.from(s)[0]?.toUpperCase() || '';
+function spellings(name) {
+  const w = wordsOf(name), num = w.length > 1 && /^\d+$/.test(w.at(-1)) ? w.pop().slice(-2) : '';
+  const firsts = w.map(cap), letters = Array.from(w.join('')).filter((c) => /\p{L}|\d/u.test(c)).map((c) => c.toUpperCase());
+  const out = num ? [...firsts.map((f) => f + num)] : [firsts[0] + (firsts[1] ?? (Array.from(w[0] || '')[1] || '').toUpperCase()), ...firsts.slice(2).map((f) => firsts[0] + f)];
+  const a = firsts[0] || '·';
+  if (!num) out.push(...Array.from(w[0] || '').slice(1).map((c) => a + c.toUpperCase()));
+  out.push(...letters.map((c) => a + c), ...letters.map((c) => c + (num || '')));
+  const all = [...new Set(out.filter(Boolean))];
+  return all.length ? all : ['·'];
+}
+let initialsOf = new Map();
+function assignInitials(names) {
+  const used = new Set(), m = new Map();
+  for (const n of names) {
+    if (m.has(n)) continue;
+    const c = spellings(n);
+    let pick = c.find((x) => !used.has(x));
+    for (let i = 2; !pick; i++) if (!used.has(c[0] + i)) pick = c[0] + i; // out of spellings (a dozen near-identical names)
+    used.add(pick);
+    m.set(n, pick);
+  }
+  initialsOf = m;
+}
+export const initials = (name) => initialsOf.get(name) ?? spellings(name)[0];
 let roomsKey = '';
-/** The rooms in the sidebar, each with its status dot: [{ id, name, alerts, ingest, engines, gated, dueTalk }] as /api/status gives them. */
+/** The rooms in the sidebar, each with its status dot: [{ id, name, alerts, ingest, engines, gated, dueTalk, color, tag }] as /api/status gives them. */
 export function setRooms(stages = []) {
-  rooms = stages.map((st) => ({ id: st.id, name: st.name || st.id, state: stateOf(st) }));
+  assignInitials(stages.map((st) => st.name || st.id));
+  rooms = stages.map((st) => ({ id: st.id, name: st.name || st.id, state: stateOf(st), color: st.color || '', tag: st.tag || '' }));
   const key = JSON.stringify(rooms);
   if (key === roomsKey) return; // the dashboard calls this on every update: redraw only when something changed
   roomsKey = key;
+  drawRooms();
+}
+/** Rooms with no tag first (no heading), then one group per tag in the order the tags first appear; each keeps the rooms' own order. */
+const groups = () => {
+  const g = new Map([['', []]]);
+  for (const r of rooms) (g.get(r.tag) ?? g.set(r.tag, []).get(r.tag)).push(r);
+  return g;
+};
+function drawRooms() {
   const ul = $('side-rooms');
   if (!ul) return;
   const had = document.activeElement?.closest('#side-rooms a')?.dataset.room;
   const drag = canReorder();
-  ul.innerHTML = rooms.map((r) => `<li${drag ? ` draggable="true" title="${L.drag}"` : ''}><a href="${to(`#room/${encodeURIComponent(r.id)}`)}" data-room="${esc(r.id)}"${drag ? ' draggable="false"' : ''}><span class="ini" aria-hidden="true">${esc(initials(r.name))}<i class="dot ${r.state}"></i></span><span class="lbl">${esc(r.name)}<span class="sr-only">, ${L.state[r.state]}</span></span>${r.state === 'bad' ? '<span class="n" aria-hidden="true">!</span>' : ''}</a></li>`).join('');
+  const row = (r) => `<li${drag ? ` draggable="true" title="${L.drag}"` : ''}><a href="${to(`#room/${encodeURIComponent(r.id)}`)}" data-room="${esc(r.id)}"${drag ? ' draggable="false"' : ''}><span class="ini${r.color ? ` rc-${esc(r.color)}` : ''}" aria-hidden="true">${esc(initials(r.name))}<i class="dot ${r.state}"></i></span><span class="lbl">${esc(r.name)}<span class="sr-only">, ${L.state[r.state]}</span></span>${r.state === 'bad' ? '<span class="n" aria-hidden="true">!</span>' : ''}</a></li>`;
+  ul.innerHTML = [...groups()].filter(([, rs]) => rs.length).map(([tag, rs]) => (tag ? `<li class="side-tag" role="presentation">${esc(tag)}</li>` : '') + rs.map(row).join('')).join('');
   setCurrent(document.querySelector('#side a[data-view][aria-current]')?.dataset.view || '', currentRoom);
   syncMenu();
   if (had) ul.querySelector(`a[data-room="${CSS.escape(had)}"]`)?.focus();
@@ -236,8 +278,7 @@ function roomMenu(a, x, y) {
   if (!r) return;
   const m = $('room-menu');
   m.setAttribute('aria-label', r.name);
-  const i = rooms.indexOf(r);
-  const moves = canReorder() ? [[-1, 'arrowup', L.moveUp, i > 0], [1, 'arrowdown', L.moveDown, i < rooms.length - 1]].filter((x) => x[3]) : [];
+  const moves = canReorder() ? [[-1, 'arrowup', L.moveUp, neighbour(r, -1)], [1, 'arrowdown', L.moveDown, neighbour(r, 1)]].filter((x) => x[3]) : [];
   m.innerHTML = roomActions(r).map((it) => `<a role="menuitem" href="${esc(it.href)}"${it.blank ? ' target="_blank"' : ''}>${icon(it.ic)}${esc(it.label)}</a>`).join('')
     + (moves.length ? `<span class="ctx-sep" role="separator"></span>${moves.map(([d, ic, label]) => `<a role="menuitem" href="#" data-move="${d}" data-room="${esc(r.id)}">${icon(ic)}${esc(label)}</a>`).join('')}` : '');
   m.showPopover();
@@ -278,14 +319,17 @@ export function onReorder(fn) { reorder = fn; roomsKey = ''; } // the dashboard'
 function saveOrder(ids) {
   // Right away on screen; the next update from the server confirms it (or puts it back if it was refused).
   rooms.sort((a, b) => ids.indexOf(a.id) - ids.indexOf(b.id));
-  const ul = $('side-rooms');
-  for (const id of ids) { const li = ul.querySelector(`a[data-room="${CSS.escape(id)}"]`)?.parentElement; if (li) ul.append(li); }
+  roomsKey = JSON.stringify(rooms);
+  drawRooms();
   reorder?.(ids);
 }
+/** The room next to this one, in the same tag group: that is where Move up / Move down go. */
+const neighbour = (r, d) => { const g = rooms.filter((x) => x.tag === r.tag); return g[g.indexOf(r) + d]; };
 function moveRoom(id, d) {
-  const ids = rooms.map((r) => r.id), i = ids.indexOf(id);
-  if (i < 0 || i + d < 0 || i + d >= ids.length) return;
-  ids.splice(i + d, 0, ...ids.splice(i, 1));
+  const r = rooms.find((x) => x.id === id), n = r && neighbour(r, d);
+  if (!n) return;
+  const ids = rooms.map((x) => x.id), i = ids.indexOf(id), j = ids.indexOf(n.id);
+  ids.splice(j, 0, ...ids.splice(i, 1));
   saveOrder(ids);
   $('side-rooms').querySelector(`a[data-room="${CSS.escape(id)}"]`)?.focus();
 }
@@ -302,7 +346,7 @@ function mountDrag() {
     e.dataTransfer.setData('text/plain', li.querySelector('a').dataset.room);
   });
   ul.addEventListener('dragover', (e) => {
-    const li = e.target.closest('li');
+    const li = e.target.closest('li:has(a)');
     if (!dragged || !li || li === dragged) return;
     e.preventDefault();
     const box = li.getBoundingClientRect(), after = e.clientY > box.top + box.height / 2;
@@ -310,7 +354,7 @@ function mountDrag() {
     li.classList.add(after ? 'drop-after' : 'drop-before');
   });
   ul.addEventListener('drop', (e) => {
-    const li = e.target.closest('li');
+    const li = e.target.closest('li:has(a)');
     if (!dragged || !li || li === dragged) return;
     e.preventDefault();
     const after = li.classList.contains('drop-after');

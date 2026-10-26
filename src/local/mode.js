@@ -9,7 +9,8 @@ import * as setup from './setup.js';
 export class LocalMode extends EventEmitter {
   /**
    * @param {object} o
-   * @param {(part: { speech?: any, text?: any }) => void} o.apply  use what is ready (switch rooms to the local engine)
+   * @param {(part: { speech?: any, text?: any, standby?: boolean }) => void} o.apply  use what is ready (switch rooms
+   *   to the local engine; standby: only keep it ready as the offline backup, captions stay on Gemini)
    * @param {typeof setup.prepareSpeech} [o.prepareSpeech]
    * @param {typeof setup.prepareText} [o.prepareText]
    * @param {number} [o.retryMs]  how often to look for Ollama while it's missing
@@ -21,8 +22,21 @@ export class LocalMode extends EventEmitter {
     this.prepareText = prepareText;
     this.retryMs = retryMs;
     // state: speech (idle | working | ready | error); text: translations (off | working | missing | ready | error)
-    this.s = { state: 'idle', text: 'off', step: '', done: 0, total: 0, error: '' };
+    // standby: prepared as the offline backup (POST /api/ai/use 'auto'), not captioning
+    this.s = { state: 'idle', text: 'off', step: '', done: 0, total: 0, error: '', standby: false };
     this.timer = null;
+    this.run = 0; // each start() and reset(): a preparation that outlives a reset() is dropped
+    this.parts = {}; // what apply() got, for a backup that becomes the main engine
+  }
+
+  #apply(part) { Object.assign(this.parts, part); this.apply({ ...part, standby: this.s.standby }); }
+
+  /** From backup to main engine: what's ready is used now, the rest when it is. */
+  #promote() {
+    this.#set({ standby: false });
+    if (this.s.state !== 'ready') return;
+    this.#apply({ speech: this.parts.speech });
+    if (this.parts.text) this.#apply({ text: this.parts.text });
   }
 
   status() { return { ...this.s }; }
@@ -55,17 +69,25 @@ export class LocalMode extends EventEmitter {
     };
   }
 
-  /** Prepare and switch. Calling it again while it works, or once it's done, changes nothing. */
-  async start() {
-    if (this.s.state === 'working' || this.s.state === 'ready') return this.status();
-    this.#set({ state: 'working', error: '', step: 'Starting' });
+  /**
+   * Prepare and switch (standby: prepare only, as the offline backup). Calling it again while it works, or once it's
+   * done, changes nothing, except that a backup asked to be the main engine becomes it.
+   */
+  async start({ standby = false } = {}) {
+    if (this.s.state === 'working' || this.s.state === 'ready') {
+      if (this.s.standby && !standby) this.#promote();
+      return this.status();
+    }
+    this.#set({ state: 'working', standby, error: '', step: 'Starting' });
+    const run = ++this.run;
     try {
       const speech = await this.prepareSpeech({}, this.ui);
-      this.apply({ speech });
+      if (run !== this.run) return this.status(); // reset() meanwhile: not wanted any more
+      this.#apply({ speech });
       this.#set({ state: 'ready', step: '' });
       if (speech.api === 'apple') { this.#set({ text: 'ready' }); return this.status(); } // Apple translates too
     } catch (e) {
-      this.#set({ state: 'error', error: e.message });
+      if (run === this.run) this.#set({ state: 'error', error: e.message });
       return this.status();
     }
     this.#text();
@@ -79,7 +101,7 @@ export class LocalMode extends EventEmitter {
     try {
       const text = await this.prepareText({}, this.ui);
       if (this.s.state !== 'ready') return; // gone back to Gemini meanwhile
-      this.apply({ text });
+      this.#apply({ text });
       this.#set({ text: 'ready', step: '', done: 0, total: 0 });
     } catch (e) {
       const missing = e.code === 'no-ollama';
@@ -93,5 +115,5 @@ export class LocalMode extends EventEmitter {
   retryText() { if (this.s.state === 'ready' && this.s.text !== 'ready') this.#text(); return this.status(); }
 
   /** Forget it was used (back to Gemini): the servers it started keep running, so the next start is quick. */
-  reset() { clearTimeout(this.timer); this.#set({ state: 'idle', text: 'off', step: '', done: 0, total: 0, error: '' }); }
+  reset() { clearTimeout(this.timer); this.run++; this.parts = {}; this.#set({ state: 'idle', text: 'off', step: '', done: 0, total: 0, error: '', standby: false }); }
 }

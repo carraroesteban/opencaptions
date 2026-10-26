@@ -4,6 +4,36 @@ All notable changes to this project are documented in this file. The format foll
 
 ## [Unreleased]
 
+### Added
+
+- **Check for Updates… in the Mac and Windows apps.** The Mac app's OpenCaptions menu and the Windows launcher's icon next to the clock ask GitHub for a new version right away (even with the daily check off) and install it, like the dashboard's **Update now**. The 0.9 apps don't have it yet: update them once from the dashboard ([Upgrading](docs/upgrading.md)).
+- **"Detect automatically" between the languages you choose.** A room's settings, under the spoken language, now list "Only these languages": at an event where people speak only English and Spanish, check those two and the AI is told it's one of them, instead of guessing among every language. A sentence it reads as anything else stays in the language being spoken. None checked: any language, as before.
+
+### Security
+
+- **Node.js with the October 2026 security fixes is now required** (22.23.4, 24.22.1 or 26.12.1 and newer; Node 20 is no longer supported). The server refuses to start on an older Node with a message saying how to update, and the Mac and Windows apps download a fixed Node by themselves when theirs is too old. The server also refuses compressed request bodies, which kept anyone who could reach it away from the Brotli bug (CVE-2026-111497) even on an older Node.
+
+### Fixed
+
+- **Screen readers on the phone page hear each caption once, when it's finished**, instead of the sentence again with every new word.
+- **Every language shows its name** ("Français", "Deutsch") instead of a code like "FR" when the event's list doesn't name it; on a phone, more languages than fit scroll sideways, with a fade that shows there are more.
+- **"Just for me" on a phone:** the top bar no longer runs off the screen, so settings can be reached.
+- **Simulated captions (the demo, a rehearsal without a key) no longer show an AI cost.**
+- **The same words twice on phones.** When the confirmed text came more than a second after the provisional words (a pause, the Mac's engine), the provisional caption stayed on screen next to the final one. The confirmed text now replaces it in place.
+- **Japanese, Chinese and Thai captions had spaces in the middle of sentences** with Transcribe Live, the default speech model, and translations of Japanese, Chinese, Hindi or Arabic speakers waited for a pause or 220 characters: sentences ending in 。？！, । or ؟ are now translated as soon as they end.
+- **The app restarts itself after a crash.** The Mac and Windows apps (and `npm run app`) used to stop for the rest of the event if the server crashed; it now starts again after a second (up to five times), so captions come back without anyone at the computer.
+- **A room computer kept sending sound after a busy moment.** Behind the public address every phone and computer shares one request limit; a "too many requests" answer was taken for a wrong password and the room's sound stopped for good. It now tries again.
+- **No glued words or stray capitals in the original captions.** The AI that transcribes (Transcribe Live, the Mac's, the local one) ends a "sentence" at every short pause, so captions read "we also Think a lot" or "Amigo, Unas personas", and a missing space glued two sentences together ("Summit.My name"). Every engine's words now go through one check before any caption, transcript or translation: one space between fragments (not in Chinese, Japanese or Thai), and a capital after a pause mid-sentence is lowered, only for a word the speaker has already said in lowercase, so names ("Facebook", "Syria") never lose theirs. Live Translate's capitals are left alone, and German keeps its nouns. Tested on real fragments from both Gemini models (test/text-joins.test.js).
+- Someone talking over loud music (a live stream at a party, a talk with a DJ behind it) was taken for music and their captions paused: half of a 15-minute stream of nonstop talk. A window is music now only if the voice's own band is steady too; that stream is never paused, and every full song tested is still found.
+- A page that needs the password (the dashboard, Kit, Caption style, Sound check, the report, the setup wizard, Just for me) showed itself behind the sign-in: now only the sign-in shows until you're in, and the sign-in no longer explains where to find the password.
+
+### Changed
+
+- **Language and theme in one globe button on every page**, the dashboard and the phone page included, with High contrast next to Light and Dark. They are no longer in Settings or the phone page’s **Aa**, which keeps only how the captions look.
+- **More color on the dashboard and the phone page:** each section and number has its own hue, room cards take the room’s color, and cards and numbers ease in (not with reduced motion). The captions themselves don’t move.
+- **No more “Speaking:” buttons on the room card.** They only labeled transcripts; the transcript and subtitle files still name the speaker the agenda lists for each talk. (`POST /api/stages/:id/speaker` is gone too.)
+- **A simpler website:** one short page, one comparison table, and the version it really is.
+
 ## [0.9.1] - 2026-10-21
 
 Fixes from using 0.9 for real: Just for me keeps captioning a video played low or a voice over music, organizer pages ask for the password, one kind of menu everywhere, Settings regrouped, and a website with up-to-date screenshots.
@@ -14,7 +44,6 @@ Fixes from using 0.9 for real: Just for me keeps captioning a video played low o
 - **Settings regrouped.** Event (name, logo, languages, public transcripts, Event mode), AI, Public address, Security, Alerts, This browser (language and theme, Advanced mode) and, in Advanced mode, System. Each setting sits in its own box.
 - **The event logo** is one preview with Upload/Change and Remove; no advice text. No more "recommended" labels.
 - A room with sound but nobody speaking says **Listening** instead of "Paused · silence": its captions come back the moment someone talks.
-
 - **The website** shows the current dashboard, stage screen and phones, and lists Basic/Advanced modes and the event logo.
 
 ### Fixed
@@ -53,7 +82,7 @@ Easier to run and nicer to use: Basic and Advanced modes, one clear badge for wh
 - **Switching languages is instant.** On a phone, another caption language or Listen changes on the same connection: no reconnecting, no scroll through the whole talk, and Listen stays on in the new language (its voice, or the room's sound on Original). A dropped connection says "Reconnecting…" and dims the text instead of looking like a pause, and comes back the moment the phone's network does.
 - **Room cards show what matters live.** What's being said shows the last two sentences and the one in progress, newest at the bottom; Screens & QR stays on the card while a room is live; the room's page folds the technical side (AI sessions, latency, cost, its id) into **Diagnostics**. The Live page counts languages instead of AI sessions, and on a phone the rooms come first.
 - **Just for me in one click.** The first visit asks only for the AI (when there's none): the language is the computer's and the sound the microphone, both in the bar and in Settings. Download saves the language being read, and the original shows under the translation only when it adds something.
-- **The livestream overlay is left-aligned by default**, like broadcast roll-up captions: a centred line slid sideways with every word. `&align=center` still centres it.
+- **The livestream overlay is left-aligned by default**, like broadcast roll-up captions: a centered line slid sideways with every word. `&align=center` still centers it.
 - **Explanations in view.** Short help shows under its heading instead of behind a "?", and every dashboard page says what it's for under its title. Settings sits right under the sections in the sidebar; Just for me and the server's figures moved to **Advanced**; the event report is in the sidebar; the cloud-hosting ads left Integrations.
 - The setup wizard keeps its steps anchored at the top and the browser's Back button goes back a step; on a phone both first choices fit the screen.
 
@@ -100,7 +129,7 @@ A calmer, more polished app: the Mac app is a real Mac window instead of Termina
 - **A busy port no longer stops the app.** When another program uses 8080, OpenCaptions takes the next free port and says so, instead of quitting with "port in use".
 - **A room's sound keeps going after a server hiccup.** A 502 from a tunnel or proxy used to stop the room computer with "missing link or password".
 - **The projector's QR card no longer covers the original-language line.** On phones, older lines fade under the header instead of being cut by it.
-- Close buttons' icons are centred, and remove (×) buttons are big enough to tap.
+- Close buttons' icons are centered, and remove (×) buttons are big enough to tap.
 - `/samples` serves only the bundled test talks, not any recording copied there to play.
 - AI summaries that fell back to highlights (the AI busy or failing) are asked for again after 30 seconds, not a day later.
 - Webhook connectors keep counting a talk when another room or connector changes, and webhooks don't follow redirects.
@@ -390,7 +419,7 @@ The release that makes OpenCaptions ready for organizers who don't use a termina
 - **Alerts on your phone:** when nobody is looking at the dashboard, OpenCaptions sends a message through the free ntfy app, Telegram, Slack, Discord or any webhook: a room's audio disconnected or silent, a muted microphone, the AI failing, translations throttled, captions running late, a talk 5 minutes past the agenda, the offline backup switching, no internet, the public address down or changed. Each problem once when it has lasted a little, and once more when it's over; no alerts for rooms the agenda says are off; at most 20 messages per 10 minutes; pause for an hour or until tomorrow. **Settings → Alerts**, `/api/alerts`. Messages in Spanish or English.
 - **Who's speaking:** a tap on the room card (the agenda's speakers, the host, the audience in Q&A, or any name) labels the captions from then on. Phones show the name when the speaker changes, transcripts start a new paragraph, WebVTT exports get voice tags (`<v Ana Pérez>`), SRT and TXT name the speaker. `POST /api/stages/:id/speaker`. Gemini Live doesn't tell voices apart, so people set it.
 - **Event report** (`/report.html`, from Dashboard → Transcripts): every talk with its length, words, caption languages, peak audience, reading minutes and AI cost, per room and in total, for one day or the whole event. Print it or save it as a PDF, or download a CSV that opens in Excel with its accents. `GET /api/report`, `/api/report.csv`.
-- **Accessibility check:** `npm run a11y` runs axe-core (WCAG 2.2 AA) on every page, in light and dark, Spanish and English; CI runs it on every push. It found and we fixed: icon-only and unlabeled controls, faint text in the setup checklist and on the stage screen (the light theme's warning colour is a little darker now), missing headings and page regions, and an image with an empty description. Screen readers now read each caption once, when it's final, instead of every word as the line is rewritten. See [Accessibility](docs/accessibility.md).
+- **Accessibility check:** `npm run a11y` runs axe-core (WCAG 2.2 AA) on every page, in light and dark, Spanish and English; CI runs it on every push. It found and we fixed: icon-only and unlabeled controls, faint text in the setup checklist and on the stage screen (the light theme's warning color is a little darker now), missing headings and page regions, and an image with an empty description. Screen readers now read each caption once, when it's final, instead of every word as the line is rewritten. See [Accessibility](docs/accessibility.md).
 - **A clear message when Docker can't write its data folder** (the usual Linux permissions problem), with the `chown` command to fix it, instead of a crash.
 
 ### Changed — security
@@ -456,7 +485,7 @@ The release that makes OpenCaptions ready for organizers who don't use a termina
 - **Highlighter on the live word:** the word being spoken right now gets a lime highlighter sweep on phones, the transcript page, the projector, the demo and floating captions.
 - Restyled dashboard, audience page, transcripts, projector screen, overlay (the second language now uses a muted tone), QR posters, style editor, ingest and setup wizard. New favicon, app icons and link-preview image.
 - The default caption font in the overlay and on the projector is now Atkinson Hyperlegible Next 700 (it was Inter 600), and the projector's default background is ink (`#111014`) instead of pure black. Existing URLs that set `font`, `weight` or `bg` look the same as before.
-- The default `accent` is now lime (`#D4FF3A`). Text on an event's accent colour switches between ink and paper automatically.
+- The default `accent` is now lime (`#D4FF3A`). Text on an event's accent color switches between ink and paper automatically.
 
 ### Changed — ready for any event
 
@@ -465,7 +494,7 @@ The release that makes OpenCaptions ready for organizers who don't use a termina
 - **Presenter screen:** captions fill the whole screen from the bottom up instead of a fixed three lines (set `lines` to keep a fixed height), and **F** or a double-click toggles full screen. In the style editor, unchecking *Also show the original* now also removes it from the preview, and *Lines* has an *Auto (fill the screen)* setting.
 - **New demo recordings:** `samples/talk-en.wav` and `samples/talk-es.wav` are now short fictional talks at the example event, read by a synthetic voice. Rebuild them on a Mac with `scripts/make-samples.sh`. The accuracy table in [docs/local.md](docs/local.md#measured-results) was measured again with them.
 - `npm run multi` no longer defaults to one event's YouTube channel: pass `--playlist`, `--file`, `--channel @handle` or `--query`.
-- The website has a new *Made for event day* section about the welcome wizard and the offline backup, and a more tactile design: a centred hero with real objects on the table that follow the pointer, a typing announcement, film grain, a section dock, an endless use-case marquee, a dark band whose statement captions itself as you scroll, and a dock to switch between screenshots. It opens in light mode by default.
+- The website has a new *Made for event day* section about the welcome wizard and the offline backup, and a more tactile design: a centered hero with real objects on the table that follow the pointer, a typing announcement, film grain, a section dock, an endless use-case marquee, a dark band whose statement captions itself as you scroll, and a dock to switch between screenshots. It opens in light mode by default.
 - **Polish:** custom select arrows with proper padding; numbers use the system font's digits (Atkinson Hyperlegible Next only has a slashed zero).
 - **Illustrations** for the room list, dashboard, style editor and website.
 
@@ -531,7 +560,7 @@ The release that makes OpenCaptions ready for organizers who don't use a termina
 
 ### Security
 
-- **Breaking:** secure by default (`AUTH=auto`). Admin and ingest now need a token from every device except the server machine itself. If `ADMIN_TOKEN` or `INGEST_TOKEN` isn't set, a random token is generated into `data/secrets.json` and printed at startup. `AUTH=token` requires tokens everywhere. `AUTH=off` restores the old open behaviour for labs.
+- **Breaking:** secure by default (`AUTH=auto`). Admin and ingest now need a token from every device except the server machine itself. If `ADMIN_TOKEN` or `INGEST_TOKEN` isn't set, a random token is generated into `data/secrets.json` and printed at startup. `AUTH=token` requires tokens everywhere. `AUTH=off` restores the old open behavior for labs.
 - **Breaking:** `/metrics` now requires the admin token (use `Authorization: Bearer`).
 - **Breaking:** transcript listing and past-talk exports need the admin token. The talk in progress stays public (`PUBLIC_TRANSCRIPTS=current|all|none`).
 - **Breaking:** audio pulls are validated. Only allowed schemes are accepted. Cloud metadata and link-local addresses are always blocked. HTTP(S) to private addresses is blocked unless `PULL_ALLOW_PRIVATE=1`. Local files must be in `samples/` or `MEDIA_DIR`. ffmpeg gets a protocol whitelist for URLs.

@@ -3,13 +3,16 @@
 > Free, open-source software for live captions and real-time translation at events: conferences, classrooms, public meetings, festivals and places of worship. Attendees scan a QR code and read the captions on their own phone, in their own language, with no app. Captions also appear on a screen beside the stage and in the livestream (OBS, vMix). Self-hosted; the AI is Google's Gemini (about US$0.54 per room-hour of speech) or a local model on a laptop at the venue (free, works offline). MIT license.
 
 Key facts:
+- Version 0.9.1 (1.0 is planned, not released). Download the app for macOS 13+ (Apple Silicon) or Windows 10/11 (64-bit), or run the Docker image or Node.js from source on Linux. It updates itself from the dashboard ("Update now"; "Check for Updates…" in the app's menu comes in the next version), keeping settings and transcripts; nothing installs until the user agrees.
+- Cost: the software is free (MIT, no paid plan, no limit on rooms or attendees). The cloud AI is Google's Gemini on the organizer's own API key, billed by Google: about US$0.54 per room-hour of speech, plus US$0.4–0.6 per extra language; silence is not billed; a 40-minute English talk captioned into Spanish costs about US$0.70. Local mode is free and works offline, about one room per laptop, a few seconds slower.
 - Captions appear about 2–3 seconds after the words are spoken; translations 3–5 seconds after (measured in a three-room rehearsal with 150 phones).
 - One small server (1 CPU, 512 MB) handles about 10 rooms.
-- Downloads for macOS and Windows, a Docker image, or Node.js from source. A setup wizard asks for the event, rooms and languages.
+- A setup wizard asks for the event, rooms and languages, connects the AI and creates a public address for the QR codes.
 - Also for one person: "Just for me" captions and translates whatever a computer plays (a video call, a class, a video; the whole computer on Windows, a browser tab on Mac) or what its microphone hears, in big text or a floating window. Private: nothing is shared.
 - Sends captions into Zoom, Microsoft Teams (CART) and YouTube Live, and to webhooks; imports the agenda from Sessionize or a calendar link. 82 caption languages. Words appear at the speaker's pace in TV-style lines; breaks (agenda, vMix/OBS scene, one key) and music between talks pause captions; a backup audio source per room takes over by itself; the crew can fix a caption live.
 - Also: captions a recorded video or audio file in minutes (not in real time); lets people with hearing aids or earbuds hear the room's own sound on their phone; downloads every transcript in one .zip.
 - Not a replacement for professional human captioning where every word must be exact, or for sign language interpretation.
+- Accessibility: every page is checked against WCAG 2.2 AA ([accessibility statement](https://opencaptions.kvza.ar/accessibility/)). Privacy: no app, sign-up or cookies for the audience ([privacy policy](https://opencaptions.kvza.ar/privacy/)).
 
 ## Guides
 

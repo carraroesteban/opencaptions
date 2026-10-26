@@ -1,5 +1,5 @@
 // watch.html: page script (kept out of the HTML so the Content-Security-Policy can forbid inline scripts).
-import { qs, t, esc, store, wsUrl, Socket, CaptionState, PcmPlayer, langLabel, wakeLock, getEvent, applyReadingPrefs, setReadingPref, setTheme, pauseView, CaptionFlow, segment, pressSegment, readingItems, previewFonts } from '/common.js';
+import { qs, t, esc, store, wsUrl, Socket, CaptionState, PcmPlayer, langLabel, wakeLock, getEvent, applyReadingPrefs, setReadingPref, pauseView, CaptionFlow, segment, pressSegment, readingItems, previewFonts } from '/common.js';
 import { mountAssistant } from '/assist-ui.js';
 import { icon, mountIcons } from '/illustrations.js';
 import { prefsControls } from '/prefs.js';
@@ -11,10 +11,9 @@ const stageId = qs.get('stage');
 if (!stageId) location.href = '/';
 const calm = matchMedia('(prefers-reduced-motion: reduce)'); // no glide, no crossfade (style.css stops the CSS ones)
 
-// Icons, the page-language switch (in Settings) and translated labels for the icon-only buttons.
+// Icons, the page language and theme (the globe) and translated labels for the icon-only buttons.
 mountIcons();
-$('ui-slot').append(prefsControls({ langs: ['es', 'en', 'pt'], theme: false })); // the sheet has its own Theme row
-$('l-ui').textContent = t('uiLang');
+$('prefs-slot').append(prefsControls({ langs: ['es', 'en', 'pt'] }));
 for (const id of ['ai-close', 'set-close', 'listen-note-close']) $(id).setAttribute('aria-label', t('close'));
 $('back-link').setAttribute('aria-label', t('stages'));
 $('doc').title = t('transcript');
@@ -60,7 +59,6 @@ $('set-title').textContent = t('settings');
 $('l-size').textContent = t('textSize');
 $('l-font').textContent = t('font');
 $('l-lh').textContent = t('lineSpacing');
-$('l-theme').textContent = t('theme');
 $('l-flow').textContent = t('flow');
 $('l-dual').textContent = t('dual');
 $('smaller').setAttribute('aria-label', t('smaller'));
@@ -71,7 +69,6 @@ segment($('lh-opts'), readingItems.lh(), prefs.lh || 1.5, (v) => { prefs = setRe
 // some people (and what some captioning services offer as "complete phrases only"), a few seconds later.
 const whole = () => !!prefs.whole;
 segment($('flow-opts'), [['word', esc(t('wordByWord'))], ['whole', esc(t('wholeSentences'))]], whole() ? 'whole' : 'word', (v) => { prefs = setReadingPref('whole', v === 'whole'); renderAll(); });
-segment($('theme-opts'), readingItems.theme(), store.get('theme', null) || 'auto', setTheme);
 $('settings').onclick = () => { previewFonts($('font-opts')); $('dlg-set').showModal(); };
 $('set-close').onclick = () => $('dlg-set').close();
 for (const d of ['dlg-ai', 'dlg-set']) $(d).addEventListener('click', (e) => { if (e.target === $(d)) $(d).close(); }); // tap outside closes
@@ -133,6 +130,7 @@ function onHello(m) {
     langsKey = langs.join();
     segment($('langs'), langs.map((l) => [l, esc(l === 'orig' ? t('original') : langLabel(l, ev.languages))]), lang, pickLang);
   } else pressSegment($('langs'), lang);
+  fitLangs();
   $('text').classList.remove('stale');
   for (const [ch, hist] of Object.entries(m.history)) {
     (states[ch] ??= new CaptionState()).load(hist, m.partial[ch]);
@@ -162,9 +160,25 @@ function showPause(p) {
     : `<span class="w-pause-ic">${icon('pause')}</span><div><b>${esc(v.title)}</b>${v.back ? `<span>${esc(v.back)}</span>` : ''}${v.next ? `<span class="next">${esc(v.next)}</span>` : ''}</div>`;
 }
 
+// More languages than fit on a phone: the tabs scroll sideways, the cut edge fades (there are more), the chosen one shows.
+function fitLangs() {
+  const el = $('langs');
+  const mark = () => el.classList.toggle('more', el.scrollWidth - el.scrollLeft - el.clientWidth > 2);
+  el.onscroll ??= mark;
+  el.querySelector('[aria-pressed="true"]')?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+  mark();
+}
+addEventListener('resize', () => fitLangs());
+
 function onCaption(seg) {
   pacer(seg.channel).push(seg);
   if (listening && listenWith === 'device' && seg.final && seg.channel === channel()) speaker.say(seg.text);
+  // Screen readers hear each caption once, when it's final, not every word while it's being written.
+  if (seg.final && seg.channel === channel() && seg.text) {
+    const live = document.getElementById('sr-live');
+    live.append(Object.assign(document.createElement('p'), { textContent: seg.text }));
+    while (live.childElementCount > 3) live.firstElementChild.remove();
+  }
 }
 
 /** A caption as it's shown now (some of its words, or all of them). */

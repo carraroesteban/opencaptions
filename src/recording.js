@@ -31,6 +31,7 @@ import { transcribe as whisper, withAsrSlot, wavFile, isNetworkError, asrInfo } 
 import { promptLanguage } from './languages.js';
 import { CORPUS } from './engines/mock.js';
 import { toSRT, toVTT, toTXT } from './store.js';
+import { endsSentence } from './captions.js';
 
 const FRAME_MS = 100, FRAME_BYTES = 3200, BYTES_PER_MS = 32; // 16 kHz mono PCM16
 export const MAX_CHARS = 84; // a caption: two lines of 42 characters
@@ -261,7 +262,6 @@ export function cutPieces(levels, thr, { minMs, maxMs, pauseMs, breakMs }) {
   return out;
 }
 
-const endsSentence = (t) => /[.?!…。？！]["'”’»)\]]*\s*$/.test(String(t || ''));
 
 /**
  * Text → caption lines of at most `max` characters, cut where it reads best: after a sentence, then after a comma or
@@ -680,7 +680,7 @@ export class Recordings {
   get maxBytes() { return config.recordingMaxMb * 1024 * 1024; }
 
   /** Uploads waiting, queued or running: each holds a file in the temporary folder. */
-  open() { return [...this.jobs.values()].filter((j) => ['ready', 'queued', 'running'].includes(j.state)).length; }
+  open() { return [...this.jobs.values()].filter((j) => ['uploading', 'ready', 'queued', 'running'].includes(j.state)).length; }
 
   /**
    * A new upload: a temporary folder for a file of `size` bytes, which then arrives in pieces (append).

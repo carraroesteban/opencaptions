@@ -37,7 +37,7 @@ Objetivo: **cero operadores dedicados durante las charlas**. Una persona de prod
    **Nunca abras puertos del router hacia una PC de sala ni hacia el server**: el túnel o la VM en la nube hacen que todo sea saliente por el puerto 443.
 3. **Contraseñas e ingreso.** La computadora del server no pide contraseña; cualquier otro dispositivo ingresa al panel con una. Hay tres, y la ventana de OpenCaptions las muestra al arrancar (o definilas vos con `ADMIN_TOKEN`, `CREW_TOKEN` e `INGEST_TOKEN`):
    - **Administración** (`Admin token`): todo el panel. Solo para la organización. Activá la **verificación en dos pasos** en Ajustes → Seguridad.
-   - **Equipo** (`Crew token`): para voluntarios y técnicos. Solo maneja los controles en vivo (siguiente charla, renombrar, quién habla, reconectar); no puede cambiar ni borrar la configuración.
+   - **Equipo** (`Crew token`): para voluntarios y técnicos. Solo maneja los controles en vivo (siguiente charla, renombrar, reconectar); no puede cambiar ni borrar la configuración.
    - **Computadoras de las salas** (`Ingest token`): para mandar el sonido; no abre el panel. Casi nunca hace falta: en la sala → **Sonido**, **Crear el enlace** da un enlace (y un QR) que sirve una vez, por 30 minutos, y deja a esa computadora enviar el sonido de la sala sin escribir ninguna contraseña.
 
    **Ajustes → Seguridad** muestra qué dispositivos tienen sesión iniciada (y permite cerrarlas) y cambia las contraseñas. El público, el proyector y el overlay **no** necesitan contraseña.
@@ -94,7 +94,7 @@ Con alguien hablando al micrófono del escenario (o con `/demo.html?mode=mic&sta
 - [ ] El proyector muestra los subtítulos y el QR se lee desde el fondo de la sala.
 - [ ] Un celular escanea el QR, elige idioma y recibe los subtítulos.
 - [ ] En vMix u OBS se ve el overlay sobre el programa.
-- [ ] Tras 30 s de silencio la sala pasa a **EN PAUSA · silencio** (no consume). Al hablar vuelve sola.
+- [ ] Tras 30 s de silencio la tarjeta de la sala dice **Escuchando · nadie habla** (no consume). Al hablar vuelve sola.
 
 ## Durante las charlas
 
@@ -115,8 +115,6 @@ No hay que tocar nada más. El sistema:
 **Corregir un subtítulo:** **Ver detalles → Corregir subtítulos** muestra las últimas frases; corregí una y cambia al instante en todas las pantallas, los celulares y la transcripción. Si cambiaste una sola palabra (el nombre de un orador), te ofrece escribirla siempre así: se suma al glosario y se puede deshacer desde el Historial.
 
 **Audio de respaldo:** en las salas principales, una segunda computadora en otra salida de la consola, con **Es el respaldo de la sala** marcado en la página de audio (o el agente con `--backup`). Queda en espera y entra sola si la principal deja de mandar audio (3 s) o se queda muda mientras el respaldo sí oye la sala (20 s). La principal vuelve sola tras 10 s de sonido.
-
-**Quién habla:** en cada sala del panel, tocá el nombre de quien habla (sale de la agenda), «Presentación», «Público (preguntas)» u «Otro…». Los subtítulos, la transcripción y los archivos SRT/VTT lo nombran desde ese momento.
 
 **Si una charla se pasa de hora**, la tarjeta de la sala se pone naranja y dice qué charla toca. Tocá **Empezar «…»** cuando empiece el siguiente speaker, o dejá que cambie sola en la próxima pausa. **Siguiente charla** inicia una a mano, con el título y el speaker de la agenda ya cargados.
 

@@ -112,7 +112,7 @@ The setup wizard follows the same rules: it shows a review of every change befor
 
 Set with `AUTH`:
 
-| Mode | Behaviour | Use for |
+| Mode | Behavior | Use for |
 |---|---|---|
 | `auto` (default) | The server machine itself is trusted, so `http://localhost:8080/admin.html` just works there. Every other device signs in. | Laptops, venue PCs, VMs behind a proxy |
 | `token` | Sign-in is required everywhere, including the server machine. | Shared hosts, multi-user machines, the strictest setups |
@@ -130,7 +130,9 @@ Three passwords, each with its own job:
 
 Any that isn't set is generated on first start (24 random characters), stored in `data/secrets.json` (file mode 600) and printed in the startup screen.
 
-**Room links** spare room computers the ingest password. An admin makes one in the room's **Sound → Link for the computer next to the stage** (or the wizard's step 7): `https://<server>/ingest.html?stage=<room>&link=<code>`, also as a QR code. Opening it signs that one browser in with a session that can send audio and nothing else (no dashboard, no status, no setup). The code is random (144 bits), works **once**, expires after **30 minutes**, is kept only as a hash in memory (a restart voids unused ones), and leaves the address bar as soon as the page reads it. A browser that can already send audio doesn't use it up. Each link made is recorded in the History, and the session it creates is listed in **Settings → Security → Signed-in devices** as "Room computer · <room>", where it can be signed out. Like the ingest password, it isn't tied to one room. Treat an unused link like the password: send it only to the person at that computer, and make a new one if it leaked. **Settings → Security → Passwords** changes a generated one: the new value is shown once, the old one stops working, and every device signed in with it is signed out. One set in `.env` is changed there, followed by a restart.
+**Room links** spare room computers the ingest password. An admin makes one in the room's **Sound → Link for the computer next to the stage** (or the wizard's step 7): `https://<server>/ingest.html?stage=<room>&link=<code>`, also as a QR code. Opening it signs that one browser in with a session that can send audio and nothing else (no dashboard, no status, no setup). The code is random (144 bits), works **once**, expires after **30 minutes**, is kept only as a hash in memory (a restart voids unused ones), and leaves the address bar as soon as the page reads it. A browser that can already send audio doesn't use it up. Each link made is recorded in the History, and the session it creates is listed in **Settings → Security → Signed-in devices** as "Room computer · <room>", where it can be signed out. Like the ingest password, it isn't tied to one room. Treat an unused link like the password: send it only to the person at that computer, and make a new one if it leaked.
+
+**Changing a password.** **Settings → Security → Passwords** changes a generated one: the new value is shown once, the old one stops working, and every device signed in with it is signed out. One set in `.env` is changed there, followed by a restart.
 
 ### Signing in
 
@@ -218,7 +220,7 @@ Viewers need no account, so access is per kind of data and per role. *This compu
 |---|---|---|---|---|
 | Live captions and translations of a room, the translated voice | Anyone with the room's address (the QR code) | ✓ | ✓ | Only this computer and devices signed in with the admin password |
 | The room's sound, live (assistive listening for hearing aids and earbuds) | Only in rooms where an admin turned on **The room's sound on phones** (off by default). Then anyone with the room's address can listen, from anywhere, up to the room's listener limit. | Listens like the audience; can't turn it on | Turns it on or off per room | Never, not even for its own room |
-| Transcripts of talks, *What did I miss?* and *Ask the talk* | As set in **Settings → General → Transcripts for the audience**: the talk in progress (default), every talk, or none | Read | Read, correct, delete | Only this computer and signed-in devices |
+| Transcripts of talks, *What did I miss?* and *Ask the talk* | As set in **Settings → Event → Transcripts for the audience**: the talk in progress (default), every talk, or none | Read | Read, correct, delete | Only this computer and signed-in devices |
 | Room names, talk titles, speakers, the agenda | Shown on the audience pages | ✓ | ✓, and change them | Not used |
 | Room status, the glossary, the History | No | Read (stream addresses left out: they can carry keys) | Read and change | Not used |
 | Integrations, vision mixers, alerts, signed-in devices | No | No | ✓ | Not used |

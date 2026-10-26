@@ -185,3 +185,21 @@ test('YouTube: each caption is timed to when it was said (talk start + cue start
   const stamp = p.calls[0].init.body.split('\n')[0];
   assert.ok(Math.abs(Date.parse(stamp + 'Z') - (st.talk.startedAt + 7000)) < 5, `${stamp} = talk start + 7 s`);
 });
+
+test('captions that waited too long behind a slow platform are dropped, not replayed', async () => {
+  const st = room();
+  const seen = [];
+  const fetchImpl = async (url, init) => { seen.push(init.body); await new Promise((r) => setTimeout(r, 60)); return { ok: true, status: 200, text: async () => '' }; };
+  const ints = new Integrations({ stages: new Map([['main', st]]), fetchImpl });
+  await ints.add({ type: 'zoom', stage: 'main', url: ZOOM });
+  const realNow = Date.now;
+  try {
+    caption(st, 'first.'); // sent at once
+    caption(st, 'stale.'); // queued behind it
+    const t0 = realNow();
+    Date.now = () => t0 + 60_000; // by the time the first answers, the second is a minute old
+    await new Promise((r) => setTimeout(r, 150));
+  } finally { Date.now = realNow; }
+  assert.equal(seen.length, 1);
+  assert.equal(ints.list()[0].status.failed, 1);
+});

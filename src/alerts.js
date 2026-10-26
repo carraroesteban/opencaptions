@@ -124,7 +124,7 @@ export function mergeChannels(incoming, current) {
  */
 export async function deliver(ch, m) {
   const post = async (url, body, headers = {}) => {
-    const r = await fetch(url, { method: 'POST', headers, body, signal: AbortSignal.timeout(8000) });
+    const r = await fetch(url, { method: 'POST', headers, body, signal: AbortSignal.timeout(8000), redirect: 'error' });
     if (!r.ok) throw new Error(`${r.status} ${(await r.text().catch(() => '')).slice(0, 120)}`);
   };
   const json = { 'content-type': 'application/json' };

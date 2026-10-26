@@ -34,11 +34,11 @@ fs.rmSync(path.join(OUT, 'pages'), { recursive: true, force: true }); // sources
 // ---------------------------------------------------------------- guides
 const UI = {
   en: { home: '/', features: 'Features', how: 'How it works', pricing: 'Pricing', other: 'es', otherName: 'Español', theme: 'Light / dark',
-    crumbs: 'Breadcrumb', more: 'More guides', ctaH: 'Try it at your next event', ctaP: 'Free and open source. Install Node.js, download OpenCaptions and the setup wizard does the rest.',
+    crumbs: 'Breadcrumb', more: 'More guides', ctaH: 'Try it at your next event', ctaP: 'Free and open source. Download the app for Mac or Windows and the setup wizard does the rest.',
     mac: 'Download for Mac', win: 'Download for Windows', demo: 'Watch the 30-second demo', license: 'Free and open source · MIT license', updated: 'Updated',
     conduct: 'Code of conduct', security: 'Security', mit: 'MIT license' },
   es: { home: '/es/', features: 'Funciones', how: 'Cómo funciona', pricing: 'Precios', other: 'en', otherName: 'English', theme: 'Claro / oscuro',
-    crumbs: 'Ruta', more: 'Más guías', ctaH: 'Probalo en tu próximo evento', ctaP: 'Gratis y de código abierto. Instalá Node.js, descargá OpenCaptions y el asistente hace el resto.',
+    crumbs: 'Ruta', more: 'Más guías', ctaH: 'Probalo en tu próximo evento', ctaP: 'Gratis y de código abierto. Descargá la app para Mac o Windows y el asistente hace el resto.',
     mac: 'Descargar para Mac', win: 'Descargar para Windows', demo: 'Ver la demo de 30 segundos', license: 'Gratis y de código abierto · licencia MIT', updated: 'Actualizado',
     conduct: 'Código de conducta', security: 'Seguridad', mit: 'Licencia MIT' },
 };
@@ -170,11 +170,13 @@ for (const p of pages) {
   fs.writeFileSync(path.join(dir, 'index.html'), render(p));
 }
 
-// The home pages link to the guides in their own language (between the <!--guides--> markers in the footer).
+// The home pages link to the guides in their own language (between the <!--guides--> markers in the footer), and their
+// structured data names the version in package.json.
+const { version } = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8'));
 for (const lang of ['en', 'es']) {
   const file = path.join(OUT, lang === 'en' ? 'index.html' : 'es/index.html');
   const links = guidesOf(lang).map((p) => `<a href="${urlOf(lang, p.slug)}">${esc(p.label)}</a>`).join('');
-  fs.writeFileSync(file, fs.readFileSync(file, 'utf8').replace(/<!--guides-->[\s\S]*?<!--\/guides-->/, `<!--guides--><span class="guides">${links}</span><span class="legal">${legalRow(lang)}</span><!--/guides-->`));
+  fs.writeFileSync(file, fs.readFileSync(file, 'utf8').replace(/<!--guides-->[\s\S]*?<!--\/guides-->/, `<!--guides--><span class="guides">${links}</span><span class="legal">${legalRow(lang)}</span><!--/guides-->`).replace(/"softwareVersion":"[^"]*"/, `"softwareVersion":"${version}"`));
 }
 
 // ---------------------------------------------------------------- sitemap

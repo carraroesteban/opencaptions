@@ -4,6 +4,8 @@ This page explains where caption delay comes from, how to measure it and which s
 
 **Short answer:** original-language captions appear about 3 seconds after the speaker says the words, and translations about 4.5–6 seconds after. Nearly all of that time is spent inside the speech model. The computer that runs the server makes no measurable difference, whether it's a Mac, Linux or Windows machine. That's with Gemini; in [local mode](#in-local-mode) the computer runs the models, so it matters.
 
+Since 0.9, with Transcribe Live (the default speech model), phones show the words as they're spoken: the first ones about 1 s after the speaker says them (0.9–1.1 s on the bundled English and Spanish talks). The figures below are from before that change and time the finished sentence. `USE_INTERIM=0` goes back to whole sentences.
+
 ## Measured numbers
 
 Real Gemini sessions, conference talks as input, server on a MacBook in Argentina, September 2026 (an October 2026 rehearsal with streaming translation, 3 rooms and 150 phones, measured 2.3–3.2 s for the original and 3–5 s for translations):

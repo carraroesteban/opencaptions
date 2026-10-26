@@ -52,6 +52,13 @@ test('a talk over background music is still a voice', () => {
   assert.ok(!states.some((x) => x.s === 'music'), JSON.stringify(states));
 });
 
+test('a voice over loud music, as steady in brightness as a song, is not music', () => {
+  // 2-second windows measured on a live stream talking through a party and on a pop song (src/voice.js header)
+  assert.notEqual(VoiceDetector.judge({ energy: 1e-3, spread: 0.25, swing: 0.71, flux: 0.29 }), 'music');
+  assert.equal(VoiceDetector.judge({ energy: 1e-3, spread: 0.25, swing: 0.44, flux: 0.29 }), 'music');
+  assert.equal(VoiceDetector.judge({ energy: 1e-3, spread: 0.25, swing: 0.71, flux: 0.23 }), 'music');
+});
+
 test('music is detected after about ten seconds, and a voice brings captions back', () => {
   const m = run(music(30));
   const at = m.find((x) => x.s === 'music')?.at;

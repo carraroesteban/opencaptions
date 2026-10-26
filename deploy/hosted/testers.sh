@@ -37,7 +37,7 @@ run() {
     --memory 512m --cpus 1 --pids-limit 256 --read-only --tmpfs /tmp --cap-drop ALL --security-opt no-new-privileges \
     --log-opt max-size=10m --log-opt max-file=3 \
     -v "oc-t-$1:/app/data" \
-    -e GEMINI_API_KEY -e BUDGET_USD_WEEK="${BUDGET_USD_WEEK:-3}" -e TZ="${TZ:-UTC}" \
+    -e RECORDING_MAX_MB=300 -e GEMINI_API_KEY -e BUDGET_USD_WEEK="${BUDGET_USD_WEEK:-3}" -e TZ="${TZ:-UTC}" \
     -e PUBLIC_URL="https://$1.$DOMAIN" -e TRUST_PROXY=uniquelocal -e UPDATE_CHECK=0 \
     -e GLOSSARY=/app/data/glossary.json -e SCHEDULE=/app/data/schedule.json \
     "$IMAGE" >/dev/null

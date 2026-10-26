@@ -53,26 +53,6 @@ document.querySelectorAll('.reveal').forEach((el) => (io ? io.observe(el) : el.c
 
 const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-// Announcement ticker: types itself out once, the key phrase lands on the highlighter.
-const tt = document.querySelector('.ticker .tt');
-if (tt) {
-  const { pre, hl, post } = tt.dataset;
-  const parts = [[pre + ' ', false], [hl, true], [innerWidth < 640 ? '' : ' ' + post, false]]; // phones: the short version
-  const render = (n) => {
-    let left = n, html = '';
-    for (const [txt, mark] of parts) {
-      const piece = txt.slice(0, Math.max(0, left));
-      left -= txt.length;
-      const esc = piece.replace(/&/g, '&amp;').replace(/</g, '&lt;');
-      html += mark && piece ? `<mark>${esc}</mark>` : esc;
-    }
-    tt.innerHTML = html;
-  };
-  const total = parts.reduce((a, [x]) => a + x.length, 0);
-  if (reduceMotion) render(total);
-  else { let n = 0; const step = () => { render(++n); if (n < total) setTimeout(step, n < pre.length ? 45 : 28); }; setTimeout(step, 500); }
-}
-
 // Objects on the table drift with the pointer and the scroll (depth = how far).
 const objs = [...document.querySelectorAll('.obj')];
 if (objs.length && !reduceMotion) {
@@ -151,6 +131,8 @@ if (apps) {
 // The animated illustrations and the demo: still for people who ask for less motion (the demo then waits for its
 // play button), and paused while off screen so they cost nothing. They only load when they come into view.
 const videos = document.querySelectorAll('video.hero-loop, video.art.loop, .demo video');
+// With reduced motion the demo doesn't autoplay, so it gets the browser's play button.
+if (reduceMotion) document.querySelector('.demo video')?.setAttribute('controls', '');
 for (const v of videos) {
   if (reduceMotion) continue; // no autoplay attribute: they start only from here, when seen
   if (!('IntersectionObserver' in window)) continue;

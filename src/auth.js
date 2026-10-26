@@ -203,13 +203,13 @@ export function totpCode(secret, step = Math.floor(Date.now() / 30_000)) {
   return String(((h.readUInt32BE(o) & 0x7fffffff) % 1_000_000)).padStart(6, '0');
 }
 let lastStep = 0; // a code works once: replaying an observed one fails
-/** Accepts the current code and the ones just before and after (clocks drift). */
+/** Accepts the current code and the ones just before and after (clocks drift). true = accepted, 'used' = valid but already spent (truthy: callers that must refuse it test `=== true`). */
 export function checkCode(secret, code) {
   const c = String(code || '').replace(/\s/g, '');
   if (!/^\d{6}$/.test(c) || !secret) return false;
   const now = Math.floor(Date.now() / 30_000);
   for (const step of [now, now - 1, now + 1]) {
-    if (step > lastStep && safeEqual(totpCode(secret, step), c)) { lastStep = step; return true; }
+    if (safeEqual(totpCode(secret, step), c)) { if (step <= lastStep) return 'used'; lastStep = step; return true; }
   }
   return false;
 }
@@ -225,12 +225,12 @@ export function startTwoFactor() {
 /** Step 2: the app's code proves it was set up; from now on the admin password needs a code. */
 export function confirmTwoFactor(code) {
   if (!pending.secret || Date.now() > pending.until) throw new Error('start again: the setup expired');
-  if (!checkCode(pending.secret, code)) throw new Error('that code isn\'t right: check the app shows OpenCaptions, and try the next code');
+  if (checkCode(pending.secret, code) !== true) throw new Error('that code isn\'t right: check the app shows OpenCaptions, and try the next code');
   saveSecret('totpSecret', pending.secret);
   pending = { secret: '', until: 0 };
 }
 /** Turn it off with a current code; `force` skips it (the server computer itself: the way back after losing the phone). */
 export function disableTwoFactor(code, { force = false } = {}) {
-  if (!force && !checkCode(twoFactorSecret(), code)) throw new Error('that code isn\'t right');
+  if (!force && checkCode(twoFactorSecret(), code) !== true) throw new Error('that code isn\'t right');
   saveSecret('totpSecret', '');
 }

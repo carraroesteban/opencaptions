@@ -103,7 +103,7 @@ Every page, who opens it and where it goes next. In Just for me, the event's pag
 | `/kit.html` † | Organizers | **Tools → QR kit**, or a room's **Screens & QR** | Printing | |
 | `/report.html` † | Organizers | The dashboard | A CSV download | |
 | `/demo.html` †, `/style.html` | Organizers | The dashboard | | |
-| `/me.html` | One person | The first start in Just for me, or **Settings → General → Just for me** | My transcripts; events (after a dialog) | No AI connected: simulated captions and a place to paste the key |
+| `/me.html` | One person | The first start in Just for me, or **Settings → System → Just for me** | My transcripts; events (after a dialog) | No AI connected: simulated captions and a place to paste the key |
 
 ## Data flow for one sentence
 
@@ -217,6 +217,6 @@ There is no database. That's deliberate ([ADR 0001](adr/0001-single-process-node
 | Documentation | Every relative link and anchor is checked by `npm test` |
 | Latency | Dashboard metrics and `npm run multi` reports |
 | Load | `npm run loadtest` (mock engine, many rooms) |
-| Real model behaviour | `npm run check`, and rehearsals with real audio and simulated phones |
+| Real model behavior | `npm run check`, and rehearsals with real audio and simulated phones |
 
 The tests don't call the real model on every change, because of cost and quota; the recorded session stands in for it.

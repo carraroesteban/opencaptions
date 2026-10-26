@@ -2,7 +2,9 @@
 #   docker build -t opencaptions .
 #   docker build --build-arg WITH_YTDLP=1 -t opencaptions .   # + yt-dlp for YouTube demos / latency tests
 # Google's copy of Docker Hub's official image: Docker Hub limits anonymous downloads, and CI builds hit that limit.
-FROM mirror.gcr.io/library/node:22-bookworm-slim
+# Pinned to a release with the October 2026 security fixes (src/node-version.js refuses older ones); raise it with
+# each Node.js security release, then rebuild.
+FROM mirror.gcr.io/library/node:22.23.4-bookworm-slim
 
 # Downloaded tools are pinned and checked against GitHub's published SHA-256 (same versions as src/tunnel.js).
 # cloudflared: the dashboard's one-click public HTTPS address. The container's filesystem is read-only, so it can't

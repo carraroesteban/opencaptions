@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 // What the desktop downloads (the Mac app, "Start OpenCaptions.exe" on Windows) and `npm run app` run: installs what's
 // missing the first time, starts the server and opens the dashboard in the browser. If OpenCaptions is already running,
-// it only opens the dashboard. Uses Node's built-in modules only (and src/tty.js, which has no dependencies): it runs
-// before `npm install`.
+// it only opens the dashboard. Uses Node's built-in modules only (and src/tty.js and src/node-version.js, which have no
+// dependencies): it runs before `npm install`.
 //
 //   node scripts/start.js            (also: npm run app)
 import fs from 'node:fs';
@@ -11,6 +11,7 @@ import path from 'node:path';
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import * as tty from '../src/tty.js';
+import { nodeProblem } from '../src/node-version.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const win = process.platform === 'win32';
@@ -23,9 +24,9 @@ function openUrl(url) {
 if (process.stdout.isTTY) process.stdout.write('\x1b]0;OpenCaptions\x07'); // the window's title
 console.log(`\n${tty.title()}\n`);
 
-const major = Number(process.versions.node.split('.')[0]);
-if (major < 20) {
-  tty.fail(`OpenCaptions needs Node.js 20 or later (this computer has ${process.versions.node}).`);
+const nodeTooOld = nodeProblem();
+if (nodeTooOld) {
+  tty.fail(nodeTooOld);
   console.log('  Opening the download page: install the LTS version, then start OpenCaptions again.\n');
   openUrl('https://nodejs.org/en/download');
   process.exit(1);
@@ -92,15 +93,30 @@ process.env.PORT = String(port); // the server inherits it
 tty.info(`Keep this window open while you use OpenCaptions. To stop it, close the window ${tty.c.gray('(or press Ctrl+C)')}.`);
 // OC_SUPERVISED: the dashboard's "Update now" may replace the files and exit with 75, and this starts the new version
 // (its own start.js, which installs new libraries first). After an update the dashboard is already open: no new tab.
-const restarted = !!process.env.OC_UPDATED;
-const server = spawn(process.execPath, [path.join(ROOT, 'src', 'server.js'), ...(restarted ? [] : ['--open']), ...process.argv.slice(2)], { cwd: ROOT, stdio: 'inherit', env: { ...process.env, OC_SUPERVISED: '1' } });
-for (const sig of ['SIGINT', 'SIGTERM']) process.on(sig, () => server.kill(/** @type {NodeJS.Signals} */ (sig)));
+let server, stopping = false, crashes = 0;
+const stop = (sig) => { stopping = true; server.kill(sig); };
+for (const sig of ['SIGINT', 'SIGTERM']) process.on(sig, () => stop(/** @type {NodeJS.Signals} */ (sig)));
 // The Mac app's window holds the other end of stdin: if the app ends any way at all (quit, force quit, a crash), the
 // pipe closes and the server stops with it, instead of running on with no window to stop it.
-if (process.env.OC_STOP_WITH_STDIN) { process.stdin.on('end', () => server.kill('SIGTERM')); process.stdin.resume(); }
-server.on('exit', (code) => {
-  if (code !== 75) process.exit(code ?? 0);
-  tty.info('Starting the new version of OpenCaptions…');
-  spawn(process.execPath, [path.join(ROOT, 'scripts', 'start.js'), ...process.argv.slice(2)], { cwd: ROOT, stdio: 'inherit', env: { ...process.env, OC_UPDATED: '1' } })
-    .on('exit', (c) => process.exit(c ?? 0));
-});
+if (process.env.OC_STOP_WITH_STDIN) { process.stdin.on('end', () => stop('SIGTERM')); process.stdin.resume(); }
+function run(open) {
+  const startedAt = Date.now();
+  server = spawn(process.execPath, [path.join(ROOT, 'src', 'server.js'), ...(open ? ['--open'] : []), ...process.argv.slice(2)], { cwd: ROOT, stdio: 'inherit', env: { ...process.env, OC_SUPERVISED: '1' } });
+  server.on('exit', (code) => {
+    if (code === 75) {
+      tty.info('Starting the new version of OpenCaptions…');
+      spawn(process.execPath, [path.join(ROOT, 'scripts', 'start.js'), ...process.argv.slice(2)], { cwd: ROOT, stdio: 'inherit', env: { ...process.env, OC_UPDATED: '1' } })
+        .on('exit', (c) => process.exit(c ?? 0));
+      return;
+    }
+    // A crash in the middle of an event: start again, so captions come back without anyone at the computer. Not a stop,
+    // nor a server that fails right at start (a setting to fix), nor one that keeps crashing.
+    if (code && !stopping && Date.now() - startedAt > 10_000 && ++crashes <= 5) {
+      tty.warn(`OpenCaptions stopped unexpectedly (exit code ${code}). Starting it again…`);
+      setTimeout(() => (stopping ? process.exit(0) : run(false)), 1000 * crashes);
+      return;
+    }
+    process.exit(code ?? 0);
+  });
+}
+run(!process.env.OC_UPDATED); // after an update the dashboard is already open: no new tab

@@ -37,13 +37,23 @@ export function newer(a, b) {
 }
 
 let latest = ''; // the latest release's version, '' until GitHub answers
+let whatsNew = ''; // its release notes, as GitHub has them (plain text for the dashboard and the apps' dialogs)
+let latestShell = 0; // its deploy/desktop/shell.json: the native app (window, launcher) the release expects
 
 /** Ask GitHub once. Failures (offline, rate limit, a strange answer) keep what was known before. */
 export async function checkNow({ timeoutMs = 5000 } = {}) {
   try {
     const r = await fetch(`https://api.github.com/repos/${REPO}/releases/latest`, { headers: { accept: 'application/vnd.github+json' }, signal: AbortSignal.timeout(timeoutMs) });
-    const v = r.ok ? String((/** @type {any} */ (await r.json())).tag_name || '').replace(/^v/i, '') : '';
-    if (/^\d+\.\d+\.\d+(-[\w.]+)?$/.test(v)) latest = v; // only a version goes into links, file names and downloads
+    const rel = /** @type {any} */ (r.ok ? await r.json() : {});
+    const v = String(rel.tag_name || '').replace(/^v/i, '');
+    if (!/^\d+\.\d+\.\d+(-[\w.]+)?$/.test(v)) return latest; // only a version goes into links, file names and downloads
+    latest = v;
+    whatsNew = String(rel.body || '').slice(0, 4000);
+    // Only for a newer release: which native app it needs (absent before there was one: the first, 0).
+    if (newer(v, CURRENT)) {
+      const s = await fetch(`https://raw.githubusercontent.com/${REPO}/v${v}/deploy/desktop/shell.json`, { signal: AbortSignal.timeout(timeoutMs) });
+      latestShell = s.ok ? Number((/** @type {any} */ (await s.json())).version) || 0 : 0;
+    }
   } catch { /* offline: try again tomorrow */ }
   return latest;
 }
@@ -61,19 +71,24 @@ const writable = (dir) => { try { fs.accessSync(dir, fs.constants.W_OK); return 
 /**
  * What the dashboard shows, or null when this version is the latest (or GitHub hasn't answered). canUpdate: the
  * "Update now" button (started by scripts/start.js, which starts the new version). Otherwise a Docker container or a
- * copy of the code gets the command, anything else the download for this computer.
+ * copy of the code gets the command, anything else the download for this computer. app: the download, when the
+ * release also changes the native app around the files (OC_SHELL, set by the Mac app and the Windows launcher), which
+ * "Update now" can't replace.
  */
-export function updateInfo({ platform = process.platform, docker = !!process.env.OC_DOCKER, git = isGit(), supervised = !!process.env.OC_SUPERVISED } = {}) {
+export function updateInfo({ platform = process.platform, docker = !!process.env.OC_DOCKER, git = isGit(), supervised = !!process.env.OC_SUPERVISED, shell = process.env.OC_SHELL } = {}) {
   if (!latest || !newer(latest, CURRENT)) return null;
   const tag = `v${latest}`;
   const file = platform === 'darwin' ? 'OpenCaptions-mac.zip' : platform === 'win32' ? 'OpenCaptions-windows.zip' : '';
   const canUpdate = supervised && !docker && writable(ROOT);
+  const url = file ? `https://github.com/${REPO}/releases/download/${tag}/${file}` : `https://github.com/${REPO}/releases/tag/${tag}`;
   return {
     version: latest,
     notes: `https://github.com/${REPO}/releases/tag/${tag}`,
+    whatsNew,
     canUpdate,
     command: canUpdate ? '' : docker ? 'git pull && docker compose up -d --build' : git ? 'git pull && npm ci --omit=dev' : '',
-    download: canUpdate || docker || git ? '' : file ? `https://github.com/${REPO}/releases/download/${tag}/${file}` : `https://github.com/${REPO}/releases/tag/${tag}`,
+    download: canUpdate || docker || git ? '' : url,
+    app: canUpdate && !git && latestShell > (Number(shell) || 0) ? url : '',
   };
 }
 
@@ -128,4 +143,4 @@ export async function installUpdate({ root = ROOT, version = latest, git = isGit
 }
 
 /** Test hooks: forget the last answer, or pretend GitHub gave one. */
-export const _reset = (v = '') => { latest = v; };
+export const _reset = (v = '') => { latest = v; whatsNew = ''; latestShell = 0; };

@@ -2,6 +2,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { writeFileAtomic } from './config.js';
+import { endsSentence } from './captions.js';
 
 const safe = (s) => String(s).replace(/[^a-zA-Z0-9_-]/g, '_');
 
@@ -95,8 +96,6 @@ export class Store {
       .sort((a, b) => b.startedAt - a.startedAt);
   }
 
-  /** Every saved line of a talk. The last few talks read are kept parsed until their file changes (callers must
-   * not modify the array). */
   hasTalk(stage, talkId) { return fs.existsSync(this.#talkDir(stage, talkId)); }
 
   /** Delete a saved talk for good (its captions and metadata). Returns false if there was none. */
@@ -118,6 +117,8 @@ export class Store {
     return fixed;
   }
 
+  /** Every saved line of a talk. The last few talks read are kept parsed until their file changes (callers must
+   * not modify the array). */
   readTalk(stage, talkId) {
     const f = path.join(this.#talkDir(stage, talkId), 'captions.jsonl');
     let st;
@@ -178,7 +179,6 @@ export function toVTT(segs) {
   return 'WEBVTT\n\n' + cues(segs).map((s) => `${ts(s.start, '.')} --> ${ts(s.end, '.')}\n${s.spk ? `<v ${voice(s.spk)}>` : ''}${text(s.text)}\n`).join('\n');
 }
 
-const endsSentence = (t) => /[.?!…。？！]["'”’»)\]]*\s*$/.test(String(t || ''));
 
 export function toTXT(segs) {
   // Paragraphs: a new one after a sentence, once the paragraph is long enough or the speaker paused (> 4 s); never in

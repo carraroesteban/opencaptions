@@ -8,7 +8,7 @@ Everything else stays the same: the audience page, the projector, the overlay, t
 
 | | Gemini (default) | Local mode |
 |---|---|---|
-| Speech recognition | Gemini 3.5 Live Translate | Whisper, on this computer. On a Mac with an Apple chip and macOS 26 or later: Apple's own, built into the Mac |
+| Speech recognition | Gemini 3.5 Transcribe Live (or Live Translate) | Whisper, on this computer. On a Mac with an Apple chip and macOS 26 or later: Apple's own, built into the Mac |
 | Translation, summaries, questions | Gemini Flash-Lite | An open model through Ollama (Gemma 3 by default). On those Macs, translation is Apple's, built in, and Ollama is only for summaries and questions |
 | Needs | An API key and internet | A capable computer; internet only to download the models once |
 | Cost | About US$ 0.54 per room-hour (US$ 2.2 with a translated voice) | Nothing per hour |
@@ -53,7 +53,7 @@ To use Whisper instead: `npm run local -- --asr builtin`. The code is in `src/en
 
 ## Quick start
 
-You need Node.js 20+, the repository with `npm install` done, and about 5 GB of free disk space.
+You need Node.js 22.23.4+ (or 24.22.1+, 26.12.1+), the repository with `npm install` done, and about 5 GB of free disk space.
 
 **macOS (Apple Silicon):**
 

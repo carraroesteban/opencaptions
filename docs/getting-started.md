@@ -7,7 +7,7 @@ In this tutorial you run OpenCaptions on your own computer, watch simulated capt
 **You need:**
 
 - A computer running macOS, Linux or Windows.
-- [Node.js](https://nodejs.org/) 20 or later. Version 22 LTS is recommended. Check with `node --version`.
+- [Node.js](https://nodejs.org/) 22.23.4 or later (or 24.22.1+, 26.12.1+: the releases with the October 2026 security fixes). Check with `node --version`.
 - [Git](https://git-scm.com/).
 - For the second half: a Gemini API key from [Google AI Studio](https://aistudio.google.com/apikey).
 
@@ -66,7 +66,6 @@ npm run setup
 
 Or by hand:
 
-
 1. Copy the example configuration:
 
    ```bash
@@ -111,7 +110,7 @@ npm run feed -- --stage room-b --input samples/talk-es.wav
 
 Room `main` receives English and shows Spanish captions. Room `room-b` receives Spanish and shows English captions. The dashboard shows both rooms, their latency and the estimated cost so far.
 
-On a room's card, tap **Host** under *Speaking*: new captions are labeled with that name on phones, in the transcript and in the subtitle files.
+On a room's card, tap **Host** under *Speaking*: new captions are labeled with that name on phones, in the transcript and in the caption files.
 
 ## 6. Catch up and ask
 
@@ -140,4 +139,4 @@ You ran the server, fed it audio from a file and a microphone, and watched capti
 - [Local mode](local.md): run the models on your own computer, without the cloud.
 - [Deployment](deployment.md): choose where the server runs.
 - [Security](security-guide.md): read this before exposing the server to a network.
-- [Event-day runbook](operations/runbook.md): run it at a real event.
+- [Event-day runbook](operations/runbook.md) and the one-page [day-of-event checklist](operations/day-of-event.md): run it at a real event.

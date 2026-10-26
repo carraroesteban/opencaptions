@@ -229,7 +229,7 @@ export class GeminiEngine extends EventEmitter {
       this.stats.lastInputAt = Date.now();
       const t = sc.inputTranscription;
       if (this.transcribeOnly) this.heard += t.text || ''; // the only model with provisional words (#unheard)
-      this.emit('input', { text: this.#spaced(t.text), finished: !!t.finished, lang: normLang(t.languageCode) });
+      this.emit('input', { text: t.text || '', finished: !!t.finished, lang: normLang(t.languageCode) });
     }
     if (sc.outputTranscription) {
       this.stats.lastOutputAt = Date.now();
@@ -251,7 +251,7 @@ export class GeminiEngine extends EventEmitter {
   #onDrain(m) {
     const sc = m.serverContent;
     if (!sc) return;
-    if (sc.inputTranscription) this.emit('input', { text: this.#spaced(sc.inputTranscription.text), finished: !!sc.inputTranscription.finished, lang: normLang(sc.inputTranscription.languageCode) });
+    if (sc.inputTranscription) this.emit('input', { text: sc.inputTranscription.text || '', finished: !!sc.inputTranscription.finished, lang: normLang(sc.inputTranscription.languageCode) });
     if (sc.outputTranscription) this.emit('output', { text: sc.outputTranscription.text || '', finished: !!sc.outputTranscription.finished, lang: this.target });
     for (const p of sc.modelTurn?.parts || []) {
       if (p.inlineData?.data && (p.inlineData.mimeType || '').startsWith('audio')) this.emit('audio', Buffer.from(p.inlineData.data, 'base64'));
@@ -272,11 +272,6 @@ export class GeminiEngine extends EventEmitter {
     }
     this.heard = ''; // provisional words about new speech: nothing of it is confirmed yet
     return text;
-  }
-
-  /** Transcribe Live sends each finished sentence without a leading space ("Summit.My name…"): add one. */
-  #spaced(text = '') {
-    return this.transcribeOnly && text && !/^\s/.test(text) ? ` ${text}` : text;
   }
 
   #onClose(e, wasResuming) {

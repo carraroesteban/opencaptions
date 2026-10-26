@@ -4,7 +4,8 @@
 # downloaded app from a read-only place ("App Translocation"), and the app needs to install its libraries. Settings,
 # passwords and transcripts live in .../OpenCaptions/data, and the free local AI's downloads in .../OpenCaptions/local,
 # so they survive updates. Then it runs OpenCaptions (scripts/start.js), which opens the dashboard. No Node.js on this
-# Mac (or older than 20): the official one is downloaded once into .../OpenCaptions/node.
+# Mac (or one without the October 2026 security fixes, see src/node-version.js): the official one is downloaded into
+# .../OpenCaptions/node, and downloaded again when that copy is too old.
 # Run by the app's program (OpenCaptions.swift), whose window shows what this prints; both are put in the app by
 # scripts/package-desktop.js.
 CONTENTS="$(cd "$(dirname "$0")/.." && pwd)" # OpenCaptions.app/Contents
@@ -16,10 +17,11 @@ case "$(defaults read -g AppleLocale 2>/dev/null)" in es*) ES=1 ;; *) ES= ;; esa
 say() { if [ -n "$ES" ]; then echo "$2"; else echo "$1"; fi; }
 dialog() { osascript -e "button returned of (display dialog \"$1\" buttons {\"$2\", \"$3\"} default button 2 with title \"OpenCaptions\" with icon caution)" 2>/dev/null; }
 
-node_ok() { [ -x "$1" ] && [ "$("$1" -p 'process.versions.node.split(".")[0]' 2>/dev/null || echo 0)" -ge 20 ]; }
+# src/node-version.js prints "ok" for a Node.js with the security fixes OpenCaptions requires.
+node_ok() { [ -x "$1" ] && [ "$("$1" "$SRC/src/node-version.js" 2>/dev/null)" = ok ]; }
 
 # The official Node.js for this Mac's chip, checked against nodejs.org's published checksums.
-# shortcut: always the newest Node 22; move to the next LTS line when package.json's engines does.
+# shortcut: always the newest Node 22 (22.23.4 or later has the fixes); move to the next LTS line before 22's end of life.
 get_node() {
   local dist=https://nodejs.org/dist/latest-v22.x arch=x64 line name tmp
   [ "$(sysctl -n hw.optional.arm64 2>/dev/null)" = 1 ] && arch=arm64
@@ -36,6 +38,11 @@ get_node() {
   return $ok
 }
 
+if [ ! -f "$SRC/package.json" ]; then
+  osascript -e "display alert \"OpenCaptions\" message \"$(say 'This copy of OpenCaptions is incomplete. Download it again from github.com/carraroesteban/opencaptions.' 'Esta copia de OpenCaptions está incompleta. Descargala de nuevo de github.com/carraroesteban/opencaptions.')\" as critical" >/dev/null 2>&1
+  exit 1
+fi
+
 # Node installed with nvm, fnm or volta is on the PATH only in the person's own shell: ask it too.
 NODE="$(command -v node)"
 node_ok "$NODE" || NODE="$("${SHELL:-/bin/zsh}" -ilc 'command -v node' 2>/dev/null | tail -1)"
@@ -46,10 +53,6 @@ if ! node_ok "$NODE" && ! { get_node && node_ok "$NODE"; }; then
   exit 1
 fi
 
-if [ ! -f "$SRC/package.json" ]; then
-  osascript -e "display alert \"OpenCaptions\" message \"$(say 'This copy of OpenCaptions is incomplete. Download it again from github.com/carraroesteban/opencaptions.' 'Esta copia de OpenCaptions está incompleta. Descargala de nuevo de github.com/carraroesteban/opencaptions.')\" as critical" >/dev/null 2>&1
-  exit 1
-fi
 VERSION="$(sed -n 's/.*"version": *"\([^"]*\)".*/\1/p' "$SRC/package.json" | head -1)"
 DEST="$SUPPORT/app-$VERSION"
 if [ ! -f "$DEST/.complete" ]; then

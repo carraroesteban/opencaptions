@@ -24,11 +24,6 @@ const T = {
     badCode: 'Ese código no es correcto o ya se usó. Esperá el siguiente y probá de nuevo.',
     slow: 'Demasiados intentos fallidos. Esperá 10 minutos.',
     offline: 'No se pudo contactar al servidor. ¿Sigue encendido?',
-    where: 'Dónde encontrar la contraseña',
-    w1: 'En la ventana donde arrancaste OpenCaptions: las líneas <b>Admin token</b> (todo) y <b>Crew token</b> (solo los controles en vivo).',
-    w2: 'Con Docker, en una terminal dentro de la carpeta de OpenCaptions:',
-    w3: 'En la computadora del servidor no hace falta: abrí <b>http://localhost:8080/admin.html</b> ahí (sin Docker).',
-    w4: 'Un administrador puede cambiar las contraseñas en Ajustes → Seguridad.',
   },
   en: {
     title: 'Sign in to the dashboard',
@@ -48,11 +43,6 @@ const T = {
     badCode: 'That code isn’t right or was already used. Wait for the next one and try again.',
     slow: 'Too many failed attempts. Wait 10 minutes.',
     offline: 'Couldn’t reach the server. Is it still running?',
-    where: 'Where to find the password',
-    w1: 'In the window where you started OpenCaptions: the <b>Admin token</b> line (everything) and the <b>Crew token</b> line (live controls only).',
-    w2: 'With Docker, in a terminal inside the OpenCaptions folder:',
-    w3: 'On the server computer itself you don’t need it: open <b>http://localhost:8080/admin.html</b> there (without Docker).',
-    w4: 'An admin can change the passwords in Settings → Security.',
   },
 };
 const t = T[LANG] || T.en;
@@ -84,6 +74,11 @@ export async function signOut() {
  * @returns {Promise<any>}
  */
 export async function ensureSignedIn() {
+  try { return await signedIn(); }
+  finally { delete document.body.dataset.gate; } // a page that waited blank behind the sign-in (style.css) shows now, even if signing in failed
+}
+
+async function signedIn() {
   // A password handed over in a link (?token=, the Docker link) or kept by an older version: use it once, forget it.
   const qs = new URLSearchParams(location.search);
   const handed = qs.get('token') || store.get('admin.token', '');
@@ -119,14 +114,6 @@ export async function signInScreen({ message = '', password = '' } = {}) {
   dlg.addEventListener('cancel', (e) => e.preventDefault()); // Esc would leave an empty dashboard behind
   let pw = password;
   const ssoButton = cfg.sso ? `<button type="button" class="sso">${t.sso(cfg.sso)}</button>` : '';
-  const help = `<details><summary>${t.where}</summary>
-      <ul class="u-help-list">
-        <li>${t.w1}</li>
-        <li>${t.w2}<pre class="u-m6t"><code>docker compose logs opencaptions | grep "token"</code></pre></li>
-        <li>${t.w3}</li>
-        <li>${t.w4}</li>
-      </ul>
-    </details>`;
   const passwordStep = () => {
     dlg.innerHTML = `<form method="dialog" class="u-stack14">
       <h3 class="u-m0">${t.title}</h3>
@@ -137,7 +124,6 @@ export async function signInScreen({ message = '', password = '' } = {}) {
       <div class="dlg-actions"><button class="primary" type="submit">${t.go}</button></div>` : ''}
       ${cfg.sso && cfg.password ? `<p class="muted-note u-m0 u-center">${t.or}</p>` : ''}
       ${ssoButton}
-      ${cfg.password ? help : ''}
     </form>`;
     const f = dlg.querySelector('form');
     const sso = f.querySelector('.sso');

@@ -14,6 +14,9 @@ import { spawn, spawnSync } from 'node:child_process';
 import os from 'node:os';
 import WebSocket from 'ws';
 import { ffmpegBin } from '../src/pull.js';
+import { nodeProblem } from '../src/node-version.js';
+
+if (nodeProblem()) { console.error(nodeProblem()); process.exit(78); }
 
 const argv = process.argv.slice(2);
 const arg = (k, d) => { const i = argv.indexOf(`--${k}`); return i >= 0 ? (argv[i + 1] && !argv[i + 1].startsWith('--') ? argv[i + 1] : true) : d; };

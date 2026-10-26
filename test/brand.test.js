@@ -25,13 +25,12 @@ test('every page uses the shared tokens', () => {
 });
 
 test('lime is never used as a text colour', () => {
-  // Lime is a fill only (ink on lime). The exceptions are prompts that sit on ink: the $ in the website's code block
-  // and the ❯ in its announcement ticker.
+  // Lime is a fill only (ink on lime). The exception is a prompt that sits on ink: the $ in the website's code block.
   const css = (f) => (f.endsWith('.html') ? [...read(f).matchAll(/<style>([\s\S]*?)<\/style>/g)].map((m) => m[1]).join('\n') : read(f)).replace(/\/\*[\s\S]*?\*\//g, '');
   const files = [...pages.map((f) => `public/${f}`), 'public/style.css', 'public/tokens.css', 'site/site.css'];
   for (const f of files) {
     for (const line of css(f).split('\n')) {
-      if (/^(pre|\.ticker) \.p \{/.test(line.trim()) && f === 'site/site.css') continue;
+      if (/^pre \.p \{/.test(line.trim()) && f === 'site/site.css') continue;
       for (const [, prop, val] of line.matchAll(/(?<![-\w])(color|stroke)\s*:\s*([^;}]+)/g)) assert.doesNotMatch(val, /lime|d4ff3a|212,\s*255,\s*58/i, `${f}: ${prop}: ${val}`);
     }
   }
@@ -53,7 +52,8 @@ test('website: both languages, hreflang, custom domain', () => {
     assert.match(html, /hreflang="en" href="https:\/\/opencaptions\.kvza\.ar\/"/, f);
     assert.match(html, /hreflang="es" href="https:\/\/opencaptions\.kvza\.ar\/es\/"/, f);
     for (const [, src] of html.matchAll(/(?:href|src)="\/([^"#]+)"/g)) {
-      const local = [`site/${src}`, `public/${src}`, `docs/${src}`].some((p) => fs.existsSync(path.join(ROOT, p)) || fs.existsSync(path.join(ROOT, p, 'index.html')));
+      const guide = src.replace(/^es\//, '').replace(/\/$/, ''); // /faq/ and /es/preguntas-frecuentes/ are built from site/pages
+      const local = [`site/${src}`, `public/${src}`, `docs/${src}`, `site/pages/en/${guide}.html`, `site/pages/es/${guide}.html`].some((p) => fs.existsSync(path.join(ROOT, p)) || fs.existsSync(path.join(ROOT, p, 'index.html')));
       assert.ok(local || src === 'es/', `${f} links to missing /${src}`);
     }
   }

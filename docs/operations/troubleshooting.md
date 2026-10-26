@@ -4,6 +4,17 @@ Find the symptom, then follow the steps in order. Server logs are printed in the
 
 <p align="center"><img src="../../public/art/waiting.webp" width="640" alt="A calm waiting screen with the OpenCaptions logo" /></p>
 
+## No captions at all
+
+Check these in order; most "no captions" problems are one of the first three.
+
+1. **Is sound arriving?** On the dashboard, the room's card says **No sound yet** or **Waiting for the stream** when nothing reaches the server. Open the room's sound page (the card's **Open the sound page**) and press Start, or start the stream in OBS or vMix. See [Audio](#audio).
+2. **Is the level right?** The sound page's meter says **Good level** while someone speaks. **No sound: is the microphone on?** or **Too quiet: turn it up** means the AI hears too little to caption: raise the desk's output or the computer's input, or pick another input. **Too loud** clips and garbles words.
+3. **Which AI is captioning?** The badge at the top of the dashboard says it. **Simulated captions** means no AI is connected: paste a Gemini key in **Settings → AI**, or click **Run it on this computer (free, slower)**.
+4. **Is the AI failing?** The room's log and the dashboard's alerts show Gemini errors. A free key that ran out (429, quota) stops captions until the quota resets: enable billing in AI Studio, or switch to this computer with the badge. See [Gemini connection](#gemini-connection).
+5. **Is the room on a break?** **Break**, **Music · paused** or a break from the agenda stop captions on purpose. Press **Resume captions**, or **It's a talk: caption anyway** for a talk taken for music.
+6. **Is it just one phone?** A phone that says "Reconnecting…" is on weak Wi-Fi and recovers by itself. If no phone gets captions but the dashboard shows them, check that the QR code points to the public address, not `localhost` (the QR kit warns about it).
+
 ## Server won't start
 
 | Message | Cause | Fix |
@@ -19,6 +30,7 @@ Find the symptom, then follow the steps in order. Server logs are printed in the
 | **Settings → AI** says the key isn't valid, or `npm run check` shows 401 | The key was copied incompletely, or was deleted | Copy the whole key again from AI Studio. Keys made since May 2026 start with `AQ.` (about 53 characters), older ones with `AIza` (39) |
 | "The key exists but can't use Gemini" (403) | The key's project can't use the Gemini API, or the key is restricted | In AI Studio, create the key in a new project. Check API restrictions on the key. |
 | 429 errors in the log | Free tier or per-minute quota reached | Enable billing. Set `MT_RPM` to your limit or raise `MT_PARTIAL_MS`. |
+| A free key runs out in the middle of the event | The free tier's daily or per-minute limits | Click the AI badge at the top of the dashboard and choose this computer (or **Run it on this computer (free, slower)**): captions carry on, more slowly, until you enable billing in AI Studio. Then switch back. |
 | Some rooms never go live when many run at once | Concurrent Live session limit | Check your tier's limit. Reduce rooms or shard across projects. |
 | `setup rejected (…); retrying with '<level>' config` | The model rejected an optional field | Automatic. It retries with a smaller config (full → minimal → bare). Report it if it persists. |
 | Sessions reconnect every few minutes | Normal session renewal (`goAway`) | Nothing. Audio is buffered and resumed. |
@@ -50,6 +62,8 @@ See [Local mode → Troubleshooting](../local.md#troubleshooting) for the speech
 | Symptom | Cause | Fix |
 |---|---|---|
 | Level meter flat | Wrong input, muted fader, unplugged cable | `--list-devices`, check the desk output, try `--gain 2` |
+| The sound page says **Too quiet: turn it up**, or captions miss words | The feed is too low for the AI | Raise the desk's output to this computer, or its input level in the system's sound settings; the agent's `--gain 1.5` (or 2) also helps. Aim for **Good level** while someone speaks at normal volume. |
+| The sound page says **Too loud: turn it down a little** | The feed clips | Lower the desk output or the computer's input until it says **Good level**. |
 | macOS agent captures silence | Microphone permission not granted | **System Settings → Privacy & Security → Microphone**: allow the terminal or `node` |
 | Browser ingest: microphone blocked | Page isn't HTTPS or localhost | Use the HTTPS URL ([Deployment](../deployment.md#https)) |
 | Captions only for one speaker in a panel | The desk sends mics on different channels | Use `--channel mix` or fix the desk bus |
@@ -64,6 +78,8 @@ See [Local mode → Troubleshooting](../local.md#troubleshooting) for the speech
 | Captions arrive late (more than 6 s) | Reconnect in progress, a poor audio feed or network jitter | See [Latency](../latency.md#tuning). Press **Reconnect AI** in the room's details if it persists. |
 | Translation lags the original by a lot | Long sentences without punctuation, or throttling | Lower `MT_PARTIAL_MS`. Check for the "translation throttled" alert. |
 | Wrong words for names or acronyms | Unknown vocabulary | Add them to the glossary vocabulary and replacements |
+| Words glued together ("Summit.My name") or capitals in the middle of a sentence ("we also Think a lot") | Version 0.9.1 and earlier join the AI's fragments as they come | Fixed in the next version (*Unreleased* in the [changelog](../../CHANGELOG.md)): update when it's out. Every engine's words will get one space between fragments, and a stray capital after a pause lowered, only for words the speaker already said in lowercase, so names keep theirs. If you still see it after updating, open an issue with the sentence. |
+| A talk over loud music pauses as **Music · paused** | Version 0.9.1 and earlier take a voice over music for music | Fixed in the next version. Until then press **It's a talk: caption anyway**. |
 | Captions in the wrong language | Wrong `source` pinned | Set the room's language to `auto`: speakers can switch languages mid-talk and every caption track follows (the dashboard log shows `speaker switched language: es → en`) |
 | Phone shows "reconnecting" | Weak venue Wi-Fi | It recovers automatically. Captions need very little bandwidth. |
 
@@ -76,7 +92,7 @@ See [Local mode → Troubleshooting](../local.md#troubleshooting) for the speech
 | Summary says there isn't enough yet | Fewer than a few sentences transcribed | Wait a minute |
 | Agenda titles never appear, or appear hours off | Times read in the wrong time zone (Docker runs in UTC), or room names in the CSV don't match | Reopen the welcome wizard (**Settings**): its review offers your browser's time zone. Or set `TZ`. The agenda preview lists rooms it doesn't recognize. |
 | The next talk's title doesn't switch | The room hasn't been quiet yet (the previous speaker is still talking) | The room card turns orange and offers **Start "…"**; or it switches at the next 30 s pause |
-| Transcript library is empty for the audience | Only the talk in progress is public (the default) | **Settings → General → Transcripts for the audience → Every talk**, once the speakers agree (or `PUBLIC_TRANSCRIPTS=all`) |
+| Transcript library is empty for the audience | Only the talk in progress is public (the default) | **Settings → Event → Transcripts for the audience → Every talk**, once the speakers agree (or `PUBLIC_TRANSCRIPTS=all`) |
 
 ## Desktop apps
 

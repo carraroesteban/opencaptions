@@ -27,17 +27,17 @@ It runs unattended. Each room pauses itself when there's silence (nothing is bil
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="images/diagrams/how-it-works-dark.png" />
-  <img src="images/diagrams/how-it-works-light.png" alt="How it works: room audio (sound desk, browser tab, OBS or vMix) goes to the OpenCaptions server, which sends it to a speech model and each sentence to a translation model, then delivers captions to phones, the presenter screen, the livestream and the dashboard." />
+  <img src="images/diagrams/how-it-works-light.png" alt="How it works: room audio (sound desk, browser tab, OBS or vMix) goes to the OpenCaptions server, which sends it to a speech model and each sentence to a translation model, then delivers captions to phones, the stage screen, the livestream and the dashboard." />
 </picture>
 
 <details><summary>Text version of this diagram</summary>
 
 ```mermaid
 flowchart LR
-  D[Sound desk] --> A[Room PC<br/>agent or browser]
+  D[Sound desk] --> A[Venue PC<br/>agent or browser]
   V[vMix / OBS stream] --> S
   A -- audio --> S[OpenCaptions server]
-  S <--> G[Gemini 3.5 Live Translate<br/>+ Flash-Lite]
+  S <--> G[Gemini 3.5 Transcribe Live<br/>+ Flash-Lite]
   S --> P[Phones]
   S --> R[Projectors]
   S --> O[Stream overlay]
@@ -46,8 +46,8 @@ flowchart LR
 
 </details>
 
-1. Each room's audio reaches the server in one of three ways: the headless agent on the room PC, a browser page, or the stream vMix or OBS already produces.
-2. **Gemini 3.5 Live Translate** transcribes the speech in real time and detects the language.
+1. Each room's audio reaches the server in one of three ways: the headless agent on the venue PC, a browser page, or the stream vMix or OBS already produces.
+2. **Gemini 3.5 Transcribe Live** (the default speech model; **Live Translate** when a translated voice is on) transcribes the speech in real time, and OpenCaptions tells the language from the words.
 3. **Gemini Flash-Lite** translates each sentence, using the talk's context and a technical glossary. Organizers can pick another AI for this instead (OpenAI, OpenRouter, Groq, Mistral or any OpenAI-compatible service). A provisional translation of the sentence in progress is shown while the speaker is still talking.
 4. The server sends captions to every screen over WebSockets.
 5. On request, the same text model reads the transcript to answer *What did I miss?* and questions from the audience — grounded only in what was said, cached and rate-limited.
@@ -58,12 +58,12 @@ The design details are in [Architecture](architecture.md), and the reasons behin
 
 | Metric | Value |
 |---|---|
-| Delay to original-language captions | about 3 s (measured) |
-| Delay to translated captions | about 3–5 s (measured, with streaming translation) |
+| Delay to original-language captions | first words about 1 s after they're said, the finished sentence about 3 s (measured) |
+| Delay to translated captions | about 3–6 s (measured, with streaming translation) |
 | Rooms per server | Dozens. Tested with 30 simultaneous rooms on one laptop; 3 rooms with 150 phones used 4 % CPU and 124 MB of memory. The limit is the Gemini quota. |
 | Cost | about US$ 0.54 per room-hour of speech (US$ 2.2 with a translated voice in headphones), plus US$ 0.4–0.6 per extra language. A 40-minute English → Spanish talk costs about US$ 0.70. |
 | Languages | 82 caption languages, in any pair Gemini supports; the setup wizard suggests Spanish, English and Portuguese. |
-| Runtime dependencies | 5 npm packages, no build step, no database |
+| Runtime dependencies | 7 npm packages, no build step, no database |
 
 ## What makes it different
 
@@ -90,8 +90,8 @@ The design details are in [Architecture](architecture.md), and the reasons behin
 | Caption a recording | Implemented; a 58-second talk takes about 20 seconds in local mode on a MacBook Pro (M3 Pro); not yet measured with Gemini ([Caption a recording](recording.md)) |
 | Local mode on a Mac (Apple's speech recognition and translation) | Implemented, the default on Macs with Apple chips and macOS 26+; measured on a MacBook Pro M3 Pro against Whisper: about as accurate, first words sooner, about 60 times less processor time, no download. One room measured ([Local mode](local.md#apples-speech-recognition-compared-with-whisper)) |
 | Local mode (Whisper + Ollama) | Implemented, also from a button in the app (captions about a minute after the click on a MacBook Pro M3 Pro; translations about 5½ more minutes the first time, while the 3.1 GB model downloads); measured on CPUs with the bundled speech server (one room). GPU and Neural Engine backends, and several rooms per machine, not measured yet ([Local mode](local.md#measured-results)) |
-| Automated tests | 247 tests on Linux, macOS and Windows: captions, exports, live corrections, breaks, recordings, restarts, sign-in and roles, security rules, alerts, reconnection edge cases, the assistant, the agenda, AI assistants over MCP, local mode, and an end-to-end test that replays a recorded Gemini session. Every page is checked against WCAG 2.2 AA (`npm run a11y`). `npm run local -- --check` tests local models end to end. |
-| Version | 0.x (pre-release). Breaking changes are listed in the [changelog](../CHANGELOG.md). |
+| Automated tests | About 300 tests on Linux, macOS and Windows: captions, exports, live corrections, breaks, recordings, restarts, sign-in and roles, security rules, alerts, reconnection edge cases, the assistant, the agenda, AI assistants over MCP, local mode, and an end-to-end test that replays a recorded Gemini session. Every page is checked against WCAG 2.2 AA (`npm run a11y`). `npm run local -- --check` tests local models end to end. |
+| Version | 0.9.1 (1.0 is planned, not out yet). Changes, and anything breaking, are listed in the [changelog](../CHANGELOG.md); [upgrade notes](upgrading.md). |
 
 ## Roadmap
 
@@ -100,7 +100,16 @@ The design details are in [Architecture](architecture.md), and the reasons behin
 3. **Telling voices apart** automatically, so the crew doesn't have to label speakers.
 4. **Local mode:** closer to the cloud's delay on computers other than Macs (today about 5–10 s behind it on a laptop's processor; on a Mac, Apple's speech shows first words in about 1 s), measure several rooms per machine, and a local translated voice on computers other than Macs.
 
-Done recently (0.7): translations, summaries and questions can use another AI instead of Gemini (OpenAI, OpenRouter, Groq, Mistral or any OpenAI-compatible service, set in Settings → AI), ready for the next providers and models; a new version installs from the dashboard with one click on **Update now** (OpenCaptions downloads it and restarts in about a minute, keeping settings and transcripts); on a Mac, local mode uses Apple's built-in speech recognition and translation (nothing big to download, about 60 times less processor time than Whisper), and the Mac's own voice reads the translations to phones (🎧), as AirPods' Live Translation does; the Mac and Windows apps download Node.js themselves when it's missing (nothing else to install), and Macs with Apple chips no longer ask for Rosetta; nothing breaks quietly on event day: a damaged passwords file stops the server with a clear message instead of starting over with new passwords and fake captions, the dashboard and the organizers' phones warn when transcripts can't be saved (a full disk), settings files survive a power cut mid-save, and someone on the venue's Wi-Fi can't fake their address to get unlimited password guesses. AI assistants (Claude, ChatGPT, Cursor) read the rooms, transcripts and report through MCP. Done recently (0.6): captions for about a quarter of the cost (Gemini's Transcribe Live by default, measured as accurate and as fast), and the speech model picked in Settings; in 0.6.1, captions from loud sound (a talk played from a browser tab) come every few seconds instead of every 15–30. Before that (0.5): recordings captioned in minutes, the room's own sound on phones for hearing aids, every transcript in one .zip, connecting the sound in plain words with a one-time link for the stage computer, rooms that reconnect by themselves after a restart. Before that (0.4): fixing captions live and transcripts afterwards, smooth TV-style captions, breaks from the agenda, local translations by whole sentence. Earlier (0.2.0): the Mac app and Windows launcher; the welcome wizard with the API key and a one-click public address; Event mode with undo; sign-in with admin and crew roles, two-factor and company sign-in; alerts on the organizers' phones; speaker labels; the event report; streaming translation; the offline backup; and an accessibility check of every page.
+## Coming in the next version
+
+Already in the code, not released yet (*Unreleased* in the changelog):
+
+- The Mac and Windows apps update themselves from their menu (**Check for Updates…**).
+- Original captions without glued words or stray capitals.
+- Talks over loud music are captioned instead of paused.
+- A room can list the languages its talks can be in, so automatic detection chooses only among them.
+
+Every version's changes are in the [changelog](../CHANGELOG.md).
 
 ## License
 
@@ -114,7 +123,7 @@ OpenCaptions is released under the [MIT license](../LICENSE): free for any event
 | Talk | One continuous session in a room. Transcripts are stored per talk. Titles come from the agenda or the dashboard. |
 | Assistant | The *What did I miss?* summary and *Ask the talk* feature |
 | Ingest | Sending a room's audio to the server |
-| Agent | The headless program on a room PC that captures the sound card and sends it |
+| Agent | The headless program on a venue PC that captures the sound card and sends it |
 | Pull | The server fetching a room's audio from a stream (SRT, RTMP, HLS) |
 | Partial / final caption | Text still being refined / text that won't change |
 | Silence gate | Pausing audio to the model during silence, to save cost |

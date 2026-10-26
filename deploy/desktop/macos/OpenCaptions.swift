@@ -9,6 +9,9 @@ import AppKit
 
 private let es = Locale.preferredLanguages.first?.hasPrefix("es") ?? false
 private func say(_ en: String, _ esp: String) -> String { es ? esp : en }
+// This program's version, for OC_SHELL (src/updates.js): raise it with deploy/desktop/shell.json when the window,
+// launch.sh or Info.plist change in a way the in-app update can't bring, so people are told to download the app once.
+private let shellVersion = "1"
 
 @main
 final class Launcher: NSObject, NSApplicationDelegate, NSWindowDelegate {
@@ -56,7 +59,7 @@ final class Launcher: NSObject, NSApplicationDelegate, NSWindowDelegate {
     p.standardOutput = pipe
     p.standardError = pipe
     p.standardInput = lifeline // closes when this app ends, however it ends: start.js then stops the server
-    p.environment = ProcessInfo.processInfo.environment.merging(["OC_STOP_WITH_STDIN": "1"]) { $1 }
+    p.environment = ProcessInfo.processInfo.environment.merging(["OC_STOP_WITH_STDIN": "1", "OC_SHELL": shellVersion]) { $1 }
     pipe.fileHandleForReading.readabilityHandler = { [weak self] h in
       let text = String(decoding: h.availableData, as: UTF8.self)
       DispatchQueue.main.async { self?.read(text) }
@@ -79,6 +82,7 @@ final class Launcher: NSObject, NSApplicationDelegate, NSWindowDelegate {
       logView.textStorage?.append(NSAttributedString(string: line + "\n", attributes: [.font: NSFont.monospacedSystemFont(ofSize: 11, weight: .regular), .foregroundColor: NSColor.secondaryLabelColor]))
       logView.scrollToEndOfDocument(nil)
       if line.contains("Installing what OpenCaptions needs") { show(state: .installing) }
+      if line.contains("is in place. Restarting") { show(state: .starting) } // an update: the new version starts in this window
       if let url = firstURL(in: line, after: "Ready on") { dashboard = url.appendingPathComponent("admin.html"); show(state: .running) }
       if let url = firstURL(in: line, after: "already running. Opening") { dashboard = url; elsewhere = true; show(state: .running) }
       if line.hasPrefix("✗") || line.hasPrefix("✖") { lastError = String(line.dropFirst()).trimmingCharacters(in: .whitespaces) }
@@ -208,6 +212,7 @@ final class Launcher: NSObject, NSApplicationDelegate, NSWindowDelegate {
     let appItem = NSMenuItem()
     let appMenu = NSMenu()
     appMenu.addItem(withTitle: say("About OpenCaptions", "Acerca de OpenCaptions"), action: #selector(NSApplication.orderFrontStandardAboutPanel(_:)), keyEquivalent: "")
+    appMenu.addItem(withTitle: say("Check for Updates…", "Buscar actualizaciones…"), action: #selector(checkForUpdates), keyEquivalent: "").target = self
     appMenu.addItem(.separator())
     appMenu.addItem(withTitle: say("Hide OpenCaptions", "Ocultar OpenCaptions"), action: #selector(NSApplication.hide(_:)), keyEquivalent: "h")
     appMenu.addItem(withTitle: say("Quit OpenCaptions", "Salir de OpenCaptions"), action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
@@ -220,6 +225,83 @@ final class Launcher: NSObject, NSApplicationDelegate, NSWindowDelegate {
     editItem.submenu = edit
     main.addItem(editItem)
     NSApp.mainMenu = main
+  }
+
+  // MARK: Check for Updates… (the running server asks GitHub and installs: src/updates.js)
+
+  /// POST to the running OpenCaptions. From this computer it needs no password (AUTH=auto); otherwise the error says so.
+  private func post(_ path: String, done: @escaping ([String: Any]?, String?) -> Void) {
+    guard let base = dashboard?.deletingLastPathComponent() else { return done(nil, say("OpenCaptions isn't running yet.", "OpenCaptions todavía no está funcionando.")) }
+    var req = URLRequest(url: base.appendingPathComponent(path))
+    req.httpMethod = "POST"
+    req.timeoutInterval = 300 // the update's download
+    URLSession.shared.dataTask(with: req) { data, res, err in
+      let json = data.flatMap { try? JSONSerialization.jsonObject(with: $0) } as? [String: Any]
+      let ok = (res as? HTTPURLResponse)?.statusCode == 200
+      DispatchQueue.main.async { ok ? done(json ?? [:], nil) : done(nil, json?["error"] as? String ?? err?.localizedDescription ?? "") }
+    }.resume()
+  }
+
+  /// A problem, with the dashboard one click away (it shows the same update and can sign in).
+  private func failed(_ message: String) {
+    let a = NSAlert()
+    a.messageText = say("Couldn't check for updates", "No se pudo buscar actualizaciones")
+    a.informativeText = message
+    a.addButton(withTitle: "OK")
+    if dashboard != nil { a.addButton(withTitle: say("Open Dashboard", "Abrir el panel")) }
+    if a.runModal() == .alertSecondButtonReturn, let url = dashboard { NSWorkspace.shared.open(url) }
+  }
+
+  @objc private func checkForUpdates() {
+    post("api/updates/check") { [weak self] json, error in
+      guard let self else { return }
+      guard let json else { return self.failed(error ?? "") }
+      let current = json["current"] as? String ?? ""
+      let a = NSAlert()
+      guard let up = json["update"] as? [String: Any], let version = up["version"] as? String else {
+        a.messageText = say("You're up to date", "Tenés la última versión")
+        a.informativeText = say("OpenCaptions \(current) is the latest version.", "OpenCaptions \(current) es la versión más reciente.")
+        a.runModal()
+        return
+      }
+      let canUpdate = up["canUpdate"] as? Bool ?? false
+      let download = (up["app"] as? String).flatMap { $0.isEmpty ? nil : $0 } ?? (up["download"] as? String).flatMap { $0.isEmpty ? nil : $0 }
+      let live = json["live"] as? Int ?? 0
+      a.messageText = say("OpenCaptions \(version) is available", "OpenCaptions \(version) ya está disponible")
+      var info = say("You have \(current).", "Tenés la \(current).")
+      if canUpdate { info += " " + say("It downloads and restarts in this window: captions pause for about a minute", "Se descarga y se reinicia en esta ventana: los subtítulos se pausan cerca de un minuto") + (live > 0 ? say(" in \(live) live room(s).", " en \(live) sala(s) en vivo.") : ".") }
+      if canUpdate && up["app"] as? String ?? "" != "" { info += "\n\n" + say("This version also improves the app itself: after updating, download it once and replace this one.", "Esta versión también mejora la app en sí: después de actualizar, descargala una vez y reemplazá esta.") }
+      a.informativeText = info
+      // What's new: GitHub's release notes, as plain text, in a small scrolling box.
+      if let notes = up["whatsNew"] as? String, !notes.isEmpty {
+        let text = NSTextView(frame: NSRect(x: 0, y: 0, width: 380, height: 180))
+        text.string = notes
+        text.isEditable = false
+        text.font = .systemFont(ofSize: 12)
+        let scroll = NSScrollView(frame: text.frame)
+        scroll.documentView = text
+        scroll.hasVerticalScroller = true
+        scroll.borderType = .bezelBorder
+        a.accessoryView = scroll
+      }
+      a.addButton(withTitle: canUpdate ? say("Update and Restart", "Actualizar y reiniciar") : say("Download", "Descargar"))
+      a.addButton(withTitle: say("Later", "Más tarde"))
+      if canUpdate && download != nil { a.addButton(withTitle: say("Download the App", "Descargar la app")) }
+      switch a.runModal() {
+      case .alertFirstButtonReturn where canUpdate: self.install()
+      case .alertFirstButtonReturn, .alertThirdButtonReturn: if let d = download, let url = URL(string: d) { NSWorkspace.shared.open(url) }
+      default: break
+      }
+    }
+  }
+
+  private func install() {
+    show(state: .starting)
+    status.stringValue = say("Updating…", "Actualizando…")
+    post("api/update") { [weak self] json, error in
+      guard let self else { return }
+      if json == nil { self.show(state: .running); self.failed(error ?? "") } // otherwise the output says it's restarting
+    }
   }
 
   // MARK: quitting stops OpenCaptions (after asking)

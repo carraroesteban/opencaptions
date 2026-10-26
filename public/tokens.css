@@ -66,6 +66,10 @@
   --warn: #8F5400; /* 4.5:1 or more on every light surface, code chips included (WCAG AA) */
   --bad: #C8321F;
   --focus: var(--ink);
+  /* Hues: colour for icons, sections and categories, beside the brand (never instead of a word or an icon: colour is
+     never the only signal). Text-safe: 4.6:1 or more on the page, on cards and on their own 14 % tint (WCAG AA). */
+  --c-blue: #1F5FAD; --c-violet: #6A3FC4; --c-teal: #0A6A5E; --c-rose: #B4285A; --c-orange: #9C430B; --c-green: #17703D;
+  --spark: var(--lime);        /* a sparkle on the primary button: lime on ink in light, ink on lime in dark */
   --shadow-sm: 0 1px 2px rgba(17, 16, 20, .06), 0 1px 1px rgba(17, 16, 20, .04);
   --shadow: 0 1px 2px rgba(17, 16, 20, .05), 0 8px 24px -8px rgba(17, 16, 20, .12);
   --shadow-lg: 0 24px 60px -18px rgba(17, 16, 20, .28);
@@ -82,6 +86,7 @@
     --line: #2A2930; --line-strong: #3B3A42; --fill: rgba(250, 248, 243, .08); --fill-hover: rgba(250, 248, 243, .13); --translation: var(--fog);
     --accent-fg: var(--lime); --primary-bg: var(--lime); --primary-fg: var(--ink); --logo-o: var(--paper); --logo-line: var(--lime);
     --ok: #5BD68A; --warn: #F5B544; --bad: #FF7A66; --focus: var(--lime);
+    --c-blue: #7DB8FF; --c-violet: #B9A2FF; --c-teal: #5DD6C2; --c-rose: #FF8FB1; --c-orange: #FFA466; --c-green: #5BD68A; --spark: var(--ink);
     --shadow-sm: 0 1px 2px rgba(0, 0, 0, .4); --shadow: 0 1px 2px rgba(0, 0, 0, .4), 0 10px 30px -10px rgba(0, 0, 0, .6);
     --shadow-lg: 0 30px 70px -20px rgba(0, 0, 0, .8); --scrim: rgba(0, 0, 0, .6);
     --logo: url(/brand/mark-dark.svg);
@@ -96,6 +101,7 @@
   --line: #FFF; --line-strong: #FFF; --fill: #1F1F1F; --fill-hover: #333; --translation: #FFE14D;
   --accent-fg: #FFE14D; --primary-bg: #FFE14D; --primary-fg: #000; --logo-o: #FFF; --logo-line: #FFE14D;
   --ok: #7CFFAE; --warn: #FFE14D; --bad: #FF9B8A; --focus: #FFE14D; --hl: #FFE14D; --hl-ink: #000;
+  --c-blue: #FFF; --c-violet: #FFF; --c-teal: #FFF; --c-rose: #FFF; --c-orange: #FFF; --c-green: #FFF; --spark: #000; /* low vision: pure white, no tints */
   --shadow-sm: none; --shadow: none; --shadow-lg: none; --scrim: rgba(0, 0, 0, .8);
   --logo: url(/brand/mark-dark.svg);
   --chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5l5 5 5-5' fill='none' stroke='%23FFFFFF' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
@@ -106,6 +112,7 @@
   --line: #2A2930; --line-strong: #3B3A42; --fill: rgba(250, 248, 243, .08); --fill-hover: rgba(250, 248, 243, .13); --translation: var(--fog);
   --accent-fg: var(--lime); --primary-bg: var(--lime); --primary-fg: var(--ink); --logo-o: var(--paper); --logo-line: var(--lime);
   --ok: #5BD68A; --warn: #F5B544; --bad: #FF7A66; --focus: var(--lime);
+    --c-blue: #7DB8FF; --c-violet: #B9A2FF; --c-teal: #5DD6C2; --c-rose: #FF8FB1; --c-orange: #FFA466; --c-green: #5BD68A; --spark: var(--ink);
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, .4); --shadow: 0 1px 2px rgba(0, 0, 0, .4), 0 10px 30px -10px rgba(0, 0, 0, .6);
   --shadow-lg: 0 30px 70px -20px rgba(0, 0, 0, .8); --scrim: rgba(0, 0, 0, .6);
   --logo: url(/brand/mark-dark.svg);

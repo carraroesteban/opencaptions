@@ -216,11 +216,11 @@ function ipKind(ip) {
  * Validate an audio source an admin asked the server to pull. Throws with a readable message if refused.
  *  • local files: only inside samples/ or MEDIA_DIR
  *  • srt/rtmp/rtsp/udp: allowed (typical venue LAN sources), except cloud metadata / link-local addresses
- *  • http(s): public hosts only, unless PULL_ALLOW_PRIVATE=1
+ *  • http(s): public hosts only, unless PULL_ALLOW_PRIVATE=1 or `lan` (an admin pointing at a LAN AI server or alert service)
  * shortcut: checks the address as typed; ffmpeg then follows redirects and HLS playlists by itself, so a URL an admin
  * pastes can still lead to the LAN. Pin the resolved address or fetch through a checking proxy if non-admins ever add pulls.
  */
-export async function checkPullUrl(input, { httpOnly = false } = {}) {
+export async function checkPullUrl(input, { httpOnly = false, lan = false } = {}) {
   const s = String(input || '').trim();
   if (!s) throw new Error('empty source');
   if (!/^[a-z][a-z0-9+.-]*:\/\//i.test(s) || s.startsWith('file://')) {
@@ -245,6 +245,6 @@ export async function checkPullUrl(input, { httpOnly = false } = {}) {
   for (const ip of addrs) {
     const kind = ipKind(ip);
     if (kind === 'metadata') throw new Error('link-local / metadata addresses are not allowed');
-    if (isHttp && kind !== 'public' && !ALLOW_PRIVATE) throw new Error(`${host} is a private/loopback address (set PULL_ALLOW_PRIVATE=1 to allow LAN HTTP sources)`);
+    if (isHttp && kind !== 'public' && !ALLOW_PRIVATE && !lan) throw new Error(`${host} is a private/loopback address (set PULL_ALLOW_PRIVATE=1 to allow LAN HTTP sources)`);
   }
 }

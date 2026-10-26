@@ -11,6 +11,7 @@ import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { config } from '../src/config.js';
 import { GeminiEngine } from '../src/engines/gemini.js';
+import { continueText } from '../src/captions.js';
 import { Chunker, rms } from '../src/audio.js';
 import { openAudio } from '../src/pull.js';
 import { words, bestPrefixWer } from './wer.js';
@@ -48,7 +49,7 @@ async function run(file, models) {
     });
     e.on('input', ({ text, lang }) => {
       if (!text.trim()) return;
-      r.text += text;
+      r.text += continueText(r.text, text); // as a room joins them (src/stage.js)
       r.finals++;
       r.langs[lang || '(none)'] = (r.langs[lang || '(none)'] || 0) + 1;
       if (r.wordsAt) { r.firstWords.push(Date.now() - r.wordsAt); r.wordsAt = 0; }

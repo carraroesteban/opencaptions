@@ -6,9 +6,13 @@
 // (vowels, then s, t, f, then a pause), even over background music; music keeps a steadier timbre. Measured on
 // talks in English, Spanish and Portuguese (real recordings and four synthetic voices, alone and over music) and on
 // 19 pieces of pop, electronic, orchestral and acoustic music:
-//   speech alone: 0.6–1.0 (10th–90th percentile) · speech over music: 0.42 and up · music: mostly 0.1–0.4.
-// With "music below 0.40 for ~10 s, voice above 0.55 resets it", no speech clip was ever taken for music, and 18 of
-// the 19 music pieces were detected, most within 12 s. Bare drum loops are not detected (they look like speech).
+//   speech alone: 0.6–1.0 (10th–90th percentile) · music: mostly 0.1–0.4 · speech over loud music: down to 0.2.
+// That last one (a live stream walking through a party: 15 minutes of nonstop talk) was half "music" with brightness
+// alone. So a 2-second window is music only if the voice's band (300–4000 Hz) is steady too: its loudness swings
+// little (std of log energy under 0.45; that stream 0.48–0.99, talks 1–2, songs 0.13–0.64) or its spectrum barely
+// changes frame to frame (flux under 0.26; speech 0.26–0.44, songs 0.19–0.30). Retested on those talks, the stream,
+// talks mixed with a song, 9 full songs and 25 GarageBand loops: no speech taken for music (the stream peaks at 5 s
+// of the 10 needed), every song found, most within 12 s; bare drums and lone instrument loops mostly are not.
 // The decision is slow and one-sided on purpose: missing a song is cheap, cutting a speaker's captions is not.
 
 const FRAME = 320; // 20 ms at 16 kHz
@@ -17,6 +21,8 @@ const N = 512; // FFT size (the 320-sample frame, zero-padded)
 
 export const MUSIC_BELOW = 0.4;
 export const VOICE_ABOVE = 0.55;
+export const SWING_BELOW = 0.45;
+export const FLUX_BELOW = 0.26;
 
 // Hann window and twiddle factors, computed once.
 const HANN = Float64Array.from({ length: FRAME }, (_, k) => 0.5 - 0.5 * Math.cos((2 * Math.PI * k) / (FRAME - 1)));
@@ -50,6 +56,10 @@ export class VoiceFeatures {
   constructor() {
     this.e = new Float64Array(WINDOW);
     this.c = new Float64Array(WINDOW);
+    this.s = new Float64Array(WINDOW); // the voice band's log energy
+    this.fd = new Float64Array(WINDOW); // its change from the frame before, and its total (flux = sum fd / sum ft)
+    this.ft = new Float64Array(WINDOW);
+    this.prev = new Float64Array(121); // bins 8–128 of the frame before
     this.n = 0;
     this.i = 0;
     this.rest = new Int16Array(0);
@@ -72,10 +82,18 @@ export class VoiceFeatures {
       let e = 0;
       for (let k = 0; k < FRAME; k++) { const v = buf[o + k] / 32768; e += v * v; re[k] = v * HANN[k]; }
       fft(re, im);
-      let tot = 0, cen = 0;
-      for (let k = 0; k <= N / 2; k++) { const m = Math.hypot(re[k], im[k]); tot += m; cen += k * m; }
+      let tot = 0, cen = 0, band = 0, fd = 0, ft = 0;
+      for (let k = 0; k <= N / 2; k++) {
+        const m = Math.hypot(re[k], im[k]);
+        tot += m; cen += k * m;
+        if (k >= 10 && k <= 109) band += m * m; // 310–3400 Hz
+        if (k >= 8 && k <= 128) { const p = this.prev[k - 8]; fd += Math.abs(m - p); ft += m + p; this.prev[k - 8] = m; } // 250–4000 Hz
+      }
       this.e[this.i] = e / FRAME;
       this.c[this.i] = tot ? cen / tot : 0;
+      this.s[this.i] = Math.log10(band + 1e-9);
+      this.fd[this.i] = fd;
+      this.ft[this.i] = ft;
       this.i = (this.i + 1) % WINDOW;
       this.n = Math.min(WINDOW, this.n + 1);
     }
@@ -84,15 +102,18 @@ export class VoiceFeatures {
 
   get ready() { return this.n >= WINDOW; }
 
-  /** { energy: mean square (0..1), spread: centroid's coefficient of variation } over the last 2 s. */
+  /**
+   * Over the last 2 s: { energy: mean square (0..1), spread: centroid's coefficient of variation, swing: std of the
+   * voice band's log energy, flux: how much the voice band's spectrum changes frame to frame (0..1) }.
+   */
   features() {
     const n = this.n || 1;
-    let me = 0, mc = 0;
-    for (let k = 0; k < this.n; k++) { me += this.e[k]; mc += this.c[k]; }
-    me /= n; mc /= n;
-    let v = 0;
-    for (let k = 0; k < this.n; k++) v += (this.c[k] - mc) ** 2;
-    return { energy: me, spread: mc ? Math.sqrt(v / n) / mc : 0 };
+    let me = 0, mc = 0, ms = 0, fd = 0, ft = 0;
+    for (let k = 0; k < this.n; k++) { me += this.e[k]; mc += this.c[k]; ms += this.s[k]; fd += this.fd[k]; ft += this.ft[k]; }
+    me /= n; mc /= n; ms /= n;
+    let v = 0, vs = 0;
+    for (let k = 0; k < this.n; k++) { v += (this.c[k] - mc) ** 2; vs += (this.s[k] - ms) ** 2; }
+    return { energy: me, spread: mc ? Math.sqrt(v / n) / mc : 0, swing: Math.sqrt(vs / n), flux: ft ? fd / ft : 0 };
   }
 }
 
@@ -116,9 +137,10 @@ export class VoiceDetector {
   }
 
   /** One 2-second window: 'music', 'voice', 'quiet' or 'unsure'. */
-  static judge({ energy, spread }, minEnergy = 2e-6) {
+  static judge({ energy, spread, swing, flux }, minEnergy = 2e-6) {
     if (energy < minEnergy) return 'quiet';
-    if (spread < MUSIC_BELOW) return 'music';
+    // Steady brightness, and a voice band that neither swings in loudness nor changes shape (both would be a voice).
+    if (spread < MUSIC_BELOW && (swing < SWING_BELOW || flux < FLUX_BELOW)) return 'music';
     if (spread > VOICE_ABOVE) return 'voice';
     return 'unsure';
   }

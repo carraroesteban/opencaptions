@@ -12,7 +12,7 @@ import compression from 'compression';
 import { WebSocketServer } from 'ws';
 import QRCode from 'qrcode';
 import './preflight.js'; // first: a data folder it can't write to ends here, with the fix
-import { config, normalizeStage, ROOT, langName, setEngine, writeFileAtomic } from './config.js';
+import { config, normalizeStage, ROOM_COLORS, ROOT, langName, setEngine, writeFileAtomic } from './config.js';
 import { Failover } from './failover.js';
 import { LocalMode } from './local/mode.js';
 import { checkKey, saveKey, keyInfo, looksLikeKey, readSecret, saveSecret } from './aikey.js';
@@ -67,9 +67,12 @@ function validateStage(def) {
   if (!/^[a-z0-9][a-z0-9_-]{0,39}$/.test(def.id) || def.id === 'undefined') throw new Error('id: 1-40 chars, a-z 0-9 _ -');
   if (String(def.name).length > 80 || String(def.title).length > 200) throw new Error('name/title too long');
   if (def.source !== 'auto' && !LANG_RE.test(def.source)) throw new Error(`invalid source language ${def.source}`);
+  if (!Array.isArray(def.spoken) || def.spoken.length > 8 || !def.spoken.every((l) => LANG_RE.test(l))) throw new Error('spoken: up to 8 language codes');
   if (!def.targets.length || def.targets.length > 8 || !def.targets.every((t) => LANG_RE.test(t))) throw new Error('targets: 1-8 language codes');
   if (def.translation && !['text', 'live', 'hybrid'].includes(def.translation)) throw new Error('translation must be text|live|hybrid');
   if (!Array.isArray(def.vocabulary) || def.vocabulary.length > 500) throw new Error('vocabulary: up to 500 terms');
+  if (def.color !== undefined && !ROOM_COLORS.includes(def.color)) throw new Error(`color: one of ${ROOM_COLORS.join(', ')}`);
+  if (def.tag !== undefined && def.tag.length > 24) throw new Error('tag: up to 24 characters');
   if (def.roomSoundMax !== undefined && !(Number.isInteger(def.roomSoundMax) && def.roomSoundMax >= 1 && def.roomSoundMax <= 5000)) throw new Error('roomSoundMax: 1-5000 listeners');
 }
 
@@ -200,7 +203,8 @@ const DATA_ID = (() => {
   return id;
 })();
 app.use('/api', apiRateLimit);
-app.use(express.json({ limit: '256kb' }));
+// inflate: false refuses compressed bodies (415), keeping clients away from zlib's Brotli decoder (CVE-2026-111497)
+app.use(express.json({ limit: '256kb', inflate: false }));
 
 const VERSION = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8')).version;
 const reqUrl = (req) => new URL(req.originalUrl, 'http://x');
@@ -294,7 +298,7 @@ const findLogo = () => {
 let logo = findLogo();
 const dropLogos = (keep) => { for (const ext of Object.keys(LOGO_TYPES)) if (ext !== keep) fs.rmSync(path.join(LOGO_DIR, `logo.${ext}`), { force: true }); };
 // The body is read only once the admin is known (no buffering 2 MB for strangers).
-app.post('/api/event/logo', admin, unlocked, express.raw({ type: Object.values(LOGO_TYPES), limit: '2mb' }), (req, res) => {
+app.post('/api/event/logo', admin, unlocked, express.raw({ type: Object.values(LOGO_TYPES), limit: '2mb', inflate: false }), (req, res) => {
   const ext = Buffer.isBuffer(req.body) ? sniffLogo(req.body) : null;
   if (!ext) return res.status(415).json({ error: 'the logo must be a PNG, JPEG or WebP image' });
   fs.mkdirSync(LOGO_DIR, { recursive: true });
@@ -343,6 +347,19 @@ app.post('/api/stages', admin, unlocked, async (req, res) => {
   } catch (e) { res.status(400).json({ error: e.message }); }
 });
 
+/** Put a changed room setup to work (a PATCH, or its undo): only a real change touches audio, viewers or the pull. */
+function applyRoomDef(st, def, old) {
+  const langsChanged = def.source !== old.source || def.spoken.join() !== (old.spoken || []).join() || def.targets.join() !== old.targets.join() || def.translation !== old.translation;
+  if (langsChanged) st.reconfigure(def);
+  else {
+    st.def = def;
+    if (!!def.roomSound !== !!old.roomSound) st.emit('config'); // phones show or hide Listen on Original; listeners stop
+  }
+  if ((def.pull || '') !== (old.pull || '') || !!def.loop !== !!old.loop) {
+    if (def.pull) startPull(st, def.pull, def.loop); else stopPull(st.id);
+  }
+}
+
 app.patch('/api/stages/:id', crew, getStage, async (req, res) => {
   const st = req.stage;
   const b = req.body || {};
@@ -350,24 +367,16 @@ app.patch('/api/stages/:id', crew, getStage, async (req, res) => {
   const setupKeys = Object.keys(b).filter((k) => k !== 'title');
   if (setupKeys.length && req.who.role !== 'admin') return res.status(403).json({ error: 'the crew can rename the current talk, not change the room', role: req.who.role });
   if (setup.locked && setupKeys.length) return res.status(423).json(LOCKED);
-  const def = normalizeStage({ ...st.def, ...b, id: st.id });
+  let def;
   try {
+    def = normalizeStage({ ...st.def, ...b, id: st.id });
     validateStage(def);
     if (b.pull) await checkPullUrl(b.pull);
   } catch (e) { return res.status(400).json({ error: e.message }); }
   const old = st.def;
   // Only a real change touches the room: saving the dialog must not restart audio or clear viewers' screens.
   if ('title' in b && (b.title || '') !== (st.talk.title || '')) st.setTitle(b.title || '');
-  const langsChanged = def.source !== old.source || def.targets.join() !== old.targets.join() || def.translation !== old.translation;
-  if (langsChanged) st.reconfigure(def);
-  else {
-    st.def = def;
-    if (!!def.roomSound !== !!old.roomSound) st.emit('config'); // phones show or hide Listen on Original; listeners stop
-  }
-  const pullChanged = ('pull' in b && (b.pull || '') !== (old.pull || '')) || ('loop' in b && !!b.loop !== !!old.loop);
-  if (pullChanged) {
-    if (def.pull) startPull(st, def.pull, def.loop); else stopPull(st.id);
-  }
+  applyRoomDef(st, def, old);
   persistStages();
   // Just for me's language picker isn't the event's setup: no History entry per switch.
   const change = setupKeys.length && st.id !== PERSONAL_ROOM && JSON.stringify(old) !== JSON.stringify(st.def) ? recordChange({ kind: 'room.update', target: st.id, summary: `Room "${st.def.name}" changed`, before: clone(old), after: clone(st.def) }) : null;
@@ -416,12 +425,6 @@ app.delete('/api/stages/:id/pull', crew, getStage, (req, res) => {
 app.post('/api/stages/:id/pull/stop', crew, getStage, (req, res) => { // sendBeacon-friendly
   stopPull(req.stage.id);
   res.json({ ok: true });
-});
-
-// Who is speaking now: labels captions and exports ("Ana Pérez", "Host", "Q&A"). The crew sets it during the talk.
-app.post('/api/stages/:id/speaker', crew, getStage, (req, res) => {
-  req.stage.setSpeaker(req.body?.name);
-  res.json({ ok: true, speaker: req.stage.speaker });
 });
 
 // Break: captions pause, screens and phones show "Break · next talk at…" (the crew, from the dashboard or the room's
@@ -896,9 +899,10 @@ app.delete('/api/switchers/:id', admin, (req, res) => (switchers.remove(req.para
 app.post('/api/integrations/:id/test', admin, (req, res) => (integrations.test(req.params.id) ? res.json({ ok: true }) : res.status(404).json({ error: 'unknown connector' })));
 
 app.get('/api/alerts', admin, (req, res) => res.json(publicConfig(alerts.cfg)));
-app.put('/api/alerts', admin, (req, res) => {
+app.put('/api/alerts', admin, async (req, res) => {
   try {
     const channels = mergeChannels(req.body?.channels, alerts.cfg.channels);
+    for (const c of channels) for (const u of [c.url, c.server]) if (u) await checkPullUrl(u, { httpOnly: true, lan: true }); // same SSRF check as webhooks
     const lang = req.body?.lang === 'es' ? 'es' : 'en';
     alerts.configure({ channels, lang });
     recordChange({ kind: 'alerts', summary: channels.length ? `Alerts go to ${channels.map((c) => c.type).join(', ')}` : 'Alerts turned off' });
@@ -936,7 +940,9 @@ app.post('/api/auth/login', (req, res) => {
   if (!role) return failed({ error: 'wrong password' });
   if (role === 'admin' && twoFactorOn()) {
     if (!b.code) return res.status(401).json({ need: 'code' });
-    if (!checkCode(twoFactorSecret(), b.code)) return failed({ need: 'code', error: 'wrong code' });
+    const ok = checkCode(twoFactorSecret(), b.code);
+    if (ok === 'used') return res.status(401).json({ need: 'code', error: 'that code was just used: wait for the next one' }); // not a guess: no counted failure
+    if (!ok) return failed({ need: 'code', error: 'wrong code' });
   }
   spendStartupCode(String(b.password));
   const { session, cookie } = createSession({ role, device: String(b.device || ''), via: 'password' }, req);
@@ -1034,7 +1040,7 @@ app.get('/api/setup', crew, (req, res) => {
     speechModel: speechModel(),
     speechModelFixed: transcribeFixed,
     defaultTargets: config.event.defaultTargets.filter((c) => c in config.event.languages),
-    stages: [...stages.values()].map((s) => ({ id: s.id, name: s.def.name, source: s.def.source, targets: s.def.targets, pull: allows(req.who, 'admin') ? s.def.pull || '' : redactUrl(s.def.pull || '') })),
+    stages: [...stages.values()].map((s) => ({ id: s.id, name: s.def.name, source: s.def.source, spoken: s.def.spoken || [], targets: s.def.targets, pull: allows(req.who, 'admin') ? s.def.pull || '' : redactUrl(s.def.pull || '') })),
     ffmpeg: !!ffmpegBin(), // OBS / vMix can stream a room's sound in only through ffmpeg
     engine: config.engine,
     primaryEngine: config.primaryEngine,
@@ -1173,8 +1179,7 @@ app.post('/api/history/:id/undo', admin, unlocked, async (req, res) => {
       const old = clone(st.def);
       const def = normalizeStage({ ...c.before, id: st.id });
       validateStage(def);
-      if (def.source !== old.source || def.targets.join() !== old.targets.join() || def.translation !== old.translation) st.reconfigure(def); else st.def = def;
-      if ((def.pull || '') !== (old.pull || '') || !!def.loop !== !!old.loop) { if (def.pull) startPull(st, def.pull, def.loop); else stopPull(st.id); }
+      applyRoomDef(st, def, old);
       persistStages();
       recordChange({ kind: 'room.update', target: st.id, summary: `Room "${def.name}" put back as before`, before: old, after: clone(def), ...undo });
     } else if (c.kind === 'rooms.order') {
@@ -1212,14 +1217,17 @@ app.post('/api/history/:id/undo', admin, unlocked, async (req, res) => {
 
 // "Run it on this computer" (src/local/mode.js): no key, or a free key out of quota → Whisper and Ollama on this
 // machine, prepared while the server runs. Captions only at first; translations once Ollama has its model.
+// Also the offline backup ('auto', standby): the same preparation, but only recorded in config for the failover.
 const localMode = new LocalMode({
-  apply: ({ speech, text }) => {
+  apply: ({ speech, text, standby }) => {
+    if (speech) Object.assign(config, { localAsrUrl: speech.url, localAsrApi: speech.api || '', localAsrLabel: speech.label, localAsrModel: speech.model || '', localLlmOff: true });
+    else Object.assign(config, { localLlmOff: false, localLlmUrl: text.url, localLlmModel: text.model, localMtModel: text.mtModel || '' });
+    checkLocal().catch(() => {});
+    if (standby) { failover?.check().catch(() => {}); return; } // captions stay on Gemini; the failover now has its backup
     if (speech) {
-      Object.assign(config, { localAsrUrl: speech.url, localAsrApi: speech.api || '', localAsrLabel: speech.label, localAsrModel: speech.model || '', localLlmOff: true });
       setEngine('local');
       if (!setup.localMode) saveSetup({ localMode: true }); // and again after a restart
-    } else Object.assign(config, { localLlmOff: false, localLlmUrl: text.url, localLlmModel: text.model, localMtModel: text.mtModel || '' });
-    checkLocal().catch(() => {});
+    }
     for (const st of stages.values()) {
       st.log('info', speech ? 'captions now run on this computer (no translations yet)' : 'translations now run on this computer');
       st.reconfigure(st.def);
@@ -1235,9 +1243,16 @@ function leaveLocal() {
   for (const st of stages.values()) { st.log('info', `captions now come from ${config.engine === 'gemini' ? 'Gemini' : 'nowhere: simulated'}`); st.reconfigure(st.def); }
 }
 // apple: an Apple-chip Mac on macOS 26+, where "this computer" uses Apple's built-in speech (no big download).
-const localStatus = () => ({ ...localMode.status(), engine: config.engine, hasKey: !!(config.geminiApiKey || config.vertex), apple: appleSupported() && process.arch === 'arm64' });
+const localStatus = () => ({ ...localMode.status(), engine: config.engine, hasKey: !!(config.geminiApiKey || config.vertex), apple: appleSupported() && process.arch === 'arm64', canLocal: !process.env.OC_DOCKER });
+const NO_LOCAL = { error: 'no local AI on a server in Docker or the cloud: use Gemini', code: 'no-local-here' };
 app.get('/api/local', admin, (req, res) => res.json(localStatus()));
-app.post('/api/local/start', admin, (req, res) => { saveSetup({ ai: 'local' }); localMode.start(); res.json(localStatus()); });
+app.post('/api/local/start', admin, (req, res) => {
+  if (process.env.OC_DOCKER) return res.status(400).json(NO_LOCAL);
+  saveSetup({ ai: 'local' });
+  if (failover && failover.mode !== 'cloud') failover.setMode('cloud');
+  localMode.start();
+  res.json(localStatus());
+});
 app.post('/api/local/retry', admin, (req, res) => { localMode.retryText(); res.json(localStatus()); });
 app.post('/api/local/stop', admin, (req, res) => {
   saveSetup({ ai: 'cloud' });
@@ -1291,6 +1306,7 @@ app.put('/api/ai/text', admin, async (req, res) => {
   const key = String(req.body?.key || '').trim() || (config.textApi.source === 'dashboard' ? config.textApi.key : '');
   if (!looksLikeUrl(url) || url.length > 500) return res.status(400).json({ ok: false, code: 'url', error: 'the address must be a web address, e.g. https://api.openai.com/v1' });
   if (!model || model.length > 200) return res.status(400).json({ ok: false, code: 'model', error: 'the model name is missing' });
+  try { await checkPullUrl(url, { httpOnly: true, lan: true }); } catch (e) { return res.status(400).json({ ok: false, code: 'url', error: e.message }); }
   const check = await checkTextApi({ url, key, model });
   if (!check.ok) return res.status(400).json({ ...check, error: `the service didn't accept it (${check.code})` });
   saveTextApi({ url, key, model });
@@ -1302,18 +1318,23 @@ app.post('/api/ai/use', admin, (req, res) => {
   const use = String(req.body?.use || '');
   if (!['cloud', 'local', 'auto'].includes(use)) return res.status(400).json({ error: 'use must be cloud|local|auto' });
   const hasKey = !!(config.geminiApiKey || config.vertex);
+  if (use === 'local' && process.env.OC_DOCKER) return res.status(400).json(NO_LOCAL);
   if (use !== 'local' && !hasKey) return res.status(400).json({ error: 'connect a Gemini key first (Settings → AI)', code: 'no-key' });
   if (use === 'auto' && !failover) return res.status(400).json({ error: 'the offline backup needs Gemini as the main AI when OpenCaptions starts', code: 'no-backup' });
+  if (use === 'auto' && process.env.OC_DOCKER) return res.status(400).json({ error: 'no offline backup on a server in Docker or the cloud: if the venue loses internet, phones lose this server too', code: 'no-backup-here' });
   const was = aiNow().use;
   saveSetup({ ai: use });
   if (use === 'local') {
     if (failover?.mode !== 'cloud') failover?.setMode('cloud'); // no switching back and forth by itself
-    localMode.start();
+    localMode.start(); // a backup already prepared becomes the main engine
   } else {
-    if (setup.localMode || localMode.status().state !== 'idle') leaveLocal();
+    const lm = localMode.status();
+    if (lm.standby) localMode.reset(); // the backup's servers keep running: a later 'auto' is quick
+    else if (setup.localMode || lm.state !== 'idle') leaveLocal();
     failover?.setMode(use === 'auto' ? 'auto' : 'cloud');
+    if (use === 'auto') prepareBackup();
   }
-  if (was !== use) recordChange({ kind: 'ai.use', summary: `AI: ${{ cloud: 'Gemini (cloud)', local: 'this computer', auto: 'Gemini, this computer as backup' }[use]}` });
+  if (was !== use) recordChange({ kind: 'ai.use', summary: `AI: ${{ cloud: 'Gemini (cloud)', local: 'this computer', auto: 'Gemini, with this computer as backup' }[use]}` });
   res.json(aiNow());
 });
 
@@ -1323,13 +1344,19 @@ app.delete('/api/ai/text', admin, (req, res) => {
   res.json({ ok: true, textApi: textApiInfo() });
 });
 
-// "A new version is available" (src/updates.js): off with UPDATE_CHECK=0, or in Settings → General.
+// "A new version is available" (src/updates.js): off with UPDATE_CHECK=0, or in Settings → System.
 const updateCheckEnv = !/^(0|false|no|off)$/i.test(process.env.UPDATE_CHECK || '');
 const updatesOn = () => updateCheckEnv && setup.updateCheck !== false;
 startChecks(updatesOn);
 // "Update now": the new files go over this copy, then the server stops with RESTART and scripts/start.js starts the
 // new version. Phones, screens and room computers reconnect by themselves. Not in Event mode.
 let updating = false;
+// The Mac app's and the Windows launcher's "Check for Updates…" (and the dashboard's): asks GitHub now, even with the
+// daily check off, since someone asked. Admin only: from this computer that's automatic (AUTH=auto).
+app.post('/api/updates/check', admin, async (req, res) => {
+  await checkNow();
+  res.json({ current: VERSION, update: updateInfo(), live: visibleStages().map((s) => s.status()).filter((s) => s.engines.length && !s.gated).length });
+});
 app.post('/api/update', admin, unlocked, async (req, res) => {
   const up = updateInfo();
   if (!up?.canUpdate) return res.status(409).json({ error: 'this installation can\'t update itself: download the new version' });
@@ -1570,8 +1597,10 @@ function failoverStatus() { return failover ? { ...failover.status(), backup: co
 if (failover) {
   failover.on('change', () => broadcastAdmin({ type: 'failover', ...failoverStatus() }));
   failover.start().catch((e) => console.warn(`  failover check: ${e.message}`));
-  if (setup.ai === 'auto' && !setup.localMode) failover.setMode('auto');
+  if (setup.ai === 'auto' && !setup.localMode) { failover.setMode('auto'); prepareBackup(); }
 }
+/** 'auto' chosen in a page: get this computer ready as the backup (unless `npm run local -- --fallback` already did). */
+function prepareBackup() { if (config.fallback !== 'local' && !process.env.OC_DOCKER) localMode.start({ standby: true }); }
 
 /**
  * Which AI makes the captions, the same answer for every page (the dashboard's badge, Settings → AI, Just for me).
@@ -1583,7 +1612,7 @@ function aiNow() {
   const hasKey = !!(config.geminiApiKey || config.vertex);
   const fo = failoverStatus();
   const lm = localMode.status();
-  const use = setup.localMode || lm.state !== 'idle' ? 'local' : fo?.mode === 'auto' ? 'auto' : hasKey ? 'cloud' : 'none';
+  const use = setup.localMode || (lm.state !== 'idle' && !lm.standby) ? 'local' : fo?.mode === 'auto' ? 'auto' : hasKey ? 'cloud' : 'none';
   const now = config.engine === 'gemini' ? 'cloud' : config.engine === 'local' ? 'local' : 'simulated';
   const asr = asrInfo();
   return {
@@ -1594,7 +1623,9 @@ function aiNow() {
     backup: fo && fo.mode === 'auto' ? (fo.active === 'local' ? 'on' : 'ready') : '', // 'on': offline, this computer covers
     hasKey,
     forced: config.primaryEngine === 'mock' && hasKey, // started in test mode (--mock): the key waits
-    canAuto: !!failover,
+    canLocal: !process.env.OC_DOCKER,
+    canBackup: !!failover && !process.env.OC_DOCKER, // in Docker / on a cloud server there's no local engine to fall back on
+    backupPreparing: lm.standby && lm.state !== 'ready' ? lm.state : '', // 'working' | 'error': this computer getting ready as the backup
     apple: appleSupported() && process.arch === 'arm64',
   };
 }

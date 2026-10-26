@@ -70,8 +70,9 @@ const L = {
     renameTitle: (n) => `Renombrar la charla en «${n}»`, renameNote: 'Cambia el título de la charla actual en las pantallas, la transcripción y las descargas.', renameOk: 'Guardar',
     over: (m, t) => `Va ${m} min pasada · le toca a «${t}»`, startDue: (t) => `Empezar «${t}»`, next: (t, h) => `Siguiente: ${t} · ${h}`, noTalk: 'Sin charla anunciada',
     speech: { translate: 'Subtítulos + voz traducida', transcribe: 'Solo subtítulos' },
-    upAvail: (v) => `OpenCaptions ${v} ya está disponible`, upNotes: 'Novedades', upDownload: 'Descargar', upCmd: 'Para actualizar:', upNow: 'Actualizar ahora',
-    upAsk: (v) => `¿Actualizar a OpenCaptions ${v}?`, upOk: 'Actualizar',
+    upAvail: (v) => `OpenCaptions ${v} ya está disponible`, upNotes: 'Novedades', upDownload: 'Descargar', upCmd: 'Para actualizar:', upNow: 'Actualizar…',
+    upAsk: (v) => `¿Actualizar a OpenCaptions ${v}?`, upOk: 'Actualizar y reiniciar', upAll: 'Todas las novedades en GitHub',
+    upApp: 'Esta versión también mejora la app en sí, que no se actualiza sola: después de actualizar, descargala una vez y reemplazá la que tenés.', upAppLink: 'Descargar la app',
     upAskBody: (live) => `OpenCaptions descarga la versión nueva y se reinicia: los subtítulos se pausan cerca de un minuto${live ? ` en ${live === 1 ? 'la sala en vivo' : `las ${live} salas en vivo`}` : ''}, y los celulares, las pantallas y las computadoras de las salas se reconectan solos. Tus ajustes y transcripciones no cambian.`,
     upWorking: (v) => `Descargando OpenCaptions ${v}…`, upRestarting: 'Reiniciando con la versión nueva… esta página se recarga sola.',
     upSlow: 'OpenCaptions tarda en volver. Si su ventana se cerró, abrilo de nuevo.',
@@ -128,8 +129,8 @@ const L = {
       'event.lock': (c) => (c.after ? 'Modo evento activado' : 'Modo evento desactivado'),
       'auth.link': (c) => `Enlace creado para la computadora de una sala (${c.after})`,
     },
-    fields: { name: 'nombre', source: 'idioma de la charla', targets: 'idiomas', translation: 'modo de traducción', pull: 'fuente de audio', loop: 'loop', musicGuard: 'pausa con música', roomSound: 'sonido de la sala', roomSoundMax: 'máximo de oyentes', vocabulary: 'vocabulario' },
-    ai: { auto: 'Automática (nube + respaldo)', cloud: 'Siempre en la nube', local: 'Siempre esta computadora' },
+    fields: { name: 'nombre', color: 'color', tag: 'etiqueta', source: 'idioma de la charla', targets: 'idiomas', translation: 'modo de traducción', pull: 'fuente de audio', loop: 'loop', musicGuard: 'pausa con música', roomSound: 'sonido de la sala', roomSoundMax: 'máximo de oyentes', vocabulary: 'vocabulario' },
+    ai: { auto: 'Gemini, con esta computadora de respaldo', cloud: 'Siempre en la nube', local: 'Siempre esta computadora' },
     sys: (y, up) => `Encendido hace ${up} · CPU ${y.cpuPct} % · memoria ${y.rssMB} MB · event loop ${y.loopLagMs.p99} ms (p99)`,
     audioNone: 'Sin sonido', copied: 'Copiado', copyFail: 'No se pudo copiar: seleccioná el texto y copialo a mano.',
     tabs: { live: 'En vivo', screens: 'Pantallas y QR', sound: 'Sonido', settings: 'Ajustes' }, rooms: 'Salas', noCaption: 'Sin subtítulos todavía',
@@ -159,8 +160,9 @@ const L = {
     renameTitle: (n) => `Rename the talk in “${n}”`, renameNote: 'Changes the current talk’s title on screens, in the transcript and in downloads.', renameOk: 'Save',
     over: (m, t) => `${m} min over · “${t}” is due`, startDue: (t) => `Start “${t}”`, next: (t, h) => `Next: ${t} · ${h}`, noTalk: 'No talk announced',
     speech: { translate: 'Captions + translated voice', transcribe: 'Captions only' },
-    upAvail: (v) => `OpenCaptions ${v} is available`, upNotes: 'What’s new', upDownload: 'Download', upCmd: 'To update:', upNow: 'Update now',
-    upAsk: (v) => `Update to OpenCaptions ${v}?`, upOk: 'Update',
+    upAvail: (v) => `OpenCaptions ${v} is available`, upNotes: 'What’s new', upDownload: 'Download', upCmd: 'To update:', upNow: 'Update…',
+    upAsk: (v) => `Update to OpenCaptions ${v}?`, upOk: 'Update and restart', upAll: 'All the changes on GitHub',
+    upApp: 'This version also improves the app itself, which doesn’t update on its own: after updating, download it once and replace the one you have.', upAppLink: 'Download the app',
     upAskBody: (live) => `OpenCaptions downloads the new version and restarts: captions pause for about a minute${live ? ` in ${live === 1 ? 'the live room' : `the ${live} live rooms`}` : ''}, and phones, screens and the rooms’ computers reconnect by themselves. Your settings and transcripts don’t change.`,
     upWorking: (v) => `Downloading OpenCaptions ${v}…`, upRestarting: 'Restarting with the new version… this page reloads by itself.',
     upSlow: 'OpenCaptions is taking a while to come back. If its window closed, open it again.',
@@ -217,8 +219,8 @@ const L = {
       'event.lock': (c) => (c.after ? 'Event mode turned on' : 'Event mode turned off'),
       'auth.link': (c) => `Link made for a room computer (${c.after})`,
     },
-    fields: { name: 'name', source: 'talk language', targets: 'languages', translation: 'translation mode', pull: 'audio source', loop: 'loop', musicGuard: 'pause for music', roomSound: 'room sound', roomSoundMax: 'most listeners' },
-    ai: { auto: 'Automatic (cloud + backup)', cloud: 'Always in the cloud', local: 'Always this computer' },
+    fields: { name: 'name', color: 'color', tag: 'tag', source: 'talk language', targets: 'languages', translation: 'translation mode', pull: 'audio source', loop: 'loop', musicGuard: 'pause for music', roomSound: 'room sound', roomSoundMax: 'most listeners' },
+    ai: { auto: 'Gemini, with this computer as backup', cloud: 'Always in the cloud', local: 'Always this computer' },
     sys: (y, up) => `Up for ${up} · CPU ${y.cpuPct}% · memory ${y.rssMB} MB · event loop ${y.loopLagMs.p99} ms (p99)`,
     audioNone: 'No sound', copied: 'Copied', copyFail: 'Couldn’t copy: select the text and copy it yourself.',
     tabs: { live: 'Live', screens: 'Screens & QR', sound: 'Sound', settings: 'Settings' }, rooms: 'Rooms', noCaption: 'No captions yet',
@@ -431,7 +433,7 @@ const stateChip = (s) => {
   if (s.brk) return `<span class="chip warn">${icon('pause')} ${esc(tr('Pausa'))}${s.brk.by === 'agenda' ? ` · ${esc(tr('agenda'))}` : s.brk.by === 'switcher' ? ' · vMix/OBS' : s.brk.by === 'room' ? ` · ${esc(tr('desde la sala'))}` : ''}</span>`;
   if (s.music) return `<span class="chip warn">${icon('music')} ${esc(tr('Música · en pausa'))}</span>`;
   if (!s.ingest) return `<span class="chip">${esc(tr(s.pull ? 'Esperando el stream' : 'Todavía no llega sonido'))}</span>`;
-  if (s.engines.length && !s.gated) return `<span class="chip live"><span class="dot live"></span> ${esc(tr('En vivo'))}</span>`;
+  if (s.engines.length && !s.gated) return `<span class="chip live arrive"><span class="dot live"></span> ${esc(tr('En vivo'))}</span>`;
   if (s.engines.length) return `<span class="chip">${esc(tr('Escuchando · nadie habla'))}</span>`;
   return `<span class="chip">${esc(tr('Esperando voz'))}</span>`;
 };
@@ -521,21 +523,26 @@ $('ob-steps').onclick = (e) => {
 };
 $('ob-hide').onclick = () => { store.set('admin.obHidden', true); $('onboard').classList.add('hidden'); };
 
-// A new version on GitHub (src/updates.js): one quiet line with "Update now" (it asks first; nothing is installed
-// otherwise), or the download, or for a Docker container the command to run.
+// A new version on GitHub (src/updates.js): one quiet line with a button that shows what's new, and "Update and
+// restart" when this copy can replace itself (nothing is installed otherwise), or the download, or for a Docker
+// container the command to run.
 let updatingTo = '';
 function renderUpdate(up) {
   const el = $('update-note');
   el.classList.toggle('hidden', !up && !updatingTo);
   if (!up || updatingTo || el.dataset.v === up.version) return; // redrawn only when it changes, so a command stays selectable
   el.dataset.v = up.version;
-  const action = up.canUpdate ? `<button type="button" class="update-btn" id="update-now">${esc(t.upNow)}</button>`
-    : up.command ? `${esc(t.upCmd)} <code>${esc(up.command)}</code>` : `<a href="${esc(up.download)}" rel="noopener">${esc(t.upDownload)}</a>`;
-  el.innerHTML = `${esc(t.upAvail(up.version))} · <a href="${esc(up.notes)}" target="_blank" rel="noopener">${esc(t.upNotes)}</a> · ${action}`;
-  $('update-now')?.addEventListener('click', () => updateNow(up.version));
+  const action = up.canUpdate ? '' : up.command ? ` · ${esc(t.upCmd)} <code>${esc(up.command)}</code>` : ` · <a href="${esc(up.download)}" rel="noopener">${esc(t.upDownload)}</a>`;
+  el.innerHTML = `${esc(t.upAvail(up.version))} · <button type="button" class="update-btn${up.canUpdate ? ' primary' : ''}" id="update-now">${esc(up.canUpdate ? t.upNow : t.upNotes)}</button>${action}`;
+  $('update-now').addEventListener('click', () => updateNow(up));
 }
-async function updateNow(v) {
-  if (!(await confirmDialog({ title: t.upAsk(v), body: t.upAskBody(last?.totals?.live || 0), ok: t.upOk }))) return;
+async function updateNow(up) {
+  const v = up.version;
+  // The release notes as plain text (never as HTML: they come from GitHub), then the link to the whole page.
+  const html = `${up.whatsNew ? `<pre class="update-notes">${esc(up.whatsNew)}</pre>` : ''}<p class="u-fs13"><a href="${esc(up.notes)}" target="_blank" rel="noopener">${esc(t.upAll)}</a></p>`
+    + (up.app ? `<p class="muted-note">${esc(t.upApp)} <a href="${esc(up.app)}" rel="noopener">${esc(t.upAppLink)}</a></p>` : '');
+  if (!up.canUpdate) return void confirmDialog({ title: t.upAvail(v), body: '', ok: 'OK', info: true, html });
+  if (!(await confirmDialog({ title: t.upAsk(v), body: t.upAskBody(last?.totals?.live || 0), ok: t.upOk, html }))) return;
   const el = $('update-note');
   updatingTo = v;
   el.textContent = t.upWorking(v);
@@ -555,10 +562,10 @@ function renderNet(f) {
   let html = '';
   let bad = false;
   if (f.active === 'local') {
-    html = `${icon('offline')}<div><b>${esc(tr(f.mode === 'local' ? 'Usando la IA de esta computadora' : 'Sin internet: los subtítulos siguen funcionando'))}</b><p>${esc(tr(f.mode === 'auto' ? 'La IA de esta computadora genera los subtítulos. Vuelven a Gemini solos cuando la conexión se estabilice.' : 'Elegido desde el panel. Para volver a Gemini, cambiá el selector de IA.'))}</p></div>`;
+    html = `${icon('offline')}<div><b>${esc(tr(f.mode === 'local' ? 'Usando la IA de esta computadora' : 'Sin internet: los subtítulos siguen funcionando'))}</b><p>${esc(tr(f.mode === 'auto' ? 'La IA de esta computadora genera los subtítulos. Vuelven a Gemini solos cuando la conexión se estabilice.' : 'Elegido desde el panel. Para volver a Gemini, cambiá la etiqueta de la IA.'))}</p></div>`;
   } else if (f.online === false) {
     bad = !f.localReady;
-    html = `${icon('offline')}<div><b>${esc(tr('Sin conexión con la IA en la nube'))}</b><p>${esc(tr(f.localReady ? (f.mode === 'auto' ? 'Si no vuelve en unos segundos, los subtítulos pasan a esta computadora.' : 'Hay un respaldo listo en esta computadora: elegí «IA automática» o «Siempre esta computadora».') : 'No hay respaldo local. La próxima vez iniciá con: npm run local -- --fallback'))}</p></div>`;
+    html = `${icon('offline')}<div><b>${esc(tr('Sin conexión con la IA en la nube'))}</b><p>${esc(tr(f.localReady ? (f.mode === 'auto' ? 'Si no vuelve en unos segundos, los subtítulos pasan a esta computadora.' : 'Hay un respaldo listo en esta computadora: elegí «Gemini, con esta computadora de respaldo» o «Esta computadora» en la etiqueta de la IA.') : 'No hay respaldo en esta computadora: los subtítulos vuelven cuando vuelva la conexión.'))}</p></div>`;
   }
   $('netbar').classList.toggle('hidden', !html);
   $('netbar').classList.toggle('bad', bad);
@@ -613,6 +620,8 @@ function countTo(el, v, fmt = (x) => String(Math.round(x))) {
   el._v = v;
   cancelAnimationFrame(el._raf);
   if (calm.matches || from === v) { el.textContent = fmt(v); return; }
+  if (el._seen) { el.classList.remove('bump'); void el.offsetWidth; el.classList.add('bump'); } // a change, not the first count
+  el._seen = true;
   const t0 = performance.now();
   const step = (now) => {
     const p = Math.min(1, (now - t0) / 650);
@@ -658,7 +667,6 @@ function renderGrid(s) {
             <a href="#room/${rid}/sound" data-f="nosound-addr" data-setup><button type="button" tabindex="-1">${icon('link')}Ver la dirección</button></a>
           </div>
         </div>
-        <div class="speakers" data-f="speakers" data-no-i18n data-advanced></div>
         <div class="stats" data-f="stats"></div>
         <div class="row" data-f="alerts"></div>
         <div class="actions">
@@ -691,6 +699,10 @@ function renderGrid(s) {
     const f = (k) => el.querySelector(`[data-f="${k}"]`);
     el.querySelector('h3 a').textContent = st.name;
     f('ini').textContent = initials(st.name);
+    f('ini').className = `ini${st.color ? ` rc-${st.color}` : ''}`;
+    for (const c of [...el.classList]) if (c.startsWith('rc-') && c !== `rc-${st.color}`) el.classList.remove(c);
+    if (st.color) el.classList.add(`rc-${st.color}`); // the card's top takes the room's colour
+    el.classList.toggle('on-air', !!st.ingest && !!st.engines.length && !st.gated && !st.brk && !st.music);
     f('talkline').textContent = st.talk.title || t.noTalk;
     f('talkline').classList.toggle('none', !st.talk.title);
     const due = st.dueTalk;
@@ -698,13 +710,6 @@ function renderGrid(s) {
     el.classList.toggle('brk', !!st.brk);
     f('next').classList.toggle('over', !!due);
     f('next').textContent = due ? t.over(Math.max(1, Math.round((Date.now() - due.start) / 60000)), due.title) : st.nextTalk ? t.next(st.nextTalk.title, hm(st.nextTalk.start)) : '';
-    // Who's speaking (Advanced): a tap labels the captions from now on (phones, transcripts, exports).
-    const choices = [...new Set([...st.speakers, SPK.host, SPK.qa, ...(st.speaker && !st.speakers.includes(st.speaker) && ![SPK.host, SPK.qa].includes(st.speaker) ? [st.speaker] : [])])];
-    const spkKey = JSON.stringify([choices, st.speaker]);
-    if (f('speakers').dataset.key !== spkKey) {
-      f('speakers').dataset.key = spkKey;
-      f('speakers').innerHTML = `<span>${esc(SPK.label)}</span>${choices.map((n) => `<button type="button" class="pill" data-spk="${esc(n)}" aria-pressed="${n === st.speaker}">${esc(n)}</button>`).join('')}<button type="button" class="pill" data-spk-other>${esc(SPK.other)}</button>${st.speaker ? `<button type="button" class="pill" data-spk="" aria-pressed="false">${esc(SPK.none)}</button>` : ''}`;
-    }
     const dueBtn = el.querySelector('[data-a="due"]');
     dueBtn.classList.toggle('hidden', !due);
     if (due) dueBtn.textContent = t.startDue(due.title.length > 28 ? due.title.slice(0, 27) + '…' : due.title);
@@ -747,26 +752,6 @@ function renderGrid(s) {
   if (s.stages.length) firstGrid = false;
 }
 
-const SPK = LANG === 'es'
-  ? { label: 'Habla:', host: 'Presentación', qa: 'Público (preguntas)', other: 'Otro…', none: 'Sin nombre', ask: 'Nombre de quien habla' }
-  : { label: 'Speaking:', host: 'Host', qa: 'Audience (Q&A)', other: 'Other…', none: 'No label', ask: 'Who is speaking?' };
-$('grid').addEventListener('click', async (e) => {
-  const p = e.target.closest('[data-spk], [data-spk-other]');
-  if (!p) return;
-  const id = p.closest('[data-id]').dataset.id;
-  let name = p.dataset.spk;
-  if (p.hasAttribute('data-spk-other')) {
-    $('spk-title').textContent = SPK.ask;
-    $('spk-name').value = '';
-    const d = $('dlg-spk');
-    d.returnValue = '';
-    d.showModal();
-    const ok = await new Promise((res) => d.addEventListener('close', () => res(d.returnValue === 'ok'), { once: true }));
-    name = $('spk-name').value.trim();
-    if (!ok || !name) return;
-  }
-  await api('POST', `/api/stages/${id}/speaker`, { name });
-});
 $('grid').onclick = async (e) => {
   const b = e.target.closest('[data-a]');
   if (!b) return;
@@ -924,13 +909,13 @@ const said = (st) => (st.preview.orig ?? Object.values(st.preview)[0] ?? '').sli
 // Drawn again only when the rooms or the view change; on each update just the dots and captions (keeps focus put)
 function renderRooms(s) {
   const box = $('rooms-box'), mode = roomsView();
-  const key = JSON.stringify([mode, s.stages.map((x) => [x.id, x.name])]);
+  const key = JSON.stringify([mode, s.stages.map((x) => [x.id, x.name, x.color])]);
   if (box.dataset.key !== key) {
     box.dataset.key = key;
     const href = (st) => `#room/${encodeURIComponent(st.id)}`;
     const name = (st) => `<b><i class="dot" aria-hidden="true"></i>${esc(st.name)}<span class="sr-only" data-f="state"></span></b>`;
     box.innerHTML = !s.stages.length ? `<div class="card empty-art rise"><img src="/art/waiting.webp" alt="" width="900" height="900" /><h3>${esc(tr('Todavía no hay salas'))}</h3><p>${esc(tr('Creá una sala por cada escenario o aula: cada una tiene su QR, su pantalla y su overlay.'))}</p></div>`
-      : mode === 'gallery' ? `<ul class="rooms-gallery stagger">${s.stages.map((st) => `<li><a class="card tile lift" href="${href(st)}" data-id="${esc(st.id)}"><span class="tile-top"><span class="ini" aria-hidden="true">${esc(initials(st.name))}</span>${name(st)}</span><span class="said" data-f="said"></span><span class="tl" data-f="langs"></span></a></li>`).join('')}</ul>`
+      : mode === 'gallery' ? `<ul class="rooms-gallery stagger">${s.stages.map((st) => `<li><a class="card tile lift${st.color ? ` rc-${esc(st.color)}` : ''}" href="${href(st)}" data-id="${esc(st.id)}"><span class="tile-top"><span class="ini${st.color ? ` rc-${esc(st.color)}` : ''}" aria-hidden="true">${esc(initials(st.name))}</span>${name(st)}</span><span class="said" data-f="said"></span><span class="tl" data-f="langs"></span></a></li>`).join('')}</ul>`
         : `<div class="card flush"><table class="table rooms-list"><thead><tr><th>${esc(tr('Sala'))}</th><th>${esc(tr('Subtítulos'))}</th><th class="hide-sm">${esc(tr('Idiomas'))}</th><th class="hide-sm">${esc(tr('Audio'))}</th></tr></thead><tbody>${s.stages.map((st) => `<tr data-id="${esc(st.id)}"><td><a href="${href(st)}">${name(st)}</a></td><td class="muted-note" data-f="said"></td><td class="hide-sm" data-f="langs"></td><td class="hide-sm" data-f="audio"></td></tr>`).join('')}</tbody></table></div>`;
   }
   for (const st of s.stages) {
@@ -955,6 +940,10 @@ $('trash-list').onclick = async (e) => {
 let editing = null;
 let editStages = [], editSetup = {}; // for the stream address: the ports other rooms use, and this computer's address
 const fe = $('f-edit');
+// Room colours (src/config.js ROOM_COLORS): radio swatches, None first; a tick marks the chosen one (colour isn't the only cue).
+const ROOM_COLOR_NAMES = { green: 'Verde', sky: 'Celeste', violet: 'Violeta', rose: 'Rosa', amber: 'Ámbar', teal: 'Turquesa', orange: 'Naranja', slate: 'Gris' };
+$('room-colors').innerHTML = `<label><input type="radio" name="color" value="" checked />${esc(tr('Ninguna'))}</label>`
+  + Object.entries(ROOM_COLOR_NAMES).map(([k, n]) => `<label class="rc-${k}" title="${esc(tr(n))}"><input type="radio" name="color" value="${k}" aria-label="${esc(tr(n))}" />${icon('check')}</label>`).join('');
 for (const [code, name] of Object.entries(ev.languages)) fe.source.append(new Option(`${name} (${code})`, code));
 async function openEdit(id) {
   [editStages, editSetup] = await Promise.all([api('GET', '/api/status').then((s) => s.stages), api('GET', '/api/setup', null, { quiet: true }).catch(() => ({}))]);
@@ -967,6 +956,9 @@ async function openEdit(id) {
   fe.id.closest('label').classList.toggle('hidden', !!st); // the id is only chosen once, for a new room
   idTyped = false;
   fe.name.value = st?.name || '';
+  fe.tag.value = st?.tag || '';
+  fe.color.value = st?.color || ''; // RadioNodeList: checks the swatch with that value ('' is None)
+  $('tag-list').innerHTML = [...new Set(editStages.map((x) => x.tag).filter(Boolean))].map((x) => `<option value="${esc(x)}"></option>`).join('');
   fe.source.value = st?.source || 'auto';
   fe.pull.value = st?.pull || '';
   fe.loop.checked = !!st?.loop;
@@ -978,6 +970,8 @@ async function openEdit(id) {
   fe.vocabulary.value = (st?.vocabulary || []).join(', ');
   $('room-del').classList.toggle('hidden', !st);
   $('edit-targets').innerHTML = Object.entries(ev.languages).map(([c, n]) => `<label><input type="checkbox" value="${esc(c)}" ${(st?.targets || ['es', 'en']).includes(c) ? 'checked' : ''}/> ${esc(n)}</label>`).join('');
+  $('edit-spoken').innerHTML = Object.entries(ev.languages).map(([c, n]) => `<label><input type="checkbox" value="${esc(c)}" ${(st?.spoken || []).includes(c) ? 'checked' : ''}/> ${esc(n)}</label>`).join('');
+  showSpoken();
   $('ingest-link').innerHTML = '';
   renderAddr();
   setLocked(locked);
@@ -1016,6 +1010,9 @@ fe.name.addEventListener('input', () => { if (!editing && !idTyped) { fe.id.valu
 fe.id.oninput = () => { idTyped = true; renderAddr(); };
 $('add').onclick = () => { location.hash = '#rooms/new'; };
 fe.roomSound.onchange = () => { fe.roomSoundMax.disabled = !fe.roomSound.checked; };
+// "Detect automatically" can be narrowed to the languages the room's speakers use
+function showSpoken() { $('spoken-fld').classList.toggle('hidden', fe.source.value !== 'auto'); }
+fe.source.onchange = showSpoken;
 // Saving keeps the form as it is when the server says no (a taken id, a bad stream address), so nothing typed is lost.
 fe.onsubmit = async (e) => {
   e.preventDefault();
@@ -1024,7 +1021,8 @@ fe.onsubmit = async (e) => {
   const sound = { pull: fe.pull.value.trim(), loop: fe.loop.checked };
   const onSound = editing && e.submitter?.closest('[data-tab="sound"]');
   const body = onSound ? sound : {
-    name: fe.name.value, source: fe.source.value, translation: fe.translation.value || '', musicGuard: fe.musicGuard.checked,
+    name: fe.name.value, color: fe.color.value, tag: fe.tag.value.trim(), source: fe.source.value, translation: fe.translation.value || '', musicGuard: fe.musicGuard.checked,
+    spoken: fe.source.value === 'auto' ? [...$('edit-spoken').querySelectorAll('input:checked')].map((i) => i.value) : [],
     roomSound: fe.roomSound.checked, roomSoundMax: fe.roomSound.checked && fe.roomSoundMax.value ? Number(fe.roomSoundMax.value) : undefined,
     targets: [...$('edit-targets').querySelectorAll('input:checked')].map((i) => i.value),
     vocabulary: [...new Set(fe.vocabulary.value.split(/[,\n]/).map((w) => w.trim()).filter(Boolean))],
@@ -1775,7 +1773,7 @@ async function loadHistory() {
   $('history-list').innerHTML = hist.changes.length ? hist.changes.map((c) => {
     const text = (t.k[c.kind] || (() => c.summary))(c);
     const can = UNDOABLE.has(c.kind) && !c.undone;
-    return `<div class="change${c.undone ? ' undone' : ''}"><div class="ic">${icon(KIND_ICON[c.kind] || 'doc')}</div><div><b>${esc(text)}</b><small>${esc(when(c.at))}</small></div>
+    return `<div class="change${c.undone ? ' undone' : ''}" data-k="${esc(c.kind.split('.')[0])}"><div class="ic">${icon(KIND_ICON[c.kind] || 'doc')}</div><div><b>${esc(text)}</b><small>${esc(when(c.at))}</small></div>
       <div>${c.undone ? `<span class="chip">${esc(t.undone)}</span>` : can ? `<button data-undo="${c.id}" data-setup>${icon('refresh')} ${esc(t.undo)}</button>` : ''}</div></div>`;
   }).join('') : `<p class="empty">${esc(tr('Todavía no hay cambios.'))}</p>`;
   setLocked(locked);

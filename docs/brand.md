@@ -1,6 +1,6 @@
 # Brand and design system
 
-How OpenCaptions looks, and where each piece lives. Every page (the app, the overlay and the [website](https://opencaptions.kvza.ar)) uses the same design tokens, so change a colour or font in one place.
+How OpenCaptions looks, and where each piece lives. Every page (the app, the overlay and the [website](https://opencaptions.kvza.ar)) uses the same design tokens, so change a color or font in one place.
 
 ## Logo: the "Open O"
 
@@ -10,7 +10,7 @@ An open ring with a caption line coming out of it. The approved files are in [`p
 |---|---|
 | `logo-ink.svg` | Light backgrounds: everything in ink. |
 | `logo-dark.svg` | Dark backgrounds: paper O, lime line. |
-| `logo-original.svg` | The source file as delivered (lime line on paper). Kept for reference; **don't use it on screen**, because lime on paper breaks the colour rule. |
+| `logo-original.svg` | The source file as delivered (lime line on paper). Kept for reference; **don't use it on screen**, because lime on paper breaks the color rule. |
 | `mark-ink.svg`, `mark-dark.svg` | The same two, cropped to the artwork. The `.brand` wordmark uses these. |
 | `sprite.svg` | The O and the line as symbols, for inline SVG that follows the theme and animates (`.oc-logo`). |
 | `icon.svg`, `maskable.svg`, `avatar.svg` | App icon, favicon, maskable icon and avatars: ink O on a lime tile. |
@@ -21,7 +21,7 @@ An open ring with a caption line coming out of it. The approved files are in [`p
 
 The wordmark is **OpenCaptions** in Bricolage Grotesque 800.
 
-## Colour
+## Color
 
 | Token | Value | Role |
 |---|---|---|
@@ -31,13 +31,13 @@ The wordmark is **OpenCaptions** in Bricolage Grotesque 800.
 | `--graphite` | `#2B2A31` | Dark surfaces; translation lines on light |
 | `--fog` | `#E8E5DD` | Light surfaces; translation lines on dark |
 
-**The rule:** lime only on ink, or ink on lime. Never lime on paper, and never lime as text on a light background. In the code this means lime is always a *fill* (highlighter, selected pill, primary button in dark mode) with ink on top. When you need an emphasis colour for text or a stroke, use `--accent-fg` (ink in light mode, lime in dark mode).
+**The rule:** lime only on ink, or ink on lime. Never lime on paper, and never lime as text on a light background. In the code this means lime is always a *fill* (highlighter, selected pill, primary button in dark mode) with ink on top. When you need an emphasis color for text or a stroke, use `--accent-fg` (ink in light mode, lime in dark mode).
 
-Status colours (`--ok`, `--warn`, `--bad`) are tuned so text in them stays readable (WCAG 2.2 AA, 4.5:1) on every surface of both themes; `npm run a11y` checks it.
+Status colors (`--ok`, `--warn`, `--bad`) are tuned so text in them stays readable (WCAG 2.2 AA, 4.5:1) on every surface of both themes; `npm run a11y` checks it.
 
-Translation lines (the second language in the overlay, the original under a translation, the projector's second band) use the muted `--translation` token: Fog on dark, Graphite on light. Never a second accent colour.
+Translation lines (the second language in the overlay, the original under a translation, the projector's second band) use the muted `--translation` token: Fog on dark, Graphite on light. Never a second accent color.
 
-An event can set its own highlight colour with `accent` in `config/event.json`. Text on it switches between ink and paper automatically for contrast.
+An event can set its own highlight color with `accent` in `config/event.json`. Text on it switches between ink and paper automatically for contrast.
 
 ## Type
 
@@ -59,7 +59,7 @@ Both are turned off for people who ask for reduced motion.
 
 ## Illustrations
 
-Friendly line illustrations live in [`public/art/`](../public/art/) as WebP: `hero`, `audience`, `stage`, `organizer`, `local`, `setup` and `waiting`, plus the welcome wizard's `ob-welcome`, `ob-name`, `ob-rooms`, `ob-langs`, `ob-ai`, `ob-phones`, `ob-audio` and `ob-share`; `offline`, `alerts`, `speaker`, `report`, `start` and the three *How it works* steps (`step-audio`, `step-ai`, `step-everyone`) for the website; and `empty-library` for the transcript library when it's empty. They were generated with Higgsfield (GPT Image 2.5), with two of the set (`offline`, `ob-share`) as style references and one shared style prompt: ink lines on paper, warm-grey fills, and lime only on dark screens, so they follow the colour rule. They are drawn on paper, so pages frame them like prints (a rounded paper card) and they work in both themes. To add one, reuse the same style prompt so the set stays consistent.
+Friendly line illustrations live in [`public/art/`](../public/art/) as WebP: `hero`, `audience`, `stage`, `organizer`, `local`, `setup` and `waiting`, plus the welcome wizard's `ob-welcome`, `ob-name`, `ob-rooms`, `ob-langs`, `ob-ai`, `ob-phones`, `ob-audio` and `ob-share`; `offline`, `alerts`, `speaker`, `report`, `start` and the three *How it works* steps (`step-audio`, `step-ai`, `step-everyone`) for the website; and `empty-library` for the transcript library when it's empty. They were generated with Higgsfield (GPT Image 2.5), with two of the set (`offline`, `ob-share`) as style references and one shared style prompt: ink lines on paper, warm-grey fills, and lime only on dark screens, so they follow the color rule. They are drawn on paper, so pages frame them like prints (a rounded paper card) and they work in both themes. To add one, reuse the same style prompt so the set stays consistent.
 
 The QR posters use `scan`, a black-only pictogram on white so it prints on any printer, beside the scanning instructions.
 

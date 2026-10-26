@@ -20,9 +20,9 @@ This page lists what OpenCaptions needs to run, per role. OpenCaptions has three
 
 | Item | Requirement |
 |---|---|
-| Runtime | Node.js 20 or later (22 LTS recommended). No build step. |
+| Runtime | Node.js 22.23.4 or later on the 22 line, 24.22.1 or later on 24, or 26.12.1 or later: the releases with the October 2026 security fixes. OpenCaptions refuses to start on an older one. No build step. |
 | Operating system | macOS 13+ on Apple Silicon: **Tested**. Linux (Debian 12, Ubuntu 22.04+), x86-64 and arm64, bare metal or Docker: **CI**, and Tested in mock mode. Windows 10/11 x64: **Tested** by hand with the double-click starter, and **CI**. The tests run on Linux, macOS and Windows in CI. |
-| Desktop downloads | The Mac app needs macOS 11 or later; the Windows launcher needs Windows 10 or 11 (it uses the .NET Framework that comes with them). Both need Node.js 20+, and say so if it's missing. The Mac app is **Tested**; the Windows launcher is built and checked in **CI**. |
+| Desktop downloads | The Mac app needs macOS 11 or later (13 on a Mac with an Intel chip); the Windows launcher needs Windows 10 or 11 (it uses the .NET Framework that comes with them). Both need Node.js 22.23.4+ (or 24.22.1+, 26.12.1+), and download it themselves when it's missing or older. The Mac app is **Tested**; the Windows launcher is built and checked in **CI**. |
 | CPU and memory | 1 vCPU and 512 MB RAM handle about 10 rooms. The load test ran 10 rooms with 20 model sessions at about 90 MB RSS. Budget 1 vCPU and 1 GB for 20+ rooms plus headroom. |
 | Disk | Under 100 MB for the app. Transcripts are text only, typically a few hundred KB per room per day. Audio is never written to disk. |
 | ffmpeg | Only for pulling streams (SRT, RTMP, HLS) or non-WAV files. `npm install` fetches `ffmpeg-static` for macOS, Linux and Windows. A system ffmpeg or `FFMPEG_PATH` takes precedence. |
@@ -56,7 +56,7 @@ You can capture audio in two ways.
 | | Headless agent (recommended) | Browser ingest page |
 |---|---|---|
 | What runs | `npm run agent`, as a background service | `/ingest.html` in Chrome or Edge |
-| Needs | Node.js 20+ and the repository (ffmpeg is included) | A modern browser. HTTPS unless it is the server machine itself |
+| Needs | Node.js 22.23.4+ (or 24.22.1+, 26.12.1+) and the repository (ffmpeg is included) | A modern browser. HTTPS unless it is the server machine itself |
 | macOS | **Tested** (AVFoundation). Grant microphone access to the terminal or service. | **Tested** (Chrome) |
 | Linux | **Expected** (PulseAudio/PipeWire or ALSA) | **Expected** (Chrome) |
 | Windows | **Expected** (DirectShow; pass `--device "<name>"`) | **Expected** (Chrome, Edge) |

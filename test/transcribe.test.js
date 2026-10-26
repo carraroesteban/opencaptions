@@ -61,7 +61,8 @@ test('a transcribe-only session asks for text from the transcribe model, with th
   assert.deepEqual(cfg.responseModalities, ['TEXT']);
   assert.deepEqual(cfg.inputAudioTranscription, { customVocabulary: ['Horizon Summit'], languageCodes: ['en'] });
   for (const k of ['translationConfig', 'outputAudioTranscription', 'sessionResumption', 'contextWindowCompression']) assert.equal(cfg[k], undefined, k);
-  assert.deepEqual(got.input, [{ text: ' Hello everyone.', finished: true, lang: 'en' }], 'a space before each finished sentence');
+  // As Transcribe Live sends it: the room adds the space between sentences where the language uses one (test/text-joins.test.js).
+  assert.deepEqual(got.input, [{ text: 'Hello everyone.', finished: true, lang: 'en' }]);
   assert.deepEqual(got.interim, [{ text: 'Hello every', lang: 'en' }]);
   assert.equal(got.usage[0].promptTokenCount, 25);
 });

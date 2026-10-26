@@ -358,6 +358,7 @@ test('two-factor: the admin password then also needs a code from the app, and al
   assert.equal((await fresh.call('POST', '/api/auth/login', { password: ADMIN, code: '123456' })).status, 401);
   const used = await fresh.call('POST', '/api/auth/login', { password: ADMIN, code: totp(start.secret, step) });
   assert.equal(used.status, 401, 'a code works only once');
+  assert.match(used.body.error, /just used/, 'a replayed code says so, and is not a counted failure');
   const r = await fresh.call('POST', '/api/auth/login', { password: ADMIN, code: totp(start.secret, step + 1), device: 'New laptop' });
   assert.equal(r.status, 200);
   assert.equal((await fresh.call('GET', '/api/auth/me')).body.twoFactor, true);

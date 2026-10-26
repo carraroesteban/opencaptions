@@ -2,7 +2,7 @@
 // (partial → final), with timestamps for SRT/VTT export.
 import { EventEmitter } from 'node:events';
 
-const SENTENCE_END = /[.?!…。？！](["')\]»]?)(\s|$)/g;
+const SENTENCE_END = /[.?!…。？！।؟](["')\]»]?)(\s|$)/g;
 
 export class CaptionTrack extends EventEmitter {
   /**
@@ -107,7 +107,9 @@ export class CaptionTrack extends EventEmitter {
     this.timer = null;
     this.interimText = '';
     if (!this.cur) return;
-    if (this.cur.raw.trim()) this.#emit(true);
+    // Only provisional words were shown under this id: keep it, so the confirmed text replaces them in place.
+    if (!this.cur.raw.trim()) return;
+    this.#emit(true);
     this.cur = null;
   }
 
@@ -134,7 +136,7 @@ export class CaptionTrack extends EventEmitter {
     }
     // 2) Ends a sentence and is long enough → finalize.
     const t = c.raw.trimEnd();
-    if (t.length >= this.minChars && /[.?!…。？！]["')\]»]?$/.test(t)) {
+    if (t.length >= this.minChars && endsSentence(t)) {
       this.#emit(true);
       this.cur = null;
     }
@@ -153,6 +155,36 @@ export class CaptionTrack extends EventEmitter {
     }
     this.emit('caption', seg);
   }
+}
+
+// Scripts written without spaces (Chinese, Japanese, Thai, Lao, Khmer, Burmese), as in public/smooth.js.
+const NO_SPACES = /[぀-ヿ㐀-鿿豈-﫿฀-๿຀-໿ក-៿က-႟]/;
+export const endsSentence = (t) => /[.?!…。？！।؟]["'”’»)\]」』]*\s*$/.test(String(t || '')); // also used by store, translate, recording
+
+/**
+ * The speaker's next words, as they should follow `prev` (what they said just before). Every engine sends whole
+ * words, but the AI glues sentences at its pauses ("Summit.My name") and starts each with a capital, even mid-sentence
+ * ("we also Think a lot", "Amigo, Unas personas"). Only a word the speaker already said in lowercase (`common`) loses
+ * that capital, so a name never does ("Facebook"); nor does one in `names`. Both lowercased.
+ */
+export function continueText(prev, text, { names = new Set(), common = new Set(), lang = null } = {}) {
+  if (!prev || !text) return text;
+  const a = prev.slice(-1), b = text[0];
+  if (!/\s/.test(a) && !/^[\s,.;:!?)\]}»…、。，？！%'’]/.test(text) && !NO_SPACES.test(a) && !NO_SPACES.test(b)) text = ` ${text}`;
+  if (lang === 'de' || endsSentence(prev)) return text; // German capitalizes every noun
+  // Only "Word": not "I", "CIA", "WikiLeaks" or "AT&T", nor a name the speaker uses.
+  return text.replace(/^(\s*)(\p{Lu})(\p{Ll}+)(?![\p{L}\p{N}&])/u, (m, sp, c, rest) => {
+    const w = (c + rest).toLowerCase();
+    return common.has(w) && !names.has(w) ? sp + c.toLowerCase() + rest : m;
+  });
+}
+
+/** Words written all in lowercase in `text`. */
+export const lowerWords = (text) => String(text).match(/(?<![\p{L}\p{N}])\p{Ll}[\p{Ll}'’-]*(?![\p{L}\p{N}])/gu) || [];
+
+/** Words written with a capital in the middle of `text` (names: "in Syria", "the NSA"), lowercased. */
+export function namesIn(text) {
+  return [...String(text).matchAll(/(?<=[\p{L}\p{N},;:] +)\p{Lu}[\p{L}\p{N}'’&-]*/gu)].map((m) => m[0].toLowerCase());
 }
 
 function joinText(a, b) {

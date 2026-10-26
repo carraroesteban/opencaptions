@@ -46,6 +46,20 @@ test('a deleted room goes to the trash and comes back exactly as it was', async 
   assert.equal(hst.changes.find((c) => c.kind === 'room.delete').undone, true);
 });
 
+test('a room keeps its color and tag; a bad one is refused; undo puts them back', async () => {
+  const stage = async () => (await api('GET', '/api/status')).body.stages.find((x) => x.id === 'main');
+  const r = await api('PATCH', '/api/stages/main', { color: 'teal', tag: '  Konex\u0007 ' });
+  assert.equal(r.status, 200);
+  assert.deepEqual([(await stage()).color, (await stage()).tag], ['teal', 'Konex'], 'trimmed, control characters out');
+  assert.equal((await api('PATCH', '/api/stages/main', { color: 'plaid' })).status, 400);
+  assert.equal((await api('PATCH', '/api/stages/main', { tag: 'x'.repeat(25) })).status, 400);
+  assert.equal((await api('PATCH', '/api/stages/main', { color: 'rose', tag: 'Online' })).status, 200);
+  await api('POST', `/api/history/${(await latest('room.update')).id}/undo`);
+  assert.deepEqual([(await stage()).color, (await stage()).tag], ['teal', 'Konex'], 'undo restores both');
+  assert.equal((await api('PATCH', '/api/stages/main', { color: '', tag: '' })).status, 200);
+  assert.deepEqual([(await stage()).color, (await stage()).tag], ['', ''], 'empty means none');
+});
+
 test('undo puts back a room setting, the agenda, the glossary and the event name', async () => {
   await api('PATCH', '/api/stages/main', { targets: ['es'] });
   await api('POST', `/api/history/${(await latest('room.update')).id}/undo`);

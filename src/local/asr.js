@@ -145,23 +145,12 @@ export async function transcribe(pcm, { language = null, prompt = '', final = tr
   }
   if (prompt) form.append('prompt', prompt.slice(-400));
   const timeout = AbortSignal.timeout(config.localAsrTimeoutMs);
-  const res = await fetch(url, { method: 'POST', body: form, signal: signal ? anySignal([signal, timeout]) : timeout });
+  const res = await fetch(url, { method: 'POST', body: form, signal: signal ? AbortSignal.any([signal, timeout]) : timeout });
   const body = await res.text();
   if (!res.ok) throw Object.assign(new Error(`speech server HTTP ${res.status}: ${body.slice(0, 200)}`), { status: res.status });
   let j;
   try { j = JSON.parse(body); } catch { j = { text: body }; } // response_format text / plain servers
   return parseResult(j);
-}
-
-/** AbortSignal.any() arrived in Node 20.3; this project supports every Node 20. */
-function anySignal(signals) {
-  if (AbortSignal.any) return AbortSignal.any(signals);
-  const c = new AbortController();
-  for (const sig of signals) {
-    if (sig.aborted) { c.abort(sig.reason); break; }
-    sig.addEventListener('abort', () => c.abort(sig.reason), { once: true });
-  }
-  return c.signal;
 }
 
 /** A connection problem (server down, restarting, unreachable), as opposed to an error the server reported. */

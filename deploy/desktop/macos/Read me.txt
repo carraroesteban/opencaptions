@@ -13,6 +13,7 @@ OpenCaptions for Mac
 
 Your settings, passwords and transcripts are kept in
 ~/Library/Application Support/OpenCaptions, so they survive updates.
+To update: OpenCaptions menu > Check for Updates.
 Help: https://github.com/carraroesteban/opencaptions
 
 
@@ -20,9 +21,10 @@ OpenCaptions para Mac
 =====================
 
 1. Arrastrá OpenCaptions a la carpeta Aplicaciones y abrilo con doble clic.
-   La primera vez, macOS dice que no puede verificar la app. Tocá OK, abrí
-   Configuración del Sistema > Privacidad y seguridad, bajá hasta el aviso
-   sobre OpenCaptions y tocá "Abrir igualmente" (una sola vez). Paso a paso:
+   La primera vez, macOS dice que no puede verificar la app. Hacé clic en
+   OK, abrí Configuración del Sistema > Privacidad y seguridad, bajá hasta el
+   aviso sobre OpenCaptions y hacé clic en "Abrir igualmente" (una sola vez).
+   Paso a paso:
    https://github.com/carraroesteban/opencaptions/blob/main/docs/first-launch.md
 2. Una ventanita de OpenCaptions muestra cómo arranca, y el navegador abre el
    panel. Dejala abierta durante el evento; salí de OpenCaptions para detenerlo.
@@ -31,4 +33,5 @@ OpenCaptions para Mac
 
 La configuración, las contraseñas y las transcripciones se guardan en
 ~/Library/Application Support/OpenCaptions, así que se conservan al actualizar.
+Para actualizar: menú OpenCaptions > Buscar actualizaciones.
 Ayuda: https://github.com/carraroesteban/opencaptions

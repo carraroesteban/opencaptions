@@ -105,3 +105,31 @@ test('the dashboard button switches a server without a key to this computer, wit
   // Remembered: the next start uses this computer again.
   assert.equal(JSON.parse(fs.readFileSync(path.join(dataDir, 'setup.json'), 'utf8')).localMode, true);
 });
+
+test('a backup on standby is only recorded, and becomes the main engine when asked', async (t) => {
+  t.mock.method(console, 'log', quietUi);
+  const applied = [];
+  const m = new LocalMode({
+    apply: (part) => applied.push(`${Object.keys(part)[0]}${part.standby ? ' (standby)' : ''}`),
+    prepareSpeech: async () => ({ url: 'u', api: 'apple', label: 'Apple' }),
+    prepareText: async () => ({ url: 'x', model: 'm', mtModel: '' }),
+  });
+  await m.start({ standby: true });
+  assert.deepEqual(applied, ['speech (standby)']);
+  await m.start(); // "This computer" picked: what's ready is used now
+  assert.deepEqual(applied, ['speech (standby)', 'speech']);
+  assert.equal(m.status().standby, false);
+});
+
+test('a preparation that outlives a reset is dropped', async (t) => {
+  t.mock.method(console, 'log', quietUi);
+  const applied = [];
+  let done;
+  const m = new LocalMode({ apply: (p) => applied.push(p), prepareSpeech: () => new Promise((r) => { done = r; }), prepareText: async () => ({}) });
+  const p = m.start({ standby: true });
+  m.reset(); // back to "Gemini, in the cloud" while it was still getting ready
+  done({ url: 'u', api: '', label: 'w' });
+  await p;
+  assert.deepEqual(applied, []);
+  assert.equal(m.status().state, 'idle');
+});

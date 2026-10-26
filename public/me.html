@@ -30,6 +30,8 @@
     header h1 { font-size: 17px; margin: 0; display: flex; align-items: center; gap: 8px; }
     header h1 svg { width: 26px; height: 20px; }
     header .spacer { flex: 1; }
+    /* A phone or a half-screen window: the logo without its name, icons without words, so the settings gear stays on screen. */
+    @media (max-width: 520px) { header { gap: 6px; } header h1 > span:not(.chip) { display: none; } header .ai-chip b { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; } #mine-link { font-size: 0; gap: 0; } }
     #mine-link { display: inline-flex; align-items: center; gap: 7px; padding: 9px 13px; border-radius: var(--pill); color: var(--fg2); font-size: 14px; font-weight: 600; text-decoration: none; transition: background-color var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease); }
     #mine-link:hover { background: var(--fill); color: var(--fg); }
     .ibtn { display: inline-grid; place-items: center; width: 40px; height: 40px; padding: 0; border: 0; border-radius: var(--pill); background: transparent; color: var(--fg2); }
@@ -215,7 +217,7 @@
     }
   </style>
 </head>
-<body>
+<body data-gate>
   <header>
     <h1><svg class="oc-logo" viewBox="0 0 878 664" aria-hidden="true"><use class="o" href="/brand/sprite.svg#oc-o"/><use class="ln" href="/brand/sprite.svg#oc-line"/></svg><span>OpenCaptions</span> <span class="chip" id="mode-chip"></span></h1>
     <span class="spacer"></span>

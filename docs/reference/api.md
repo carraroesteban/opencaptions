@@ -121,7 +121,7 @@ body is rejected before your route handler runs. WebSocket messages are capped s
 | Method & path | Auth | Notes |
 |---|---|---|
 | `GET /api/event` | Public | Event metadata + a summary of every stage. Powers the audience homepage. |
-| `GET /branding/logo` | Public | The event's own logo (Settings › General), `404` when there is none. The pages use the `logo` URL from `/api/event` (`/branding/logo?v=<mtime>`, or `null`), so a new logo shows at once. |
+| `GET /branding/logo` | Public | The event's own logo (Settings › Event), `404` when there is none. The pages use the `logo` URL from `/api/event` (`/branding/logo?v=<mtime>`, or `null`), so a new logo shows at once. |
 
 Response:
 
@@ -163,6 +163,7 @@ All of these require sign-in as admin, except the live controls the crew may als
 | Method & path | Notes |
 |---|---|
 | `GET /api/status` | Full snapshot: every stage's [`status()`](#stage-status-object) plus server totals. Powers the production dashboard, polled here on load and then pushed over `WS /ws/admin`. |
+| `PUT /api/stages/order` | Body `{ "ids": [id, …] }`: the rooms' order everywhere (the dashboard, the audience's list, the QR kit). Recorded in the history (`rooms.order`). `423` in Event mode. |
 | `POST /api/stages` | Create a room. |
 | `PATCH /api/stages/:id` | Update a room (partial body — only sent fields change). |
 | `DELETE /api/stages/:id` | Remove a room (stops its pull/ingest; **stored transcripts are kept**). |
@@ -171,7 +172,6 @@ All of these require sign-in as admin, except the live controls the crew may als
 | `DELETE /api/stages/:id/pull` | Stop a configured audio pull. |
 | `POST /api/stages/:id/pull/stop` | Same as `DELETE …/pull`, as a POST. The demo page calls it with `fetch(…, { keepalive: true })` and the admin header when the tab closes, so the server stops pulling YouTube audio nobody is watching. |
 | `POST /api/stages/:id/restart` | Force-reconnect every model session for the room (manual "↻" button). |
-| `POST /api/stages/:id/speaker` | Who is speaking now. Body `{ "name": "Ana Pérez" }` (`""` clears it). New captions carry it as `spk`, so phones, transcripts and exports name the speaker. Crew or admin. When a talk starts, it's the agenda's first speaker. The room status has `speaker` and `speakers` (the agenda's names for this talk). |
 
 **Request body** for `POST /api/stages` and `PATCH /api/stages/:id` (all fields optional on `PATCH`; `id` is
 required and immutable on create):
@@ -535,6 +535,16 @@ curl -X POST http://localhost:8080/api/stages/main/ask \
 | `POST` | `/api/ai/key/check` | admin | Body `{ "key": "AQ.…" }`. Refuses only copy-paste slips (`code: "format"`: spaces, under 30 or over 300 characters; keys start with `AQ.` since May 2026, `AIza` before). Asks Google whether the key works, without saving it: `{ ok, code }` with `code` `ok`, `quota` (a real key with no free quota left right now, `ok: true`), `invalid`, `forbidden` (the key can't use Gemini), `offline` (Google unreachable) or `error`, plus Google's `detail`. `400 { code: "format" }` if it doesn't look like a Gemini key. |
 | `PUT` | `/api/ai/key` | admin | Body `{ "key": "AQ.…", "force"?: true }`. Checks the key (skipped with `force`, for when Google can't be reached), saves it in `data/secrets.json` and uses it right away: rooms on simulated captions switch to Gemini. Wins over `GEMINI_API_KEY`. Returns `{ ok, check, engine, key }`; `400` with the check's `code` if Google rejects it. Allowed in Event mode (a key that runs out of quota mid-event must be replaceable). Recorded in the history (`ai.key`, not undoable, without the key). |
 | `DELETE` | `/api/ai/key` | admin | Removes the saved key: back to `GEMINI_API_KEY` from `.env`, or to simulated captions without one. `423` in Event mode. |
+| `PUT` | `/api/ai/text` | admin | Another AI for translations, summaries and questions (any OpenAI-compatible service). Body `{ "url": "https://api.openai.com/v1", "model": string, "key"?: string }` (an empty `key` keeps the saved one). Checked with one small request, then saved; the key is never sent back. Returns `{ ok, check, textApi }`; `400` with `code` `url` or `model`, or the check's `code`, if it's refused. |
+| `DELETE` | `/api/ai/text` | admin | Back to the service in `.env` (`TEXT_API_URL`), or to Gemini. Returns `{ ok, textApi }`. |
+| `POST` | `/api/ai/use` | admin | Which AI makes the captions, saved across restarts (the AI badge and **Settings → AI**). Body `{ "use": "cloud" \| "local" \| "auto" }`: Gemini, this computer, or Gemini with this computer as a backup. `400` with `code` `no-key` (no Gemini key for `cloud`/`auto`), `no-backup` or `no-backup-here` (`auto` without the offline backup, or in Docker), or `no-local-here` (`local` in Docker). |
+| `GET` | `/api/local` | admin | Local mode's state (setting up, ready, errors), plus `engine`, `hasKey`, `apple` (Apple's speech can be used) and `canLocal` (`false` in Docker). |
+| `POST` | `/api/local/start` | admin | Sets up and switches to captions on this computer. `400` (`no-local-here`) in Docker. Returns the same as `GET /api/local`. |
+| `POST` | `/api/local/stop` | admin | Back to Gemini (or simulated captions without a key). The local servers keep running. |
+| `POST` | `/api/local/retry` | admin | Sets up the translation model again, when this computer makes the captions but its translations aren't ready (a failed download or start). |
+| `POST` | `/api/updates/check` | admin | Asks GitHub for a new version now, even with the daily check off (the apps' **Check for Updates…**). Returns `{ current, update, live }` (`live`: rooms captioning right now). |
+| `POST` | `/api/update` | admin | Installs the new version and restarts (captions pause for about a minute). `409` when this installation can't update itself or is already updating, `502` if the update fails, `423` in Event mode. |
+| `GET` | `/api/me/calls` | admin | Just for me only (`404` otherwise): `{ apps, platform }`, the call apps open on this computer, so the page can suggest capturing the call. |
 | `POST` | `/api/tunnel` | admin | Public HTTPS address through Cloudflare Tunnel. Body `{ "mode": "quick" }` (a random `https://….trycloudflare.com` address, no account), `{ "mode": "token", "token"?: string, "host": "captions.example.com" }` (a tunnel on your own domain; the token is saved in `data/secrets.json`, leave it out to reuse the saved one) or `{ "mode": "off" }`. Answers right away with the `tunnel` status; the address follows over the admin feed. While it's on, its address is the public URL (QR codes, links, allowed origins). Comes back on by itself after a restart. `423` in Event mode. Recorded in the history (`tunnel`). |
 | `POST` | `/api/engine` | crew | Offline backup. Body `{ "mode": "auto" \| "cloud" \| "local" }`. `auto` switches by itself, `cloud` always uses Gemini, `local` always uses this computer (refused with `400` while the local engine isn't reachable). Only when Gemini is the main engine. Returns the `failover` status. |
 
@@ -768,7 +778,7 @@ A refused or stopped phone isn't put back by itself when a place frees up: it as
   "text": "Bienvenidos a la charla.", "start": 1204, "end": 3980, "final": true, "spk": "Ana Pérez" }
 ```
 
-`spk` is present when the crew has said who is speaking (`POST /api/stages/:id/speaker`). Exports use it: WebVTT
+`spk` is present when the agenda names the talk's speaker (the first one listed). Exports use it: WebVTT
 voice tags (`<v Ana Pérez>`) on every cue, and the name before the text in SRT and TXT when the speaker changes.
 A final caption that arrives again with the same `id` and `"edited": true` is a correction from the crew: replace it.
 

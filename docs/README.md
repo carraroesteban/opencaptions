@@ -1,62 +1,63 @@
 # OpenCaptions documentation
 
-OpenCaptions is open-source software for live captions and translation at any event, from one room to many at the same time. These docs cover how to install it, run it at an event, operate it safely and change it.
+OpenCaptions is free, open-source software for live captions and translation at any event, from one room to many at the same time. Find yourself below and start at the top of your list.
 
 <p align="center"><img src="../public/art/hero.webp" width="640" alt="An audience following live captions on their phones while a speaker presents on stage" /></p>
 
-The docs follow the [Diátaxis](https://diataxis.fr/) framework. Each page has one job: teach, solve a task, describe facts or explain a decision. If you're new, start at the top of the table.
+## Organizers: trying it out and planning an event
 
-## Start here
+| Page | Read it when you want to… |
+|---|---|
+| [Project overview](overview.md) | Understand in one page what OpenCaptions does, what's tested and what's next. |
+| [FAQ](faq.md) | Get quick answers: cost, languages, accuracy, updates, privacy. |
+| [Opening it the first time](first-launch.md) | Get past the Mac or Windows warning on the first launch (English and Spanish). |
+| [Getting started](getting-started.md) | See captions and translations working on your computer in about 10 minutes. |
+| [Privacy and data](privacy.md) | Know exactly what leaves the computer, and when. |
+| [Licenses and responsibilities](legal.md) | Know what to tell speakers and the audience, with a ready-made notice. |
+| [Integrations](integrations.md) | Send captions into Zoom, YouTube Live, Microsoft Teams or a webhook; import the agenda from Sessionize or a calendar. |
+| [Caption a recording](recording.md) | Turn an audio or video file into a transcript and subtitles. |
+| [Accessibility](accessibility.md) | What the audience can adjust, the room's sound for hearing aids, and what's checked (WCAG 2.2 AA). |
+| [Just for me](personal.md) | Caption your own calls, videos and conversations on your computer. |
 
-| Page | Type | Read it when you want to… |
-|---|---|---|
-| [Project overview](overview.md) | Explanation | Understand in one page what OpenCaptions is, who it's for, its status and roadmap. |
-| [Getting started](getting-started.md) | Tutorial | See captions and translations working on your laptop in about 10 minutes. |
-| [Requirements](requirements.md) | Reference | Check operating systems, hardware, network and accounts before an event. |
+## Crew on the day
 
-## Run it
+| Page | Read it when you want to… |
+|---|---|
+| [Day-of-event checklist](operations/day-of-event.md) | One page to print: before doors open, each room's sound check, during talks, end of day. |
+| [Event-day runbook](operations/runbook.md) | The full guide, from the day before to the end of the event, with every alert explained. |
+| [Troubleshooting](operations/troubleshooting.md) | Fix a specific symptom quickly, starting with "no captions at all". |
+| [Guía del día del evento](operations/event-day.es.md) | Hand the crew a checklist in Spanish. |
 
-| Page | Type | Read it when you want to… |
-|---|---|---|
-| [Deployment](deployment.md) | How-to | Choose between a venue PC and a cloud server, then install with Docker, Node.js or a system service. |
-| [Networking](networking.md) | How-to | Know which ports and domains are used, and what to do when the venue network blocks something. |
-| [Security](security-guide.md) | Explanation + how-to | Understand the threat model and apply the hardening checklist. |
-| [Licenses and responsibilities](legal.md) | Reference | What OpenCaptions is made of, the AI providers' terms, and what an organizer must tell speakers and the audience. |
-| [Accessibility](accessibility.md) | Explanation + how-to | What's checked (WCAG 2.2 AA, `npm run a11y`), how to test with a screen reader and keyboard, and the known gaps. |
-| [Latency](latency.md) | Explanation + how-to | Understand where the seconds go and tune for lower delay. |
-| [Just for me](personal.md) | How-to | Use OpenCaptions on your own computer: captions and translation of your calls, videos and conversations, from the microphone or the computer's sound. |
-| [Integrations](integrations.md) | How-to + reference | Send captions into Zoom, YouTube Live, Microsoft Teams or a webhook, and import the agenda from Sessionize or a calendar. |
-| [Caption a recording](recording.md) | How-to | Turn an audio or video file into a transcript with captions in each language, much faster than real time. |
-| [Local mode](local.md) | How-to + explanation | Run speech recognition and translation on your own computer: no API key, no internet, no cost per hour. |
-| [How Apple's Live Translation works](research/apple-live-translation.md) | Research | What AirPods' Live Translation does on the iPhone and in the cloud, with the evidence, and how local mode on a Mac uses the same building blocks. |
-| [Event-day runbook](operations/runbook.md) | How-to | Prepare and operate the rooms on the day. |
-| [Troubleshooting](operations/troubleshooting.md) | How-to | Fix a specific symptom quickly. |
-| [Runbook in Spanish](operations/event-day.es.md) | How-to | Hand the production crew a checklist in Spanish. |
+## IT and self-hosting
 
-## Look things up
+| Page | Read it when you want to… |
+|---|---|
+| [Requirements](requirements.md) | Check operating systems, hardware, network and accounts. |
+| [Deployment](deployment.md) | Choose between a venue computer and a cloud server, then install with the app, Docker, Node.js or a system service; updates and backups. |
+| [Upgrading](upgrading.md) | Update any kind of install, and what changes in the next version. |
+| [Networking](networking.md) | Know which ports and domains are used, and what to do when the venue network blocks something. |
+| [Security guide](security-guide.md) | The threat model, who can see what, and the hardening checklist. |
+| [Local mode](local.md) | Run speech recognition and translation on your own computer: no API key, no internet, no cost per hour; and the offline backup. |
+| [Latency](latency.md) | Where the seconds go, and how to tune for less delay. |
+| [Configuration reference](reference/configuration.md) | Every environment variable, `config/event.json`, the glossary, the agenda file and the command-line tools. |
 
-| Page | Type | Contents |
-|---|---|---|
-| [Configuration reference](reference/configuration.md) | Reference | Every environment variable, `config/event.json`, `config/glossary.json` and the command-line tools. |
-| [API reference](reference/api.md) | Reference | HTTP endpoints, WebSocket protocols, metrics and page URLs. |
+## Developers
 
-## Understand the design
-
-| Page | Type | Contents |
-|---|---|---|
-| [Architecture](architecture.md) | Explanation | Components, data flow, failure handling and how it scales. |
-| [Architecture decision records](adr/README.md) | Explanation | Why the main technical choices were made, and what they cost. |
-| [Brand and design system](brand.md) | Reference | Logo files, colours and the colour rule, type, light/dark tokens, motion, and the website. |
-
-## Contribute
-
-- [Contributing guide](../.github/CONTRIBUTING.md) covers the dev setup, tests, commit style and documentation standards.
-- [Security policy](../.github/SECURITY.md) explains how to report a vulnerability privately.
-- [Changelog](../CHANGELOG.md) lists user-visible changes per release.
+| Page | Read it when you want to… |
+|---|---|
+| [Architecture](architecture.md) | Components, data flow, failure handling and how it scales. |
+| [API reference](reference/api.md) | HTTP endpoints, WebSocket protocols, metrics and page URLs. |
+| [Architecture decision records](adr/README.md) | Why the main technical choices were made, and what they cost. |
+| [Brand and design system](brand.md) | Logo files, colors, type, light/dark tokens, motion and the website. |
+| [How Apple's Live Translation works](research/apple-live-translation.md) | Research behind local mode on a Mac. |
+| [Contributing guide](../.github/CONTRIBUTING.md) | Dev setup, tests, commit style and documentation standards. |
+| [Security policy](../.github/SECURITY.md) | How to report a vulnerability privately. |
+| [Changelog](../CHANGELOG.md) | User-visible changes per release. |
 
 ## Conventions used in these docs
 
 - Commands are shown for macOS and Linux shells. Windows PowerShell equivalents are given where they differ.
 - `<angle brackets>` mark values you replace, such as `<room-id>`.
 - A **room** is the same thing as a **stage** in the code and API (`stage` is the identifier used in URLs).
-- **Venue PC** means the computer in a room that receives audio from the sound desk.
+- **Venue PC** or **room computer** means the computer in a room that receives audio from the sound desk.
+- Some dashboard pages (Glossary, Integrations, History) and settings show only in **Advanced mode**, switched at the bottom of the sidebar.

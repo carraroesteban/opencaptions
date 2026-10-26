@@ -27,7 +27,12 @@
     @media (max-width: 560px) { .totals { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
     .total { display: grid; gap: 10px; padding: 16px 18px 18px; border-radius: 18px; border: 1px solid var(--line); background: var(--bg2); box-shadow: var(--shadow-sm); }
     .total small { display: flex; align-items: center; gap: 8px; color: var(--fg2); font-size: 13px; font-weight: 600; }
-    .total small svg.i { width: 16px; height: 16px; }
+    .total small svg.i { width: 16px; height: 16px; color: var(--hue); }
+    /* a hue per number, in turn: its icon and a soft wash from the corner (the label says what it is) */
+    .total:not(.skeleton) { background: var(--bg2) radial-gradient(120% 100% at 0 0, color-mix(in srgb, var(--hue) 10%, transparent), transparent 70%); }
+    .total:nth-child(6n + 1) { --hue: var(--c-blue); } .total:nth-child(6n + 2) { --hue: var(--c-violet); } .total:nth-child(6n + 3) { --hue: var(--c-teal); }
+    .total:nth-child(6n + 4) { --hue: var(--c-rose); } .total:nth-child(6n + 5) { --hue: var(--c-orange); } .total:nth-child(6n) { --hue: var(--c-green); }
+    :root[data-theme='contrast'] .total { background: var(--bg2); }
     .total b { display: block; font-family: var(--font-display); font-size: clamp(24px, 2.1vw, 30px); font-weight: 800; letter-spacing: -.02em; line-height: 1; white-space: nowrap; font-variant-numeric: tabular-nums; }
     .total.skeleton { min-height: 92px; border: 0; }
     .room { margin: 0 0 30px; }
@@ -56,14 +61,14 @@
       main { padding: 0; max-width: none; }
       .rp-head { margin-top: 0; }
       .totals { grid-template-columns: repeat(3, 1fr); }
-      .wrap, .total { border-color: #ccc; background: none; box-shadow: none; }
+      .wrap, .total { border-color: #ccc; background: none !important; box-shadow: none; }
       .room h2 { break-after: avoid; }
       tr { break-inside: avoid; }
       tbody tr:hover { background: none; }
     }
   </style>
 </head>
-<body>
+<body data-gate>
   <main data-no-i18n>
     <header class="crumbbar" id="crumbbar"><span id="prefs-slot"></span></header>
     <div class="rp-head rise">

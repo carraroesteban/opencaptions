@@ -190,11 +190,14 @@ export function setEngine(eng) {
   Object.assign(config, engineDefaults(eng));
 }
 
+export const ROOM_COLORS = ['green', 'sky', 'violet', 'rose', 'amber', 'teal', 'orange', 'slate'];
+
 export function normalizeStage(s) {
   return {
     id: String(s.id).toLowerCase().replace(/[^a-z0-9_-]/g, '-'),
     name: s.name || s.id,
     source: s.source || 'auto', // 'auto' or a BCP-47 code the talk is spoken in ('en', 'es', ...)
+    spoken: s.spoken || [], // 'auto' between these languages only (['en', 'es']); empty: any language
     targets: (s.targets && s.targets.length ? s.targets : DEFAULT_TARGETS).map(String),
     pull: s.pull || '', // optional URL/file the server pulls audio from with ffmpeg (srt://, rtmp://, http(s)://, file)
     loop: !!s.loop,
@@ -205,6 +208,8 @@ export function normalizeStage(s) {
     // Assistive listening: phones can play the room's own sound (hearing aids, earbuds). Off unless turned on: anyone
     // with the room's link hears the room, so it's a choice per room.
     roomSound: s.roomSound === true ? true : undefined,
+    color: s.color ? String(s.color) : undefined, // a ROOM_COLORS key, for the room's badge
+    tag: String(s.tag ?? '').replace(/\p{Cc}/gu, ' ').trim() || undefined, // a free label rooms are grouped under
     roomSoundMax: s.roomSoundMax == null || s.roomSoundMax === '' ? undefined : Number(s.roomSoundMax), // listeners at once
   };
 }

@@ -13,6 +13,7 @@ import { config } from './config.js';
 import { chat as localChat, cleanTranslation, llmBusy, llmInfo } from './local/llm.js';
 import { appleTranslate, macLanguage } from './local/apple.js';
 import { guessLang } from './langid.js';
+import { endsSentence } from './captions.js';
 import { promptLanguage } from './languages.js';
 import { textApiOn, textChat } from './textapi.js';
 import { spend, overBudget, BudgetError } from './budget.js';
@@ -204,12 +205,11 @@ function guardLength(source, result) {
   return result.length > limit ? `${result.slice(0, limit).replace(/\s+\S*$/, '')}…` : result;
 }
 
-const SENTENCE_END = /[.?!…]["')\]»]?(?=\s|$)/g;
+const SENTENCE_END = /[.?!…]["')\]»]?(?=\s|$)|[。？！।؟]["')\]»」』]?/g; // 。？！ need no space after them
 // The local engine ends a caption at every pause, often mid-sentence ("And we're" … "a global community"), and its
 // words arrive a few seconds apart. Translated alone, those pieces come out wrong ("as muchas preguntas"), so its
 // unfinished sentences wait this long for the rest. Meanwhile the provisional translation is on screen.
 const LOCAL_SENTENCE_WAIT_MS = 6000;
-const endsSentence = (t) => /[.?!…。？！]["'”’»)\]]*\s*$/.test(t);
 
 /** Sentence-level translator for one (room, target language). */
 export class SentenceTranslator {

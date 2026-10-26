@@ -5,6 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { config } from './config.js';
 import * as tty from './tty.js';
+import { nodeProblem } from './node-version.js';
 
 /** The data folder (transcripts, settings, passwords) must be writable. */
 function checkDataDir(dir = config.dataDir) {
@@ -29,6 +30,13 @@ function checkDataDir(dir = config.dataDir) {
     console.error('');
     process.exit(78); // EX_CONFIG: a setup problem, not a crash
   }
+}
+
+// A Node.js without the October 2026 security fixes doesn't start at all (Docker, systemd and `npm start` come here).
+const oldNode = nodeProblem();
+if (oldNode) {
+  console.error(`\n${tty.sym.fail} ${oldNode}\n`);
+  process.exit(78);
 }
 
 checkDataDir();

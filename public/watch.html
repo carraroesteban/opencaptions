@@ -35,12 +35,14 @@
   </header>
   <div id="pause" class="w-pause hidden" role="status"></div>
   <div id="listen-note" class="w-pause w-note hidden" role="status"><span></span><button id="listen-note-close" class="au-icon-btn" data-icon="x"></button></div>
-  <div id="scroll" role="main" aria-live="polite"><div id="text"><div class="empty w-empty"><div class="w-skel" aria-hidden="true"><i class="skeleton"></i><i class="skeleton"></i><i class="skeleton"></i></div><span id="empty"></span></div></div></div>
+  <div id="sr-live" class="sr-only" aria-live="polite"></div>
+  <div id="scroll" role="main"><div id="text"><div class="empty w-empty"><div class="w-skel" aria-hidden="true"><i class="skeleton"></i><i class="skeleton"></i><i class="skeleton"></i></div><span id="empty"></span></div></div></div>
   <div class="w-bottom" id="bottom">
     <button id="tolive" class="w-tolive hidden"></button>
     <div id="orig" class="w-orig hidden" role="complementary" aria-label="Original"><b></b><span></span></div>
     <footer class="w-dock">
       <button id="settings" class="au-btn au-aa" aria-haspopup="dialog">Aa</button>
+      <span id="prefs-slot"></span>
       <button id="listen" class="au-btn hidden" aria-pressed="false"></button>
       <button id="dual" class="au-btn" aria-pressed="false"></button>
       <button id="pip" class="au-btn hidden" data-icon="pin"></button>
@@ -58,12 +60,10 @@
   <dialog id="dlg-set" class="sheet au-set" aria-labelledby="set-title">
     <div class="sheet-head"><h2 id="set-title"></h2><button id="set-close" data-icon="x"></button></div>
     <div class="au-row inline"><span class="au-lbl" id="l-size"></span><span class="au-stepper"><button id="smaller" class="a-sm">A</button><b id="size-val"></b><button id="bigger" class="a-lg">A</button></span></div>
-    <div class="au-row"><span class="au-lbl" id="l-theme"></span><div id="theme-opts" class="au-themes"></div></div>
     <div class="au-row"><span class="au-lbl" id="l-font"></span><div id="font-opts"></div></div>
     <div class="au-row"><span class="au-lbl" id="l-lh"></span><div id="lh-opts"></div></div>
     <div class="au-row"><span class="au-lbl" id="l-flow"></span><div id="flow-opts"></div></div>
     <label class="au-row inline"><span class="au-lbl" id="l-dual"></span><input type="checkbox" id="dual-sw" /></label>
-    <div class="au-row inline"><span class="au-lbl" id="l-ui"></span><span id="ui-slot"></span></div>
   </dialog>
   <script type="module" src="/pages/watch.js"></script>
 </body>

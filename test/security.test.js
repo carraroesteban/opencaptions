@@ -55,6 +55,9 @@ test('pull URLs: SSRF and local file protection', async () => {
   await bad('gopher://example.com/');
   await bad('concat:/etc/passwd|x');
   await bad('samples/talk-en.wav', { httpOnly: true });
+  // An admin's LAN AI server or alert service: private hosts yes, cloud metadata still no.
+  await ok('http://192.168.1.20:1234/v1', { httpOnly: true, lan: true });
+  await bad('http://169.254.169.254/latest/', { httpOnly: true, lan: true });
 });
 
 test('rate limiter blocks after the limit within a window', () => {

@@ -54,6 +54,8 @@ export async function validate(o) {
   return u.href;
 }
 
+const STALE_MS = 10000;
+
 /** One connector sending one room's captions in one language. */
 class Sender {
   constructor(def, { fetchImpl = fetch } = {}) {
@@ -67,17 +69,18 @@ class Sender {
 
   push(payload) {
     if (this.queue.length > 200) { this.queue.shift(); this.status.failed++; } // the platform is down: don't pile up
-    this.queue.push(payload);
+    this.queue.push({ ...payload, _at: Date.now() });
     if (!this.busy) this.#drain();
   }
 
   async #drain() {
     this.busy = true;
     while (this.queue.length) {
-      const p = this.queue.shift();
+      const { _at, ...p } = this.queue.shift();
+      if (this.def.type !== 'webhook' && Date.now() - _at > STALE_MS) { this.status.failed++; continue; } // minutes-old captions on screen are worse than a gap
       if (this.def.type === 'zoom' || this.def.type === 'youtube') this.seq++; // +1 per new caption, never for a retry
-      // Retries with randomized exponential backoff (Zoom's guidance), giving up after ~5 s: a caption that late
-      // is no longer useful, the next one is.
+      // Retries with randomized exponential backoff (Zoom's guidance), up to 5 tries; a caption older than STALE_MS
+      // when its turn comes is dropped above: it is no longer useful, the next one is.
       let ok = false;
       for (let attempt = 0, wait = 250; attempt < 5 && !ok; attempt++, wait *= 2) {
         if (attempt) await sleep(wait * (0.5 + Math.random()));

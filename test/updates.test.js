@@ -38,19 +38,19 @@ test('a newer release: a link to its notes and the right download for each insta
   _reset();
   const calls = fakeGithub(`v${maj}.${min}.${pat + 1}`);
   assert.equal(await checkNow(), `${maj}.${min}.${pat + 1}`);
-  // Nothing about this install goes to GitHub: a plain GET of the public endpoint.
-  assert.deepEqual(calls, [{ url: 'https://api.github.com/repos/carraroesteban/opencaptions/releases/latest', headers: { accept: 'application/vnd.github+json' }, method: undefined }]);
   const tag = `v${maj}.${min}.${pat + 1}`;
+  // Nothing about this install goes to GitHub: plain GETs of the public release and of the native app it expects.
+  assert.deepEqual(calls.map((c) => [c.url, c.method]), [['https://api.github.com/repos/carraroesteban/opencaptions/releases/latest', undefined], [`https://raw.githubusercontent.com/carraroesteban/opencaptions/${tag}/deploy/desktop/shell.json`, undefined]]);
   const base = 'https://github.com/carraroesteban/opencaptions/releases';
   // Started by the app (scripts/start.js): the button, nothing else.
-  assert.deepEqual(updateInfo({ platform: 'darwin', docker: false, git: false, supervised: true }), { version: tag.slice(1), notes: `${base}/tag/${tag}`, canUpdate: true, command: '', download: '' });
+  assert.deepEqual(updateInfo({ platform: 'darwin', docker: false, git: false, supervised: true }), { version: tag.slice(1), notes: `${base}/tag/${tag}`, whatsNew: '', canUpdate: true, command: '', download: '', app: '' });
   assert.equal(updateInfo({ platform: 'darwin', docker: false, git: true, supervised: true }).canUpdate, true); // npm run app: git pull
   // Started some other way: the download for this computer, or a command.
   assert.equal(updateInfo({ platform: 'darwin', docker: false, git: false, supervised: false }).download, `${base}/download/${tag}/OpenCaptions-mac.zip`);
   assert.equal(updateInfo({ platform: 'win32', docker: false, git: false, supervised: false }).download, `${base}/download/${tag}/OpenCaptions-windows.zip`);
   assert.equal(updateInfo({ platform: 'linux', docker: false, git: false, supervised: false }).download, `${base}/tag/${tag}`);
   // A Docker container can't replace itself, even when something restarts it.
-  assert.deepEqual(updateInfo({ platform: 'linux', docker: true, git: false, supervised: true }), { version: tag.slice(1), notes: `${base}/tag/${tag}`, canUpdate: false, command: 'git pull && docker compose up -d --build', download: '' });
+  assert.deepEqual(updateInfo({ platform: 'linux', docker: true, git: false, supervised: true }), { version: tag.slice(1), notes: `${base}/tag/${tag}`, whatsNew: '', canUpdate: false, command: 'git pull && docker compose up -d --build', download: '', app: '' });
   assert.equal(updateInfo({ platform: 'darwin', docker: false, git: true, supervised: false }).command, 'git pull && npm ci --omit=dev');
 });
 
@@ -79,6 +79,34 @@ test('offline, an error or a strange answer: quiet, and what was known stays', a
   _reset();
   fakeGithub('v1.0.0"><script>'); // only a version may reach the dashboard's links
   assert.equal(await checkNow(), '');
+});
+
+test('what\'s new, and "download the app once" only when the release needs a newer native app', async (t) => {
+  t.after(() => { globalThis.fetch = realFetch; _reset(); });
+  _reset();
+  const tag = `v${maj}.${min}.${pat + 1}`;
+  globalThis.fetch = /** @type {any} */ (async (url) => new Response(JSON.stringify(String(url).endsWith('shell.json') ? { version: 2 } : { tag_name: tag, body: '- Check for Updates in the app menu' })));
+  await checkNow();
+  const app = { platform: 'darwin', docker: false, git: false, supervised: true };
+  const mac = `https://github.com/carraroesteban/opencaptions/releases/download/${tag}/OpenCaptions-mac.zip`;
+  assert.equal(updateInfo({ ...app, shell: '2' }).whatsNew, '- Check for Updates in the app menu');
+  assert.equal(updateInfo({ ...app, shell: '2' }).app, ''); // this app is the one the release expects
+  assert.equal(updateInfo({ ...app, shell: '1' }).app, mac); // an older app: the files update, and the app is offered once
+  assert.equal(updateInfo({ ...app, shell: undefined }).app, mac); // apps from before OC_SHELL
+  assert.equal(updateInfo({ ...app, shell: '1' }).canUpdate, true);
+  assert.equal(updateInfo({ ...app, git: true, shell: undefined }).app, ''); // npm run app from a clone has no native app
+  // The release has no shell.json (GitHub answers 404): nothing to download.
+  _reset();
+  globalThis.fetch = /** @type {any} */ (async (url) => (String(url).endsWith('shell.json') ? new Response('404', { status: 404 }) : new Response(JSON.stringify({ tag_name: tag }))));
+  await checkNow();
+  assert.equal(updateInfo({ ...app, shell: undefined }).app, '');
+});
+
+test('the Mac app, the Windows launcher and shell.json say the same native app version', () => {
+  const root = path.resolve(import.meta.dirname, '..');
+  const want = String(JSON.parse(fs.readFileSync(path.join(root, 'deploy/desktop/shell.json'), 'utf8')).version);
+  assert.equal(fs.readFileSync(path.join(root, 'deploy/desktop/macos/OpenCaptions.swift'), 'utf8').match(/let shellVersion = "(\d+)"/)?.[1], want);
+  assert.equal(fs.readFileSync(path.join(root, 'deploy/desktop/windows/Launcher.cs'), 'utf8').match(/const string ShellVersion = "(\d+)"/)?.[1], want);
 });
 
 /** A release as GitHub serves it: opencaptions-<version>/… in a .tar.gz. */

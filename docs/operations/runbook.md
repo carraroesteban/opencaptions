@@ -4,7 +4,7 @@ This runbook takes a production team from the day before the event to the end of
 
 <p align="center"><img src="../../public/art/stage.webp" width="640" alt="A speaker on stage with captions on the screen behind them" /></p>
 
-A shorter Spanish version for venue crews is in [event-day.es.md](event-day.es.md). For specific symptoms, see [Troubleshooting](troubleshooting.md).
+A one-page version to print is the [day-of-event checklist](day-of-event.md), and a Spanish version for venue crews is in [event-day.es.md](event-day.es.md). For specific symptoms, see [Troubleshooting](troubleshooting.md).
 
 ## Roles
 
@@ -12,7 +12,7 @@ A shorter Spanish version for venue crews is in [event-day.es.md](event-day.es.m
 |---|---|
 | Server owner | Server, HTTPS, passwords and sign-in, Gemini billing and quotas |
 | Room tech (one per 3–5 rooms) | Venue PCs, audio cables, projector and overlay setup, sound check |
-| Production operator | Watches `/admin.html` during talks (signed in with the crew password), labels speakers, starts talks that run over, reacts to alerts |
+| Production operator | Watches `/admin.html` during talks (signed in with the crew password), starts talks that run over, reacts to alerts |
 
 ## One day before
 
@@ -39,7 +39,7 @@ A shorter Spanish version for venue crews is in [event-day.es.md](event-day.es.m
 - [ ] Design the caption style once in `/style.html` and copy the generated overlay and projector URLs.
 - [ ] Paste the agenda in **Dashboard → Agenda**; it shows what will change before you save. From Swapcard or Sessionize: export the sessions to Excel or Google Sheets, select everything including the header row, copy and paste. Columns are found by their header, rooms by their name, and rows for rooms without captions are skipped. By hand: CSV `room,time,title,speaker` (see `config/schedule.example.csv`). Talks then get their title and speaker automatically, and speaker names and titles are passed to the recognizer and the translator so they're spelled right; a room waits for a pause before switching, so a speaker who runs late is never cut.
 - [ ] Print the QR posters: **Dashboard → Tools → QR kit** (`/kit.html`), one bilingual A4 poster per room. Check the warning at the top: the QR must point to the public HTTPS address, not `localhost`.
-- [ ] Decide what the audience can read afterwards: **Settings → General → Transcripts for the audience** (*Only the talk in progress*, the default; *Every talk*, after the speakers agree; or *None*).
+- [ ] Decide what the audience can read afterwards: **Settings → Event → Transcripts for the audience** (*Only the talk in progress*, the default; *Every talk*, after the speakers agree; or *None*).
 
 ### Rehearsal
 
@@ -102,7 +102,7 @@ With someone speaking into the stage microphone, or with a handheld mic on `/dem
 - [ ] The projector shows captions, and the QR code scans from the back of the room.
 - [ ] A phone scanning the QR code gets captions in the chosen language.
 - [ ] vMix or OBS shows the overlay on the program output.
-- [ ] After 30 s of silence the room shows **PAUSED · silence**. Speaking resumes it.
+- [ ] After 30 s of silence the room card says **Listening · nobody speaking** (nothing is billed). Speaking resumes it.
 
 ## During talks
 
@@ -123,8 +123,6 @@ Turn on **Event mode** (bottom of the dashboard's sidebar, or **Settings**) when
 **Music:** walk-in music, a sponsor video or a song between talks is recognized after about 10 s and not captioned (♪ on screens and the overlay, at no cost); captions come back as soon as someone speaks. If a talk with a soundtrack is taken for music, press **It's a talk: caption anyway** on the card.
 
 **Fixing a caption:** **See details → Fix captions** lists the latest sentences; correct one and it changes on every screen, phone and the transcript at once. If you changed a single word (a speaker's name), you're offered to always write it that way: it goes to the glossary, and can be undone from History.
-
-**Who's speaking:** on each room card, tap the speaker's name (the agenda's speakers are listed), **Host**, **Audience (Q&A)** or **Other…**. Captions on phones, the transcript and the subtitle files name the speaker from then on.
 
 When a speaker runs over, the room's card turns orange and says which talk is due. Press **Start "…"** when the next speaker begins, or let the room switch by itself at the next pause. **Next talk** starts one by hand, with the title and speaker from the agenda already filled in.
 
@@ -166,7 +164,7 @@ With **alerts on your phone** set up (Settings → Alerts), the ones that last r
 
 ## End of each day
 
-- [ ] The audience keeps every transcript at `/talks.html` (read, search, summary, download) if **Settings → General → Transcripts for the audience** is *Every talk*.
+- [ ] The audience keeps every transcript at `/talks.html` (read, search, summary, download) if **Settings → Event → Transcripts for the audience** is *Every talk*.
 - [ ] **Dashboard → Transcripts** per room: SRT or VTT to upload with the videos, TXT for the blog or accessibility archive.
 - [ ] Back up the data folder ([where it is](../deployment.md#backups-and-upgrades)).
 - [ ] Compare the day's estimated cost on the dashboard with **AI Studio → Usage**.

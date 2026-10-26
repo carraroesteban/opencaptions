@@ -118,3 +118,12 @@ test('event mode blocks switching to Just for me, which would take the event off
   assert.equal((await api('GET', '/api/setup')).body.mode, 'personal');
   assert.equal((await api('PUT', '/api/setup', { mode: 'event' })).status, 200);
 });
+
+test('a room created the way the wizard does, auto-detecting only between chosen languages, keeps them', async () => {
+  const { api } = main;
+  assert.equal((await api('POST', '/api/stages', { id: 'wiz-auto', name: 'Wiz', source: 'auto', spoken: ['en', 'es'], targets: ['es', 'en'] })).status, 200);
+  const st = (await api('GET', '/api/setup')).body.stages.find((s) => s.id === 'wiz-auto');
+  assert.equal(st.source, 'auto');
+  assert.deepEqual(st.spoken, ['en', 'es']);
+  await api('DELETE', '/api/stages/wiz-auto');
+});

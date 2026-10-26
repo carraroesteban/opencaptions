@@ -166,6 +166,28 @@ test('a speech model that names no language (Transcribe Live): the spoken langua
   assert.equal(st.status().detectedLang, 'es', 'the dashboard shows the language being spoken');
 });
 
+test('"auto" between English and Spanish: Gemini is told both, and a sentence read as another language stays in the current one', async () => {
+  let sent = null;
+  _setClient({ live: { connect: async ({ config: c }) => { sent = c; return { close() {}, sendRealtimeInput() {} }; } } });
+  config.engine = 'gemini';
+  const store = { openTalk() {}, append() {} };
+  const glossary = { apply: (t) => t, vocabulary: () => [] };
+  const st = new Stage({ id: 'enes', name: 'enes', source: 'auto', spoken: ['en', 'es'], targets: ['es', 'en'], translation: 'text', vocabulary: [], title: '' }, { glossary, store });
+  st.on('log', () => {});
+  const chunk = Buffer.alloc(3200);
+  for (let i = 0; i < 1600; i++) chunk.writeInt16LE(Math.round(8000 * Math.sin(i / 5)), i * 2);
+  st.pushAudio(chunk);
+  await sleep(50);
+  config.engine = 'mock'; // translations: no network
+  const eng = st.engines.get('es');
+  eng.emit('input', { text: 'Hola a todos y bienvenidos a la cumbre de este año.', finished: true, lang: 'es' });
+  eng.emit('input', { text: ' Obrigado a todos por estarem aqui hoje com a gente.', finished: true, lang: 'pt' });
+  await sleep(50);
+  st.destroy();
+  assert.deepEqual(sent?.inputAudioTranscription.languageCodes, ['en', 'es']);
+  assert.equal(st.status().detectedLang, 'es');
+});
+
 test('a pinned-language room still translates when the speaker switches language', async () => {
   config.engine = 'mock';
   const store = { openTalk() {}, append() {} };
@@ -211,4 +233,20 @@ test('changing a room’s languages mid-talk keeps what was said, and a new lang
   assert.equal(st.history('orig').length, 1, 'what was said is still there for screens and phones that (re)connect');
   assert.deepEqual(fr, ['(fr) Good morning everyone, and welcome to the talk.'], 'the new language starts with the last sentences, translated');
   assert.equal(st.history('fr').length, 1);
+});
+
+test('a room’s cost never goes down at a new talk or a reconfigure', async () => {
+  const st = new Stage({ id: 'cost', name: 'cost', source: 'en', targets: ['es'], vocabulary: [], title: '' }, { glossary: { apply: (t) => t, vocabulary: () => [] }, store: { openTalk() {}, append() {} } });
+  st.on('log', () => {});
+  const fake = () => ({ stats: { usd: 0.5 }, flush() {}, pending: () => false, degraded: () => false });
+  st.costUsd = 1;
+  st.mtQ = { es: fake() };
+  assert.equal(st.totalCost(), 1.5);
+  st.newTalk('next');
+  assert.ok(st.totalCost() >= 1.5);
+  st.mtQ = { es: fake() };
+  st.reconfigure(st.def);
+  assert.ok(st.totalCost() >= 2);
+  assert.equal(st.status().costUsd, +st.totalCost().toFixed(3));
+  st.destroy();
 });
