@@ -173,10 +173,10 @@ function syncMenu() {
 export const stateOf = (st) => (st.alerts?.some((a) => a !== 'no-ingest') || st.dueTalk ? 'bad' : !st.ingest ? 'off' : st.engines?.length && !st.gated ? 'live' : 'pause');
 export const stateLabel = (state) => L.state[state];
 /**
- * Initials that tell rooms apart (the one helper every badge uses): "Workshops in-person 2" is W2, "Sala Abasto" SA.
+ * Initials that tell rooms apart (the one helper every badge uses): "Workshops in-person 2" is W2, "Sala Norte" SN.
  * A name ending in a number is its first letter and that number; any other, the first letters of its first two words
  * (or a one-word name's first two letters). A clash takes the next spelling that is free (the distinguishing word's
- * letter: "Workshops virtuales 2" is V2; "Stream azul" next to "Sala Abasto" is ST), so setRooms() hands over all names.
+ * letter: "Workshops virtuales 2" is V2; "Sala Sur" next to "Sala Norte" is SS), so setRooms() hands over all names.
  */
 const wordsOf = (name) => String(name).split(/\s+/).filter((w) => /\p{L}|\d/u.test(w[0] || ''));
 const cap = (s) => Array.from(s)[0]?.toUpperCase() || '';
@@ -208,7 +208,7 @@ let roomsKey = '';
 /** The rooms in the sidebar, each with its status dot: [{ id, name, alerts, ingest, engines, gated, dueTalk, color, tag }] as /api/status gives them. */
 export function setRooms(stages = []) {
   assignInitials(stages.map((st) => st.name || st.id));
-  rooms = stages.map((st) => ({ id: st.id, name: st.name || st.id, state: stateOf(st), color: st.color || '', tag: st.tag || '' }));
+  rooms = stages.map((st) => ({ id: st.id, name: st.name || st.id, state: stateOf(st), color: st.hue || st.color || '', tag: st.tag || '' }));
   const key = JSON.stringify(rooms);
   if (key === roomsKey) return; // the dashboard calls this on every update: redraw only when something changed
   roomsKey = key;

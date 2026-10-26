@@ -616,7 +616,7 @@ chars, optional `lang` ≤ 12 chars (restricts the replacement to one caption ch
 ```bash
 curl -X PUT http://localhost:8080/api/glossary \
   -H "Authorization: Bearer $ADMIN_TOKEN" -H "Content-Type: application/json" \
-  -d '{"vocabulary":["Horizon Summit","Ngozi Okafor"],"replacements":[{"from":"horizons summit","to":"Horizon Summit"}]}'
+  -d '{"vocabulary":["Horizon Summit","telehealth"],"replacements":[{"from":"horizons summit","to":"Horizon Summit"}]}'
 ```
 
 ### Utilities

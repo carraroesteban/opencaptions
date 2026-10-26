@@ -254,6 +254,7 @@ app.get('/healthz', (req, res) => {
 const roomSummary = (s) => ({
   id: s.id,
   name: s.def.name,
+  hue: hueOf(s),
   title: s.talk.title,
   speaker: s.talk.speaker || '',
   next: s.nextTalk || null,
@@ -458,6 +459,9 @@ const PERSONAL_ROOM = 'me'; // the room me.html captions into
 // The rooms people see: in personal mode only the personal one, never the event's rooms (their transcripts included);
 // in event mode never the personal one. Its captions are someone's own calls: private in both modes.
 const visibleStages = () => [...stages.values()].filter((st) => personal() === (st.id === PERSONAL_ROOM));
+// The colour a room shows everywhere (dashboard, phones, transcripts): the one chosen in its settings, or one from
+// its place in the list, so every room has a colour and it's the same on every page.
+const hueOf = (st) => st.def.color || ROOM_COLORS[Math.max(0, [...stages.keys()].indexOf(st.id)) % ROOM_COLORS.length];
 const isPrivate = (stageId) => personal() || stageId === PERSONAL_ROOM;
 // The room's sound on phones (assistive listening for hearing aids and earbuds): only where the room's setting allows
 // it, and never in Just for me or its room (someone's own calls). Anyone with the room's link can listen.
@@ -1551,16 +1555,17 @@ app.get(['/', '/index', '/index.html', '/watch', '/watch.html', '/talk', '/talk.
     const { mtimeMs } = fs.statSync(file);
     let hit = pageCache.get(file);
     if (!hit || hit.mtimeMs !== mtimeMs) pageCache.set(file, (hit = { mtimeMs, html: fs.readFileSync(file, 'utf8') }));
-    res.type('html').send(hit.html
+    res.type('html').set('Cache-Control', 'no-cache').send(hit.html
       .replaceAll('content="/brand/', `content="${origin}/brand/`)
       .replaceAll('%EVENT%', htmlEsc(eventName())));
   } catch { next(); }
 });
 app.use(express.static(path.join(ROOT, 'public'), {
   extensions: ['html'],
-  // Fonts and pictures don't change between releases: phones keep them a day. Code and pages still revalidate
-  // every load (their names carry no version to bust a cache).
-  setHeaders: (res, file) => { if (/[\\/]public[\\/](fonts|art|brand)[\\/]/.test(file)) res.setHeader('Cache-Control', 'public, max-age=86400'); },
+  // Fonts and pictures don't change between releases: phones keep them a day. Code and pages carry no version in
+  // their names, so they're no-cache (asked for every load, a 304 when unchanged). Not max-age=0: Cloudflare's
+  // default 4-hour browser cache rewrites that one, and phones kept the old version for hours after an update.
+  setHeaders: (res, file) => res.setHeader('Cache-Control', /[\\/]public[\\/](fonts|art|brand)[\\/]/.test(file) ? 'public, max-age=86400' : 'no-cache'),
 }));
 // Only the bundled test talks (the room page's "test talk"): recordings organizers copy into samples/ to pull stay private.
 for (const f of ['talk-en.wav', 'talk-es.wav']) app.get(`/samples/${f}`, (req, res) => res.sendFile(path.join(ROOT, 'samples', f)));
@@ -1652,7 +1657,7 @@ function redactUrl(u) {
 const forCrew = (snap) => ({ ...snap, stages: snap.stages.map((st) => ({ ...st, pull: redactUrl(st.pull), ingest: st.ingest?.kind === 'pull' ? { ...st.ingest, label: redactUrl(st.ingest.label) } : st.ingest })) });
 const redactDef = (d) => (d && typeof d === 'object' && 'pull' in d ? { ...d, pull: redactUrl(d.pull) } : d);
 function snapshot() {
-  const list = visibleStages().map((s) => s.status()); // the personal room isn't one of the event's rooms
+  const list = visibleStages().map((s) => ({ ...s.status(), hue: hueOf(s) })); // the personal room isn't one of the event's rooms
   return {
     engine: config.engine,
     model: engineLabel(),

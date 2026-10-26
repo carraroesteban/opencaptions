@@ -117,6 +117,7 @@
 /* =================== watch.html: the captions on a phone =================== */
 body.watch { display: flex; flex-direction: column; height: 100dvh; overflow: hidden; --gutter: max(16px, calc((100vw - 880px) / 2)); }
 .w-head { position: relative; z-index: 3; padding: max(8px, env(safe-area-inset-top)) var(--gutter) 12px; background: var(--bg) radial-gradient(110% 120% at 20% 0, color-mix(in srgb, var(--accent) 12%, transparent), transparent 72%); }
+.w-head[class*='rc-'] { background: var(--bg) radial-gradient(110% 120% at 20% 0, color-mix(in srgb, var(--rc) 30%, transparent), transparent 72%); }
 :root[data-theme='contrast'] .w-head { background: var(--bg); }
 .w-bar { display: flex; align-items: center; gap: 6px; min-height: 52px; }
 .w-bar .au-icon-btn { margin-left: -10px; }
@@ -259,6 +260,15 @@ body.watch { --toast-lift: var(--bottom-h, 70px); }
 .ix-room:active { transform: scale(.985); }
 .ix-room:has(.ix-go:focus-visible) { outline: 2px solid var(--focus); outline-offset: 2px; }
 .ix-room.live { box-shadow: var(--shadow); }
+/* Each room in its colour, the same as on the dashboard (server.js hueOf): a wash at the top, a swatch by its name,
+   and its language buttons tinted. The captions pages keep the text itself plain. */
+.ix-room[class*='rc-'] { background-image: linear-gradient(180deg, color-mix(in srgb, var(--rc) 24%, transparent), transparent 110px); }
+.ix-room[class*='rc-'] h3 { display: flex; align-items: center; gap: 10px; }
+.ix-room[class*='rc-'] h3::before { content: ''; flex: none; width: 12px; height: 12px; border-radius: 4px; background: var(--rc); }
+.ix-room[class*='rc-'] .ix-lang:not(.mine) { background: color-mix(in srgb, var(--rc) 20%, var(--fill)); }
+.ix-next svg.i { color: var(--c-blue); }
+:root[data-theme='contrast'] .ix-room[class*='rc-'] { background-image: none; }
+:root[data-theme='contrast'] .ix-room[class*='rc-'] .ix-lang:not(.mine) { background: var(--fill); }
 .ix-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .ix-room h3 { margin: 0; font-size: 22px; letter-spacing: -.02em; min-width: 0; }
 .ix-go { color: inherit; text-decoration: none; outline: none; }
@@ -311,6 +321,9 @@ body.watch { --toast-lift: var(--bottom-h, 70px); }
 }
 .tl-talk:hover { transform: translateY(-2px); box-shadow: var(--shadow); border-color: var(--line-strong); }
 .tl-talk:active { transform: scale(.99); }
+.tl-talk[class*='rc-'] { border-left: 4px solid var(--rc); } /* its room's colour, as on the list of rooms */
+.tl-talk[class*='rc-'] .tl-room { display: inline-flex; align-items: center; gap: 6px; }
+.tl-talk[class*='rc-'] .tl-room::before { content: ''; width: 9px; height: 9px; border-radius: 3px; background: var(--rc); }
 .tl-when { display: grid; gap: 2px; padding-top: 2px; font-variant-numeric: tabular-nums; }
 .tl-when b { font-size: 17px; letter-spacing: -.01em; white-space: nowrap; } /* "03:02 PM" on one line */
 .tl-when span { font-size: 13px; color: var(--fg2); }

@@ -248,14 +248,14 @@ test('corrections: the crew fixes a live caption, phones replace it, the transcr
   }
   const c = caps.captions.at(-1);
   const p = await phone('main');
-  const r = await api('PATCH', `/api/stages/main/captions/${encodeURIComponent(c.id)}`, { channel: 'orig', text: 'Fixed by the crew: Nerdearla.' });
+  const r = await api('PATCH', `/api/stages/main/captions/${encodeURIComponent(c.id)}`, { channel: 'orig', text: 'Fixed by the crew: Kubernetes.' });
   assert.equal(r.status, 200, JSON.stringify(r.body));
   const got = await until(() => p.got.captions.find((x) => x.id === c.id));
-  assert.equal(got.text, 'Fixed by the crew: Nerdearla.');
+  assert.equal(got.text, 'Fixed by the crew: Kubernetes.');
   assert.equal(got.final, true);
   p.ws.close();
   const txt = await (await fetch(`${base}/api/stages/main/export.txt`, { headers: h })).text();
-  assert.ok(txt.includes('Fixed by the crew: Nerdearla.'));
+  assert.ok(txt.includes('Fixed by the crew: Kubernetes.'));
   assert.equal(txt.split('Fixed by the crew').length, 2, 'the corrected sentence appears once');
   // After the event: an admin cleans up a saved transcript.
   const talkId = caps.talk;
@@ -269,10 +269,10 @@ test('corrections: the crew fixes a live caption, phones replace it, the transcr
 });
 
 test('"always write it this way": one glossary correction, undoable', async () => {
-  const r = await api('POST', '/api/glossary/replacements', { from: 'Nerdarla', to: 'Nerdearla' });
+  const r = await api('POST', '/api/glossary/replacements', { from: 'Kubernetis', to: 'Kubernetes' });
   assert.equal(r.status, 200);
   const g = (await api('GET', '/api/glossary')).body;
-  assert.ok(g.replacements.some((x) => x.from === 'Nerdarla' && x.to === 'Nerdearla'));
-  assert.ok(g.vocabulary.includes('Nerdearla'), 'also helps the AI recognize it');
+  assert.ok(g.replacements.some((x) => x.from === 'Kubernetis' && x.to === 'Kubernetes'));
+  assert.ok(g.vocabulary.includes('Kubernetes'), 'also helps the AI recognize it');
   assert.equal((await api('POST', '/api/glossary/replacements', { from: 'x', to: 'x' })).status, 400);
 });

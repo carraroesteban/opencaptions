@@ -2,7 +2,7 @@
 // the server once; the browser then holds only an HttpOnly session cookie, which scripts on the page can't read.
 // Nothing is kept in localStorage and no password stays in a link: an old ?token= link, or a password a previous
 // version stored in this browser, is swapped for a session and forgotten.
-import { LANG } from '/prefs.js';
+import { LANG, prefsControls } from '/prefs.js';
 import { store, copyText, esc } from '/common.js';
 
 const T = {
@@ -140,7 +140,7 @@ export async function signInScreen({ message = '', password = '' } = {}) {
   const ssoButton = cfg.sso ? `<button type="button" class="sso">${t.sso(cfg.sso)}</button>` : '';
   const passwordStep = () => {
     dlg.innerHTML = `<form method="dialog" class="u-stack14">
-      <h3 class="u-m0">${t.title}</h3>
+      <div class="signin-top"><h3 class="u-m0">${t.title}</h3></div>
       <p class="muted-note u-m0">${t.lead}</p>
       <p class="err u-m0 u-bad" role="alert"></p>
       ${cfg.password ? `<label class="field">${t.password}<input name="pw" type="password" autocomplete="current-password" required spellcheck="false" /></label>
@@ -158,7 +158,7 @@ export async function signInScreen({ message = '', password = '' } = {}) {
   };
   const codeStep = () => {
     dlg.innerHTML = `<form method="dialog" class="u-stack14">
-      <h3 class="u-m0">${t.codeTitle}</h3>
+      <div class="signin-top"><h3 class="u-m0">${t.codeTitle}</h3></div>
       <p class="muted-note u-m0">${t.codeLead}</p>
       <p class="err u-m0 u-bad" role="alert"></p>
       <label class="field">${t.codeLabel}<input name="code" inputmode="numeric" autocomplete="one-time-code" maxlength="7" required class="u-code-input" /></label>
@@ -171,7 +171,7 @@ export async function signInScreen({ message = '', password = '' } = {}) {
   };
   const claimStep = () => {
     dlg.innerHTML = `<form method="dialog" class="u-stack14">
-      <h3 class="u-m0">${t.claimTitle}</h3>
+      <div class="signin-top"><h3 class="u-m0">${t.claimTitle}</h3></div>
       <p class="muted-note u-m0">${t.claimLead}</p>
       <p class="err u-m0 u-bad" role="alert"></p>
       <label class="field">${t.newPw}<input name="pw" type="password" autocomplete="new-password" minlength="10" required spellcheck="false" /></label>
@@ -186,7 +186,7 @@ export async function signInScreen({ message = '', password = '' } = {}) {
   };
   const crewStep = (crew, body) => {
     dlg.innerHTML = `<form method="dialog" class="u-stack14">
-      <h3 class="u-m0">${t.crewTitle}</h3>
+      <div class="signin-top"><h3 class="u-m0">${t.crewTitle}</h3></div>
       <p class="muted-note u-m0">${t.crewLead}</p>
       <div class="row"><code class="u-grow">${esc(crew)}</code><button type="button" class="copy">${t.copy}</button></div>
       <div class="dlg-actions"><button class="primary" type="submit">${t.next}</button></div>
@@ -197,6 +197,8 @@ export async function signInScreen({ message = '', password = '' } = {}) {
     f.onsubmit = (e) => { e.preventDefault(); dlg.close(); dlg.remove(); finish(body); };
     f.querySelector('.primary').focus();
   };
+  // The page behind is covered: its language and theme buttons come along on every step.
+  new MutationObserver(() => { const top = dlg.querySelector('.signin-top'); if (top && !top.querySelector('.prefs')) top.append(prefsControls()); }).observe(dlg, { childList: true });
   dlg.showModal();
   let device = savedDevice();
   let finish;

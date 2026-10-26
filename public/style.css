@@ -236,6 +236,7 @@ button, .btn-i { vertical-align: middle; }
 .access .ax-qr svg { display: block; width: 100%; height: auto; }
 @media (max-width: 600px) { .access .ax-tfa { grid-template-columns: minmax(0, 1fr); } .access .ax-qr { max-width: 200px; } }
 dialog.signin button.sso { width: 100%; justify-content: center; }
+.signin-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; } /* the title, and the page's language and theme buttons */
 /* A page that needs the password shows nothing but the sign-in until it's in (public/signin.js lifts it) */
 body[data-gate] > :not(dialog.signin) { display: none !important; }
 

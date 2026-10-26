@@ -699,9 +699,9 @@ function renderGrid(s) {
     const f = (k) => el.querySelector(`[data-f="${k}"]`);
     el.querySelector('h3 a').textContent = st.name;
     f('ini').textContent = initials(st.name);
-    f('ini').className = `ini${st.color ? ` rc-${st.color}` : ''}`;
-    for (const c of [...el.classList]) if (c.startsWith('rc-') && c !== `rc-${st.color}`) el.classList.remove(c);
-    if (st.color) el.classList.add(`rc-${st.color}`); // the card's top takes the room's colour
+    f('ini').className = `ini rc-${st.hue}`;
+    for (const c of [...el.classList]) if (c.startsWith('rc-') && c !== `rc-${st.hue}`) el.classList.remove(c);
+    el.classList.add(`rc-${st.hue}`); // the card's top takes the room's colour (chosen, or from its place: server.js hueOf)
     el.classList.toggle('on-air', !!st.ingest && !!st.engines.length && !st.gated && !st.brk && !st.music);
     f('talkline').textContent = st.talk.title || t.noTalk;
     f('talkline').classList.toggle('none', !st.talk.title);
@@ -808,7 +808,7 @@ async function openFix(st) {
   $('dlg-fix').showModal();
 }
 $('fix-ch').onchange = loadFix;
-/** One word changed ("Nerdarla" → "Nerdearla")? Offer to always write it that way (a glossary correction). */
+/** One word changed ("Opencaptions" → "OpenCaptions")? Offer to always write it that way (a glossary correction). */
 const oneWord = (a, b) => {
   const x = a.split(/\s+/), y = b.split(/\s+/);
   if (x.length !== y.length) return null;
@@ -915,7 +915,7 @@ function renderRooms(s) {
     const href = (st) => `#room/${encodeURIComponent(st.id)}`;
     const name = (st) => `<b><i class="dot" aria-hidden="true"></i>${esc(st.name)}<span class="sr-only" data-f="state"></span></b>`;
     box.innerHTML = !s.stages.length ? `<div class="card empty-art rise"><img src="/art/waiting.webp" alt="" width="900" height="900" /><h3>${esc(tr('Todavía no hay salas'))}</h3><p>${esc(tr('Creá una sala por cada escenario o aula: cada una tiene su QR, su pantalla y su overlay.'))}</p></div>`
-      : mode === 'gallery' ? `<ul class="rooms-gallery stagger">${s.stages.map((st) => `<li><a class="card tile lift${st.color ? ` rc-${esc(st.color)}` : ''}" href="${href(st)}" data-id="${esc(st.id)}"><span class="tile-top"><span class="ini${st.color ? ` rc-${esc(st.color)}` : ''}" aria-hidden="true">${esc(initials(st.name))}</span>${name(st)}</span><span class="said" data-f="said"></span><span class="tl" data-f="langs"></span></a></li>`).join('')}</ul>`
+      : mode === 'gallery' ? `<ul class="rooms-gallery stagger">${s.stages.map((st) => `<li><a class="card tile lift rc-${esc(st.hue)}" href="${href(st)}" data-id="${esc(st.id)}"><span class="tile-top"><span class="ini${st.color ? ` rc-${esc(st.color)}` : ''}" aria-hidden="true">${esc(initials(st.name))}</span>${name(st)}</span><span class="said" data-f="said"></span><span class="tl" data-f="langs"></span></a></li>`).join('')}</ul>`
         : `<div class="card flush"><table class="table rooms-list"><thead><tr><th>${esc(tr('Sala'))}</th><th>${esc(tr('Subtítulos'))}</th><th class="hide-sm">${esc(tr('Idiomas'))}</th><th class="hide-sm">${esc(tr('Audio'))}</th></tr></thead><tbody>${s.stages.map((st) => `<tr data-id="${esc(st.id)}"><td><a href="${href(st)}">${name(st)}</a></td><td class="muted-note" data-f="said"></td><td class="hide-sm" data-f="langs"></td><td class="hide-sm" data-f="audio"></td></tr>`).join('')}</tbody></table></div>`;
   }
   for (const st of s.stages) {
@@ -940,9 +940,9 @@ $('trash-list').onclick = async (e) => {
 let editing = null;
 let editStages = [], editSetup = {}; // for the stream address: the ports other rooms use, and this computer's address
 const fe = $('f-edit');
-// Room colours (src/config.js ROOM_COLORS): radio swatches, None first; a tick marks the chosen one (colour isn't the only cue).
+// Room colours (src/config.js ROOM_COLORS): radio swatches, Automatic first (one from its place: server.js hueOf); a tick marks the chosen one (colour isn't the only cue).
 const ROOM_COLOR_NAMES = { green: 'Verde', sky: 'Celeste', violet: 'Violeta', rose: 'Rosa', amber: 'Ámbar', teal: 'Turquesa', orange: 'Naranja', slate: 'Gris' };
-$('room-colors').innerHTML = `<label><input type="radio" name="color" value="" checked />${esc(tr('Ninguna'))}</label>`
+$('room-colors').innerHTML = `<label><input type="radio" name="color" value="" checked />${esc(tr('Automático'))}</label>`
   + Object.entries(ROOM_COLOR_NAMES).map(([k, n]) => `<label class="rc-${k}" title="${esc(tr(n))}"><input type="radio" name="color" value="${k}" aria-label="${esc(tr(n))}" />${icon('check')}</label>`).join('');
 for (const [code, name] of Object.entries(ev.languages)) fe.source.append(new Option(`${name} (${code})`, code));
 async function openEdit(id) {

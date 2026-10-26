@@ -4,6 +4,16 @@ All notable changes to this project are documented in this file. The format foll
 
 ## [Unreleased]
 
+### Changed
+
+- **Every room has its colour on every page.** The phones' list of rooms, the captions page and the transcripts now show each room in the same colour as the dashboard. A room without a chosen colour gets one from its place in the list (the picker's first option is now **Automatic**).
+- **The sign-in screen has the language and theme buttons too**, so every page can switch them before signing in.
+- **The glossary is for terms, not people:** its help and examples no longer mention speakers (the agenda already gives the AI their names), and the examples are generic.
+
+### Fixed
+
+- **After an update, phones and browsers behind Cloudflare kept the old version for up to 4 hours** (Cloudflare turned "check every time" into a 4-hour cache). Pages and code now say `no-cache`, which it leaves alone.
+
 ## [0.9.3] - 2026-10-26
 
 Easier to start on a server: choose the admin password in the browser the first time, update Docker with one line, and language and theme each get their own button again.

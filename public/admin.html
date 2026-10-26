@@ -671,9 +671,9 @@
         <p class="help-pop" popover id="help-glossary">Nombres y términos que la IA tiene que escribir bien, y correcciones que se aplican a todos los subtítulos al instante.</p>
         <section class="card u-stack12">
           <h2 class="u-m0 u-fs20">Nombres y términos</h2>
-          <p data-help>Speakers, marcas, siglas y palabras técnicas. Ayudan al reconocimiento de voz y a la traducción.</p>
+          <p data-help>Marcas, productos, siglas y palabras técnicas. Ayudan al reconocimiento de voz y a la traducción.</p>
           <div class="terms" id="terms" data-no-i18n></div>
-          <form class="rowbar" id="term-form"><input id="term-in" aria-label="Nombres y términos" placeholder="Ej: María José Fernández" class="u-grow u-minw200" maxlength="80" /><button data-icon="plus">Agregar</button></form>
+          <form class="rowbar" id="term-form"><input id="term-in" aria-label="Nombres y términos" placeholder="Ej: Kubernetes" class="u-grow u-minw200" maxlength="80" /><button data-icon="plus">Agregar</button></form>
         </section>
         <section class="card u-stack12">
           <h2 class="u-m0 u-fs20">Correcciones</h2>
@@ -712,7 +712,7 @@
             <section class="card">
               <label class="field">Nombre<input name="name" required maxlength="80" autocomplete="off" /></label>
               <div class="fld"><span id="color-l">Color de la sala</span><div class="swatches" id="room-colors" role="radiogroup" aria-labelledby="color-l"></div><small>Se ve en la insignia de la barra lateral y en la tarjeta de la sala.</small></div>
-              <div class="fld"><span id="tag-l">Etiqueta (opcional)</span><input name="tag" maxlength="24" autocomplete="off" list="tag-list" aria-labelledby="tag-l" placeholder="Workshops, Online, Konex…" /><datalist id="tag-list"></datalist><small>Las salas con la misma etiqueta se agrupan en la barra lateral.</small></div>
+              <div class="fld"><span id="tag-l">Etiqueta (opcional)</span><input name="tag" maxlength="24" autocomplete="off" list="tag-list" aria-labelledby="tag-l" placeholder="Talleres, Online, Planta baja…" /><datalist id="tag-list"></datalist><small>Las salas con la misma etiqueta se agrupan en la barra lateral.</small></div>
               <label class="field hidden" data-advanced id="id-field">ID (en las direcciones de la sala)<input name="id" required pattern="[a-z0-9_-]+" maxlength="40" autocomplete="off" spellcheck="false" /></label>
               <label class="field">Idioma que se habla<select name="source"><option value="auto">Detectar automáticamente</option></select></label>
               <div class="fld" id="spoken-fld"><span id="spoken-l">Solo entre estos idiomas</span><div class="pick" id="edit-spoken" role="group" aria-labelledby="spoken-l"></div><small>La IA reconoce cuál se habla, solo entre los marcados. Ninguno marcado: cualquier idioma.</small></div>
@@ -730,7 +730,7 @@
               <label class="srow"><span><b id="mg-l">Pausar cuando suena música</b><small id="mg-d">Entre charlas y en los videos, los subtítulos esperan a que alguien hable.</small></span><input type="checkbox" role="switch" name="musicGuard" checked aria-labelledby="mg-l" aria-describedby="mg-d" /></label>
               <label class="srow"><span><b id="rs-l">Sonido de la sala en los celulares</b><small id="rs-d">Escucha asistida para quien usa audífonos. Quien tenga el enlace la escucha aunque no esté en la sala: activalo solo si lo que se dice es público.</small></span><input type="checkbox" role="switch" name="roomSound" aria-labelledby="rs-l" aria-describedby="rs-d" /></label>
               <label class="srow indent"><span><b id="rsm-l">Máximo de personas escuchando a la vez</b></span><input name="roomSoundMax" type="number" min="1" max="5000" step="1" inputmode="numeric" placeholder="100" aria-labelledby="rsm-l" /></label>
-              <label class="field">Vocabulario de la sala<textarea name="vocabulary" rows="2" aria-describedby="vocab-hint" placeholder="María José Fernández, OpenCaptions, WCAG"></textarea></label>
+              <label class="field">Vocabulario de la sala<textarea name="vocabulary" rows="2" aria-describedby="vocab-hint" placeholder="OpenCaptions, WCAG, Kubernetes"></textarea></label>
               <p class="muted-note u-m0" id="vocab-hint">Nombres y términos de esta sala, separados por comas. Se suman al glosario.</p>
             </section>
             <div class="form-foot"><button type="button" class="danger" id="room-del" data-setup>Eliminar la sala</button><span class="spacer"></span><button class="primary" data-icon="check" data-setup>Guardar</button></div>

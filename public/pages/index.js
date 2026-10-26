@@ -21,7 +21,7 @@ const mine = () => store.get('lang') || (navigator.language || 'es').slice(0, 2)
 function card(s, ev) {
   const my = s.languages.includes(mine()) ? mine() : null;
   const url = (l) => `/watch.html?stage=${encodeURIComponent(s.id)}${l ? `&lang=${encodeURIComponent(l)}` : ''}`;
-  return `<article class="ix-room${s.live ? ' live' : ''}">
+  return `<article class="ix-room rc-${esc(s.hue)}${s.live ? ' live' : ''}">
     <div class="ix-top">
       <h3><a class="ix-go" href="${url(my)}">${esc(s.name)}</a></h3>
       <span class="chip${s.live ? ' live' : ''}">${s.live ? `<span class="dot live"></span> ${esc(t('live'))}` : esc(t('offline'))}</span>

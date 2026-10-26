@@ -6,6 +6,7 @@ const $ = (id) => document.getElementById(id);
 mountIcons();
 $('prefs-slot').append(prefsControls({ langs: ['es', 'en', 'pt'] }));
 const ev = await getEvent();
+const hues = new Map(ev.stages.map((s) => [s.id, s.hue])); // each talk in its room's colour, as everywhere else
 // Just for me: your own transcripts, one room, and back to your captions (not to an event's rooms).
 const mine = !!ev.personal;
 document.title = `${t(mine ? 'myTranscripts' : 'library')} · ${ev.name}`;
@@ -63,11 +64,11 @@ function render() {
     const dl = d.toLocaleDateString(UI, { weekday: 'long', day: 'numeric', month: 'long' });
     const head = dl !== day ? `<h2 class="tl-day">${esc((day = dl))}</h2>` : '';
     const langs = x.channels.filter((c) => c !== 'orig').map((c) => `<span class="chip">${esc(langLabel(c, ev.languages))}</span>`).join('');
-    return `${head}<a class="tl-talk" href="/talk.html?stage=${encodeURIComponent(x.stage)}&talk=${encodeURIComponent(x.id)}">
+    return `${head}<a class="tl-talk${hues.has(x.stage) ? ` rc-${esc(hues.get(x.stage))}` : ''}" href="/talk.html?stage=${encodeURIComponent(x.stage)}&talk=${encodeURIComponent(x.id)}">
       <span class="tl-when"><b>${esc(hm(d))}</b><span>${Math.max(1, Math.round(x.durationMs / 60000))} min</span></span>
       <span class="tl-body">
         <h3 class="tl-title">${hl(x.title || t('untitled'))}</h3>
-        <span class="tl-meta">${x.speaker ? `<b>${hl(x.speaker)}</b> · ` : ''}${hl(x.stageName)}</span>
+        <span class="tl-meta">${x.speaker ? `<b>${hl(x.speaker)}</b> · ` : ''}<span class="tl-room">${hl(x.stageName)}</span></span>
         <span class="tl-chips">${x.live ? `<span class="chip live"><span class="dot live"></span> ${esc(t('live'))}</span>` : ''}${langs}</span>
       </span>
       <span class="tl-go">${icon('chevron')}</span>

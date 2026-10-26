@@ -297,7 +297,7 @@ Each entry in `stages` (and the body of `POST /api/stages` / `PATCH /api/stages/
     { "id": "main",   "name": "Main Stage", "source": "auto", "targets": ["es", "en"] },
     { "id": "room-a", "name": "Room A", "source": "en", "targets": ["es", "pt"], "translation": "hybrid" },
     { "id": "room-b", "name": "Room B", "source": "es", "targets": ["en"], "pull": "srt://0.0.0.0:9001?mode=listener" },
-    { "id": "room-c", "name": "Room C", "source": "auto", "targets": ["es", "en"], "vocabulary": ["Ngozi Okafor", "telehealth"] }
+    { "id": "room-c", "name": "Room C", "source": "auto", "targets": ["es", "en"], "vocabulary": ["telehealth", "WHO"] }
   ]
 }
 ```
@@ -319,7 +319,7 @@ Loaded from the path in `glossary`/`GLOSSARY` (default `config/glossary.json`, e
 {
   "vocabulary": [
     "Horizon Summit", "OpenCaptions", "keynote", "Q&A", "breakout session",
-    "María José Fernández", "Ngozi Okafor", "Hiroshi Tanaka", "UNESCO", "net zero"
+    "UNESCO", "net zero"
   ],
   "replacements": [
     { "from": "horizons summit|horizon sumit", "to": "Horizon Summit" },

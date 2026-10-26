@@ -22,6 +22,9 @@ $('settings').setAttribute('aria-label', t('settings'));
 const ev = await getEvent();
 // The event's own logo (Settings › General) in the header; OpenCaptions keeps a line under the waiting screen.
 if (ev.logo) Object.assign($('ev-logo'), { src: ev.logo, alt: ev.name }).classList.remove('hidden');
+// The room's colour (the same as on the dashboard and the list of rooms) washes the header; the captions stay plain.
+const hue = ev.stages.find((s) => s.id === stageId)?.hue;
+if (hue) document.querySelector('.w-head').classList.add(`rc-${hue}`);
 let lang = qs.get('lang') || store.get(`lang.${stageId}`) || store.get('lang') || null;
 let dual = store.get('dual', false);
 let size = store.get('size', 24);
