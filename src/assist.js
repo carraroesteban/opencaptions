@@ -279,11 +279,13 @@ export async function askEvent({ docs, lang, question, clientKey, ip = clientKey
   const scored = [];
   for (const d of docs) {
     const lines = d.segs.filter((x) => x.final !== false && (x.channel === 'orig' || x.channel === lang));
-    for (const x of lines) {
+    lines.forEach((x, i) => {
       const tx = fold(x.text);
       const score = keys.reduce((a, k) => a + (tx.includes(k) ? 1 : 0), 0);
-      if (score) scored.push({ ref: d.ref, x, score });
-    }
+      // What comes next often holds the answer ("the first months were hard." → "the connection dropped…"): the two
+      // following lines of the same language ride along with each match.
+      if (score) scored.push({ ref: d.ref, x, score, next: lines.slice(i + 1).filter((y) => y.channel === x.channel).slice(0, 2) });
+    });
   }
   // Best first; the same moment in two languages counts once (the reader's language wins).
   scored.sort((a, b) => b.score - a.score || (a.x.channel === lang ? -1 : 1));
@@ -295,12 +297,16 @@ export async function askEvent({ docs, lang, question, clientKey, ip = clientKey
     picks.push(h);
     if (picks.length >= 24) break;
   }
+  const matches = picks.length;
+  // The matches' following lines, after all the matches (numbered too, so they can be cited).
+  const have = new Set(picks.map((h) => h.x));
+  for (const h of picks.slice()) for (const y of h.next || []) if (!have.has(y) && picks.length < 40) { have.add(y); picks.push({ ref: h.ref, x: y, score: 0 }); }
   const source = (h) => ({ ...h.ref, at: fmt(h.x.start || 0), text: h.x.text });
-  const extractive = { ai: false, found: picks.length > 0, answer: '', sources: picks.slice(0, 6).map(source) };
+  const extractive = { ai: false, found: matches > 0, answer: '', sources: picks.slice(0, Math.min(6, matches)).map(source) };
   if (!audienceAiEnabled || config.engine === 'mock' || config.localLlmOff) return picks.length ? extractive : { ...extractive, found: false };
   // Few or no words in common ("problems" asked, "difficult" said): the model reads every talk instead, each in the
   // asker's language when the room has it, in an even share of about 60 000 characters, and answers by meaning.
-  if (picks.length < 3) {
+  if (matches < 3) {
     picks.length = 0;
     const share = Math.floor(EVENT_CHARS / Math.max(1, docs.length));
     for (const d of docs) {

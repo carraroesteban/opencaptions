@@ -219,3 +219,7 @@ footer.site .legal { order: 10; font-size: 13px; }
 #start .dl-facts b { color: var(--fg); }
 .faq summary { line-height: 1.35; }
 #start .start-intro .lede { margin-bottom: 22px; }
+
+/* New in 1.0: three real phone screens, cropped to the part that shows the feature. */
+.moments .col img.shot { display: block; width: calc(100% + 52px); margin: -26px -26px 22px; aspect-ratio: 4 / 5; object-fit: cover; object-position: top; border-bottom: 1px solid var(--line); background: #FAF8F3; }
+.moments .col img.shot.low { object-position: bottom; }
