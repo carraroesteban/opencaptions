@@ -1,5 +1,5 @@
 // index.html: page script (kept out of the HTML so the Content-Security-Policy can forbid inline scripts).
-import { getEvent, t, UI, esc, langLabel, store } from '/common.js';
+import { getEvent, creditLink, t, UI, esc, langLabel, store } from '/common.js';
 import { prefsControls } from '/prefs.js';
 import { library, icon } from '/illustrations.js';
 const $ = (id) => document.getElementById(id);
@@ -40,7 +40,10 @@ async function render() {
   if (ev.logo && $('ev-logo').getAttribute('src') !== ev.logo) $('ev-logo').src = ev.logo;
   $('ev-logo').classList.toggle('hidden', !ev.logo);
   document.querySelector('.au-bar > .brand').classList.toggle('hidden', !!ev.logo);
-  $('powered').textContent = ev.logo ? `${t('poweredBy')} · ${t('captionsBy')}` : t('poweredBy');
+  $('powered').textContent = t('poweredBy');
+  const credit = creditLink(ev, 'home');
+  if (credit) $('powered').append(document.createElement('br'), credit);
+  else if (ev.logo) $('powered').append(` · ${t('captionsBy')}`);
   document.title = `${ev.name} · ${t('liveCaptions')}`;
   // Live rooms first, the others after, in the organizers' order.
   const live = ev.stages.filter((s) => s.live), rest = ev.stages.filter((s) => !s.live);

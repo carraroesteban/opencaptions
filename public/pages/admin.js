@@ -1865,6 +1865,7 @@ async function loadSettings() {
   tunnelP.update(s);
   renderLanguages(s);
   $('tx-access').value = s.publicTranscripts;
+  $('credit').checked = s.credit !== false;
   if (s.publicTranscriptsFixed) $('tx-access-note').textContent = tr('Lo fija PUBLIC_TRANSCRIPTS en el archivo .env.');
   if (document.activeElement !== $('name-in')) $('name-in').value = s.named === false ? '' : s.name; // unnamed: empty, not the fallback
   $('name-in').placeholder = LANG === 'es' ? 'Ej: Semana del Diseño 2026' : 'e.g. City Design Week 2026';
@@ -1973,6 +1974,10 @@ $('langs-list').onclick = async (e) => {
   if (c in (settingsSetup.addedLanguages || {})) { const rest = { ...settingsSetup.addedLanguages }; delete rest[c]; body.languages = rest; }
   if ((settingsSetup.builtInLanguages || []).includes(c)) body.removedLanguages = [...(settingsSetup.removedLanguages || []), c];
   await saveLanguages(body);
+};
+$('credit').onchange = async () => {
+  try { await api('PUT', '/api/setup', { credit: $('credit').checked }); toast(tr('Guardado')); } catch { /* toast shown */ }
+  await loadSettings();
 };
 $('tx-access').onchange = async () => {
   try { await api('PUT', '/api/setup', { publicTranscripts: $('tx-access').value }); toast(tr('Guardado')); } catch { /* toast shown */ }

@@ -22,7 +22,7 @@ if (qs.get('size')) document.documentElement.style.setProperty('--main', qs.get(
 applyCaptionStyle(qs, { style: 'none', align: 'left' });
 if (qs.get('bg')) document.documentElement.style.setProperty('--screen-bg', toColor(qs.get('bg')));
 if (qs.get('clock') === '0') $('clock').classList.add('hidden');
-$('powered').textContent = t('poweredBy');
+$('powered').textContent = ev.credit === false ? t('poweredBy') : `${t('poweredBy')} · opencaptions.kvza.ar`;
 if (ev.logo) Object.assign($('ev-logo'), { src: ev.logo, alt: ev.name }).classList.remove('hidden'); // OpenCaptions stays as the credit at the bottom
 $('follow').textContent = t('followOnPhone');
 const viewUrl = `${ev.publicUrl}/s/${stageId}`;

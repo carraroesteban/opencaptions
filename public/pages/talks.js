@@ -1,5 +1,5 @@
 // talks.html: page script (kept out of the HTML so the Content-Security-Policy can forbid inline scripts).
-import { t, UI, esc, getEvent, langLabel, segment } from '/common.js';
+import { t, UI, esc, getEvent, creditLink, langLabel, segment } from '/common.js';
 import { prefsControls } from '/prefs.js';
 import { client } from '/assist-ui.js';
 import { icon, mountIcons } from '/illustrations.js';
@@ -21,8 +21,9 @@ $('foot').textContent = t('poweredBy');
 // The event's own logo (Settings › General) where OpenCaptions' was; OpenCaptions keeps a line at the bottom.
 if (ev.logo) {
   document.querySelector('.au-bar > .brand').replaceChildren(Object.assign(new Image(), { src: ev.logo, alt: ev.name, className: 'ev-logo' }));
-  $('foot').textContent += ` · ${t('captionsBy')}`;
+  if (ev.credit === false) $('foot').textContent += ` · ${t('captionsBy')}`;
 }
+{ const c = creditLink(ev, 'transcripts'); if (c) $('foot').append(document.createElement('br'), c); }
 // The search bar stays at the top while scrolling; a hairline appears once it's floating over the list.
 new IntersectionObserver(([e]) => $('tools').classList.toggle('stuck', e.intersectionRatio < 1), { rootMargin: '-1px 0px 0px 0px', threshold: 1 }).observe($('tools'));
 

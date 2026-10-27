@@ -276,6 +276,7 @@ app.get('/api/event', (req, res) => {
     audienceAi: audienceAiEnabled,
     timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
     publicTranscripts: PUBLIC_TRANSCRIPTS,
+    credit: setup.credit !== false, // "Live captions by OpenCaptions" on the audience pages (Settings → Event)
     logo: logo ? `/branding/logo?v=${logo.v}` : null,
     stages: visibleStages().map(roomSummary),
   });
@@ -1108,6 +1109,7 @@ app.get('/api/setup', crew, (req, res) => {
     removedLanguages: setup.removedLanguages || [],
     publicTranscripts: PUBLIC_TRANSCRIPTS,
     publicTranscriptsFixed: transcriptsFixed,
+    credit: setup.credit !== false,
     speechModel: speechModel(),
     speechModelFixed: transcribeFixed,
     defaultTargets: config.event.defaultTargets.filter((c) => c in config.event.languages),
@@ -1189,6 +1191,10 @@ app.put('/api/setup', admin, (req, res) => {
   if (added) patch.languages = added;
   if (removed) patch.removedLanguages = removed;
   if (added || removed) config.event.languages = offeredLanguages(added ?? setup.languages, removed ?? setup.removedLanguages);
+  if ('credit' in b && !!b.credit !== (setup.credit !== false)) {
+    patch.change = recordChange({ kind: 'event.credit', summary: b.credit ? 'Audience pages say the captions come from OpenCaptions' : 'Audience pages no longer name OpenCaptions', before: !b.credit, after: !!b.credit }).id;
+    patch.credit = !!b.credit;
+  }
   if ('publicTranscripts' in b && b.publicTranscripts !== PUBLIC_TRANSCRIPTS) {
     patch.change = recordChange({ kind: 'transcripts.access', summary: `Transcripts: ${b.publicTranscripts}`, before: PUBLIC_TRANSCRIPTS, after: b.publicTranscripts }).id;
     PUBLIC_TRANSCRIPTS = patch.publicTranscripts = b.publicTranscripts;

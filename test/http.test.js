@@ -299,3 +299,12 @@ test('compressed request bodies are refused before any decompression (Node zlib 
   const h = { 'content-type': 'application/json', 'content-encoding': 'br', 'x-admin-token': 't' };
   assert.equal((await fetch(`${base}/api/setup`, { method: 'PUT', headers: h, body: zlib.brotliCompressSync('{"name":"x"}') })).status, 415);
 });
+
+test('audience pages name OpenCaptions until the organizers switch it off', async () => {
+  assert.equal((await (await fetch(`${base}/api/event`)).json()).credit, true);
+  const put = (credit) => fetch(`${base}/api/setup`, { method: 'PUT', headers: { 'content-type': 'application/json', authorization: 'Bearer t' }, body: JSON.stringify({ credit }) });
+  assert.equal((await put(false)).status, 200);
+  assert.equal((await (await fetch(`${base}/api/event`)).json()).credit, false);
+  await put(true);
+  assert.equal((await (await fetch(`${base}/api/event`)).json()).credit, true);
+});

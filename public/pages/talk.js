@@ -1,5 +1,5 @@
 // talk.html: page script (kept out of the HTML so the Content-Security-Policy can forbid inline scripts).
-import { qs, t, UI, esc, store, wsUrl, Socket, langLabel, getEvent, applyReadingPrefs, setReadingPref, fmtClock, liveHtml, endsSentence, copyText, segment, readingItems, previewFonts } from '/common.js';
+import { creditLink, qs, t, UI, esc, store, wsUrl, Socket, langLabel, getEvent, applyReadingPrefs, setReadingPref, fmtClock, liveHtml, endsSentence, copyText, segment, readingItems, previewFonts } from '/common.js';
 import { mountAssistant } from '/assist-ui.js';
 import { icon, mountIcons } from '/illustrations.js';
 import { prefsControls } from '/prefs.js';
@@ -17,10 +17,11 @@ $('bigger').setAttribute('aria-label', t('bigger'));
 $('q').setAttribute('aria-label', t('search'));
 const ev = await getEvent();
 // The event's own logo (Settings › General) where OpenCaptions' was; OpenCaptions keeps a line at the bottom.
-if (ev.logo) {
-  document.querySelector('.au-bar > .brand').replaceChildren(Object.assign(new Image(), { src: ev.logo, alt: ev.name, className: 'ev-logo' }));
-  $('credit').textContent = t('captionsBy');
-  $('credit').classList.remove('hidden');
+if (ev.logo) document.querySelector('.au-bar > .brand').replaceChildren(Object.assign(new Image(), { src: ev.logo, alt: ev.name, className: 'ev-logo' }));
+{
+  const c = creditLink(ev, 'talk');
+  if (c) $('credit').append(c); else if (ev.logo) $('credit').textContent = t('captionsBy');
+  $('credit').classList.toggle('hidden', !c && !ev.logo);
 }
 let prefs = applyReadingPrefs();
 let size = store.get('docSize', 19);

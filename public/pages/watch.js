@@ -1,5 +1,5 @@
 // watch.html: page script (kept out of the HTML so the Content-Security-Policy can forbid inline scripts).
-import { qs, t, esc, store, wsUrl, Socket, CaptionState, PcmPlayer, langLabel, wakeLock, getEvent, applyReadingPrefs, setReadingPref, pauseView, CaptionFlow, segment, pressSegment, readingItems, previewFonts } from '/common.js';
+import { creditLink, qs, t, esc, store, wsUrl, Socket, CaptionState, PcmPlayer, langLabel, wakeLock, getEvent, applyReadingPrefs, setReadingPref, pauseView, CaptionFlow, segment, pressSegment, readingItems, previewFonts } from '/common.js';
 import { mountAssistant, client } from '/assist-ui.js';
 import { icon, mountIcons } from '/illustrations.js';
 import { prefsControls } from '/prefs.js';
@@ -20,6 +20,7 @@ $('doc').title = t('transcript');
 $('doc').setAttribute('aria-label', t('transcript')); // an icon-only link: screen readers need its name
 $('settings').setAttribute('aria-label', t('settings'));
 const ev = await getEvent();
+for (const d of ['dlg-ai', 'dlg-set']) { const c = creditLink(ev, 'phone'); if (c) $(d).append(c); }
 // The event's own logo (Settings › General) in the header; OpenCaptions keeps a line under the waiting screen.
 if (ev.logo) Object.assign($('ev-logo'), { src: ev.logo, alt: ev.name }).classList.remove('hidden');
 // The room's colour (the same as on the dashboard and the list of rooms) washes the header; the captions stay plain.

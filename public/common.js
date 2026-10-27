@@ -31,7 +31,7 @@ const T = {
     brk: 'Pausa', brkSub: 'Los subtítulos siguen cuando vuelva la charla.', backAt: 'Volvemos a las', nextUp: 'Próxima charla', musicOn: 'Suena música · los subtítulos vuelven cuando alguien hable',
     fixTalk: 'Corregir', fixHint: 'Tocá una frase para corregirla: se guarda al salir de ella (Enter). Las descargas usan el texto corregido.',
     deleteTalk: 'Eliminar', deleteTalkQ: '¿Eliminar para siempre esta transcripción? No se puede deshacer.',
-    chapters: 'Capítulos', keyQuotes: 'Frases destacadas', share: 'Compartir',
+    chapters: 'Capítulos', keyQuotes: 'Frases destacadas', share: 'Compartir', creditLine: 'Subtítulos en vivo por OpenCaptions · gratis para tu evento',
     libraryAsk: 'Cada charla en tu idioma, y preguntale a todo el evento.',
     askEvent: 'Preguntale a todo el evento', askEventHint: 'Cada sala y cada charla, en tu idioma, con el momento exacto.', askEventPh: 'Ej: ¿en qué charla hablaron de privacidad?', askEventNone: 'No lo encontré en ninguna charla.',
     explainWord: 'Explicar una palabra', explainHint: 'Tocá cualquier palabra de los subtítulos, o escribila acá.', termPlaceholder: 'Una palabra o frase', generalMeaning: 'Significado general: la charla todavía no lo explica', notSaidYet: 'Todavía no se dijo en esta charla.',
@@ -57,7 +57,7 @@ const T = {
     brk: 'Break', brkSub: 'Captions continue when the talk resumes.', backAt: 'Back at', nextUp: 'Next talk', musicOn: 'Music playing · captions return when someone speaks',
     fixTalk: 'Correct', fixHint: 'Tap a sentence to correct it: it’s saved when you leave it (Enter). Downloads use the corrected text.',
     deleteTalk: 'Delete', deleteTalkQ: 'Delete this transcript for good? This can’t be undone.',
-    chapters: 'Chapters', keyQuotes: 'Key quotes', share: 'Share',
+    chapters: 'Chapters', keyQuotes: 'Key quotes', share: 'Share', creditLine: 'Live captions by OpenCaptions · free for your event',
     libraryAsk: 'Every talk in your language, and ask the whole event.',
     askEvent: 'Ask the whole event', askEventHint: 'Every room and every talk, in your language, with the exact moment.', askEventPh: 'e.g. Which talk mentioned privacy?', askEventNone: 'I couldn’t find that in any talk.',
     explainWord: 'Explain a word', explainHint: 'Tap any word in the captions, or type it here.', termPlaceholder: 'A word or phrase', generalMeaning: 'General meaning: the talk hasn’t explained it yet', notSaidYet: 'Not said in this talk yet.',
@@ -83,7 +83,7 @@ const T = {
     brk: 'Intervalo', brkSub: 'As legendas continuam quando a palestra voltar.', backAt: 'Voltamos às', nextUp: 'Próxima palestra', musicOn: 'Tocando música · as legendas voltam quando alguém falar',
     fixTalk: 'Corrigir', fixHint: 'Toque numa frase para corrigi-la: ela é salva quando você sai dela (Enter). Os downloads usam o texto corrigido.',
     deleteTalk: 'Excluir', deleteTalkQ: 'Excluir esta transcrição para sempre? Não dá para desfazer.',
-    chapters: 'Capítulos', keyQuotes: 'Frases em destaque', share: 'Compartilhar',
+    chapters: 'Capítulos', keyQuotes: 'Frases em destaque', share: 'Compartilhar', creditLine: 'Legendas ao vivo por OpenCaptions · grátis para o seu evento',
     libraryAsk: 'Cada palestra no seu idioma, e pergunte ao evento inteiro.',
     askEvent: 'Pergunte ao evento inteiro', askEventHint: 'Cada sala e cada palestra, no seu idioma, com o momento exato.', askEventPh: 'Ex.: qual palestra falou de privacidade?', askEventNone: 'Não encontrei isso em nenhuma palestra.',
     explainWord: 'Explicar uma palavra', explainHint: 'Toque qualquer palavra das legendas, ou escreva aqui.', termPlaceholder: 'Uma palavra ou frase', generalMeaning: 'Significado geral: a palestra ainda não explicou', notSaidYet: 'Ainda não foi dito nesta palestra.',
@@ -129,6 +129,16 @@ export const store = {
 
 // Theme: follows the OS (prefers-color-scheme) unless the viewer picked one.
 (() => { const th = store.get('theme', null); if (th) document.documentElement.dataset.theme = th; })();
+
+/**
+ * "Live captions by OpenCaptions · free for your event": how the next organizer finds it. A quiet link on the audience
+ * pages, `ref` saying which page it came from; the organizers can hide it (Settings → Event). null when hidden.
+ */
+export function creditLink(ev, ref) {
+  if (ev.credit === false || ev.personal) return null;
+  const a = Object.assign(document.createElement('a'), { className: 'oc-credit', href: `https://opencaptions.kvza.ar/?ref=${encodeURIComponent(ref)}`, target: '_blank', rel: 'noopener', textContent: t('creditLine') });
+  return a;
+}
 
 export async function getEvent() {
   const r = await fetch('/api/event');

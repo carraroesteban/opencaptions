@@ -92,6 +92,8 @@ const DICTS = {
     'Los que pueden elegir las salas. Agregá los que necesites y quitá los que no; después elegilos en cada sala.': 'The ones rooms can use. Add the ones you need and remove the ones you don’t, then pick them in each room.',
     'Idioma para agregar': 'Language to add',
     'Transcripciones para el público': 'Transcripts for the audience',
+    'Decir de dónde salen los subtítulos': 'Say where the captions come from',
+    'Una línea discreta para el público: «Subtítulos en vivo por OpenCaptions». Así otros organizadores lo conocen.': 'A quiet line for the audience: “Live captions by OpenCaptions”. That’s how other organizers hear about it.',
     'Qué puede leer y descargar el público sin iniciar sesión. Pedí permiso a los speakers antes de publicar charlas anteriores.': 'What the audience can read and download without signing in. Ask speakers before publishing past talks.',
     'Solo la charla en curso': 'Only the talk in progress',
     'Todas las charlas': 'Every talk',

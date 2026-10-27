@@ -6,7 +6,7 @@ OpenCaptions runs on your own computer or server and never reports to its author
 
 - **Transcripts, rooms, the agenda, the glossary, the History and your passwords** are files in the data folder (`data/` in a clone or Docker, `~/Library/Application Support/OpenCaptions/data` with the Mac app, `%LOCALAPPDATA%\OpenCaptions\data` on Windows). They stay until you delete them; `RETENTION_DAYS` deletes old transcripts by itself.
 - **Audio is never written to disk.** A recording you upload to caption is kept only while it's being captioned, then deleted ([Caption a recording](recording.md)).
-- **Nothing about the audience** is collected: no accounts, cookies, analytics or logs of who read what. A phone remembers its own choices (language, text size, theme) in its browser.
+- **Nothing about the audience** is collected: no accounts, cookies, analytics or logs of who read what. A phone remembers its own choices (language, text size, theme) in its browser. The audience pages carry a quiet link, "Live captions by OpenCaptions · free for your event", to the OpenCaptions website; it only leaves the event's pages if someone taps it (**Settings → Event → Say where the captions come from** hides it).
 
 ## What leaves, and when
 

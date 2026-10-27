@@ -481,3 +481,7 @@ dialog.tk-del { max-width: min(440px, calc(100vw - 32px)); }
 .tk-quotes p { margin: 0; font-size: 17px; line-height: 1.5; }
 .tk-quotes button { padding: 2px 0; background: none; font-size: 14px; }
 .tk-quotes p::first-letter { text-transform: uppercase; } /* a quote taken from mid-sentence */
+
+/* "Live captions by OpenCaptions · free for your event" (common.js creditLink). */
+.oc-credit { display: inline-block; margin-top: 18px; font-size: 13px; color: var(--fg2); text-decoration: underline; text-decoration-color: var(--line-strong); text-underline-offset: 3px; }
+.sheet > .oc-credit { display: block; text-align: center; }
