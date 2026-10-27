@@ -18,7 +18,7 @@ services:
     environment:
       HOST_DIR: "${PWD}"
       PUBLIC_URL: "${PUBLIC_URL:-https://try-opencaptions.kvza.ar}"
-      MAX_COPIES: "${MAX_COPIES:-15}"
+      MAX_COPIES: "${MAX_COPIES:-8}"
       COPY_MINUTES: "${COPY_MINUTES:-60}"
       TZ: "${TZ:-UTC}"
     volumes:
