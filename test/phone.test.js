@@ -117,11 +117,19 @@ test('a reader scrolled up to re-read keeps their place when the phone comes bac
   await page.send('Emulation.setDeviceMetricsOverride', { width: 390, height: 420, deviceScaleFactor: 1, mobile: true });
   await page.until("document.getElementById('scroll').scrollHeight > document.getElementById('scroll').clientHeight + 400", 30000);
   const at = await page.evaluate("(() => { const s = document.getElementById('scroll'); s.scrollTop = 0; s.dispatchEvent(new Event('scroll')); return s.scrollTop; })()");
+  // What happens on the way back, for the failure message: scroll changes and every message that isn't a caption.
+  await page.evaluate(`(() => {
+    const log = window.__log = [], s = document.getElementById('scroll'), t = () => Math.round(performance.now());
+    s.addEventListener('scroll', () => log.push(['scroll', t(), s.scrollTop, s.scrollHeight, s.clientHeight]), { passive: true });
+    const W = window.WebSocket;
+    window.WebSocket = class extends W { constructor(...a) { super(...a); this.addEventListener('message', (e) => { if (typeof e.data !== 'string') return; const m = JSON.parse(e.data); if (m.type !== 'caption') log.push([m.type, t(), m.talk ?? '']); }); } };
+    return true;
+  })()`);
   await sleep(1100);
   await page.evaluate(BACKGROUND(1500));
   await page.until(`(${SHOWN}).down === false`, 2000);
   const r = await page.evaluate("({ top: document.getElementById('scroll').scrollTop, tolive: !document.getElementById('tolive').classList.contains('hidden') })");
-  assert.equal(r.top, at, 'still where they were reading');
+  assert.equal(r.top, at, `still where they were reading: ${JSON.stringify(await page.evaluate('window.__log'))}`);
   assert.equal(r.tolive, true, 'with the button back to live');
 });
 

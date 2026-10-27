@@ -161,7 +161,8 @@ test('voice: each translated sentence is read aloud, sent at the pace it is hear
   await sleep(1700);
   assert.equal(asked.length, 2, 'the next sentence once this one is nearly heard');
   assert.equal(asked[1].rate, 1.15, 'another one waiting: a little faster');
-  assert.ok(got.filter((g) => g.n === 1).at(-1).at - t0 >= 400, 'never more than a second ahead of the ear');
+  // Scheduled exactly 400 ms out (1.5 s of audio, 1 s ahead); timers can fire a millisecond early by Date.now().
+  assert.ok(got.filter((g) => g.n === 1).at(-1).at - t0 >= 390, 'never more than a second ahead of the ear');
   assert.ok(got.findIndex((g) => g.n === 2) > got.findLastIndex((g) => g.n === 1), 'in order');
   v.stop();
   const before = got.length;
