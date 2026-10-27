@@ -77,6 +77,10 @@
     @keyframes ig-spin { to { rotate: 360deg; } }
     #brk, #slides { min-height: 52px; padding: 0 20px; border-radius: var(--pill); animation: oc-in .35s var(--ease-out); }
     #slides-note { text-align: center; margin-top: 10px; }
+    .ig-aud { display: flex; align-items: center; gap: 18px; padding: 18px; }
+    .ig-aud img { flex: none; width: 132px; height: 132px; border-radius: 12px; background: #fff; padding: 6px; }
+    .ig-aud h2 { margin: 0 0 6px; font-size: 20px; }
+    .ig-aud p { margin: 0; word-break: break-all; }
     #brk kbd { margin-left: 4px; }
 
     /* What's being captioned, live */
@@ -158,6 +162,11 @@
         <button id="slides" class="hidden" aria-pressed="false" data-no-i18n aria-describedby="slides-note"></button>
       </div>
       <p class="muted hint u-m0 hidden" id="slides-note" data-no-i18n aria-live="polite"></p>
+    </section>
+
+    <section class="card ig-aud rise hidden" id="aud" aria-labelledby="aud-h" data-no-i18n>
+      <img id="aud-qr" alt="" width="132" height="132" />
+      <div><h2 id="aud-h"></h2><p class="muted" id="aud-url"></p></div>
     </section>
 
     <section class="card preview rise" aria-labelledby="pv-h">

@@ -124,6 +124,8 @@ Open http://localhost:8080/demo.html?mode=mic, allow the microphone and speak. Y
 
 Browsers only allow microphone access on `localhost` or over HTTPS. To use the microphone from another device, read [Deployment](deployment.md#https).
 
+**A meetup with no sound desk:** one phone can run a room. With a public address on (**Settings → Public address**), open the room's audio page on the phone (the room → **Sound** → its link), tap **Start captioning** and set the phone near the speaker. The same screen shows the QR code the audience scans, keeps the phone awake, and warns before its battery runs out (on Android). Plug it in for anything longer than a short talk.
+
 ## What you did
 
 You ran the server, fed it audio from a file and a microphone, and watched captions and translations in two rooms at the same time. The same pieces run at a real event:

@@ -4,6 +4,7 @@ import { localize, prefsControls, tr, LANG } from '/i18n.js';
 import { icon } from '/illustrations.js';
 import { openMic, openScreenAudio, keepAlive, wake } from '/capture.js';
 const $ = (id) => document.getElementById(id);
+const phone = matchMedia('(pointer: coarse)').matches; // a phone running the room (see the end of this file)
 
 // This page's newer words, per language (the older ones are Spanish source text that i18n.js translates).
 const L = {
@@ -16,6 +17,7 @@ const L = {
     needkey: 'Falta el enlace de la sala o la contraseña', noroom: 'Esta sala ya no existe', fileEnded: 'La grabación terminó', inputLost: 'La entrada de audio se desconectó',
     lvOff: 'El nivel aparece al empezar', lvSilent: 'No llega sonido: ¿está prendido el micrófono?', lvQuiet: 'Muy bajo: subí el volumen', lvGood: 'Buen nivel', lvLoud: 'Muy alto: bajalo un poco',
     elapsed: 'Tiempo enviando',
+    audH: 'El público escanea esto', battery: 'Batería baja: conectá el cargador para que no se corte el sonido de la sala.',
     slidesOn: 'Compartir diapositivas', slidesOff: 'Dejar de compartir diapositivas',
     slidesHint: 'Elegí la pantalla o la ventana de la presentación. Los teléfonos ven cada diapositiva nueva, traducida.',
     slidesSent: (n) => `Compartiendo la pantalla · ${n} ${n === 1 ? 'diapositiva enviada' : 'diapositivas enviadas'}`,
@@ -29,6 +31,7 @@ const L = {
     needkey: 'This computer needs the room link or the password', noroom: 'This room doesn’t exist anymore', fileEnded: 'The recording finished', inputLost: 'The audio input was disconnected',
     lvOff: 'The level shows once you start', lvSilent: 'No sound: is the microphone on?', lvQuiet: 'Too quiet: turn it up', lvGood: 'Good level', lvLoud: 'Too loud: turn it down a little',
     elapsed: 'Time sending',
+    audH: 'The audience scans this', battery: 'Battery low: plug in the charger so the room’s sound doesn’t stop.',
     slidesOn: 'Share slides', slidesOff: 'Stop sharing slides',
     slidesHint: 'Pick the screen or window with the presentation. Phones see each new slide, translated.',
     slidesSent: (n) => `Sharing the screen · ${n} ${n === 1 ? 'slide sent' : 'slides sent'}`,
@@ -210,7 +213,8 @@ async function start() {
     onBreak = false;
     brkLabel();
     $('brk').classList.remove('hidden');
-    $('slides').classList.toggle('hidden', !navigator.mediaDevices?.getDisplayMedia); // phones can't share a screen
+    $('slides').classList.toggle('hidden', !navigator.mediaDevices?.getDisplayMedia || phone); // phones can't share a screen
+    watchBattery();
     goLabel(true);
     $('go').classList.add('stop');
     $('deck').classList.add('on');
@@ -452,3 +456,25 @@ function stopSlides() {
 }
 $('slides').onclick = shareSlides;
 slideLabel();
+
+// ---------- a phone as the room's microphone (a meetup with no sound desk) ----------
+// On a phone, the audience's QR code on the same screen, so one phone runs the room; and a warning before its battery
+// runs out mid-talk (where the browser says, Chrome on Android).
+function showAudience() {
+  const url = `${ev.publicUrl || location.origin}/s/${encodeURIComponent($('stage').value)}`;
+  $('aud-qr').src = `/api/qr.svg?text=${encodeURIComponent(url)}`;
+  $('aud-qr').alt = url;
+  $('aud-h').textContent = L.audH;
+  $('aud-url').textContent = url.replace(/^https?:\/\//, '');
+  $('aud').classList.remove('hidden');
+}
+if (phone || qs.get('qr') === '1') { showAudience(); $('stage').addEventListener('change', showAudience); }
+let batteryWarned = false;
+async function watchBattery() {
+  const b = await navigator.getBattery?.().catch(() => null);
+  if (!b) return;
+  const check = () => { if (running && !batteryWarned && !b.charging && b.level < 0.2) { batteryWarned = true; alertBox(L.battery); } };
+  b.addEventListener('levelchange', check);
+  b.addEventListener('chargingchange', () => { if (b.charging) batteryWarned = false; });
+  check();
+}

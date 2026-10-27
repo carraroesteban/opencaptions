@@ -12,6 +12,7 @@ All notable changes to this project are documented in this file. The format foll
 
 ### Added
 
+- **One phone can run a room.** Its audio page, opened on a phone, shows the QR code for the audience on the same screen (also `?qr=1` on any computer) and warns before the battery runs out; **Share slides** stays off on phones, which can't share a screen. See [Getting started](docs/getting-started.md#7-try-a-live-microphone).
 - **Audience pages say where the captions come from**: a quiet "Live captions by OpenCaptions · free for your event" link on the home page, the phone's sheets, the transcripts and each talk's page, and the website's address on the projector's footer, so the next organizer in the audience can find it. **Settings → Event → Say where the captions come from** turns it off.
 - **A public demo that runs forever for free** ([`deploy/hosted/demo`](deploy/hosted/demo/README.md)): one room captioning the sample talk on a loop, with the AI's answers replayed from a recording of the whole talk; the website's and README's first button, **Try it live**, opens it. Replay now starts over with audio that loops, instead of going silent until the session restarts.
 - **Every talk, its own page.** The transcript page now opens with the talk's chapters (each a link to its moment) and key quotes, word for word, in the language being read; **Share** uses the phone's share sheet; a shared link previews as the talk where its transcript is public. Talk pages stay out of search engines unless `INDEX_TALKS=on`.
