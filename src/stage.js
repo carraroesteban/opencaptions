@@ -339,7 +339,7 @@ export class Stage extends EventEmitter {
         transcribeOnly: this.transcribeOnly,
       };
       const e = config.engine === 'gemini' ? new GeminiEngine(opts)
-        : config.engine === 'local' && config.localAsrApi === 'apple' ? new AppleEngine({ ...opts, languages: spoken || [...new Set([...this.transTargets, ...Object.keys(config.event.languages)])], heard: spoken && !spoken.includes(this.heardLang) ? spoken[0] : this.heardLang })
+        : this.#macVoice() ? new AppleEngine({ ...opts, languages: spoken || [...new Set([...this.transTargets, ...Object.keys(config.event.languages)])], heard: spoken && !spoken.includes(this.heardLang) ? spoken[0] : this.heardLang })
         : config.engine === 'local' ? new LocalEngine({ ...opts, languages: spoken || [...new Set([...this.transTargets, this.source, ...Object.keys(config.event.languages)])] })
           : new MockEngine(opts);
       e.on('input', (t) => primary && this.#onInput(t));
@@ -480,7 +480,7 @@ export class Stage extends EventEmitter {
   // ---------- text translation (sentence by sentence, with provisional partials) ----------
   #mtFeed(text, finished, spoken) {
     // Transcription only (npm run local -- --no-llm), unless Apple translates (src/local/apple.js).
-    if (config.engine === 'local' && config.localLlmOff && config.localAsrApi !== 'apple') return;
+    if (config.engine === 'local' && config.localLlmOff && !this.#macVoice()) return;
     this.mtQ ??= {};
     // Bind translators to the tracks of the current talk: a translation that returns after a talk
     // rollover must land in the talk it belongs to, not in the next one.

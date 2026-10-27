@@ -48,6 +48,7 @@ OpenCaptions is free, open-source software for live captions and translation at 
 | [Architecture](architecture.md) | Components, data flow, failure handling and how it scales. |
 | [API reference](reference/api.md) | HTTP endpoints, WebSocket protocols, metrics and page URLs. |
 | [Architecture decision records](adr/README.md) | Why the main technical choices were made, and what they cost. |
+| [Glossary](../GLOSSARY.md) | The one word to use for each idea (room, talk, crew, original…) in code, docs and the app. |
 | [Brand and design system](brand.md) | Logo files, colors, type, light/dark tokens, motion and the website. |
 | [How Apple's Live Translation works](research/apple-live-translation.md) | Research behind local mode on a Mac. |
 | [Contributing guide](../.github/CONTRIBUTING.md) | Dev setup, tests, commit style and documentation standards. |

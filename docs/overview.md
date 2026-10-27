@@ -116,6 +116,8 @@ OpenCaptions is released under the [MIT license](../LICENSE): free for any event
 
 ## Glossary
 
+The full list, with the words to avoid, is in [GLOSSARY.md](../GLOSSARY.md).
+
 | Term | Meaning |
 |---|---|
 | Room / stage | A physical room or track. `stage` is the identifier used in URLs and the API. |
