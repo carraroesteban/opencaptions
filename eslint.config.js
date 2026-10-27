@@ -17,7 +17,7 @@ export default [
       'no-shadow-restricted-names': 'error',
     },
   },
-  { files: ['src/**/*.js', 'scripts/**/*.js', 'test/**/*.js', '*.js'], languageOptions: { globals: { ...globals.node } } },
+  { files: ['src/**/*.js', 'scripts/**/*.js', 'deploy/**/*.js', 'test/**/*.js', '*.js'], languageOptions: { globals: { ...globals.node } } },
   { files: ['public/**/*.js', 'site/**/*.js', 'docs/**/*.js'], languageOptions: { globals: { ...globals.browser } } },
   { files: ['public/pcm-worklet.js'], languageOptions: { globals: { ...globals.audioWorklet } } },
 ];

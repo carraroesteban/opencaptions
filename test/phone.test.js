@@ -150,3 +150,16 @@ test('history after a reconnect: kept when it overlaps, replaced when the phone 
   assert.equal(r.gap, Array.from({ length: 40 }, (_, i) => 's' + (150 + i)).join(','), 'no overlap: no lines joined across a gap');
   assert.equal(r.other, 40);
 });
+
+test('a failed request says why: the server message, or a plain one for a proxy error page (never a bare "Error")', { skip }, async () => {
+  const r = await page.evaluate(`import('/common.js').then(({ failText }) => [
+    failText({ status: 400, statusText: 'Bad Request' }, { error: 'pick a room' }),
+    failText({ status: 502, statusText: '' }, {}),
+    failText({ status: 503, statusText: 'Service Unavailable' }, {}),
+    failText({ status: 404, statusText: 'Not Found' }, {}),
+  ])`);
+  assert.equal(r[0], 'pick a room');
+  assert.match(r[1], /OpenCaptions/);
+  assert.equal(r[2], r[1], 'a 5xx without a message never shows the proxy status text');
+  assert.equal(r[3], 'Not Found');
+});

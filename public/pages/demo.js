@@ -1,6 +1,6 @@
 /* global YT */ // the YouTube IFrame API, loaded below
 // demo.html: page script (kept out of the HTML so the Content-Security-Policy can forbid inline scripts).
-import { qs, esc, store, wsUrl, Socket, CaptionState, getEvent, langLabel, liveText, liveHtml, ingestTicket } from '/common.js';
+import { qs, esc, store, wsUrl, Socket, CaptionState, getEvent, langLabel, liveText, liveHtml, ingestTicket, failText } from '/common.js';
 import { localize, prefsControls, tr, LANG } from '/i18n.js';
 import { mountIcons, icon } from '/illustrations.js';
 import { ensureSignedIn } from '/signin.js';
@@ -80,7 +80,7 @@ async function startAt(t) {
       throw new Error(r.status === 404 ? 'el server no tiene la ruta /youtube: reiniciá `npm start` para cargar la versión nueva.' : `respuesta inesperada del server (${r.status})`);
     }
     if (r.status === 401) throw new Error('falta el ADMIN_TOKEN: abrí /admin.html una vez e ingresalo.');
-    if (!r.ok) throw new Error(j.error || r.statusText);
+    if (!r.ok) throw new Error(failText(r, j));
     player.seekTo(t, true);
     player.playVideo();
     anchor = { t, at: Date.now() };

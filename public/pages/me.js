@@ -3,7 +3,7 @@
 // One room ("me") behind the scenes; nothing is public in personal mode (see src/server.js).
 // Three screens (body[data-state]): idle (one big Start, the choices as a sentence), live (the captions fill the page,
 // a dock that fades away), setup (one step per screen). Basic or Advanced (prefs.js) decides how many controls show.
-import { esc, store, wsUrl, Socket, CaptionState, CaptionFlow, getEvent, fmtClock, wakeLock } from '/common.js';
+import { esc, store, wsUrl, Socket, CaptionState, CaptionFlow, getEvent, fmtClock, wakeLock, failText } from '/common.js';
 import { prefsControls, LANG, advanced } from '/prefs.js';
 import { mountIcons } from '/illustrations.js';
 import { ensureSignedIn } from '/signin.js';
@@ -109,7 +109,7 @@ await ensureSignedIn();
 const api = async (method, url, body) => {
   const r = await fetch(url, { method, headers: { 'content-type': 'application/json' }, body: body ? JSON.stringify(body) : undefined });
   const j = await r.json().catch(() => ({}));
-  if (!r.ok) throw new Error(j.error || r.statusText);
+  if (!r.ok) throw new Error(failText(r, j));
   return j;
 };
 

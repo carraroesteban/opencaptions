@@ -1,5 +1,5 @@
 // welcome.html: page script (kept out of the HTML so the Content-Security-Policy can forbid inline scripts).
-import { esc, store, LISTEN, listenPort, freeListenPort, serverHost, copyText } from '/common.js';
+import { esc, store, LISTEN, listenPort, freeListenPort, serverHost, copyText, failText } from '/common.js';
 import { prefsControls, LANG } from '/prefs.js';
 import { icon } from '/illustrations.js';
 import { ensureSignedIn, signInScreen } from '/signin.js';
@@ -153,7 +153,7 @@ const api = async (method, url, body) => {
     return api(method, url, body);
   }
   const j = await r.json().catch(() => ({}));
-  if (!r.ok) throw Object.assign(new Error(j.error || r.statusText), { body: j });
+  if (!r.ok) throw Object.assign(new Error(failText(r, j)), { body: j });
   return j;
 };
 const fail = (e) => { $('err').textContent = e.message || String(e); };

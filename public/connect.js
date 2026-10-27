@@ -318,7 +318,10 @@ export function tunnelPanel(el, { api, confirm = async (m) => window.confirm(m),
     const tu = setup?.tunnel || { state: 'off' };
     const pub = setup?.publicUrl || location.origin;
     let html = '';
-    if (tu.state === 'off') {
+    // An address set on the server (PUBLIC_URL, a hosted copy) is what QR codes use: a tunnel would only add a second one.
+    if (tu.state === 'off' && setup?.publicUrlSource === 'config') {
+      html = `<p class="cx-status ok u-mt0">${icon('check')}<span>${esc(t.fixed(pub))}</span></p>`;
+    } else if (tu.state === 'off') {
       html += `<p class="cx-fine u-mt0">${esc(t.tIntro)}</p>
         <div class="cx-row"><button type="button" class="primary" data-cx="quick">${icon('cloud')}${esc(t.tStart)}</button></div>
         <p class="cx-fine">${esc(t.tNote)}</p>
@@ -330,8 +333,7 @@ export function tunnelPanel(el, { api, confirm = async (m) => window.confirm(m),
             <div class="cx-row"><button type="submit">${esc(t.tConnect)}</button></div>
           </form>
         </details>`;
-      if (setup?.publicUrlSource === 'config') html = `<p class="cx-status ok">${icon('check')}<span>${esc(t.fixed(pub))}</span></p>` + html;
-      else if (setup?.lanUrl) html += `<p class="cx-fine">${esc(t.lan(setup.lanUrl))}</p>`;
+      if (setup?.lanUrl) html += `<p class="cx-fine">${esc(t.lan(setup.lanUrl))}</p>`;
     } else if (tu.state === 'installing' || tu.state === 'starting') {
       html = `<p class="cx-status">${icon('cloud')}<span>${esc(tu.state === 'installing' ? t.installing : t.starting)}</span></p>`;
     } else if (tu.state === 'on' && tu.reachable !== true) {

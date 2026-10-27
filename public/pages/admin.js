@@ -5,7 +5,7 @@
 // Safety model: every setup change is recorded on the server and can be undone (History, and an Undo button
 // right after each change); deleted rooms go to a trash; Event mode locks the setup on the server, so nothing
 // here can delete or change the event's configuration by accident while it's live.
-import { qs, esc, store, copyText, wsUrl, Socket, langLabel, setAccent, LISTEN, listenPort, freeListenPort, serverHost } from '/common.js';
+import { qs, esc, store, copyText, wsUrl, Socket, langLabel, setAccent, LISTEN, listenPort, freeListenPort, serverHost, failText } from '/common.js';
 import { localize, prefsControls, tr, LANG } from '/i18n.js';
 import { menu, popMenu } from '/menu.js';
 import { advanced } from '/prefs.js';
@@ -249,7 +249,7 @@ const api = async (method, url, body, { quiet = false } = {}) => {
   if (r.status === 401) { askToken(); throw new Error('signed out'); }
   const j = await r.json().catch(() => ({}));
   if (r.status === 423) { setLocked(true); toast(t.lockedToast, { error: true }); throw new Error('locked'); }
-  if (!r.ok) { if (!quiet) toast(tr(j.error || r.statusText), { error: true }); throw Object.assign(new Error(j.error || r.statusText), { body: j }); }
+  if (!r.ok) { if (!quiet) toast(tr(failText(r, j)), { error: true }); throw Object.assign(new Error(failText(r, j)), { body: j }); }
   return j;
 };
 // First run: the welcome wizard asks for the event name, rooms and languages before showing the dashboard.
@@ -1609,7 +1609,7 @@ async function recUpload(file, signal) {
     }
     if (r.status === 401) { askToken(); throw new Error('signed out'); }
     if (r.status === 409 && body.code === 'offset') { at = body.size; continue; }
-    if (!r.ok) throw Object.assign(new Error(body.error || r.statusText), { body });
+    if (!r.ok) throw Object.assign(new Error(failText(r, body)), { body });
     fails = 0;
     j = { ...j, ...body };
     at = j.size;

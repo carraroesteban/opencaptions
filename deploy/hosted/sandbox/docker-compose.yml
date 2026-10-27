@@ -1,0 +1,43 @@
+# The public sandbox: each visitor gets their own throwaway OpenCaptions (simulated captions, no sign-in, deleted
+# after an hour). See README.md.
+#
+#   cd deploy/hosted/sandbox && docker compose up -d      # then the tunnel serves it (TUNNEL_TOKEN in .env)
+services:
+  sandbox:
+    image: ghcr.io/carraroesteban/opencaptions:latest # the same image the copies run: the landing page uses its fonts and logo
+    pull_policy: always
+    restart: unless-stopped
+    init: true
+    command: ["node", "/sandbox/sandbox.js"]
+    # Inside the tunnel's network: the tunnel's "http://localhost:8080" in the Cloudflare dashboard reaches the sandbox,
+    # and the sandbox can restart (or be updated) without cutting the tunnel off. Not the other way round: a container
+    # that borrows another's network loses it when that one restarts, and the tunnel almost never does.
+    network_mode: service:tunnel
+    depends_on: [tunnel]
+    user: "0" # to use the Docker socket, which starts and deletes the copies
+    environment:
+      HOST_DIR: "${PWD}"
+      PUBLIC_URL: "${PUBLIC_URL:-https://try-opencaptions.kvza.ar}"
+      MAX_COPIES: "${MAX_COPIES:-15}"
+      COPY_MINUTES: "${COPY_MINUTES:-60}"
+      TZ: "${TZ:-UTC}"
+    volumes:
+      - ./:/sandbox:ro
+      - /var/run/docker.sock:/var/run/docker.sock
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    mem_limit: 128m
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "3" }
+
+  # HTTPS on try-opencaptions.kvza.ar with no open ports.
+  tunnel:
+    image: cloudflare/cloudflared:latest
+    restart: unless-stopped
+    command: tunnel --no-autoupdate run
+    environment:
+      TUNNEL_TOKEN: "${TUNNEL_TOKEN:?set TUNNEL_TOKEN in .env}"

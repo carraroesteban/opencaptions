@@ -24,6 +24,7 @@ const T = {
   es: {
     chooseStage: 'Elegí una sala', chooseLang: 'Idioma de los subtítulos', live: 'En vivo', paused: 'En pausa', offline: 'Todavía no llega sonido',
     original: 'Original', listen: 'Escuchar', stopListen: 'Dejar de escuchar', download: 'Descargar', dual: 'Ver original',
+    noAnswer: 'OpenCaptions no respondió. Revisá la conexión y probá de nuevo.',
     backToLive: 'Volver al vivo', waiting: 'Esperando que empiece a hablar alguien…', connecting: 'Conectando…', startsHere: 'Los subtítulos aparecen acá en cuanto empiece. Elegí tu idioma arriba.', reconnecting: 'Reconectando…', noNet: 'Sin conexión',
     followOnPhone: 'Seguí los subtítulos en tu celu', scan: 'Escaneá el QR', stages: 'Salas', fmtText: 'texto', fmtSubs: 'subtítulos', fmtWeb: 'web', screenTitle: 'Pantalla', liveCaptions: 'Subtítulos en vivo', production: 'Producción', myTranscripts: 'Mis transcripciones', myTranscriptsHint: 'Todo lo que subtitulaste en esta compu: leelo, buscalo o descargalo.', backCaptions: 'Subtítulos',
     fontSize: 'Tamaño', newTalk: 'Nueva charla', poweredBy: 'Subtítulos generados con IA · pueden contener errores',
@@ -50,6 +51,7 @@ const T = {
   en: {
     chooseStage: 'Choose a room', chooseLang: 'Caption language', live: 'Live', paused: 'Paused', offline: 'No sound yet',
     original: 'Original', listen: 'Listen', stopListen: 'Stop listening', download: 'Download', dual: 'Show original',
+    noAnswer: 'OpenCaptions didn’t answer. Check the connection and try again.',
     backToLive: 'Back to live', waiting: 'Waiting for someone to start speaking…', connecting: 'Connecting…', startsHere: 'Captions appear here as soon as it starts. Pick your language above.', reconnecting: 'Reconnecting…', noNet: 'No connection',
     followOnPhone: 'Follow the captions on your phone', scan: 'Scan the QR code', stages: 'Rooms', fmtText: 'text', fmtSubs: 'captions', fmtWeb: 'web', screenTitle: 'Screen', liveCaptions: 'Live captions', production: 'Production', myTranscripts: 'My transcripts', myTranscriptsHint: 'Everything you captioned on this computer: read, search or download it.', backCaptions: 'Captions',
     fontSize: 'Size', newTalk: 'New talk', poweredBy: 'AI-generated captions · may contain errors',
@@ -76,6 +78,7 @@ const T = {
   pt: {
     chooseStage: 'Escolha uma sala', chooseLang: 'Idioma das legendas', live: 'Ao vivo', paused: 'Em pausa', offline: 'Ainda sem som',
     original: 'Original', listen: 'Ouvir', stopListen: 'Parar de ouvir', download: 'Baixar', dual: 'Ver original',
+    noAnswer: 'O OpenCaptions não respondeu. Verifique a conexão e tente de novo.',
     backToLive: 'Voltar ao vivo', waiting: 'Esperando alguém começar a falar…', connecting: 'Conectando…', startsHere: 'As legendas aparecem aqui assim que começar. Escolha seu idioma acima.', reconnecting: 'Reconectando…', noNet: 'Sem conexão',
     followOnPhone: 'Acompanhe as legendas no celular', scan: 'Escaneie o QR', stages: 'Salas', fmtText: 'texto', fmtSubs: 'legendas', fmtWeb: 'web', screenTitle: 'Tela', liveCaptions: 'Legendas ao vivo', production: 'Produção', myTranscripts: 'Minhas transcrições', myTranscriptsHint: 'Tudo o que você legendou neste computador: leia, pesquise ou baixe.', backCaptions: 'Legendas',
     fontSize: 'Tamanho', newTalk: 'Nova palestra', poweredBy: 'Legendas geradas por IA · podem conter erros',
@@ -101,6 +104,8 @@ const T = {
   },
 };
 export const t = (k) => T[UI]?.[k] ?? T.en[k] ?? k;
+/** What a failed request says: the server's own message, or (a proxy's error page, no connection) a plain one. */
+export const failText = (r, j) => j?.error || (r.status < 500 && r.statusText) || t('noAnswer');
 
 /**
  * Captions paused on purpose (server's pauseInfo: a break, or music in the room): what to tell viewers, or null.
