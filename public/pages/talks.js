@@ -1,6 +1,7 @@
 // talks.html: page script (kept out of the HTML so the Content-Security-Policy can forbid inline scripts).
 import { t, UI, esc, getEvent, langLabel, segment } from '/common.js';
 import { prefsControls } from '/prefs.js';
+import { client } from '/assist-ui.js';
 import { icon, mountIcons } from '/illustrations.js';
 const $ = (id) => document.getElementById(id);
 mountIcons();
@@ -79,3 +80,33 @@ function render() {
 $('q').oninput = render;
 await load();
 setInterval(() => document.hidden || load(), 30000); // a library left open in a background tab stops asking
+
+// ---- a question to the whole event: every room and talk this person may read (POST /api/ask-event) ----
+const readLang = () => { const l = UI.slice(0, 2); return ev.languages?.[l] ? l : 'orig'; };
+if (!mine) { // without the AI it still finds the moments (keyword search)
+  $('evask').classList.remove('hidden');
+  $('evask-h').textContent = t('askEvent');
+  $('evask-hint').textContent = t('askEventHint');
+  $('evask-q').placeholder = t('askEventPh');
+  $('evask-q').setAttribute('aria-label', t('askEvent'));
+  $('evask-go').setAttribute('aria-label', t('askBtn'));
+  $('evask-q').oninput = () => { $('evask-go').disabled = $('evask-q').value.trim().length < 3; };
+  $('evask-form').onsubmit = async (e) => {
+    e.preventDefault();
+    const question = $('evask-q').value.trim();
+    if (question.length < 3) return;
+    $('evask-out').innerHTML = `<p class="muted">${esc(t('thinking'))}</p>`;
+    let j;
+    try {
+      const r = await fetch('/api/ask-event', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ question, lang: readLang(), client }) });
+      j = r.ok ? await r.json() : { error: r.status === 429 ? t('tooMany') : t('error') };
+    } catch { j = { error: t('error') }; }
+    if (j.error && !j.sources) { $('evask-out').innerHTML = `<p class="muted">${esc(j.error)}</p>`; return; }
+    if (!j.sources.length) { $('evask-out').innerHTML = `<p class="muted">${esc(t('askEventNone'))}</p>`; return; }
+    const link = (x) => `/talk.html?stage=${encodeURIComponent(x.roomId)}&talk=${encodeURIComponent(x.talkId)}&lang=${encodeURIComponent(readLang())}&at=${encodeURIComponent(x.at)}`;
+    $('evask-out').innerHTML = (j.answer ? `<p class="ev-answer">${esc(j.answer)}</p>` : '')
+      + `<h3 class="as-h">${esc(t('quotesFrom'))}</h3>`
+      + j.sources.map((x) => `<a class="ev-src" href="${esc(link(x))}"><span class="ev-where"><b>${esc(x.talk || t('untitled'))}</b> · ${esc(x.room)} · ${esc(x.at)}</span><span class="ev-quote">${esc(x.text)}</span></a>`).join('')
+      + (j.ai ? `<p class="muted tm-note">${esc(t('aiNote'))}</p>` : '');
+  };
+}

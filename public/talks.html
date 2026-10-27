@@ -28,6 +28,12 @@
     <div class="au-bar"><a class="brand u-fs17" href="/">OpenCaptions</a><span class="row u-gap14"><a href="/" class="au-back" id="back" data-icon="back"></a><span id="prefs-slot"></span></span></div>
     <h1 id="h"></h1>
     <p class="tl-hint" id="hint"></p>
+    <section class="ev-ask hidden" id="evask" aria-labelledby="evask-h" data-no-i18n>
+      <h2 id="evask-h"></h2>
+      <p class="muted" id="evask-hint"></p>
+      <form id="evask-form" class="as-form"><input id="evask-q" maxlength="300" autocomplete="off" enterkeyhint="send" /><button class="as-send" type="submit" id="evask-go" disabled data-icon="arrowup"></button></form>
+      <div id="evask-out" class="ev-out" aria-live="polite"></div>
+    </section>
     <div class="tl-tools" id="tools">
       <span class="has-icon au-search"><input id="q" type="search" autocomplete="off" /></span>
       <div id="room" class="tl-rooms" role="group"></div>

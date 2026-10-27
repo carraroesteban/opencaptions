@@ -456,3 +456,15 @@ dialog.tk-del { max-width: min(440px, calc(100vw - 32px)); }
 .tm-note { margin: 0; font-size: 14px; }
 .tm-out blockquote { margin: 0; padding: 8px 12px; border-left: 3px solid var(--line-strong); background: var(--fill); border-radius: 0 12px 12px 0; font-size: 15px; }
 .tm-out blockquote b { font-variant-numeric: tabular-nums; margin-right: 6px; }
+
+/* Ask the whole event (talks.html). */
+.ev-ask { display: grid; gap: 12px; margin: 22px 0 8px; padding: 20px; border-radius: 22px; background: var(--bg2); border: 1px solid var(--line); }
+.ev-ask h2 { margin: 0; font-size: 22px; }
+.ev-ask > p { margin: 0; }
+.ev-out { display: grid; gap: 10px; }
+.ev-out:empty { display: none; }
+.ev-answer { margin: 4px 0 0; font-size: 18px; line-height: 1.55; }
+.ev-src { display: grid; gap: 4px; padding: 12px 14px; border-radius: 14px; background: var(--bg); border: 1px solid var(--line); text-decoration: none; color: inherit; }
+.ev-src:hover { border-color: var(--line-strong); }
+.ev-where { font-size: 14px; color: var(--fg2); }
+.ev-quote { font-size: 16px; line-height: 1.5; }

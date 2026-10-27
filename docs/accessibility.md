@@ -39,6 +39,17 @@ Captions help only if the words make sense. On the phone, **tap any word** in th
 - **Cost:** one short request per word, cached for the whole talk and shared by every phone (the second person to tap the same word costs nothing). Limited to 12 words a minute per phone and 60 a minute per server (`EXPLAIN_PER_CLIENT_PER_MIN`, `EXPLAIN_RPM`); `AUDIENCE_AI=off` turns it off with the rest of the assistant.
 - **Without the AI** (no key, mock mode, local mode without a text model): the sheet shows where the word was said, without an explanation.
 
+## Ask the whole event
+
+On the transcripts page (the home page's last card, or `/talks.html`), **Ask the whole event** takes a question across every room and every talk someone may read: "which talk mentioned the new data law?", "what went wrong in the first months?". The answer comes in the asker's language, names the talk and the room, and links to the exact moment in its transcript.
+
+- **Search first:** the words of the question are looked up in every transcript, in what was spoken and in the reader's language. When they match well, the model sees only those passages. When they don't (a question in other words), it reads every talk, in an even share of about 60 000 characters, and answers by meaning.
+- **Grounded:** only from what was said; if the transcripts don't answer it, it says so.
+- **Who sees what:** the same talks the person can read on the transcripts page (`PUBLIC_TRANSCRIPTS`); the crew and organizers, all of them.
+- **Cost and limits:** one request per question, at most about half a US cent on a large event; the same limits as *Ask the talk*.
+- **Without the AI:** the matching moments, with their links.
+- **AI assistants (MCP):** the `ask_event` tool.
+
 ## The slide, on the phone, in your language
 
 People sitting far from the screen, people with low vision, and people who don't read the slides' language miss what's on them. The room's computer can share the presentation's screen next to the sound, and every phone gets each new slide: the picture, and its text in the language the person is reading, large and readable by a screen reader.

@@ -53,7 +53,7 @@ test('the crew password connects and lists the read-only tools', async () => {
   assert.equal(init.result.protocolVersion, '2025-06-18');
   assert.equal(init.result.serverInfo.name, 'opencaptions');
   const { result } = await (await rpc('tools/list', {})).json();
-  assert.deepEqual(result.tools.map((t) => t.name), ['list_rooms', 'list_talks', 'get_transcript', 'search_transcripts', 'event_report']);
+  assert.deepEqual(result.tools.map((t) => t.name), ['list_rooms', 'list_talks', 'get_transcript', 'search_transcripts', 'ask_event', 'event_report']);
 });
 
 test('a search finds the phrase in a saved transcript, with room, talk, time and quote', async () => {
@@ -66,6 +66,11 @@ test('a search finds the phrase in a saved transcript, with room, talk, time and
   );
   const text = await (await rpc('tools/call', { name: 'get_transcript', arguments: { room: 'main', talk: 'talk-keynote' } })).json();
   assert.match(text.result.content[0].text, /bike lanes/);
+  // A question to the whole event: the mock engine answers with the moments it found (no model).
+  const asked = await (await rpc('tools/call', { name: 'ask_event', arguments: { question: 'When do the bike lanes open?' } })).json();
+  const a = JSON.parse(asked.result.content[0].text);
+  assert.equal(a.found, true);
+  assert.deepEqual([a.sources[0].talkId, a.sources[0].text], ['talk-keynote', 'Our new bike lanes open in March.']);
   const bad = await (await rpc('tools/call', { name: 'get_transcript', arguments: { room: 'nowhere' } })).json();
   assert.equal(bad.result.isError, true);
 });

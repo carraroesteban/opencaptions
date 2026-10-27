@@ -11,7 +11,7 @@ $('prod').textContent = t('production');
 // The organizers' way in, for the organizers: attendees don't see a "Production" link.
 fetch('/api/auth/me').then((r) => r.json()).then((w) => $('prod').classList.toggle('hidden', !w.role)).catch(() => {});
 $('lib-h').textContent = t('library');
-$('lib-p').textContent = t('libraryHint');
+$('lib-p').textContent = t('libraryAsk');
 
 const hm = (ms) => new Date(ms).toLocaleTimeString(UI, { hour: '2-digit', minute: '2-digit' });
 const go = `<span class="ix-arrow">${icon('chevron')}</span>`;

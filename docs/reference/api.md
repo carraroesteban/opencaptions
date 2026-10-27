@@ -260,7 +260,7 @@ curl -X DELETE http://localhost:8080/api/stages/main/pull -H "Authorization: Bea
 
 | Method & path | Auth | Notes |
 |---|---|---|
-| `POST /mcp` | Crew or admin | [MCP](https://modelcontextprotocol.io) over Streamable HTTP (JSON replies, no sessions; `GET` answers `405`), with the same sign-in, failed-attempt limit and rate limit as the API. Read-only tools: `list_rooms`, `list_talks` (`day`, `room`), `get_transcript` (`room`, `talk`, `lang`; plain text), `search_transcripts` (`phrase`, `room`, `day`; up to 50 hits with `room`, `talk`, `at` in the talk, `time`, `speaker`, `quote`) and `event_report` (`day`), the same data as the endpoints above. No tool changes anything yet. Setup: [Integrations](../integrations.md#use-it-from-an-ai-assistant-mcp). |
+| `POST /mcp` | Crew or admin | [MCP](https://modelcontextprotocol.io) over Streamable HTTP (JSON replies, no sessions; `GET` answers `405`), with the same sign-in, failed-attempt limit and rate limit as the API. Read-only tools: `list_rooms`, `list_talks` (`day`, `room`), `get_transcript` (`room`, `talk`, `lang`; plain text), `search_transcripts` (`phrase`, `room`, `day`; up to 50 hits with `room`, `talk`, `at` in the talk, `time`, `speaker`, `quote`), `ask_event` (`question`, `lang`; an answer with its sources, as `POST /api/ask-event`) and `event_report` (`day`), the same data as the endpoints above. No tool changes anything yet. Setup: [Integrations](../integrations.md#use-it-from-an-ai-assistant-mcp). |
 
 ### Alerts
 
@@ -438,6 +438,9 @@ AI is disabled, `ENGINE=mock`, a rate limit is hit, or the model call itself fai
 |---|---|---|
 | `GET /api/stages/:id/summary` | Depends on `PUBLIC_TRANSCRIPTS` (same rule as the talk being summarized — see [Transcripts & exports](#transcripts--exports)) | Summary of the talk in progress or a past talk. |
 | `POST /api/stages/:id/ask` | Same | Answer one question, grounded in the transcript, with quotes. |
+| `POST /api/stages/:id/explain` | Same | `{ term, lang, talk?, client? }` → `{ ai, term, meaning, general, translation, quotes[] }`: a word tapped in the captions, in plain words, from where it was said. Cached per talk, language and term. |
+| `POST /api/ask-event` | None (each talk follows `PUBLIC_TRANSCRIPTS`; signed-in crew see every talk) | `{ question, lang, client? }` → `{ ai, found, answer, sources: [{ roomId, room, talkId, talk, at, text }] }`: a question across every room and talk the caller may read. |
+| `GET /api/stages/:id/slides/:slide` | As the room's live captions (private rooms: crew) | The JPEG of a slide the room's computer shared; ids come in the viewer socket's `slide` messages. |
 
 `GET /api/stages/:id/summary` query params:
 
@@ -678,7 +681,7 @@ Client → server:
 - **Binary frames**: raw **PCM16LE, mono, 16 kHz**. The reference clients send 100 ms frames (3200 bytes).
   Frames over **64 KB** are silently dropped (not an error, not a close) — send small, regular chunks.
   Server `maxPayload` for the whole connection is 256 KB.
-- Text frames: `{"type":"break","on":true|false}` starts or ends a break for this room (the B key on the audio page). Anything else is ignored.
+- Text frames: `{"type":"break","on":true|false}` starts or ends a break for this room (the B key on the audio page). `{"type":"slide","jpeg":"<base64>"}` shares the slide on screen (a JPEG under 180 KB, at most one every 1.5 s; [Accessibility](../accessibility.md#the-slide-on-the-phone-in-your-language)). Anything else is ignored.
 
 Server → client, every 500 ms while connected:
 
@@ -787,6 +790,13 @@ A final caption that arrives again with the same `id` and `"edited": true` is a 
 // Also in hello as "pause". { brk: null, music: false } = captions running again.
 { "type": "pause", "brk": { "by": "agenda", "since": 1791375874168, "title": "Coffee break", "until": 1791377674168,
   "next": { "title": "After the coffee", "speaker": "Bo", "start": 1791377674168 } }, "music": false }
+```
+
+```json
+// a slide the room's computer shared (also in hello as "slide": the current one, or null). First with reading: true
+// and no text, then again with its text in the viewer's channels. The picture: GET /api/stages/:id/slides/:id.
+{ "type": "slide", "slide": { "id": "mh2x1k3", "at": 1791375874168, "reading": false,
+  "text": { "es": { "title": "Telemedicina para clínicas rurales", "lines": ["Una tablet, un buen micrófono…"] } } } }
 ```
 
 ```json

@@ -35,7 +35,7 @@ import { fromSessionize, fromIcs } from './agenda-import.js';
 import { PullSource, ffmpegBin } from './pull.js';
 import { muLaw } from './audio.js';
 import { systemStats } from './system.js';
-import { summarize, ask, explain, audienceAiEnabled, assistStats } from './assist.js';
+import { summarize, ask, explain, askEvent, audienceAiEnabled, assistStats } from './assist.js';
 import { budgetInfo } from './budget.js';
 import { Schedule, parseSchedule } from './schedule.js';
 import { History } from './history.js';
@@ -708,12 +708,18 @@ const MCP_TOOLS = [
       }
       return { phrase, hits };
     } },
+  { name: 'ask_event', description: 'Ask a question about the whole event (every room and talk) and get a short answer with the talks, rooms and moments it comes from. Answers only from what was said.',
+    inputSchema: { type: 'object', properties: { question: { type: 'string' }, lang: { type: 'string', description: 'language of the answer: en, es…' } }, required: ['question'] },
+    run: ({ question, lang }) => askEvent({
+      docs: visibleStages().flatMap((st) => roomTalks(st).map((m) => ({ ref: { roomId: st.id, room: st.def.name, talkId: m.id, talk: m.title || '' }, segs: talkSegs(st, m.id) }))),
+      lang: LANG_OK(lang) ? lang : 'en', question, clientKey: 'mcp',
+    }) },
   { name: 'event_report', description: 'The event report: every talk with its length, words, languages, audience and cost; optionally one day (YYYY-MM-DD).',
     inputSchema: { type: 'object', properties: { day: { type: 'string', description: 'YYYY-MM-DD' } } },
     run: ({ day }) => eventReport(dayParam(day)) },
 ];
 const MCP_VERSIONS = ['2025-06-18', '2025-03-26', '2024-11-05'];
-app.post('/mcp', apiRateLimit, crew, (req, res) => {
+app.post('/mcp', apiRateLimit, crew, async (req, res) => {
   const msg = req.body || {};
   const reply = (body) => res.json({ jsonrpc: '2.0', id: msg.id ?? null, ...body });
   if (Array.isArray(msg)) return reply({ error: { code: -32600, message: 'one message per request' } });
@@ -728,7 +734,7 @@ app.post('/mcp', apiRateLimit, crew, (req, res) => {
   const tool = MCP_TOOLS.find((t) => t.name === p.name);
   if (!tool) return reply({ error: { code: -32602, message: `unknown tool ${p.name}` } });
   try {
-    const out = tool.run(p.arguments || {});
+    const out = await tool.run(p.arguments || {});
     reply({ result: { content: [{ type: 'text', text: typeof out === 'string' ? out : JSON.stringify(out, null, 2) }] } });
   } catch (e) { reply({ result: { content: [{ type: 'text', text: e.message }], isError: true } }); }
 });
@@ -810,6 +816,22 @@ app.get('/api/stages/:id/summary', getStage, talkAccess, async (req, res) => {
   if (!info) return res.status(404).json({ error: 'unknown talk' });
   const out = await summarize({ segs: talkSegs(st, talkId), key: `${st.id}/${talkId}`, lang, scope, live: info.current, title: info.title });
   res.set('Cache-Control', 'no-store').json(out);
+});
+
+// A question to the whole event, across every room and talk this person may read (src/assist.js askEvent).
+app.post('/api/ask-event', async (req, res) => {
+  const lang = LANG_OK(req.body?.lang) ? req.body.lang : 'en';
+  const docs = [];
+  for (const st of visibleStages()) for (const m of roomTalks(st)) {
+    if (!canReadTalk(req, st, m.id)) continue;
+    docs.push({ ref: { roomId: st.id, room: st.def.name, talkId: m.id, talk: m.title || '' }, segs: talkSegs(st, m.id) });
+  }
+  try {
+    const ip = clientIp(req), browser = String(req.body?.client || '');
+    res.json(await askEvent({ docs, lang, question: req.body?.question, ip, clientKey: /^[\w-]{8,40}$/.test(browser) ? `${ip}|${browser}` : ip }));
+  } catch (e) {
+    res.status(e.status || 500).json({ error: e.status ? e.message : 'internal error' });
+  }
 });
 
 // A word tapped in the captions: what it means, in plain words in the reader's language (src/assist.js explain).

@@ -269,6 +269,7 @@ $('dlg-set').addEventListener('click', (e) => { if (e.target === $('dlg-set')) $
 
 select(); renderLangs(); render();
 if (location.hash) document.querySelector(location.hash)?.scrollIntoView({ block: 'center' });
+else if (/^\d+:\d\d$/.test(qs.get('at') || '')) jump(qs.get('at')); // a source from Ask the whole event
 
 // Delete for good and Correct: only for the admin (on this computer no password is asked, so "Just for me" users can).
 $('del').querySelector('.lbl').textContent = t('deleteTalk');
