@@ -12,6 +12,7 @@ All notable changes to this project are documented in this file. The format foll
 
 ### Added
 
+- **The slide, on every phone, in its reader's language.** The room's computer can share the presentation's screen next to the sound (**Share slides** on its audio page). Each new slide reaches the phones at once, then with its text read and translated into every caption language in one request (about a tenth of a cent a slide with Gemini). A **Slide** button on the phone shows it, with the last 12 to go back through. Slides stay in memory only. `SLIDES=off` turns it off. See [Accessibility](docs/accessibility.md#the-slide-on-the-phone-in-your-language).
 - **`npm run soak`**, a long-run check: rooms hearing speech the whole time on the mock engine and phones coming and going, measured every minute (memory and event-loop lag).
 
 ## [0.9.4] - 2026-10-26

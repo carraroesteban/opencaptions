@@ -75,7 +75,8 @@
     #go:disabled { opacity: .8; }
     #go .spin { width: 20px; height: 20px; border-radius: 50%; border: 2.5px solid currentColor; border-right-color: transparent; animation: ig-spin .8s linear infinite; }
     @keyframes ig-spin { to { rotate: 360deg; } }
-    #brk { min-height: 52px; padding: 0 20px; border-radius: var(--pill); animation: oc-in .35s var(--ease-out); }
+    #brk, #slides { min-height: 52px; padding: 0 20px; border-radius: var(--pill); animation: oc-in .35s var(--ease-out); }
+    #slides-note { text-align: center; margin-top: 10px; }
     #brk kbd { margin-left: 4px; }
 
     /* What's being captioned, live */
@@ -121,7 +122,7 @@
       .deck { padding: 20px 16px 20px; border-radius: 22px; }
       .preview { padding: 18px; }
       #go { width: 100%; }
-      #brk { width: 100%; }
+      #brk, #slides { width: 100%; }
       .ig-state { font-size: 16px; }
     }
   </style>
@@ -154,7 +155,9 @@
       <div class="ig-go">
         <button id="go" class="primary hero-btn">Empezar a transcribir</button>
         <button id="brk" class="hidden" title="Pausa (intervalo, publicidad): los subtítulos se detienen y las pantallas muestran la pausa. Tecla B.">Pausa (B)</button>
+        <button id="slides" class="hidden" aria-pressed="false" data-no-i18n aria-describedby="slides-note"></button>
       </div>
+      <p class="muted hint u-m0 hidden" id="slides-note" data-no-i18n aria-live="polite"></p>
     </section>
 
     <section class="card preview rise" aria-labelledby="pv-h">

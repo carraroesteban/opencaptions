@@ -39,6 +39,7 @@ import { summarize, ask, audienceAiEnabled, assistStats } from './assist.js';
 import { budgetInfo } from './budget.js';
 import { Schedule, parseSchedule } from './schedule.js';
 import { History } from './history.js';
+import { slideForViewer } from './slides.js';
 import { asrInfo, asrReachable } from './local/asr.js';
 import { appleSupported } from './local/apple.js';
 import { llmInfo, llmHealth, chat as localChat } from './local/llm.js';
@@ -792,6 +793,14 @@ mountRecordings(app, { admin, recordings });
 
 // ---- audience AI: "what did I miss?" summaries and questions about the talk (see src/assist.js) ----
 const LANG_OK = (l) => LANG_RE.test(l || '');
+// The picture of a slide the room's computer shared (src/slides.js): as public as the room's live captions.
+app.get('/api/stages/:id/slides/:slide', getStage, (req, res, next) => (isPrivate(req.params.id) ? crew(req, res, next) : next()), (req, res) => {
+  const slide = req.stage.slides.get(req.params.slide);
+  if (!slide) return res.status(404).json({ error: 'unknown slide' });
+  res.set('Cache-Control', 'private, max-age=3600'); // a slide's id never points at another picture
+  res.type('image/jpeg').send(slide.jpeg);
+});
+
 app.get('/api/stages/:id/summary', getStage, talkAccess, async (req, res) => {
   const st = req.stage;
   const talkId = req.query.talk || st.talk.id;
@@ -1789,11 +1798,13 @@ function onIngest(ws, url) {
   });
   ws.on('message', (data, isBinary) => {
     if (isBinary && data.length <= 64 * 1024) return st.pushAudio(Buffer.isBuffer(data) ? data : Buffer.from(data), token);
-    // The room's computer can call a break for its own room (the B key on the audio page).
-    if (!isBinary && data.length < 512) {
+    // The room's computer can call a break for its own room (the B key on the audio page), and send the slide on its
+    // screen when it changes (src/slides.js; base64 JPEG, under the socket's 256 KB frame limit).
+    if (!isBinary && data.length < 250_000) {
       try {
         const m = JSON.parse(data.toString());
         if (m.type === 'break') st.setBreak(!!m.on, { by: 'room' });
+        else if (m.type === 'slide' && typeof m.jpeg === 'string') st.addSlide(Buffer.from(m.jpeg, 'base64'));
       } catch { /* not JSON: ignore */ }
     }
   });
@@ -1850,6 +1861,7 @@ function onView(ws, url) {
       partial: Object.fromEntries(subs.map((ch) => [ch, st.partial(ch)])),
       pause: st.pauseInfo(), // a break, or music playing: screens and phones say so
       listen,
+      slide: slideForViewer(st.slides.current, subs),
     });
   };
   setup();
@@ -1869,7 +1881,9 @@ function onView(ws, url) {
   const onRemoved = (why = 'room removed') => ws.close(1012, why); // clients reconnect; a re-created room works again
   const onConfig = () => setup();
   const onPause = () => sendJson(ws, { type: 'pause', ...st.pauseInfo() });
+  const onSlide = (slide) => sendJson(ws, { type: 'slide', slide: slideForViewer(slide, subs) });
   st.on('caption', onCaption);
+  st.on('slide', onSlide);
   st.on('audio', onAudio);
   st.on('talk', onTalk);
   st.on('title', onTitle);
@@ -1906,6 +1920,7 @@ function onView(ws, url) {
     st.off('title', onTitle);
     st.off('config', onConfig);
     st.off('pause', onPause);
+    st.off('slide', onSlide);
     st.off('removed', onRemoved);
   });
 }

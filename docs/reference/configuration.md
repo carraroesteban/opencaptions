@@ -113,6 +113,7 @@ Viewer-facing "What did I miss?" summaries and question answering, grounded only
 
 | Variable | Default | Description |
 |---|---|---|
+| `SLIDES` | `on` | `off`/`0`/`false`/`no`: the room's computer can't share its slides, and none reach phones ([Accessibility](../accessibility.md#the-slide-on-the-phone-in-your-language)). |
 | `AUDIENCE_AI` | `on` | `off`/`0`/`false`/`no` disables AI summaries and Q&A entirely; both then always use the extractive fallback (longest/most keyword-matching transcript lines) instead of calling the model. |
 | `ASK_RPM` | `30` | Questions per minute across the whole server (`POST /api/stages/:id/ask`); further questions get `429` until the window clears. |
 | `ASK_PER_CLIENT_PER_MIN` | `6` | Questions per minute from one browser (a random id the page keeps; phones at a venue share one IP). |

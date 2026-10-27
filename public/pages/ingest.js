@@ -16,6 +16,9 @@ const L = {
     needkey: 'Falta el enlace de la sala o la contraseña', noroom: 'Esta sala ya no existe', fileEnded: 'La grabación terminó', inputLost: 'La entrada de audio se desconectó',
     lvOff: 'El nivel aparece al empezar', lvSilent: 'No llega sonido: ¿está prendido el micrófono?', lvQuiet: 'Muy bajo: subí el volumen', lvGood: 'Buen nivel', lvLoud: 'Muy alto: bajalo un poco',
     elapsed: 'Tiempo enviando',
+    slidesOn: 'Compartir diapositivas', slidesOff: 'Dejar de compartir diapositivas',
+    slidesHint: 'Elegí la pantalla o la ventana de la presentación. Los teléfonos ven cada diapositiva nueva, traducida.',
+    slidesSent: (n) => `Compartiendo la pantalla · ${n} ${n === 1 ? 'diapositiva enviada' : 'diapositivas enviadas'}`,
   },
   en: {
     kicker: 'Room sound', changeRoom: 'Change', changeRoomAria: 'Change room', options: 'Options', pvTitle: 'What’s being captioned',
@@ -26,6 +29,9 @@ const L = {
     needkey: 'This computer needs the room link or the password', noroom: 'This room doesn’t exist anymore', fileEnded: 'The recording finished', inputLost: 'The audio input was disconnected',
     lvOff: 'The level shows once you start', lvSilent: 'No sound: is the microphone on?', lvQuiet: 'Too quiet: turn it up', lvGood: 'Good level', lvLoud: 'Too loud: turn it down a little',
     elapsed: 'Time sending',
+    slidesOn: 'Share slides', slidesOff: 'Stop sharing slides',
+    slidesHint: 'Pick the screen or window with the presentation. Phones see each new slide, translated.',
+    slidesSent: (n) => `Sharing the screen · ${n} ${n === 1 ? 'slide sent' : 'slides sent'}`,
   },
 }[LANG === 'es' ? 'es' : 'en'];
 for (const el of document.querySelectorAll('[data-l]')) el.textContent = L[el.dataset.l];
@@ -204,6 +210,7 @@ async function start() {
     onBreak = false;
     brkLabel();
     $('brk').classList.remove('hidden');
+    $('slides').classList.toggle('hidden', !navigator.mediaDevices?.getDisplayMedia); // phones can't share a screen
     goLabel(true);
     $('go').classList.add('stop');
     $('deck').classList.add('on');
@@ -227,6 +234,8 @@ function stop(key = 'stopped', again = false, tone = '') {
   running = false;
   live.set(false);
   $('brk').classList.add('hidden');
+  $('slides').classList.add('hidden');
+  stopSlides();
   sock?.close(); sock = null;
   stream?.getTracks().forEach((t) => t.stop()); stream = null;
   media?.pause(); media = null;
@@ -381,3 +390,65 @@ else if (live.resumed) {
   alertBox(tr('La página se recargó y el navegador dejó de compartir el sonido: tocá Empezar para seguir.'));
   live.set(false); // said once: the next reload doesn't say it again
 }
+
+// ---------- slides: the presentation's screen next to the sound (src/slides.js) ----------
+// Every second a 32×18 thumbnail is compared with the last one. A slide is sent once the picture has changed and then
+// held still for a second: a video or an animation on screen is not a new slide every second (each one costs a read).
+let share = null, shareTimer = 0, held = null, sent = null, sentCount = 0;
+const THUMB_W = 32, THUMB_H = 18, MAX_B64 = 240_000; // the server keeps slides up to 180 KB (base64 is 4/3 of that)
+function slideLabel() {
+  $('slides').innerHTML = `${icon(share ? 'stop' : 'monitor')}<span>${esc(share ? L.slidesOff : L.slidesOn)}</span>`;
+  $('slides').setAttribute('aria-pressed', String(!!share));
+  $('slides-note').textContent = share ? L.slidesSent(sentCount) : L.slidesHint;
+  $('slides-note').classList.toggle('hidden', !running);
+}
+const differs = (a, b) => { if (!b) return true; let d = 0; for (let i = 0; i < a.length; i++) d += Math.abs(a[i] - b[i]); return d / a.length > 6; };
+function snapSlide() {
+  const v = share?.video;
+  if (!v?.videoWidth || !sock?.ready) return;
+  const t = document.createElement('canvas');
+  t.width = THUMB_W; t.height = THUMB_H;
+  const tc = t.getContext('2d', { willReadFrequently: true });
+  tc.drawImage(v, 0, 0, THUMB_W, THUMB_H);
+  const px = tc.getImageData(0, 0, THUMB_W, THUMB_H).data;
+  const g = new Uint8Array(THUMB_W * THUMB_H);
+  for (let i = 0; i < g.length; i++) g[i] = (px[i * 4] + px[i * 4 + 1] + px[i * 4 + 2]) / 3;
+  const moving = differs(g, held);
+  held = g;
+  if (moving || !differs(g, sent)) return; // still changing, or the slide already sent
+  const w = Math.min(1280, v.videoWidth), h = Math.round((v.videoHeight * w) / v.videoWidth);
+  const c = document.createElement('canvas');
+  c.width = w; c.height = h;
+  c.getContext('2d').drawImage(v, 0, 0, w, h);
+  let q = 0.8, url;
+  do { url = c.toDataURL('image/jpeg', q); q -= 0.15; } while (url.length > MAX_B64 && q > 0.3);
+  if (url.length > MAX_B64) return;
+  sock.send({ type: 'slide', jpeg: url.slice(url.indexOf(',') + 1) });
+  sent = g;
+  sentCount++;
+  slideLabel();
+}
+async function shareSlides() {
+  if (share) return stopSlides();
+  let stream;
+  try { stream = await navigator.mediaDevices.getDisplayMedia({ video: { frameRate: 2 }, audio: false }); } catch { return; } // cancelled
+  const video = document.createElement('video');
+  video.muted = true;
+  video.playsInline = true;
+  video.srcObject = stream;
+  await video.play().catch(() => {});
+  share = { stream, video };
+  stream.getVideoTracks()[0].onended = stopSlides; // the browser's own "Stop sharing"
+  held = sent = null;
+  sentCount = 0;
+  shareTimer = setInterval(snapSlide, 1000);
+  slideLabel();
+}
+function stopSlides() {
+  clearInterval(shareTimer);
+  share?.stream.getTracks().forEach((t) => t.stop());
+  share = null;
+  slideLabel();
+}
+$('slides').onclick = shareSlides;
+slideLabel();

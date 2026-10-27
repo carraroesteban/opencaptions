@@ -14,7 +14,7 @@ const calm = matchMedia('(prefers-reduced-motion: reduce)'); // no glide, no cro
 // Icons, the page language and theme (the globe) and translated labels for the icon-only buttons.
 mountIcons();
 $('prefs-slot').append(prefsControls({ langs: ['es', 'en', 'pt'] }));
-for (const id of ['ai-close', 'set-close', 'listen-note-close']) $(id).setAttribute('aria-label', t('close'));
+for (const id of ['ai-close', 'set-close', 'slide-close', 'listen-note-close']) $(id).setAttribute('aria-label', t('close'));
 $('back-link').setAttribute('aria-label', t('stages'));
 $('doc').title = t('transcript');
 $('doc').setAttribute('aria-label', t('transcript')); // an icon-only link: screen readers need its name
@@ -57,6 +57,47 @@ $('ai').onclick = () => { $('dlg-ai').showModal(); assistant.load(); };
 $('ai-close').onclick = () => $('dlg-ai').close();
 const docUrl = () => `/talk.html?stage=${encodeURIComponent(stageId)}${lang ? `&lang=${encodeURIComponent(lang)}` : ''}`;
 
+// ---- the slide on screen, from the room's computer, in this phone's language (src/slides.js) ----
+const slides = []; // this talk's, newest last
+let slideAt = -1; // the one shown in the sheet; -1 follows the newest
+$('slide').setAttribute('aria-label', t('slide'));
+$('slide').title = t('slide');
+$('slide-title').textContent = t('slide');
+$('slide-prev').setAttribute('aria-label', t('prevSlide'));
+$('slide-next').setAttribute('aria-label', t('nextSlide'));
+function onSlide(s) {
+  if (!s) return;
+  const i = slides.findIndex((x) => x.id === s.id);
+  if (i >= 0) slides[i] = s;
+  else {
+    slides.push(s);
+    if (slides.length > 12) slides.shift();
+    if (!$('dlg-slide').open) { $('slide').classList.add('new'); $('slide').setAttribute('aria-label', `${t('slide')} · ${t('newSlide')}`); }
+  }
+  $('slide').classList.remove('hidden');
+  renderSlide();
+}
+function clearSlides() { slides.length = 0; slideAt = -1; $('slide').classList.add('hidden', 'new'); if ($('dlg-slide').open) $('dlg-slide').close(); }
+function renderSlide() {
+  if (!slides.length) return;
+  const i = slideAt < 0 ? slides.length - 1 : Math.min(slideAt, slides.length - 1);
+  const s = slides[i];
+  const txt = s.text?.[channel()] || s.text?.orig || null;
+  const src = `/api/stages/${encodeURIComponent(stageId)}/slides/${encodeURIComponent(s.id)}`;
+  if ($('slide-img').getAttribute('src') !== src) $('slide-img').src = src;
+  $('slide-img').alt = txt?.title || t('slide');
+  $('slide-text').innerHTML = s.reading ? `<p class="muted">${esc(t('slideReading'))}</p>`
+    : txt ? `${txt.title ? `<h3>${esc(txt.title)}</h3>` : ''}${txt.lines?.length ? `<ul>${txt.lines.map((l) => `<li>${esc(l)}</li>`).join('')}</ul>` : ''}` : '';
+  $('slide-nav').classList.toggle('hidden', slides.length < 2);
+  $('slide-pos').textContent = `${i + 1} ${t('slideOf')} ${slides.length}`;
+  $('slide-prev').disabled = i === 0;
+  $('slide-next').disabled = i === slides.length - 1;
+}
+$('slide').onclick = () => { slideAt = -1; $('slide').classList.remove('new'); $('slide').setAttribute('aria-label', t('slide')); renderSlide(); $('dlg-slide').showModal(); };
+$('slide-close').onclick = () => $('dlg-slide').close();
+$('slide-prev').onclick = () => { slideAt = Math.max(0, (slideAt < 0 ? slides.length - 1 : slideAt) - 1); renderSlide(); };
+$('slide-next').onclick = () => { const i = (slideAt < 0 ? slides.length - 1 : slideAt) + 1; slideAt = i >= slides.length - 1 ? -1 : i; renderSlide(); };
+
 // ---- Aa reading settings sheet ----
 $('set-title').textContent = t('settings');
 $('l-size').textContent = t('textSize');
@@ -74,7 +115,7 @@ const whole = () => !!prefs.whole;
 segment($('flow-opts'), [['word', esc(t('wordByWord'))], ['whole', esc(t('wholeSentences'))]], whole() ? 'whole' : 'word', (v) => { prefs = setReadingPref('whole', v === 'whole'); renderAll(); });
 $('settings').onclick = () => { previewFonts($('font-opts')); $('dlg-set').showModal(); };
 $('set-close').onclick = () => $('dlg-set').close();
-for (const d of ['dlg-ai', 'dlg-set']) $(d).addEventListener('click', (e) => { if (e.target === $(d)) $(d).close(); }); // tap outside closes
+for (const d of ['dlg-ai', 'dlg-set', 'dlg-slide']) $(d).addEventListener('click', (e) => { if (e.target === $(d)) $(d).close(); }); // tap outside closes
 
 // Before the room's answer to a new language arrives, the language is its own channel.
 const channel = () => hello?.map?.[lang] || (hello?.stage?.languages?.includes(lang) ? lang : 'orig');
@@ -101,9 +142,10 @@ const sock = new Socket(() => wsUrl('/ws/view', { stage: stageId, langs: wants()
     else if (m.type === 'pause') showPause(m);
     else if (m.type === 'listen') onListen(m);
     else if (m.type === 'title') setTalk(m.title, m.speaker);
+    else if (m.type === 'slide') onSlide(m.slide);
     else if (m.type === 'talk') {
       setTalk(m.title, m.speaker);
-      if (m.talk !== hello?.talk) { if (hello) hello.talk = m.talk; for (const s of Object.values(states)) s.clear(); for (const p of Object.values(pacers)) p.clear(); renderAll(); toast(t('talkChanged')); }
+      if (m.talk !== hello?.talk) { clearSlides(); if (hello) hello.talk = m.talk; for (const s of Object.values(states)) s.clear(); for (const p of Object.values(pacers)) p.clear(); renderAll(); toast(t('talkChanged')); }
     }
   },
   binary(ab) { if (listening) (listenWith === 'room' ? roomPlayer : player).push(ab); },
@@ -133,6 +175,8 @@ let langsKey = '';
 function onHello(m) {
   const sameTalk = !!hello && hello.talk === m.talk; // a reconnect in the same talk: keep the scrollback (CaptionState.load)
   if (hello && !sameTalk) { for (const s of Object.values(states)) s.clear(); for (const p of Object.values(pacers)) p.clear(); toast(t('talkChanged')); } // a new talk while away
+  if (!sameTalk) clearSlides();
+  if (m.slide) onSlide(m.slide);
   const place = sameTalk && !follow ? $('scroll').scrollTop : null; // reading further up: stay there
   hello = m;
   document.title = `${m.stage.name} · ${ev.name}`;

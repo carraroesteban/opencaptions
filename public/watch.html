@@ -46,6 +46,7 @@
       <button id="listen" class="au-btn hidden" aria-pressed="false"></button>
       <button id="dual" class="au-btn" aria-pressed="false"></button>
       <button id="pip" class="au-btn hidden" data-icon="pin"></button>
+      <button id="slide" class="au-btn hidden" aria-haspopup="dialog" data-icon="monitor"></button>
       <button id="ai" class="w-ai hidden" aria-haspopup="dialog" data-icon="sparkle"><span class="lbl"></span></button>
       <a id="doc" class="au-btn" data-icon="doc"></a>
     </footer>
@@ -55,6 +56,12 @@
     <div class="sheet-head"><h2 id="ai-title" class="as-title"></h2><button id="ai-close" data-icon="x"></button></div>
     <div id="assistant"></div>
     <a id="ai-doc" class="as-more" href="#" data-icon="doc"></a>
+  </dialog>
+
+  <dialog id="dlg-slide" class="sheet w-slide" aria-labelledby="slide-title">
+    <div class="sheet-head"><h2 id="slide-title"></h2><button id="slide-close" data-icon="x"></button></div>
+    <figure class="sl-fig"><img id="slide-img" alt="" /><figcaption id="slide-text" aria-live="polite"></figcaption></figure>
+    <div class="sl-nav" id="slide-nav"><button id="slide-prev" class="au-btn" data-icon="back"></button><span id="slide-pos"></span><button id="slide-next" class="au-btn sl-fwd" data-icon="back"></button></div>
   </dialog>
 
   <dialog id="dlg-set" class="sheet au-set" aria-labelledby="set-title">

@@ -30,6 +30,17 @@ Automated tools find roughly a third to a half of real accessibility problems. T
 - **Motion:** captions don't blink or move at the end of the line: each new word fades in once, and a paragraph is never redrawn while you read it. The fade and page animations stop with the system's "reduce motion" setting.
 - **Contrast:** text meets 4.5:1 (large text 3:1) on every surface, in both themes.
 
+## The slide, on the phone, in your language
+
+People sitting far from the screen, people with low vision, and people who don't read the slides' language miss what's on them. The room's computer can share the presentation's screen next to the sound, and every phone gets each new slide: the picture, and its text in the language the person is reading, large and readable by a screen reader.
+
+- **On the room's computer:** on its audio page, **Share slides** (once the sound is on), then pick the screen or the window with the presentation. A slide is sent once the picture has changed and stayed still for a second, so a video or an animation on screen isn't sent as a slide every second.
+- **On the phone:** a **Slide** button appears in the bottom bar, with a dot when a new slide arrives. It opens the slide with its text translated; the arrows go back through the last 12 slides of the talk.
+- **Cost:** one request to the text model per new slide, whatever the number of languages or phones: about a tenth of a US cent each (Gemini Flash-Lite), so a talk with 40 slides costs about 4 cents. It counts toward the room's cost and the weekly budget.
+- **Local mode:** phones get the picture without the translated text (local models don't read images yet).
+- **Privacy:** the slides are kept in memory only, never written to disk, and are as public as the room's live captions. With Gemini, each slide's picture is sent to Google to be read.
+- **Off:** `SLIDES=off`.
+
 ## Hearing the room on a phone
 
 Some people hear a talk better with its sound in their ears than from the room's speakers: people whose hearing aids or cochlear implants stream from a phone, people who use earbuds to cut out the room's echo and chatter, and people sitting far from a speaker. Venues often provide an assistive listening system for them (a hearing loop, or FM or infrared receivers). OpenCaptions can also send each room's own sound to phones, as some captioning services do.

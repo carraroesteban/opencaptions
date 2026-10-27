@@ -14,6 +14,7 @@ import { SentenceTranslator, translateText } from './translate.js';
 import { guessLang } from './langid.js';
 import { VoiceDetector } from './voice.js';
 import { spend, overBudget } from './budget.js';
+import { SlideDeck, readSlide, slidesEnabled } from './slides.js';
 
 const PREROLL_CHUNKS = 6; // 600 ms kept while gated, so the first words aren't clipped
 const PREROLL_MUSIC = 40; // after music: telling a voice from music takes a few seconds, so keep 4 s and send them
@@ -35,6 +36,7 @@ export class Stage extends EventEmitter {
     this.ticks = 0;
     this.applyDef(def);
     this.engines = new Map();
+    this.slides = new SlideDeck(); // the room's computer sharing its screen (src/slides.js)
     this.voices = {}; // per language, in local mode on a Mac: Apple reads the translations aloud (🎧)
     // Audio sources: the room's computer and, optionally, a backup on another output of the sound desk (another
     // computer, or the same one with a second interface). Only the active one is captioned; the backup takes over
@@ -600,6 +602,25 @@ export class Stage extends EventEmitter {
   }
 
   /** Spend so far: the Live sessions plus every translator's text requests. */
+  /**
+   * A new slide from the room's computer (a JPEG, sent only when the picture changed). Phones get it at once, then
+   * again with its text in their language once the model has read it.
+   */
+  addSlide(jpeg) {
+    if (!slidesEnabled || this.destroyed) return null;
+    const slide = this.slides.add(jpeg);
+    if (!slide) return null;
+    this.emit('slide', slide);
+    readSlide(jpeg, this.transTargets).then(({ text, usd }) => {
+      this.costUsd += usd;
+      slide.text = text;
+    }, (e) => this.log('warn', `slide: ${e.message}`)).finally(() => {
+      slide.reading = false;
+      if (this.slides.get(slide.id)) this.emit('slide', slide);
+    });
+    return slide;
+  }
+
   totalCost() { return this.costUsd + this.mtUsdDone + Object.values(this.mtQ || {}).reduce((a, q) => a + (q.stats.usd || 0), 0); }
   #retireTranslators() { this.mtUsdDone += Object.values(this.mtQ || {}).reduce((a, q) => a + (q.stats.usd || 0), 0); this.mtQ = {}; }
 
@@ -631,6 +652,7 @@ export class Stage extends EventEmitter {
     this.talkSegments = 0;
     this.talkSpoken = false;
     this.#buildTracks();
+    this.slides?.clear(); // a new talk, new slides (the constructor's first talk comes before the deck)
     this.#retireTranslators(); // new translators bind to the new tracks; old ones finish into the old talk
     this.talk._costAt0 = this.totalCost(); // after the translators reset: this talk's cost starts here
     this.route = {};
