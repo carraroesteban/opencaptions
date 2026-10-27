@@ -572,6 +572,18 @@ app.post('/api/glossary/replacements', admin, (req, res) => {
   } catch (e) { res.status(400).json({ error: e.message }); }
 });
 
+// Rename a transcript, the one in progress or a saved one: the crew too (the agenda isn't always right, or there was none).
+app.patch('/api/stages/:id/talks/:talk', crew, getStage, (req, res) => {
+  const st = req.stage, id = req.params.talk;
+  const title = String(req.body?.title ?? '').trim().slice(0, 200), speaker = String(req.body?.speaker ?? '').trim().slice(0, 120);
+  const before = talkInfo(st, id);
+  if (!before) return res.status(404).json({ error: 'unknown talk' });
+  if (id === st.talk.id) st.setTitle(title, speaker);
+  else store.retitle(st.id, id, { title, speaker });
+  recordChange({ kind: 'talk.rename', target: st.id, summary: `Transcript "${before.title || id}" renamed "${title || id}"` });
+  res.json(talkInfo(st, id));
+});
+
 app.delete('/api/stages/:id/talks/:talk', admin, getStage, (req, res) => {
   const st = req.stage, id = req.params.talk;
   if (!store.hasTalk(st.id, id)) return res.status(404).json({ error: 'unknown talk' });

@@ -41,6 +41,7 @@
         <button id="copy" class="au-btn" data-icon="link"><span class="lbl"></span></button>
         <button id="print" class="au-btn" data-icon="print"><span class="lbl"></span></button>
         <button id="fix" class="au-btn hidden" data-icon="wand" aria-pressed="false"><span class="lbl"></span></button>
+        <button id="rename" class="au-btn hidden" data-icon="pencil"><span class="lbl"></span></button>
         <button id="del" class="au-btn danger hidden" data-icon="x"><span class="lbl"></span></button>
       </div>
     </header>
@@ -70,6 +71,13 @@
   <dialog id="dlg-del" class="tk-del" aria-labelledby="del-title"><form method="dialog">
     <h2 id="del-title"></h2>
     <div class="tk-del-acts"><button value="cancel" id="del-no"></button><button value="ok" class="danger" id="del-ok"></button></div>
+  </form></dialog>
+
+  <dialog id="dlg-rename" class="tk-del" aria-labelledby="rn-h"><form method="dialog" class="u-stack12">
+    <h2 id="rn-h"></h2>
+    <label class="field"><span id="rn-l1"></span><input id="rn-title" maxlength="200" /></label>
+    <label class="field"><span id="rn-l2"></span><input id="rn-speaker" maxlength="120" /></label>
+    <div class="tk-del-acts"><button value="cancel" id="rn-no" formnovalidate></button><button value="ok" class="primary" id="rn-ok"></button></div>
   </form></dialog>
 
   <dialog id="dlg-set" class="sheet au-set" aria-labelledby="set-title">

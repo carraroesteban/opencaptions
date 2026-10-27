@@ -301,7 +301,10 @@ else if (/^\d+:\d\d$/.test(qs.get('at') || '')) jump(qs.get('at')); // a source 
 $('del').querySelector('.lbl').textContent = t('deleteTalk');
 $('fix').querySelector('.lbl').textContent = t('fixTalk');
 $('fix-hint').textContent = t('fixHint');
-fetch('/api/auth/me').then((r) => r.json()).then((me) => { if (me.role === 'admin') { $('del').classList.remove('hidden'); $('fix').classList.remove('hidden'); } }).catch(() => {});
+fetch('/api/auth/me').then((r) => r.json()).then((me) => {
+  if (me.role === 'admin' || me.role === 'crew') $('rename').classList.remove('hidden'); // the crew can rename, not delete or correct
+  if (me.role === 'admin') { $('del').classList.remove('hidden'); $('fix').classList.remove('hidden'); }
+}).catch(() => {});
 $('fix').onclick = () => {
   editing = !editing;
   $('fix').setAttribute('aria-pressed', String(editing));
@@ -329,6 +332,17 @@ $('doc').addEventListener('focusout', async (e) => {
     else el.textContent = seg.text;
   }
   if (renderLater) { renderLater = false; setTimeout(render); }
+});
+// Rename: the title and who gave it (Enter saves; the first button of the form is Cancel).
+$('rename').querySelector('.lbl').textContent = t('renameTalk');
+$('rn-h').textContent = t('renameTalk'); $('rn-l1').textContent = t('talkTitle'); $('rn-l2').textContent = t('talkSpeaker');
+$('rn-no').textContent = t('cancel'); $('rn-ok').textContent = t('save');
+$('rename').onclick = () => { $('rn-title').value = info.title || ''; $('rn-speaker').value = info.speaker || ''; $('dlg-rename').returnValue = ''; $('dlg-rename').showModal(); $('rn-title').select(); };
+for (const i of [$('rn-title'), $('rn-speaker')]) i.onkeydown = (e) => { if (e.key === 'Enter') { e.preventDefault(); $('dlg-rename').close('ok'); } };
+$('dlg-rename').addEventListener('close', async () => {
+  if ($('dlg-rename').returnValue !== 'ok') return;
+  const r = await fetch(`/api/stages/${encodeURIComponent(stageId)}/talks/${encodeURIComponent(talkId)}`, { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ title: $('rn-title').value, speaker: $('rn-speaker').value }) });
+  if (r.ok) location.reload();
 });
 // Delete asks first, in a dialog that says it can't be undone.
 $('del-title').textContent = t('deleteTalkQ');

@@ -96,6 +96,14 @@ export class Store {
       .sort((a, b) => b.startedAt - a.startedAt);
   }
 
+  /** Rename a saved talk (its title and who gave it). Returns false if there was none. */
+  retitle(stage, talkId, { title, speaker }) {
+    const mf = path.join(this.#talkDir(stage, talkId), 'meta.json');
+    if (!fs.existsSync(mf)) return false;
+    writeFileAtomic(mf, JSON.stringify({ ...JSON.parse(fs.readFileSync(mf, 'utf8')), title, speaker }, null, 2));
+    return true;
+  }
+
   hasTalk(stage, talkId) { return fs.existsSync(this.#talkDir(stage, talkId)); }
 
   /** Delete a saved talk for good (its captions and metadata). Returns false if there was none. */

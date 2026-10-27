@@ -113,7 +113,7 @@ const L = {
       untitled: 'Charla sin título', live: 'En curso', rec: 'Grabación', min: (m) => (m < 60 ? `${m} min` : `${Math.floor(m / 60)} h ${String(m % 60).padStart(2, '0')} min`),
       words: (n) => `${n.toLocaleString('es')} ${n === 1 ? 'palabra' : 'palabras'}`, talks: (n) => `${n} ${n === 1 ? 'charla' : 'charlas'}`,
       read: (n) => `Leer «${n}»`, dl: 'Descargar', dlOf: (n) => `Descargar «${n}»`, more: (n) => `Más opciones de «${n}»`,
-      dlNote: 'SRT y VTT: subtítulos para un video. TXT: el texto, para leer o editar.', copyLink: 'Copiar el enlace', del: 'Eliminar…',
+      dlNote: 'SRT y VTT: subtítulos para un video. TXT: el texto, para leer o editar.', copyLink: 'Copiar el enlace', del: 'Eliminar…', rename: 'Cambiar título…', renameQ: 'Cambiar el título', title: 'Título', speaker: 'Quién la dio', save: 'Guardar',
       noMatch: (q) => `Ninguna charla de esta sala coincide con «${q}».`, emptyBody: 'Cada charla queda acá cuando termina, con sus descargas en cada idioma.',
     },
     k: {
@@ -203,7 +203,7 @@ const L = {
       untitled: 'Untitled talk', live: 'In progress', rec: 'Recording', min: (m) => (m < 60 ? `${m} min` : `${Math.floor(m / 60)} h ${String(m % 60).padStart(2, '0')} min`),
       words: (n) => `${n.toLocaleString('en')} ${n === 1 ? 'word' : 'words'}`, talks: (n) => `${n} ${n === 1 ? 'talk' : 'talks'}`,
       read: (n) => `Read “${n}”`, dl: 'Download', dlOf: (n) => `Download “${n}”`, more: (n) => `More options for “${n}”`,
-      dlNote: 'SRT and VTT: captions for a video. TXT: the text, to read or edit.', copyLink: 'Copy the link', del: 'Delete…',
+      dlNote: 'SRT and VTT: captions for a video. TXT: the text, to read or edit.', copyLink: 'Copy the link', del: 'Delete…', rename: 'Rename…', renameQ: 'Rename the transcript', title: 'Title', speaker: 'Speaker', save: 'Save',
       noMatch: (q) => `No talk in this room matches “${q}”.`, emptyBody: 'Each talk lands here when it ends, with its downloads in every language.',
     },
     k: {
@@ -1416,7 +1416,7 @@ $('tx-list').onclick = (e) => {
   }
   m.setAttribute('role', 'menu');
   m.removeAttribute('aria-label');
-  popMenu(m, b, `<button type="button" role="menuitem" data-do="copy">${icon('link')}${esc(t.tx.copyLink)}</button>${isCrew ? '' : `<button type="button" role="menuitem" class="danger" data-do="del">${icon('x')}${esc(t.tx.del)}</button>`}`, e);
+  popMenu(m, b, `<button type="button" role="menuitem" data-do="rename">${icon('pencil')}${esc(t.tx.rename)}</button><button type="button" role="menuitem" data-do="copy">${icon('link')}${esc(t.tx.copyLink)}</button>${isCrew ? '' : `<button type="button" role="menuitem" class="danger" data-do="del">${icon('x')}${esc(t.tx.del)}</button>`}`, e);
 };
 $('tx-menu').onclick = async (e) => {
   const m = $('tx-menu');
@@ -1425,11 +1425,24 @@ $('tx-menu').onclick = async (e) => {
   if (!what || !x) return;
   m.hidePopover();
   if (what === 'copy') return copy(`${origin()}${txUrl(x)}`);
+  if (what === 'rename') return renameTalk(x);
   if (!(await confirmDialog({ title: t.txDelete(x.title || t.tx.untitled), body: t.noUndo, ok: tr('Eliminar'), danger: true }))) return;
   await api('DELETE', `/api/stages/${encodeURIComponent($('tx-room').value)}/talks/${encodeURIComponent(x.id)}`);
   toast(t.done, { ms: 3000 });
   renderTranscripts();
 };
+// The title and speaker, in the confirm dialog (Enter saves: its first button is Cancel).
+async function renameTalk(x) {
+  const field = (id, label, v) => `<label class="field"><span>${esc(label)}</span><input id="${id}" value="${esc(v || '')}" maxlength="200" /></label>`;
+  const asked = confirmDialog({ title: t.tx.renameQ, body: '', ok: t.tx.save, html: `<div class="u-stack12 u-mt14">${field('rn-title', t.tx.title, x.title)}${field('rn-speaker', t.tx.speaker, x.speaker)}</div>` });
+  $('cf-body').querySelector('p').remove();
+  for (const i of $('cf-body').querySelectorAll('input')) i.onkeydown = (e) => { if (e.key === 'Enter') { e.preventDefault(); $('dlg-confirm').close('ok'); } };
+  $('rn-title').select();
+  if (!(await asked)) return;
+  await api('PATCH', `/api/stages/${encodeURIComponent($('tx-room').value)}/talks/${encodeURIComponent(x.id)}`, { title: $('rn-title').value, speaker: $('rn-speaker').value });
+  toast(t.done, { ms: 3000 });
+  renderTranscripts();
+}
 $('tx-room').onchange = () => { txRoom = $('tx-room').value; renderTranscripts(); };
 $('tx-q').oninput = drawTranscripts;
 // Every talk of the room in one .zip (SRT, VTT and TXT in each language). Fetched rather than linked, so a refusal

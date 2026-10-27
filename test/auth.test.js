@@ -143,6 +143,19 @@ test('the crew runs the live controls, but can’t touch the setup', async () =>
   assert.equal((await b.call('POST', '/api/stages/main/talk', { title: 'Next talk' })).status, 200);
   assert.equal((await b.call('PATCH', '/api/stages/main', { title: 'Renamed talk' })).status, 200);
   assert.equal((await b.call('POST', '/api/stages/main/restart')).status, 200);
+  // Transcripts: the crew renames the one in progress and a saved one (the agenda can be wrong), but can't delete.
+  const st = (await b.call('GET', '/api/status')).body.stages.find((x) => x.id === 'main');
+  const r = await b.call('PATCH', `/api/stages/main/talks/${st.talk.id}`, { title: 'Keynote', speaker: 'Ana Pérez' });
+  assert.equal(r.status, 200);
+  assert.deepEqual([r.body.title, r.body.speaker], ['Keynote', 'Ana Pérez']);
+  const tdir = path.join(dataDir, 'transcripts', 'main', 'old-talk');
+  fs.mkdirSync(tdir, { recursive: true });
+  fs.writeFileSync(path.join(tdir, 'meta.json'), JSON.stringify({ stage: 'main', id: 'old-talk', title: 'Wrong title', startedAt: 1 }));
+  fs.writeFileSync(path.join(tdir, 'captions.jsonl'), JSON.stringify({ id: 's1', channel: 'orig', text: 'Hello.', start: 0, end: 1000 }) + '\n');
+  assert.equal((await b.call('PATCH', '/api/stages/main/talks/old-talk', { title: 'Right title', speaker: '' })).body.title, 'Right title');
+  assert.equal(JSON.parse(fs.readFileSync(path.join(tdir, 'meta.json'), 'utf8')).title, 'Right title');
+  assert.equal((await b.call('PATCH', '/api/stages/main/talks/no-such-talk', { title: 'X' })).status, 404);
+  assert.equal((await b.call('DELETE', '/api/stages/main/talks/old-talk')).status, 403);
   for (const [m, u, body] of [['PATCH', '/api/stages/main', { name: 'New room name' }], ['DELETE', '/api/stages/main'], ['POST', '/api/stages', { id: 'x', name: 'X' }],
     ['PUT', '/api/glossary', { vocabulary: [], replacements: [] }], ['POST', '/api/lock', { locked: false }], ['PUT', '/api/ai/key', { key: 'AIza' }],
     ['POST', '/api/tunnel', { mode: 'quick' }], ['GET', '/api/auth/sessions'], ['POST', '/api/auth/passwords/admin']]) {
