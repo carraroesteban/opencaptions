@@ -1,0 +1,33 @@
+# The public demo: one room captioning the sample talk on a loop, with the AI's answers replayed from a recording
+# (talk-en.json), so it runs forever at no cost and with no API key. Visitors are the audience: they open the room on
+# their phone, switch languages, open the transcript. Nothing they do reaches an AI.
+#
+#   cd deploy/hosted/demo && docker compose up -d      # http://localhost:8090 (put HTTPS in front: see README.md)
+services:
+  demo:
+    image: ghcr.io/carraroesteban/opencaptions:latest
+    pull_policy: always
+    restart: unless-stopped
+    init: true
+    environment:
+      ENGINE: gemini
+      GEMINI_API_KEY: replay # never used: OC_REPLAY answers instead
+      OC_REPLAY: /demo/talk-en.json
+      EVENT_CONFIG: /demo/event.json
+      STORE_TRANSCRIPTS: "false" # the same talk forever: kept in memory only, so the disk never fills
+      UPDATE_CHECK: "0"
+      TRUST_PROXY: uniquelocal
+      PUBLIC_URL: "${PUBLIC_URL:-}"
+    ports:
+      - "127.0.0.1:8090:8080"
+    volumes:
+      - ./:/demo:ro
+    read_only: true
+    tmpfs:
+      - /tmp
+      - /app/data
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    mem_limit: 512m

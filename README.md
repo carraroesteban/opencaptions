@@ -16,7 +16,7 @@ On every phone, on the big screen and in your livestream. Free and open source.
 [![Node.js ≥ 22.23.4](https://img.shields.io/badge/node-%E2%89%A5%2022.23.4-339933?logo=nodedotjs&logoColor=white)](docs/requirements.md)
 [![Docker](https://img.shields.io/badge/docker-ready-2496ED?logo=docker&logoColor=white)](#on-a-server-docker-a-vps-or-the-cloud)
 
-**[Website](https://opencaptions.kvza.ar)** · [30-second demo](https://opencaptions.kvza.ar/#screens) · [Download](#quick-start) · [Features](#features) · [Pricing](#what-it-costs) · [Docs](#documentation) · [En español](#en-español)
+**[Try it live on your phone](https://try-opencaptions.kvza.ar/s/main)** (nothing to install) · [Website](https://opencaptions.kvza.ar) · [30-second demo](https://opencaptions.kvza.ar/#screens) · [Download](#quick-start) · [Features](#features) · [Pricing](#what-it-costs) · [Docs](#documentation) · [En español](#en-español)
 
 <img src="docs/images/hero.png" width="920" alt="A livestream with bilingual captions on screen, next to a phone showing live captions of the same talk in Spanish" />
 

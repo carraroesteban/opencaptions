@@ -322,7 +322,9 @@ This is topology B on Google Cloud.
 
 ## Hosted test instances
 
-To let people try OpenCaptions without installing anything, run one instance per tester on a Linux server, on your Gemini key, with a weekly spending cap each. `deploy/hosted/testers.sh` does it with Docker and Caddy:
+**A public demo anyone can open** (one room captioning a sample talk forever, no API key, no cost): [`deploy/hosted/demo`](../deploy/hosted/demo/README.md). It's what the website's **Try it live** button opens.
+
+To let people try OpenCaptions with their own rooms, without installing anything, run one instance per tester on a Linux server, on your Gemini key, with a weekly spending cap each. `deploy/hosted/testers.sh` does it with Docker and Caddy:
 
 - Each tester gets `https://<name>.<your domain>`, with their own rooms, passwords and transcripts. They're the admin of their own instance and can't see anyone else's: each runs in its own container, on its own network.
 - Each instance stops using the AI when it reaches `BUDGET_USD_WEEK` (US$ 3 by default) and starts again on Monday. US$ 3 is about 3 hours of captions a week with one translation language. The spend is the app's own estimate, not Google's bill: watch the real one in AI Studio the first weeks.

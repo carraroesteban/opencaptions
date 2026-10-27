@@ -1,0 +1,13 @@
+{
+  "eventName": "OpenCaptions demo",
+  "publicUrl": "",
+  "publicTranscripts": "all",
+  "timezone": "UTC",
+  "languages": { "es": "Español", "en": "English" },
+  "defaultTargets": ["es", "en"],
+  "silenceGateSec": 30,
+  "idleCloseSec": 300,
+  "stages": [
+    { "id": "main", "name": "Main Stage", "source": "auto", "targets": ["es", "en"], "title": "Telehealth for rural clinics", "pull": "samples/talk-en.wav", "loop": true }
+  ]
+}

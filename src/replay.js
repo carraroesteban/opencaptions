@@ -119,9 +119,14 @@ export function replayClient(file, speed = Number(process.env.OC_REPLAY_SPEED ||
         const lead = src?.firstAudioAt || 0;
         // Messages from before the first audio (setupComplete…) play on connect; the rest wait for audio.
         for (const { t, m } of src?.messages || []) if (t < lead) at(t, () => emit(m));
+        // Audio still coming after the recording has played out (a demo room looping its sample talk,
+        // deploy/hosted/demo): the recording starts again with it, as the audio has.
+        const last = Math.max(0, ...(src?.messages || []).map(({ t }) => t - lead));
         const session = {
           sendRealtimeInput(input) {
-            if (!input?.audio || audioAt) return;
+            if (!input?.audio) return;
+            if (audioAt && now() - audioAt > last / speed + 1500) audioAt = 0;
+            if (audioAt) return;
             audioAt = now();
             for (const { t, m } of src?.messages || []) if (t >= lead) at(t - lead, () => emit(m));
           },
