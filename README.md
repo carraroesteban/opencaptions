@@ -107,9 +107,11 @@ For real captions, paste a Gemini key in **Settings → AI**, or `npm run setup`
 **For your audience**
 
 - **Captions on any phone**, in any of 82 languages, smooth to read: words appear at the speaker's pace and lines roll up like TV captions.
-- **What did I miss?** A summary of the last five minutes, or the whole session. **Ask the talk:** questions answered only from what was said.
+- **The slide, on their phone, in their language:** the speaker's computer shares the presentation and each new slide arrives translated. [Accessibility](docs/accessibility.md#the-slide-on-the-phone-in-your-language)
+- **Tap any word** to have it explained in plain words, from what the speaker said.
+- **What did I miss?** A summary of the last five minutes, or the whole session. **Ask the talk:** questions answered only from what was said. **Ask the whole event:** one question across every room and talk, with links to the moment.
 - **Listen:** the translation read aloud in headphones, or the room's own sound for hearing aids and cochlear implants, when the organizer turns it on. [Accessibility](docs/accessibility.md)
-- **Transcripts** to read, search, print and download (TXT, SRT, VTT), with who said what.
+- **Transcripts** to read, search, print and download (TXT, SRT, VTT), with who said what; each talk's page opens with its chapters and key quotes, ready to share.
 
 **For the stage and the stream**
 
@@ -120,6 +122,7 @@ For real captions, paste a Gemini key in **Settings → AI**, or `npm run setup`
 
 **For organizers**
 
+- **Try it live in a browser** with nothing to install ([demo](https://try-opencaptions.kvza.ar/s/main)), and **one phone can run a room** at a meetup with no sound desk.
 - **Guided setup**, agenda import (Sessionize, Swapcard, any spreadsheet or a calendar link) and printable **QR posters**.
 - **A production dashboard** with every room's sound, delay, audience, cost and alerts, plus **alerts on your phone** (ntfy, Telegram, Slack, Discord).
 - **Safe on the day:** Event mode locks the setup, every change can be undone, a backup computer takes over a room's sound, and if the internet drops, captions move to your laptop and come back by themselves.

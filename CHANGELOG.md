@@ -4,6 +4,8 @@ All notable changes to this project are documented in this file. The format foll
 
 ## [Unreleased]
 
+Planned as **1.0.0**: the slide on every phone in its reader's language, any word explained, the whole event answering questions, a page for every talk, a public demo that runs for free, and the first minutes made simpler. Nothing to change when updating ([upgrade notes](docs/upgrading.md#094--10)).
+
 ### Fixed
 
 - **The first minutes, as a stranger.** Keeping the setup wizard's defaults no longer leads to a review step with a greyed-out button: it says Continue. On a Mac, the AI step and its button lead with captioning free on this Mac (Apple's speech is about as fast as the cloud), instead of "free, slower". The cost shown next to the API key now matches the measured one (about US$ 0.50 a room-hour plus about 0.50 per translated language, not "US$ 2"). The dashboard's checklist offers the key or this computer.

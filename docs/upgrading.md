@@ -12,6 +12,19 @@ Every update keeps your settings, passwords, rooms and transcripts: they live in
 | Docker Compose | `docker compose up -d` (it gets the newest release). Building it yourself: `git pull && docker compose up -d --build` |
 | The published Docker image | `docker rm -f opencaptions`, then the same `docker run --pull always …` line again |
 
+## 0.9.4 → 1.0
+
+**Nothing to change in your settings.** Your `.env`, `config/` files and data folder work as they are, and nothing is turned off.
+
+**New settings, all optional** ([Configuration](reference/configuration.md)): `SLIDES` (on), `INDEX_TALKS` (off), `EXPLAIN_PER_CLIENT_PER_MIN` (12), `EXPLAIN_RPM` (60), and **Settings → Event → Say where the captions come from** (on).
+
+**What you'll notice:**
+
+- **Slides on phones,** when a room's computer clicks **Share slides** on its audio page. Nothing is shared until someone does.
+- **Tap a word** in the captions to have it explained, and **Ask the whole event** on the transcripts page. Both follow the transcript rules you already have (`PUBLIC_TRANSCRIPTS`) and the assistant's switch (`AUDIENCE_AI`).
+- **Talk pages** open with chapters and key quotes, and preview as the talk when shared, where the transcript is public. They stay out of search engines unless `INDEX_TALKS=on`.
+- **A quiet line on the audience pages,** "Live captions by OpenCaptions · free for your event". Switch it off in **Settings → Event**.
+
 ## 0.9.1 → 0.9.2
 
 **Nothing to change in your settings.** Your `.env`, `config/` files and data folder work as they are.
