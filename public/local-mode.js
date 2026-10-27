@@ -12,6 +12,7 @@ const T = {
     go: 'Usar esta computadora (gratis, más lento)',
     noKey: '¿No tenés key? Usá esta computadora (gratis, más lento)',
     fine: 'La primera vez descarga unos 650 MB. Nada sale de esta computadora.',
+    goMac: 'Usar esta Mac (gratis)', noKeyMac: '¿No tenés key? Empezá gratis con esta Mac',
     fineMac: 'Usa el reconocimiento de voz y la traducción que trae esta Mac, así que normalmente no hay que descargar nada grande. Nada sale de esta computadora.',
     working: 'Preparando…',
     failed: 'No se pudo preparar:',
@@ -33,6 +34,7 @@ const T = {
     go: 'Use this computer (free, slower)',
     noKey: 'No key? Run it on this computer (free, slower)',
     fine: 'The first time it downloads about 650 MB. Nothing leaves this computer.',
+    goMac: 'Use this Mac (free)', noKeyMac: 'No key? Start free on this Mac',
     fineMac: 'Uses the speech recognition and translation built into this Mac, so there’s usually nothing big to download. Nothing leaves this computer.',
     working: 'Getting ready…',
     failed: 'Couldn’t get it ready:',
@@ -71,7 +73,8 @@ export function localPanel(el, { api, quota = false, onChange = () => {} }) {
     let html = '';
     if (s.state === 'idle' || s.state === 'error') {
       if (quota) html += `<p class="cx-status warn">${icon('alert')}<span>${esc(t.quota)}</span></p>`;
-      html += `<div class="cx-row"><button type="button" class="${quota ? 'primary' : ''}" data-lm="start">${esc(quota ? t.go : t.noKey)}</button></div><p class="cx-fine">${esc(s.apple ? t.fineMac : t.fine)}</p>`;
+      // On a Mac, Apple's speech shows first words about as fast as the cloud (docs/local.md): no "slower", and offered first.
+      html += `<div class="cx-row"><button type="button" class="${quota || s.apple ? 'primary' : ''}" data-lm="start">${esc(s.apple ? (quota ? t.goMac : t.noKeyMac) : quota ? t.go : t.noKey)}</button></div><p class="cx-fine">${esc(s.apple ? t.fineMac : t.fine)}</p>`;
       if (s.state === 'error') html += `<p class="cx-msg bad" role="status">${esc(t.failed)} ${esc(s.error)}</p>`;
     } else if (s.state === 'working') html += localProgress(s);
     else {

@@ -22,7 +22,7 @@ const T = {
     k2: 'Rooms', roomsH: 'Where will people speak?', roomsP: 'Each room gets its own captions link and QR code.', addRoom: 'Add a room', skipRooms: 'Skip, keep these rooms', roomPh: (i) => `Room ${i}`, remove: 'Remove room',
     presets: [['One room', ['Main Stage']], ['Two rooms', ['Main Stage', 'Room A']], ['Main stage + 3 rooms', ['Main Stage', 'Room A', 'Room B', 'Room C']]],
     k3: 'Languages', langsH: 'Which languages?', spokenQ: 'What language will the talks be in?', auto: 'Detect automatically', betweenQ: 'Only these languages', captionsQ: 'Which captions can the audience choose?', langsHint: 'Not sure? “Detect automatically” follows the speaker, even when they switch.', notSure: 'I’m not sure, skip',
-    k4: 'The AI', aiLedeMock: 'Right now captions are simulated. To caption real talks, connect Google’s Gemini with an API key: it takes about two minutes.', aiLedeOn: 'Captions come from Google’s Gemini, in the cloud.',
+    k4: 'The AI', aiLedeMac: 'Right now captions are simulated. This Mac can caption real talks for free right now, with nothing leaving it; or connect Google’s Gemini with an API key for the best quality (about two minutes).', aiLedeMock: 'Right now captions are simulated. To caption real talks, connect Google’s Gemini with an API key: it takes about two minutes.', aiLedeOn: 'Captions come from Google’s Gemini, in the cloud.',
     kS: 'Phones', shareH: 'How will phones reach the captions?', sAddr: 'Address',
     kR: 'Review', reviewH: 'Check before anything changes', reviewP: 'Nothing has changed yet. Switch off what you don’t want.', apply: 'Apply changes', skipReview: 'Skip, change nothing',
     noChanges: 'Nothing to change: your event already looks like this.',
@@ -80,7 +80,7 @@ const T = {
     k2: 'Salas', roomsH: '¿Dónde va a hablar la gente?', roomsP: 'Cada sala tiene su link de subtítulos y su QR.', addRoom: 'Agregar una sala', skipRooms: 'Saltar, dejar estas salas', roomPh: (i) => `Sala ${i}`, remove: 'Quitar sala',
     presets: [['Una sala', ['Escenario principal']], ['Dos salas', ['Escenario principal', 'Sala A']], ['Principal + 3 salas', ['Escenario principal', 'Sala A', 'Sala B', 'Sala C']]],
     k3: 'Idiomas', langsH: '¿Qué idiomas?', spokenQ: '¿En qué idioma van a ser las charlas?', auto: 'Detectar automáticamente', betweenQ: 'Solo entre estos idiomas', captionsQ: '¿Qué subtítulos puede elegir el público?', langsHint: '¿No sabés? “Detectar automáticamente” sigue al orador, aunque cambie de idioma.', notSure: 'No sé, saltar',
-    k4: 'La IA', aiLedeMock: 'Por ahora los subtítulos son simulados. Para subtitular charlas reales, conectá Gemini de Google con una API key: son unos dos minutos.', aiLedeOn: 'Los subtítulos vienen de Gemini de Google, en la nube.',
+    k4: 'La IA', aiLedeMac: 'Por ahora los subtítulos son simulados. Esta Mac puede subtitular charlas reales gratis ya mismo, sin que nada salga de ella; o conectá Gemini de Google con una API key para la mejor calidad (unos dos minutos).', aiLedeMock: 'Por ahora los subtítulos son simulados. Para subtitular charlas reales, conectá Gemini de Google con una API key: son unos dos minutos.', aiLedeOn: 'Los subtítulos vienen de Gemini de Google, en la nube.',
     kS: 'Celulares', shareH: '¿Cómo llegan los celulares a los subtítulos?', sAddr: 'Dirección',
     kR: 'Revisión', reviewH: 'Revisá antes de cambiar nada', reviewP: 'Todavía no cambió nada. Apagá lo que no quieras.', apply: 'Aplicar cambios', skipReview: 'Saltar, no cambiar nada',
     noChanges: 'No hay nada que cambiar: tu evento ya está así.',
@@ -288,7 +288,10 @@ async function buildPlan() {
     ops.push({ type: 'delete', id: x.id, label: t.opDelete(x.name), note: t.opDeleteNote(talks), on: talks === 0, danger: true });
   }
   $('locknote').classList.toggle('hidden', !S.locked);
-  $('apply').disabled = !!S.locked || !ops.length;
+  // Nothing to change (the defaults kept): one plain Continue, not a greyed-out button next to a "skip" link.
+  $('apply').disabled = !!S.locked && !!ops.length;
+  $('apply').textContent = ops.length ? t.apply : t.next;
+  document.querySelector('[data-step="review"] [data-skip]').classList.toggle('hidden', !ops.length);
   $('ops').innerHTML = ops.length
     ? ops.map((o, i) => `<label class="op${o.danger ? ' danger' : ''}"><span>${esc(o.label)}${o.note ? `<small>${esc(o.note)}</small>` : ''}</span><input type="checkbox" data-op="${i}" ${o.on ? 'checked' : ''} ${S.locked ? 'disabled' : ''} /></label>`).join('')
     : `<p class="hint">${esc(t.noChanges)}</p>`;
@@ -401,7 +404,7 @@ function renderAi() {
   const f = S.failover;
   let html = '';
   // Started in demo mode on purpose (--mock) although a key is saved: the key panel says so, no need to say it twice.
-  $('ai-lede').textContent = S.primaryEngine === 'mock' ? (S.ai?.set ? '' : t.aiLedeMock) : S.primaryEngine === 'gemini' ? t.aiLedeOn : '';
+  $('ai-lede').textContent = S.primaryEngine === 'mock' ? (S.ai?.set ? '' : S.aiNow?.apple && S.aiNow?.canLocal ? t.aiLedeMac : t.aiLedeMock) : S.primaryEngine === 'gemini' ? t.aiLedeOn : '';
   $('ai-key').classList.toggle('hidden', S.primaryEngine === 'local');
   keyP.update(S);
   // Offline backup (POST /api/ai/use 'auto'): this computer gets ready as the backup, its progress from GET /api/local.

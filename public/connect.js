@@ -32,7 +32,7 @@ const T = {
     offline: 'No se pudo contactar a Google. ¿Esta computadora tiene internet?',
     saveAnyway: 'Guardarla igual',
     error: 'Google respondió con un error. Probá de nuevo en un minuto.',
-    cost: 'Gemini cobra por uso: unos US$ 2 por hora por sala (la cuota gratis alcanza para probar).',
+    cost: 'Gemini cobra por uso: unos US$ 0,50 por hora por sala, más unos US$ 0,50 por cada idioma traducido (la cuota gratis alcanza para probar).',
     // another AI for the text
     taGemini: 'Las traducciones, los resúmenes y las preguntas usan Gemini.',
     taOn: (m, host, l4, src) => `Las traducciones, los resúmenes y las preguntas usan ${m} en ${host}${l4 ? ` (key ••••${l4})` : ''}${src === 'env' ? ' (del archivo .env)' : ''}.`,
@@ -124,7 +124,7 @@ const T = {
     offline: 'Couldn’t reach Google. Does this computer have internet?',
     saveAnyway: 'Save it anyway',
     error: 'Google answered with an error. Try again in a minute.',
-    cost: 'Gemini is paid by use: about US$ 2 per room per hour (the free quota is enough to try it).',
+    cost: 'Gemini is paid by use: about US$ 0.50 per room per hour, plus about US$ 0.50 for each translated language (the free quota is enough to try it).',
     tIntro: 'So phones can reach the captions from any network, over HTTPS. Free, through Cloudflare: no router settings, nothing to buy.',
     tStart: 'Create a public address',
     tNote: 'The address changes every time OpenCaptions restarts: print the QR codes after creating it, and don’t restart during the event. Good for about 200 people connected at once; for bigger events use your own domain.',
