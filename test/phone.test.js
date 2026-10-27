@@ -69,7 +69,8 @@ after(async () => {
   page?.close(); audio?.stopAudio(); ingest?.close();
   const gone = (p) => (p && p.exitCode === null ? new Promise((r) => { p.once('exit', r); p.kill(); }) : null);
   await Promise.all([gone(chrome), gone(srv)]); // nothing still writing in the folders
-  for (const d of [dataDir, profile]) if (d) fs.rmSync(d, { recursive: true, force: true, maxRetries: 3 });
+  // Chrome's helper processes can still be writing to the profile after it exits: a leftover temp folder isn't a failure.
+  for (const d of [dataDir, profile]) if (d) try { fs.rmSync(d, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 }); } catch { /* left in the temp folder */ }
 });
 
 // What the reader has on screen: the captions' ids in order, and whether any is there twice.
@@ -111,8 +112,11 @@ test('back from the back/forward cache: reconnects the same way, once (it fires 
 });
 
 test('a reader scrolled up to re-read keeps their place when the phone comes back', { skip }, async () => {
-  await page.until("document.getElementById('scroll').scrollHeight > document.getElementById('scroll').clientHeight + 200", 30000);
-  const at = await page.evaluate("(() => { const s = document.getElementById('scroll'); s.scrollTop = 40; s.dispatchEvent(new Event('scroll')); return s.scrollTop; })()");
+  // A short screen and the reader at the top, far above the "following live" zone (120 px from the bottom): with just
+  // enough text to scroll, a reflow of the last lines could tip a reader near that zone back to live (slow CI machines).
+  await page.send('Emulation.setDeviceMetricsOverride', { width: 390, height: 420, deviceScaleFactor: 1, mobile: true });
+  await page.until("document.getElementById('scroll').scrollHeight > document.getElementById('scroll').clientHeight + 400", 30000);
+  const at = await page.evaluate("(() => { const s = document.getElementById('scroll'); s.scrollTop = 0; s.dispatchEvent(new Event('scroll')); return s.scrollTop; })()");
   await sleep(1100);
   await page.evaluate(BACKGROUND(1500));
   await page.until(`(${SHOWN}).down === false`, 2000);
