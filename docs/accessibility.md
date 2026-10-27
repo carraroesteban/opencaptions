@@ -30,6 +30,15 @@ Automated tools find roughly a third to a half of real accessibility problems. T
 - **Motion:** captions don't blink or move at the end of the line: each new word fades in once, and a paragraph is never redrawn while you read it. The fade and page animations stop with the system's "reduce motion" setting.
 - **Contrast:** text meets 4.5:1 (large text 3:1) on every surface, in both themes.
 
+## A word you don't know
+
+Captions help only if the words make sense. On the phone, **tap any word** in the captions (or select a phrase) and a sheet explains it: one or two plain sentences in the language you're reading, what it means in this talk, and the moment the speaker said it, with the time. It helps people reading in a second language, students, and anyone meeting a specialist term for the first time.
+
+- **Grounded like the assistant:** the model sees only where the word was said in the transcript. When the talk doesn't explain it, the sheet gives its general meaning and says so.
+- **Keyboard and screen readers:** **What did I miss?** → **Explain a word** opens the same sheet with a box to type the word.
+- **Cost:** one short request per word, cached for the whole talk and shared by every phone (the second person to tap the same word costs nothing). Limited to 12 words a minute per phone and 60 a minute per server (`EXPLAIN_PER_CLIENT_PER_MIN`, `EXPLAIN_RPM`); `AUDIENCE_AI=off` turns it off with the rest of the assistant.
+- **Without the AI** (no key, mock mode, local mode without a text model): the sheet shows where the word was said, without an explanation.
+
 ## The slide, on the phone, in your language
 
 People sitting far from the screen, people with low vision, and people who don't read the slides' language miss what's on them. The room's computer can share the presentation's screen next to the sound, and every phone gets each new slide: the picture, and its text in the language the person is reading, large and readable by a screen reader.

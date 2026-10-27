@@ -1,6 +1,6 @@
 // watch.html: page script (kept out of the HTML so the Content-Security-Policy can forbid inline scripts).
 import { qs, t, esc, store, wsUrl, Socket, CaptionState, PcmPlayer, langLabel, wakeLock, getEvent, applyReadingPrefs, setReadingPref, pauseView, CaptionFlow, segment, pressSegment, readingItems, previewFonts } from '/common.js';
-import { mountAssistant } from '/assist-ui.js';
+import { mountAssistant, client } from '/assist-ui.js';
 import { icon, mountIcons } from '/illustrations.js';
 import { prefsControls } from '/prefs.js';
 import { floatingCaptions } from '/floating.js';
@@ -14,7 +14,7 @@ const calm = matchMedia('(prefers-reduced-motion: reduce)'); // no glide, no cro
 // Icons, the page language and theme (the globe) and translated labels for the icon-only buttons.
 mountIcons();
 $('prefs-slot').append(prefsControls({ langs: ['es', 'en', 'pt'] }));
-for (const id of ['ai-close', 'set-close', 'slide-close', 'listen-note-close']) $(id).setAttribute('aria-label', t('close'));
+for (const id of ['ai-close', 'set-close', 'slide-close', 'term-close', 'listen-note-close']) $(id).setAttribute('aria-label', t('close'));
 $('back-link').setAttribute('aria-label', t('stages'));
 $('doc').title = t('transcript');
 $('doc').setAttribute('aria-label', t('transcript')); // an icon-only link: screen readers need its name
@@ -56,6 +56,64 @@ const assistant = mountAssistant($('assistant'), { stage: stageId, lang: () => (
 $('ai').onclick = () => { $('dlg-ai').showModal(); assistant.load(); };
 $('ai-close').onclick = () => $('dlg-ai').close();
 const docUrl = () => `/talk.html?stage=${encodeURIComponent(stageId)}${lang ? `&lang=${encodeURIComponent(lang)}` : ''}`;
+
+// ---- a word tapped in the captions: what it means, in plain words (POST /api/stages/:id/explain) ----
+const readerLang = () => (lang && lang !== 'orig' ? lang : hello?.stage?.source && hello.stage.source !== 'auto' ? hello.stage.source : (navigator.language || 'es').slice(0, 2));
+$('term-title').textContent = t('explainWord');
+$('term-hint').textContent = t('explainHint');
+$('term-q').placeholder = t('termPlaceholder');
+$('term-q').setAttribute('aria-label', t('termPlaceholder'));
+$('term-go').setAttribute('aria-label', t('explainWord'));
+$('ai-term').append(t('explainWord'));
+let termAsk = 0;
+async function explainTerm(term) {
+  term = term.trim();
+  if (term.length < 2) return;
+  const n = ++termAsk;
+  $('term-out').innerHTML = `<p class="muted">${esc(t('thinking'))}</p>`;
+  let j;
+  try {
+    const r = await fetch(`/api/stages/${encodeURIComponent(stageId)}/explain`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ term, lang: readerLang(), talk: hello?.talk, client }) });
+    j = r.ok ? await r.json() : { error: r.status === 429 ? t('tooMany') : t('error') };
+  } catch { j = { error: t('error') }; }
+  if (n !== termAsk) return; // another word was tapped meanwhile
+  if (j.error && !j.term) { $('term-out').innerHTML = `<p class="muted">${esc(j.error)}</p>`; return; }
+  const quotes = j.quotes.map((q) => `<blockquote><b>${esc(q.at)}</b> ${esc(q.text)}</blockquote>`).join('');
+  $('term-out').innerHTML = `<h3 class="tm-term">${esc(j.term)}${j.translation ? ` <span class="muted">· ${esc(j.translation)}</span>` : ''}</h3>`
+    + (j.meaning ? `<p class="tm-meaning">${esc(j.meaning)}</p>${j.general ? `<p class="muted tm-note">${esc(t('generalMeaning'))}</p>` : ''}` : '')
+    + (quotes ? `<h4 class="as-h">${esc(t('quotesFrom'))}</h4>${quotes}` : `<p class="muted">${esc(t('notSaidYet'))}</p>`)
+    + (j.ai ? `<p class="muted tm-note">${esc(t('aiNote'))}</p>` : '');
+}
+function openTerm(term = '') {
+  $('term-q').value = term;
+  $('term-out').innerHTML = '';
+  if (!$('dlg-term').open) $('dlg-term').showModal();
+  if (term) explainTerm(term); else $('term-q').focus();
+}
+$('term-form').onsubmit = (e) => { e.preventDefault(); explainTerm($('term-q').value); };
+$('term-close').onclick = () => $('dlg-term').close();
+$('ai-term').onclick = () => { $('dlg-ai').close(); openTerm(); };
+/** The word under a tap (or the text selected), from the captions only. */
+function wordAt(e) {
+  const sel = getSelection();
+  if (sel && !sel.isCollapsed && $('text').contains(sel.anchorNode)) return sel.toString().slice(0, 60);
+  const pos = document.caretPositionFromPoint?.(e.clientX, e.clientY);
+  const range = pos ? null : document.caretRangeFromPoint?.(e.clientX, e.clientY);
+  const node = pos?.offsetNode || range?.startContainer;
+  const at = pos?.offset ?? range?.startOffset ?? 0;
+  if (!node || node.nodeType !== 3 || !$('text').contains(node)) return '';
+  const s = node.textContent;
+  const isW = (c) => /[\p{L}\p{N}'’-]/u.test(c || '');
+  let a = at, b = at;
+  while (a > 0 && isW(s[a - 1])) a--;
+  while (b < s.length && isW(s[b])) b++;
+  return s.slice(a, b);
+}
+$('text').addEventListener('click', (e) => {
+  if (e.target.closest('a, button')) return;
+  const w = wordAt(e);
+  if (w.replace(/[^\p{L}\p{N}]/gu, '').length >= 2) openTerm(w);
+});
 
 // ---- the slide on screen, from the room's computer, in this phone's language (src/slides.js) ----
 const slides = []; // this talk's, newest last
@@ -115,7 +173,7 @@ const whole = () => !!prefs.whole;
 segment($('flow-opts'), [['word', esc(t('wordByWord'))], ['whole', esc(t('wholeSentences'))]], whole() ? 'whole' : 'word', (v) => { prefs = setReadingPref('whole', v === 'whole'); renderAll(); });
 $('settings').onclick = () => { previewFonts($('font-opts')); $('dlg-set').showModal(); };
 $('set-close').onclick = () => $('dlg-set').close();
-for (const d of ['dlg-ai', 'dlg-set', 'dlg-slide']) $(d).addEventListener('click', (e) => { if (e.target === $(d)) $(d).close(); }); // tap outside closes
+for (const d of ['dlg-ai', 'dlg-set', 'dlg-slide', 'dlg-term']) $(d).addEventListener('click', (e) => { if (e.target === $(d)) $(d).close(); }); // tap outside closes
 
 // Before the room's answer to a new language arrives, the language is its own channel.
 const channel = () => hello?.map?.[lang] || (hello?.stage?.languages?.includes(lang) ? lang : 'orig');

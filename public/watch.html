@@ -55,7 +55,15 @@
   <dialog id="dlg-ai" class="sheet" aria-labelledby="ai-title">
     <div class="sheet-head"><h2 id="ai-title" class="as-title"></h2><button id="ai-close" data-icon="x"></button></div>
     <div id="assistant"></div>
+    <button id="ai-term" class="as-more" type="button" data-icon="book"></button>
     <a id="ai-doc" class="as-more" href="#" data-icon="doc"></a>
+  </dialog>
+
+  <dialog id="dlg-term" class="sheet" aria-labelledby="term-title">
+    <div class="sheet-head"><h2 id="term-title"></h2><button id="term-close" data-icon="x"></button></div>
+    <p id="term-hint" class="muted"></p>
+    <form id="term-form" class="as-form"><input id="term-q" maxlength="60" autocomplete="off" enterkeyhint="search" /><button id="term-go" class="as-send" type="submit" data-icon="search"></button></form>
+    <div id="term-out" class="tm-out" aria-live="polite"></div>
   </dialog>
 
   <dialog id="dlg-slide" class="sheet w-slide" aria-labelledby="slide-title">

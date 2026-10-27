@@ -5,7 +5,7 @@ import { icon } from '/illustrations.js';
 
 // A random id for this browser: phones at a venue share one IP, so the question limit is per browser.
 // (getRandomValues, not randomUUID: venue Wi-Fi is plain HTTP, where randomUUID doesn't exist.)
-const client = store.get('client', null) || (() => {
+export const client = store.get('client', null) || (() => {
   const id = [...crypto.getRandomValues(new Uint8Array(12))].map((x) => x.toString(16).padStart(2, '0')).join('');
   store.set('client', id);
   return id;

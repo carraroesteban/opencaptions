@@ -35,7 +35,7 @@ import { fromSessionize, fromIcs } from './agenda-import.js';
 import { PullSource, ffmpegBin } from './pull.js';
 import { muLaw } from './audio.js';
 import { systemStats } from './system.js';
-import { summarize, ask, audienceAiEnabled, assistStats } from './assist.js';
+import { summarize, ask, explain, audienceAiEnabled, assistStats } from './assist.js';
 import { budgetInfo } from './budget.js';
 import { Schedule, parseSchedule } from './schedule.js';
 import { History } from './history.js';
@@ -810,6 +810,22 @@ app.get('/api/stages/:id/summary', getStage, talkAccess, async (req, res) => {
   if (!info) return res.status(404).json({ error: 'unknown talk' });
   const out = await summarize({ segs: talkSegs(st, talkId), key: `${st.id}/${talkId}`, lang, scope, live: info.current, title: info.title });
   res.set('Cache-Control', 'no-store').json(out);
+});
+
+// A word tapped in the captions: what it means, in plain words in the reader's language (src/assist.js explain).
+app.post('/api/stages/:id/explain', getStage, async (req, res) => {
+  const st = req.stage;
+  const talkId = req.body?.talk || st.talk.id;
+  if (!canReadTalk(req, st, talkId)) return res.status(401).json({ error: 'admin token required' });
+  const lang = LANG_OK(req.body?.lang) ? req.body.lang : 'en';
+  const info = talkInfo(st, talkId);
+  if (!info) return res.status(404).json({ error: 'unknown talk' });
+  try {
+    const ip = clientIp(req), browser = String(req.body?.client || '');
+    res.json(await explain({ segs: talkSegs(st, talkId), key: `${st.id}/${talkId}`, lang, term: req.body?.term, ip, clientKey: /^[\w-]{8,40}$/.test(browser) ? `${ip}|${browser}` : ip, title: info.title }));
+  } catch (e) {
+    res.status(e.status || 500).json({ error: e.status ? e.message : 'internal error' });
+  }
 });
 
 app.post('/api/stages/:id/ask', getStage, async (req, res) => {

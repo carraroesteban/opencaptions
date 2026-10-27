@@ -13,7 +13,7 @@ OpenCaptions runs on your own computer or server and never reports to its author
 | What | Goes to | When | How to avoid it |
 |---|---|---|---|
 | The room's audio | Google (Gemini) | While a room is captioning with Gemini. It stops after 30 s of silence, and during breaks and music. | [Local mode](local.md): speech recognition on your own computer. |
-| Caption text, for translations, *What did I miss?* and *Ask the talk* | Google (Gemini), or the AI you set in **Settings → AI** (OpenAI, OpenRouter, Groq, Mistral…) | For each sentence to translate, and each summary or question | Local mode, or a translation service you run yourself |
+| Caption text, for translations, *What did I miss?*, *Ask the talk* and words tapped to be explained | Google (Gemini), or the AI you set in **Settings → AI** (OpenAI, OpenRouter, Groq, Mistral…) | For each sentence to translate, and each summary or question | Local mode, or a translation service you run yourself |
 | The slide on the room's screen, as a picture | Google (Gemini) | Only when the room's computer shares its slides, once per new slide | Don't share slides, or `SLIDES=off` |
 | Captions, to Zoom, YouTube Live, Microsoft Teams or a webhook | The service you connected | Only for integrations you set up | Don't connect them |
 | Alerts (room names and what went wrong, never captions) | ntfy, Telegram, Slack, Discord or a webhook | Only for the channels you set up | Don't set up alerts |

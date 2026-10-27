@@ -446,3 +446,13 @@ dialog.tk-del { max-width: min(440px, calc(100vw - 32px)); }
 #slide.new { position: relative; }
 #slide.new::after { content: ''; position: absolute; top: 6px; right: 6px; width: 10px; height: 10px; border-radius: 50%; background: var(--primary-bg); border: 2px solid var(--fg); }
 .sl-fwd svg { transform: scaleX(-1); }
+
+/* A word tapped in the captions (#dlg-term). */
+#text { cursor: text; }
+.tm-out { margin-top: 18px; display: grid; gap: 10px; }
+.tm-out:empty { display: none; }
+.tm-term { margin: 0; font-size: 22px; }
+.tm-meaning { margin: 0; font-size: 18px; line-height: 1.55; }
+.tm-note { margin: 0; font-size: 14px; }
+.tm-out blockquote { margin: 0; padding: 8px 12px; border-left: 3px solid var(--line-strong); background: var(--fill); border-radius: 0 12px 12px 0; font-size: 15px; }
+.tm-out blockquote b { font-variant-numeric: tabular-nums; margin-right: 6px; }
