@@ -264,7 +264,7 @@ export async function explain({ segs, key, lang, term, clientKey, ip = clientKey
  * with no model), in what was spoken and in the asker's language; the model then answers from the matching passages
  * only and cites them. Each source says the room, the talk and the moment, so the page can link to it.
  * @param {object} o
- * @param {{ ref: { roomId: string, room: string, talkId: string, talk: string }, segs: any[] }[]} o.docs
+ * @param {() => { ref: { roomId: string, room: string, talkId: string, talk: string }, segs: any[] }[]} o.docs  read only once the asker is within the limits
  * @param {string} o.lang      the asker's language
  * @param {string} o.question
  * @param {string} o.clientKey
@@ -275,9 +275,10 @@ export async function askEvent({ docs, lang, question, clientKey, ip = clientKey
   question = String(question || '').trim().slice(0, 300);
   if (question.length < 3) throw Object.assign(new Error('question too short'), { status: 400 });
   if (!perIpAsk(ip) || !perClientAsk(clientKey) || !globalAsk('all')) throw Object.assign(new Error('too many questions right now, try again in a minute'), { status: 429 });
+  const all = docs();
   const keys = [...new Set((fold(question).match(/[\p{L}\p{N}]+/gu) || []).filter((w) => w.length > 2 && !STOP.has(w)))];
   const scored = [];
-  for (const d of docs) {
+  for (const d of all) {
     const lines = d.segs.filter((x) => x.final !== false && (x.channel === 'orig' || x.channel === lang));
     lines.forEach((x, i) => {
       const tx = fold(x.text);
@@ -308,8 +309,8 @@ export async function askEvent({ docs, lang, question, clientKey, ip = clientKey
   // asker's language when the room has it, in an even share of about 60 000 characters, and answers by meaning.
   if (matches < 3) {
     picks.length = 0;
-    const share = Math.floor(EVENT_CHARS / Math.max(1, docs.length));
-    for (const d of docs) {
+    const share = Math.floor(EVENT_CHARS / Math.max(1, all.length));
+    for (const d of all) {
       const mine = d.segs.filter((x) => x.final !== false && x.channel === lang);
       const lines = mine.length ? mine : d.segs.filter((x) => x.final !== false && x.channel === 'orig');
       const total = lines.reduce((a, x) => a + x.text.length, 0);

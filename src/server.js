@@ -712,7 +712,7 @@ const MCP_TOOLS = [
   { name: 'ask_event', description: 'Ask a question about the whole event (every room and talk) and get a short answer with the talks, rooms and moments it comes from. Answers only from what was said.',
     inputSchema: { type: 'object', properties: { question: { type: 'string' }, lang: { type: 'string', description: 'language of the answer: en, es…' } }, required: ['question'] },
     run: ({ question, lang }) => askEvent({
-      docs: visibleStages().flatMap((st) => roomTalks(st).map((m) => ({ ref: { roomId: st.id, room: st.def.name, talkId: m.id, talk: m.title || '' }, segs: talkSegs(st, m.id) }))),
+      docs: () => visibleStages().flatMap((st) => roomTalks(st).map((m) => ({ ref: { roomId: st.id, room: st.def.name, talkId: m.id, talk: m.title || '' }, segs: talkSegs(st, m.id) }))),
       lang: LANG_OK(lang) ? lang : 'en', question, clientKey: 'mcp',
     }) },
   { name: 'event_report', description: 'The event report: every talk with its length, words, languages, audience and cost; optionally one day (YYYY-MM-DD).',
@@ -832,11 +832,9 @@ app.get('/api/stages/:id/summary', getStage, talkAccess, async (req, res) => {
 // A question to the whole event, across every room and talk this person may read (src/assist.js askEvent).
 app.post('/api/ask-event', async (req, res) => {
   const lang = LANG_OK(req.body?.lang) ? req.body.lang : 'en';
-  const docs = [];
-  for (const st of visibleStages()) for (const m of roomTalks(st)) {
-    if (!canReadTalk(req, st, m.id)) continue;
-    docs.push({ ref: { roomId: st.id, room: st.def.name, talkId: m.id, talk: m.title || '' }, segs: talkSegs(st, m.id) });
-  }
+  // Every transcript is read only once the asker is within the limits (askEvent calls this).
+  const docs = () => visibleStages().flatMap((st) => roomTalks(st).filter((m) => canReadTalk(req, st, m.id))
+    .map((m) => ({ ref: { roomId: st.id, room: st.def.name, talkId: m.id, talk: m.title || '' }, segs: talkSegs(st, m.id) })));
   try {
     const ip = clientIp(req), browser = String(req.body?.client || '');
     res.json(await askEvent({ docs, lang, question: req.body?.question, ip, clientKey: /^[\w-]{8,40}$/.test(browser) ? `${ip}|${browser}` : ip }));
@@ -1624,8 +1622,9 @@ app.get(['/', '/index', '/index.html', '/watch', '/watch.html', '/talk', '/talk.
     const st = name === 'talk.html' && stages.get(String(req.query.stage || ''));
     const info = st && req.query.talk && canReadTalk(req, st, String(req.query.talk)) ? talkInfo(st, String(req.query.talk)) : null;
     if (info?.title) {
-      html = html.replace(/<meta property="og:title" content="[^"]*"/, `<meta property="og:title" content="${htmlEsc(`${info.title}${info.speaker ? ` · ${info.speaker}` : ''}`)}"`)
-        .replace(/<meta property="og:description" content="[^"]*"/, `<meta property="og:description" content="${htmlEsc(`${info.stageName} · %EVENT% · ${info.languages?.length > 1 ? 'Transcript in every language / Transcripción en cada idioma' : 'Transcript / Transcripción'}`)}"`);
+      // Functions, not strings: a title with "$&" or "$'" must not splice the page into the preview.
+      html = html.replace(/<meta property="og:title" content="[^"]*"/, () => `<meta property="og:title" content="${htmlEsc(`${info.title}${info.speaker ? ` · ${info.speaker}` : ''}`)}"`)
+        .replace(/<meta property="og:description" content="[^"]*"/, () => `<meta property="og:description" content="${htmlEsc(`${info.stageName} · %EVENT% · ${info.languages?.length > 1 ? 'Transcript in every language / Transcripción en cada idioma' : 'Transcript / Transcripción'}`)}"`);
     }
     if (name === 'talk.html' && !INDEX_TALKS) html = html.replace('<head>', '<head>\n  <meta name="robots" content="noindex" />');
     res.type('html').set('Cache-Control', 'no-cache').send(html

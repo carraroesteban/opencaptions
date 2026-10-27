@@ -23,7 +23,7 @@ test('the whole event answers from passages in every room, citing the talk and t
   _setClient({ models: { generateContent: async (r) => { prompt = r.contents; return { text: JSON.stringify({ found: true, answer: 'In "Data protection for small teams" (Room A).', cite: [2, 1] }), usageMetadata: {} }; } } });
   try {
     const more = [...docs, { ref: { roomId: 'room-b', room: 'Room B', talkId: 't3', talk: 'Privacy by design' }, segs: [{ channel: 'orig', text: 'Privacy law is changing fast.', start: 5000, end: 7000 }] }];
-    const a = await askEvent({ docs: more, lang: 'en', question: 'Which talk talked about privacy law?', clientKey: 'e1' });
+    const a = await askEvent({ docs: () => more, lang: 'en', question: 'Which talk talked about privacy law?', clientKey: 'e1' });
     assert.equal(a.ai, true);
     assert.match(a.answer, /Data protection/);
     assert.deepEqual(a.sources.map((s) => [s.roomId, s.talkId, s.at]), [['room-b', 't3', '0:05'], ['room-a', 't2', '2:10']], 'the passages the model cited, in its order, across rooms');
@@ -41,7 +41,7 @@ test('a question with no words in common with the talks: the model reads every t
   let prompt = '';
   _setClient({ models: { generateContent: async (r) => { prompt = r.contents; return { text: JSON.stringify({ found: true, answer: 'Tablets and microphones.', cite: [1] }), usageMetadata: {} }; } } });
   try {
-    const a = await askEvent({ docs, lang: 'es', question: '¿Qué equipos entregaron?', clientKey: 'e3' });
+    const a = await askEvent({ docs: () => docs, lang: 'es', question: '¿Qué equipos entregaron?', clientKey: 'e3' });
     assert.equal(a.ai, true);
     assert.match(prompt, /Cada clínica recibió/, 'the talk in the reader’s language');
     assert.match(prompt, /Privacy starts/, 'and every other talk, in the original where there is no translation');
@@ -56,14 +56,28 @@ test('without a model it still finds the moments, in the reader’s language whe
   const engine = config.engine;
   config.engine = 'mock';
   try {
-    const a = await askEvent({ docs, lang: 'es', question: '¿Quién habló del micrófono?', clientKey: 'e2' });
+    const a = await askEvent({ docs: () => docs, lang: 'es', question: '¿Quién habló del micrófono?', clientKey: 'e2' });
     assert.equal(a.ai, false);
     assert.equal(a.found, true);
     assert.equal(a.sources[0].text, 'Cada clínica recibió una tablet y un buen micrófono.');
     assert.equal(a.sources[0].talk, 'Telehealth for rural clinics');
-    const none = await askEvent({ docs, lang: 'en', question: 'What about blockchain?', clientKey: 'e2' });
+    const none = await askEvent({ docs: () => docs, lang: 'en', question: 'What about blockchain?', clientKey: 'e2' });
     assert.deepEqual(none, { ai: false, found: false, answer: '', sources: [] });
-    await assert.rejects(askEvent({ docs, lang: 'en', question: 'a', clientKey: 'e2' }), { status: 400 });
+    await assert.rejects(askEvent({ docs: () => docs, lang: 'en', question: 'a', clientKey: 'e2' }), { status: 400 });
+  } finally {
+    config.engine = engine;
+  }
+});
+
+test('a flood of questions is refused before any transcript is read', async () => {
+  const engine = config.engine;
+  config.engine = 'mock';
+  try {
+    let reads = 0;
+    const load = () => { reads++; return docs; };
+    for (let i = 0; i < 6; i++) await askEvent({ docs: load, lang: 'en', question: 'privacy law?', clientKey: 'flood', ip: 'flood-ip' });
+    await assert.rejects(askEvent({ docs: load, lang: 'en', question: 'privacy law?', clientKey: 'flood', ip: 'flood-ip' }), { status: 429 });
+    assert.equal(reads, 6, 'the refused question never read the transcripts');
   } finally {
     config.engine = engine;
   }
