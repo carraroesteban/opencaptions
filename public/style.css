@@ -354,14 +354,17 @@ body.has-side > :not(.side) { grid-column: 2; min-width: 0; }
   body.rail .side nav a .n { position: absolute; top: 2px; right: 2px; padding: 0 5px; font-size: 11px; }
   body.rail .side .foot { padding-inline: 0; justify-items: center; }
 }
-/* A phone: the sidebar is a menu that ☰ opens above the page */
+/* A phone: the sidebar is a drawer that ☰ slides in over the dimmed page (a tap on the dim closes it, nav.js) */
 @media (max-width: 900px) {
   body.has-side { display: block; }
-  .side { display: none; position: static; width: auto; height: auto; border-right: 0; border-bottom: 1px solid var(--line); padding: 12px 16px 16px; }
-  body.nav-open .side { display: flex; }
-  .side { position: relative; }
+  .side { position: fixed; inset: 0 auto 0 0; z-index: 100; width: min(300px, 86vw); height: 100dvh; padding: 12px 14px calc(16px + env(safe-area-inset-bottom)); border-right: 1px solid var(--line); visibility: hidden; transform: translateX(-100%); transition: transform .22s ease, visibility 0s .22s; }
+  body.nav-open .side { visibility: visible; transform: none; transition: transform .22s ease; box-shadow: var(--shadow-lg); }
+  body.has-side::after { content: ''; position: fixed; inset: 0; z-index: 99; background: var(--scrim); opacity: 0; pointer-events: none; transition: opacity .22s; }
+  body.nav-open::after { opacity: 1; pointer-events: auto; }
+  body.nav-open { overflow: hidden; }
   .side-jump kbd { display: none; }
 }
+@media (max-width: 900px) and (prefers-reduced-motion: reduce) { .side, body.nav-open .side, body.has-side::after { transition: none; } }
 /* The header row: ☰, back, where you are */
 .crumbbar { display: flex; align-items: center; gap: 4px 6px; min-height: 40px; flex-wrap: wrap; }
 .crumbbar .spacer { flex: 1; }

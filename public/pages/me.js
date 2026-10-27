@@ -63,7 +63,7 @@ const T = {
     callMac: (app) => `${app} está abierto. En Mac, los navegadores no pueden tomar el sonido de otra app: entrá a la llamada desde Chrome o Edge (Zoom, Teams y Webex funcionan en la web) y elegí Esta compu, y esa pestaña. O usá el Micrófono con los parlantes encendidos.`,
     callUse: 'Usar Los dos', callOpen: (app) => `${app} está abierto: podés subtitular la llamada.`, callHow: '¿Cómo?',
     to: 'Traducir a', none: 'No traducir', start: 'Empezar a subtitular', stop: 'Detener', from: 'Se habla', fromAuto: 'Automático',
-    tagline: 'Subtítulos en vivo de lo que escuchás o suena en la compu: una llamada, un video, una clase.', space: 'o presioná', spaceKey: 'Espacio',
+    tagline: 'Subtítulos en vivo de lo que escuchás o reproducís: una llamada, un video, una clase.', space: 'o presioná', spaceKey: 'Espacio',
     hintMic: 'Se subtitula todo lo que escucha el micrófono: vos, o una conversación en la sala.',
     hintScreen: 'Subtitula lo que suena en la compu: una llamada, un video, una clase. El navegador te pregunta qué compartir. En Windows, elegí la pantalla completa y activá «Compartir audio del sistema». En Mac, elegí la pestaña que está sonando (Chrome o Edge) y activá su audio.',
     hintBoth: 'Tu micrófono y el sonido de la compu juntos: los dos lados de una llamada. Usá auriculares, o el micrófono también escucha los parlantes y todo se subtitula dos veces. El navegador te pregunta qué compartir, como con Esta compu.',
@@ -212,7 +212,9 @@ for (const b of advBoxes) {
 }
 
 // ---------- choices: source, microphone, translation ----------
-let source = store.get('me.source', 'mic');
+const canShare = !!navigator.mediaDevices?.getDisplayMedia; // phones and tablets can't share their sound: the microphone only
+let source = canShare ? store.get('me.source', 'mic') : 'mic';
+if (!canShare) for (const id of ['src', 'src-label']) $(id).classList.add('hidden');
 function renderSource() {
   for (const b of $('src').querySelectorAll('[data-src]')) b.setAttribute('aria-checked', String(b.dataset.src === source));
   $('src').querySelector('[data-src="both"]').classList.toggle('adv', source !== 'both'); // Basic shows Both only while it's on

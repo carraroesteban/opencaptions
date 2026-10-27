@@ -101,6 +101,7 @@ export function mountNav({ current = '', crumbs: c = [] } = {}) {
   $('nav-back')?.addEventListener('click', goBack);
   $('side-toggle').onclick = () => { if (!phone.matches) return toggleMenu(); openMenu(false); $('nav-menu')?.focus(); };
   side.addEventListener('click', (e) => { if (phone.matches && e.target.closest('a')) openMenu(false); });
+  document.body.addEventListener('click', (e) => { if (e.target === document.body && document.body.classList.contains('nav-open')) openMenu(false); }); // the dim beside the drawer
   side.addEventListener('keydown', (e) => { if (e.key === 'Escape' && phone.matches && document.body.classList.contains('nav-open')) { openMenu(false); $('nav-menu')?.focus(); } });
   phone.addEventListener('change', syncMenu);
   document.body.classList.toggle('rail', !!store.get('nav.rail', false));

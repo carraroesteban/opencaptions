@@ -87,7 +87,7 @@ const DICTS = {
     'Ya incluidas': 'Already built in',
     // settings: languages and transcripts
     'Solo para mí': 'Just for me',
-    'Usá OpenCaptions solo para vos: tus llamadas, videos y conversaciones en esta compu. Las salas, la agenda y las transcripciones quedan guardadas para cuando vuelvas.': 'Use OpenCaptions just for you: your calls, videos and conversations on this computer. Rooms, the agenda and transcripts are kept for when you come back.',
+    'Usá OpenCaptions solo para vos: tus llamadas, videos y conversaciones en este dispositivo. Las salas, la agenda y las transcripciones quedan guardadas para cuando vuelvas.': 'Use OpenCaptions just for you: your calls, videos and conversations on this device. Rooms, the agenda and transcripts are kept for when you come back.',
     'Pasar a Solo para mí': 'Switch to Just for me',
     'Los que pueden elegir las salas. Agregá los que necesites y quitá los que no; después elegilos en cada sala.': 'The ones rooms can use. Add the ones you need and remove the ones you don’t, then pick them in each room.',
     'Idioma para agregar': 'Language to add',
