@@ -39,6 +39,15 @@ Captions help only if the words make sense. On the phone, **tap any word** in th
 - **Cost:** one short request per word, cached for the whole talk and shared by every phone (the second person to tap the same word costs nothing). Limited to 12 words a minute per phone and 60 a minute per server (`EXPLAIN_PER_CLIENT_PER_MIN`, `EXPLAIN_RPM`); `AUDIENCE_AI=off` turns it off with the rest of the assistant.
 - **Without the AI** (no key, mock mode, local mode without a text model): the sheet shows where the word was said, without an explanation.
 
+## Every talk, its own page
+
+Each talk's transcript page (`talk.html`, from the transcripts page or a phone's transcript button) is made to be read and shared after the talk: the transcript in every language with search and downloads, a summary, and at the top the talk's **chapters** (where the topic changes, each a link to that moment) and a few **key quotes**, word for word from the transcript, in the language being read.
+
+- **Share:** on a phone, **Share** opens its share sheet (WhatsApp, Mail…); elsewhere it copies the link. A shared link previews as the talk (its title, speaker and room), but only where the talk's transcript is public (`PUBLIC_TRANSCRIPTS`).
+- **Search engines:** talk pages are `noindex` unless `INDEX_TALKS=on`, so an event's talks don't end up in Google without the organizer deciding it.
+- **Cost:** one request per talk and language, cached (a day once the talk has ended) and shared by every reader. A quote the model didn't copy word for word is dropped.
+- **Without the AI:** the page has the transcript, search and downloads, without chapters or quotes.
+
 ## Ask the whole event
 
 On the transcripts page (the home page's last card, or `/talks.html`), **Ask the whole event** takes a question across every room and every talk someone may read: "which talk mentioned the new data law?", "what went wrong in the first months?". The answer comes in the asker's language, names the talk and the room, and links to the exact moment in its transcript.

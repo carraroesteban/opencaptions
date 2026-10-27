@@ -438,6 +438,7 @@ AI is disabled, `ENGINE=mock`, a rate limit is hit, or the model call itself fai
 |---|---|---|
 | `GET /api/stages/:id/summary` | Depends on `PUBLIC_TRANSCRIPTS` (same rule as the talk being summarized — see [Transcripts & exports](#transcripts--exports)) | Summary of the talk in progress or a past talk. |
 | `POST /api/stages/:id/ask` | Same | Answer one question, grounded in the transcript, with quotes. |
+| `GET /api/stages/:id/highlights` | Same | `?talk=&lang=` → `{ ai, chapters: [{ at, title }], quotes: [{ at, text }] }`: the talk page's chapters and key quotes (quotes checked word for word against the transcript). |
 | `POST /api/stages/:id/explain` | Same | `{ term, lang, talk?, client? }` → `{ ai, term, meaning, general, translation, quotes[] }`: a word tapped in the captions, in plain words, from where it was said. Cached per talk, language and term. |
 | `POST /api/ask-event` | None (each talk follows `PUBLIC_TRANSCRIPTS`; signed-in crew see every talk) | `{ question, lang, client? }` → `{ ai, found, answer, sources: [{ roomId, room, talkId, talk, at, text }] }`: a question across every room and talk the caller may read. |
 | `GET /api/stages/:id/slides/:slide` | As the room's live captions (private rooms: crew) | The JPEG of a slide the room's computer shared; ids come in the viewer socket's `slide` messages. |

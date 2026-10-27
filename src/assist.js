@@ -330,3 +330,46 @@ export async function askEvent({ docs, lang, question, clientKey, ip = clientKey
   }
 }
 const EVENT_CHARS = 60_000;
+
+/**
+ * A talk's page: chapters with their times and a few memorable quotes, in the reader's language. One request per
+ * talk and language, cached like the whole-talk summary (short while live, a day after) and shared by every reader.
+ * @returns {Promise<{ ai: boolean, chapters: { at: string, title: string }[], quotes: { at: string, text: string }[] }>}
+ */
+export async function highlights({ segs, key, lang, live = false, title = '' }) {
+  const ck = `h|${key}|${lang}`;
+  const hit = cache.get(ck);
+  if (hit && (hit.pending || Date.now() < hit.until)) { assistStats.cacheHits++; return hit.pending || hit.value; }
+  const { text, list } = pickText(segs, lang);
+  const none = { ai: false, chapters: [], quotes: [] };
+  if (list.length < 8 || !audienceAiEnabled || config.engine === 'mock' || config.localLlmOff) return none; // too short to divide
+  if (!globalSummary('all')) return none;
+  let retrySoon = false;
+  const run = (async () => {
+    const system = [
+      `You prepare the page of a recorded talk for people who will read it later, writing in ${langName(lang)}.`,
+      'Use ONLY the transcript. Chapters: where the topic changes, 3 to 8 of them, each with the time it starts (from the [mm:ss] marks) and a title of at most 8 words.',
+      'Quotes: 2 to 4 short, memorable sentences copied word for word from the transcript, with their time. Never invent or rephrase.',
+      'Respond with JSON only: {"chapters": [{"at": "mm:ss", "title": string}], "quotes": [{"at": "mm:ss", "text": string}]}.',
+    ].join('\n');
+    try {
+      const j = parseJson(await generate(system, `Talk title: ${title || '(untitled)'}\n\nTranscript:\n${text}`, 900));
+      const at = (v) => { const m = String(v).match(/^(\d{1,3}):(\d\d)$/); return m ? `${Number(m[1])}:${m[2]}` : ''; }; // "00:13" → "0:13", as in the transcript
+      const chapters = (j.chapters || []).map((c) => ({ at: at(c.at), title: String(c.title || '').trim().slice(0, 120) })).filter((c) => c.at && c.title).slice(0, 10);
+      // A quote must really be in the transcript: one the model rephrased is dropped.
+      const said = fold(list.map((s) => s.text).join(' '));
+      const quotes = (j.quotes || []).map((q) => ({ at: at(q.at), text: String(q.text || '').trim().slice(0, 400) })).filter((q) => q.at && q.text && said.includes(fold(q.text).replace(/[.…]+$/, ''))).slice(0, 4);
+      if (!chapters.length && !quotes.length) throw new Error('empty highlights');
+      return { ai: true, chapters, quotes };
+    } catch {
+      assistStats.errors++;
+      retrySoon = true;
+      return none;
+    }
+  })();
+  cache.set(ck, { pending: run });
+  const value = await run;
+  cache.set(ck, { until: Date.now() + (retrySoon ? 30_000 : live ? 120_000 : 24 * 3600_000), value });
+  if (cache.size > 2000) cache.delete(cache.keys().next().value);
+  return value;
+}

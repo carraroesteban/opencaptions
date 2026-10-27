@@ -3,7 +3,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { config } from '../src/config.js';
-import { explain, _setClient } from '../src/assist.js';
+import { explain, highlights, _setClient } from '../src/assist.js';
 
 const segs = [
   { channel: 'orig', text: 'Today we talk about telehealth.', start: 1000, end: 3000 },
@@ -47,5 +47,25 @@ test("without a model, the reader gets where the word was said, in their languag
     assert.deepEqual(none.quotes, []);
   } finally {
     config.engine = engine;
+  }
+});
+
+test("a talk's page gets chapters and quotes; a quote the model rephrased is dropped", async () => {
+  const engine = config.engine;
+  config.engine = 'gemini';
+  const long = Array.from({ length: 10 }, (_, i) => ({ channel: 'orig', text: `Point number ${i} about clinics.`, start: i * 60000, end: i * 60000 + 5000 }));
+  long.push({ channel: 'orig', text: 'The best technology is the one patients barely notice.', start: 700000, end: 704000 });
+  _setClient({ models: { generateContent: async () => ({ text: JSON.stringify({
+    chapters: [{ at: '0:00', title: 'Why clinics' }, { at: 'soon', title: 'bad time' }],
+    quotes: [{ at: '11:40', text: 'The best technology is the one patients barely notice.' }, { at: '1:00', text: 'Technology should be invisible to patients.' }],
+  }), usageMetadata: {} }) } });
+  try {
+    const h = await highlights({ segs: long, key: 'main/t9', lang: 'en', title: 'Telehealth' });
+    assert.deepEqual(h.chapters, [{ at: '0:00', title: 'Why clinics' }]);
+    assert.deepEqual(h.quotes.map((q) => q.text), ['The best technology is the one patients barely notice.']);
+    assert.deepEqual(await highlights({ segs: long.slice(0, 3), key: 'main/t8', lang: 'en' }), { ai: false, chapters: [], quotes: [] }, 'too short to divide');
+  } finally {
+    config.engine = engine;
+    _setClient(null);
   }
 });

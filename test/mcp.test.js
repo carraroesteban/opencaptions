@@ -74,3 +74,11 @@ test('a search finds the phrase in a saved transcript, with room, talk, time and
   const bad = await (await rpc('tools/call', { name: 'get_transcript', arguments: { room: 'nowhere' } })).json();
   assert.equal(bad.result.isError, true);
 });
+
+test("a talk's page previews as that talk (this event's transcripts are public), and stays out of search engines", async () => {
+  const page = await (await fetch(`${base}/talk.html?stage=main&talk=talk-keynote`)).text();
+  assert.match(page, /<meta property="og:title" content="Opening keynote · Ana Pérez"/);
+  assert.match(page, /<meta name="robots" content="noindex" \/>/);
+  const unknown = await (await fetch(`${base}/talk.html?stage=main&talk=nope`)).text();
+  assert.match(unknown, /<meta property="og:title" content="[^"]*Live captions"/, 'an unknown talk: the event\'s own preview');
+});

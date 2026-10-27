@@ -468,3 +468,16 @@ dialog.tk-del { max-width: min(440px, calc(100vw - 32px)); }
 .ev-src:hover { border-color: var(--line-strong); }
 .ev-where { font-size: 14px; color: var(--fg2); }
 .ev-quote { font-size: 16px; line-height: 1.5; }
+
+/* A talk's chapters and key quotes (talk.html). */
+.tk-hl { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 18px; margin: 8px 0 22px; }
+@media (max-width: 760px) { .tk-hl { grid-template-columns: 1fr; } }
+.tk-hl > div { padding: 18px; border-radius: 20px; background: var(--bg2); border: 1px solid var(--line); }
+.tk-hl ol { margin: 8px 0 0; padding: 0; list-style: none; display: grid; gap: 2px; }
+.tk-hl ol button { width: 100%; display: flex; gap: 12px; align-items: baseline; padding: 9px 10px; border-radius: 12px; background: none; text-align: left; font-size: 16px; line-height: 1.4; }
+.tk-hl ol button:hover { background: var(--fill); }
+.tk-hl ol b, .tk-quotes button { font-variant-numeric: tabular-nums; color: var(--fg2); font-weight: 600; }
+.tk-quotes blockquote { margin: 10px 0 0; padding: 10px 14px; border-left: 3px solid var(--accent-fg); }
+.tk-quotes p { margin: 0; font-size: 17px; line-height: 1.5; }
+.tk-quotes button { padding: 2px 0; background: none; font-size: 14px; }
+.tk-quotes p::first-letter { text-transform: uppercase; } /* a quote taken from mid-sentence */

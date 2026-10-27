@@ -35,7 +35,7 @@ import { fromSessionize, fromIcs } from './agenda-import.js';
 import { PullSource, ffmpegBin } from './pull.js';
 import { muLaw } from './audio.js';
 import { systemStats } from './system.js';
-import { summarize, ask, explain, askEvent, audienceAiEnabled, assistStats } from './assist.js';
+import { summarize, ask, explain, askEvent, highlights, audienceAiEnabled, assistStats } from './assist.js';
 import { budgetInfo } from './budget.js';
 import { Schedule, parseSchedule } from './schedule.js';
 import { History } from './history.js';
@@ -805,6 +805,16 @@ app.get('/api/stages/:id/slides/:slide', getStage, (req, res, next) => (isPrivat
   if (!slide) return res.status(404).json({ error: 'unknown slide' });
   res.set('Cache-Control', 'private, max-age=3600'); // a slide's id never points at another picture
   res.type('image/jpeg').send(slide.jpeg);
+});
+
+// A talk's page: chapters and key quotes in the reader's language (src/assist.js highlights).
+app.get('/api/stages/:id/highlights', getStage, talkAccess, async (req, res) => {
+  const st = req.stage;
+  const talkId = String(req.query.talk || st.talk.id);
+  const info = talkInfo(st, talkId);
+  if (!info) return res.status(404).json({ error: 'unknown talk' });
+  const lang = LANG_OK(req.query.lang) ? req.query.lang : 'en';
+  res.json(await highlights({ segs: talkSegs(st, talkId), key: `${st.id}/${talkId}`, lang, live: isCurrent(st, talkId), title: info.title }));
 });
 
 app.get('/api/stages/:id/summary', getStage, talkAccess, async (req, res) => {
@@ -1593,6 +1603,7 @@ app.get(['/', '/index', '/index.html', '/watch', '/watch.html', '/screen', '/scr
 // Audience pages: link previews (WhatsApp, Slack, LinkedIn) need the event name and an absolute image URL.
 const htmlEsc = (s) => String(s).replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 const pageCache = new Map();
+const INDEX_TALKS = /^(1|on|true|yes)$/i.test(process.env.INDEX_TALKS || ''); // talk pages in search engines: the organizer's choice
 app.get(['/', '/index', '/index.html', '/watch', '/watch.html', '/talk', '/talk.html', '/talks', '/talks.html'], (req, res, next) => {
   const origin = publicUrl(req);
   if (!/^https?:\/\/[a-z0-9.\-:[\]]+$/i.test(origin)) return next(); // odd Host header: serve the file untouched
@@ -1602,7 +1613,16 @@ app.get(['/', '/index', '/index.html', '/watch', '/watch.html', '/talk', '/talk.
     const { mtimeMs } = fs.statSync(file);
     let hit = pageCache.get(file);
     if (!hit || hit.mtimeMs !== mtimeMs) pageCache.set(file, (hit = { mtimeMs, html: fs.readFileSync(file, 'utf8') }));
-    res.type('html').set('Cache-Control', 'no-cache').send(hit.html
+    let html = hit.html;
+    // A shared talk page previews as that talk (WhatsApp, Slack, LinkedIn), when its transcript is public.
+    const st = name === 'talk.html' && stages.get(String(req.query.stage || ''));
+    const info = st && req.query.talk && canReadTalk(req, st, String(req.query.talk)) ? talkInfo(st, String(req.query.talk)) : null;
+    if (info?.title) {
+      html = html.replace(/<meta property="og:title" content="[^"]*"/, `<meta property="og:title" content="${htmlEsc(`${info.title}${info.speaker ? ` · ${info.speaker}` : ''}`)}"`)
+        .replace(/<meta property="og:description" content="[^"]*"/, `<meta property="og:description" content="${htmlEsc(`${info.stageName} · %EVENT% · ${info.languages?.length > 1 ? 'Transcript in every language / Transcripción en cada idioma' : 'Transcript / Transcripción'}`)}"`);
+    }
+    if (name === 'talk.html' && !INDEX_TALKS) html = html.replace('<head>', '<head>\n  <meta name="robots" content="noindex" />');
+    res.type('html').set('Cache-Control', 'no-cache').send(html
       .replaceAll('content="/brand/', `content="${origin}/brand/`)
       .replaceAll('%EVENT%', htmlEsc(eventName())));
   } catch { next(); }

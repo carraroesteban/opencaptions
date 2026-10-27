@@ -92,7 +92,7 @@ segment($('langs'), langs.map((l) => [l, esc(langLabel(l, ev.languages))]), lang
   lang = v;
   store.set('lang', lang);
   const u = new URL(location.href); u.searchParams.set('lang', lang); history.replaceState(null, '', u);
-  select(); renderLangs(); render(); live?.reconnect();
+  select(); renderLangs(); render(); live?.reconnect(); loadHighlights();
 });
 const select = () => { segs = all.filter((s) => s.channel === lang).sort((a, b) => a.start - b.start); partial = null; };
 
@@ -229,13 +229,38 @@ function jump(at) {
 }
 assistant.load();
 
+// ---- the talk's chapters and key quotes, in the language being read (GET /api/stages/:id/highlights) ----
+$('hl').setAttribute('aria-label', `${t('chapters')} · ${t('keyQuotes')}`);
+$('hl-ch-h').textContent = t('chapters');
+$('hl-q-h').textContent = t('keyQuotes');
+let hlFor = '';
+async function loadHighlights() {
+  const want = lang !== 'orig' ? lang : UIlang();
+  if (hlFor === want || !info.segments) return;
+  hlFor = want;
+  const h = await fetch(`${base}/highlights?talk=${encodeURIComponent(talkId)}&lang=${encodeURIComponent(want)}`).then((r) => (r.ok ? r.json() : null)).catch(() => null);
+  if (hlFor !== want) return; // the language changed meanwhile
+  const has = h && (h.chapters.length || h.quotes.length);
+  $('hl').classList.toggle('hidden', !has);
+  if (!has) return;
+  $('hl-ch').innerHTML = h.chapters.map((c) => `<li><button type="button" data-at="${esc(c.at)}"><b>${esc(c.at)}</b> ${esc(c.title)}</button></li>`).join('');
+  $('hl-ch').parentElement.classList.toggle('hidden', !h.chapters.length);
+  $('hl-q').innerHTML = h.quotes.map((q) => `<blockquote><p>${esc(q.text)}</p><button type="button" data-at="${esc(q.at)}">${esc(q.at)}</button></blockquote>`).join('');
+  $('hl-q').parentElement.classList.toggle('hidden', !h.quotes.length);
+}
+$('hl').addEventListener('click', (e) => { const b = e.target.closest('button[data-at]'); if (b) jump(b.dataset.at); });
+loadHighlights();
+
 // ---- actions ----
 $('copy').querySelector('span').textContent = t('copyLink');
 $('copy').title = t('copyLink');
 $('dl-lbl').textContent = t('download');
 for (const [f, k] of [['txt', 'fmtText'], ['srt', 'fmtSubs'], ['vtt', 'fmtWeb']]) $(`dl-${f}`).textContent = `${f.toUpperCase()} · ${t(k)}`;
+// Share: the phone's own share sheet (WhatsApp, Mail…) where there is one; elsewhere the link is copied.
+if (navigator.share) { $('copy').querySelector('span').textContent = t('share'); $('copy').title = t('share'); }
 $('copy').onclick = async () => {
-  const u = new URL(location.href); u.searchParams.set('talk', talkId);
+  const u = new URL(location.href); u.searchParams.set('talk', talkId); u.searchParams.delete('at');
+  if (navigator.share) { try { await navigator.share({ title: document.title, url: u.toString() }); } catch { /* cancelled */ } return; }
   try { await copyText(u.toString()); $('copy').querySelector('span').textContent = t('copied'); setTimeout(() => ($('copy').querySelector('span').textContent = t('copyLink')), 1800); } catch { prompt('', u.toString()); }
 };
 $('print').querySelector('span').textContent = t('print');
