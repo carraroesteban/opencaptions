@@ -8,6 +8,8 @@ Short answers, with a link to the page that has the details.
 
 **Does the audience need an app or an account?** No. They scan the room's QR code and pick a language in the browser.
 
+**What can the audience do besides read?** Pick the text size and, since 1.0, see the speaker's slide translated into their language (when the room's computer shares it), tap any word to have it explained, catch up with **What did I miss?**, and ask one question across every room and talk. When the organizer turns it on, they can also listen to the translation, or to the room's sound for hearing aids. [Accessibility](accessibility.md).
+
 **How much does it cost?** The software is free. With Gemini, about US$ 0.54 per room-hour of speech, plus US$ 0.4–0.6 per extra caption language; silence isn't billed. Local mode costs nothing. [What it costs](../README.md#what-it-costs).
 
 **Which languages?** 82 caption languages. A room can follow a speaker who switches language mid-talk; to make detection more reliable, list the languages the talk can be in (the room's settings, **Only these languages**). [Configuration → stages](reference/configuration.md#stage-object).

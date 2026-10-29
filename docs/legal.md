@@ -16,7 +16,7 @@ OpenCaptions is released under the [MIT license](../LICENSE). Anyone may use, co
 | [cloudflared](https://github.com/cloudflare/cloudflared) | The one-click public address | Apache-2.0 | Downloaded on first use, or included in the Docker image. Using Cloudflare's tunnel means accepting [Cloudflare's terms](https://www.cloudflare.com/website-terms/). |
 | Fonts: Atkinson Hyperlegible Next, Bricolage Grotesque, and the caption fonts Inter, Atkinson Hyperlegible, Lexend, Roboto, Open Sans and Montserrat | Interface and captions | SIL Open Font License 1.1 | Included in `public/fonts/`, each with its license and copyright ([list](../public/fonts/README.md)). Served by OpenCaptions itself, so pages don't contact Google. |
 | Sample talks in `samples/` | Demos and tests | Part of this repository | Fictional scripts read by [Kokoro](https://huggingface.co/hexgrad/Kokoro-82M), an open text-to-speech model under Apache-2.0, so the recordings can be shared and used commercially. `scripts/make-samples.sh` rebuilds them. |
-| Illustrations and animations in `public/art/` and `site/media/` | Interface and website | Part of this repository | Generated for OpenCaptions with Higgsfield (GPT Image 2.5 and Kling), from prompts and drawings made for the project. |
+| Pictures in `public/art/` and `site/media/home/` | Interface and website | Part of this repository | Generated for OpenCaptions with Higgsfield (GPT Image 2.5): invented scenes, not photographs of real people or events. |
 
 ## The AI you connect
 
@@ -46,7 +46,7 @@ Adapt it to your event and put it on the registration page, the event website or
 
 ## The website
 
-[opencaptions.kvza.ar](https://opencaptions.kvza.ar) sets no cookies and loads nothing from third parties: fonts, images and videos are served from the site itself. If the maintainers turn on visitor statistics (the `SITE_GOATCOUNTER` variable in the Site workflow), pages count visits with [GoatCounter](https://www.goatcounter.com/help/privacy), which uses no cookies and keeps no personal data. GitHub, which hosts the site, keeps server logs under its own privacy statement.
+[opencaptions.kvza.ar](https://opencaptions.kvza.ar) sets no cookies and loads nothing from third parties: fonts and images are served from the site itself. If the maintainers turn on visitor statistics (the `SITE_GOATCOUNTER` variable in the Site workflow), pages count visits with [GoatCounter](https://www.goatcounter.com/help/privacy), which uses no cookies and keeps no personal data. GitHub, which hosts the site, keeps server logs under its own privacy statement.
 
 ## Names used in examples
 
