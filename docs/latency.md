@@ -76,7 +76,7 @@ The model's recognition time is about 80% of the total. That's why hardware and 
 
 Human live captioning isn't instant either. A stenographer or respeaker has to hear a phrase before typing it. Ofcom measured UK live TV subtitles at [5.6 seconds behind speech on average](https://limpingchicken.com/2014/04/30/deaf-news-ofcom-study-reveals-average-5-6-second-delay-in-live-subtitles-nearly-double-recommended-delay/), against a 3-second target. OpenCaptions' original-language captions sit at about that target, and every caption language runs in parallel.
 
-What viewers notice most is not the absolute delay but whether the text moves. Words in progress appear as they're recognized (highlighted, then settled), so the screen never looks frozen while a sentence is spoken.
+What viewers notice most is not the absolute delay but whether the text moves. Words in progress appear as they're recognized (each new word fades in, then settles), so the screen never looks frozen while a sentence is spoken.
 
 ### In local mode
 

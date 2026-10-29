@@ -98,7 +98,7 @@ function render(p) {
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <title>${esc(p.title)}</title>
   <meta name="description" content="${esc(p.description)}" />
-  <meta name="theme-color" content="#FAF8F3" />
+  <meta name="theme-color" content="#111014" />
   <link rel="canonical" href="${BASE}${url}" />
   ${alternates}
   <link rel="icon" href="/favicon.ico" sizes="32x32" />
@@ -115,7 +115,7 @@ function render(p) {
   <meta property="og:locale" content="${p.lang === 'en' ? 'en_US' : 'es_AR'}" />
   <meta name="twitter:card" content="summary_large_image" />
   <script type="application/ld+json">${JSON.stringify({ '@context': 'https://schema.org', '@graph': graph })}</script>
-  <script>let t = 'light'; try { t = JSON.parse(localStorage.getItem('oc.theme')) || t; } catch {} document.documentElement.dataset.theme = t; document.querySelector('meta[name=theme-color]').content = t === 'dark' ? '#111014' : '#FAF8F3';</script>
+  <script>let t = 'dark'; try { t = JSON.parse(localStorage.getItem('oc.theme')) || t; } catch {} document.documentElement.dataset.theme = t; document.querySelector('meta[name=theme-color]').content = t === 'dark' ? '#111014' : '#FAF8F3';</script>
   <link rel="stylesheet" href="/style.css" />
   <link rel="stylesheet" href="/site.css" />
 </head>

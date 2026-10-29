@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <title>OpenCaptions · Subtítulos y traducción en vivo gratis para eventos</title>
   <meta name="description" content="Subtítulos y traducción en vivo para congresos, clases y sesiones públicas, en el celular de cada asistente. App gratis y open source para Mac y Windows, con un modo sin internet que no cuesta nada." />
-  <meta name="theme-color" content="#FAF8F3" />
+  <meta name="theme-color" content="#111014" />
   <link rel="canonical" href="https://opencaptions.kvza.ar/es/" />
   <link rel="alternate" hreflang="es" href="https://opencaptions.kvza.ar/es/" />
   <link rel="alternate" hreflang="en" href="https://opencaptions.kvza.ar/" />
@@ -29,7 +29,7 @@
   <meta name="twitter:description" content="Subtítulos y traducción en vivo en el celular de cada asistente. App gratis y open source para Mac y Windows, con un modo sin internet que no cuesta nada." />
   <meta name="twitter:image" content="https://opencaptions.kvza.ar/brand/og.png" />
   <script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"SoftwareApplication","name":"OpenCaptions","url":"https://opencaptions.kvza.ar/es/","description":"Subtítulos y traducción en vivo para congresos, aulas, sesiones públicas y festivales. Cada persona sigue la charla en su celular, en su idioma. Gratis, de código abierto y en tu propio servidor.","inLanguage":"es","applicationCategory":"MultimediaApplication","applicationSubCategory":"Live captioning and translation","operatingSystem":"macOS 13+, Windows 10/11, Linux, Docker","softwareVersion":"0.9.4","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"license":"https://opensource.org/licenses/MIT","isAccessibleForFree":true,"downloadUrl":"https://github.com/carraroesteban/opencaptions/releases/latest","codeRepository":"https://github.com/carraroesteban/opencaptions","image":"https://opencaptions.kvza.ar/brand/og.png","screenshot":"https://opencaptions.kvza.ar/media/demo-poster.jpg","featureList":["Subtítulos en vivo en cada celular, sin app","Traducción en tiempo real","Pantalla para el escenario y overlay para streaming","Funciona sin internet con una IA local","Transcripciones y archivos de subtítulos","Subtítulos para videos grabados","El sonido de la sala en el celular, para audífonos","Se actualiza solo desde la app"]},{"@type":"VideoObject","name":"OpenCaptions: una charla subtitulada en vivo, en la pantalla y en el celular","description":"Una charla real de 30 segundos subtitulada en vivo en español por OpenCaptions, en la pantalla del escenario y en un celular del público.","thumbnailUrl":"https://opencaptions.kvza.ar/media/demo-poster.jpg","contentUrl":"https://opencaptions.kvza.ar/media/demo.mp4","uploadDate":"2026-10-05","duration":"PT34S","inLanguage":"es"},{"@type":"Organization","@id":"https://opencaptions.kvza.ar/#org","name":"OpenCaptions","url":"https://opencaptions.kvza.ar/","logo":"https://opencaptions.kvza.ar/brand/icon-512.png","sameAs":["https://github.com/carraroesteban/opencaptions"]},{"@type":"WebSite","@id":"https://opencaptions.kvza.ar/#website","name":"OpenCaptions","url":"https://opencaptions.kvza.ar/","inLanguage":["en","es"],"publisher":{"@id":"https://opencaptions.kvza.ar/#org"}},{"@type":"FAQPage","mainEntity":[{"@type":"Question","name":"¿De verdad es gratis?","acceptedAnswer":{"@type":"Answer","text":"Sí. El software es gratis y open source con licencia MIT, sin plan pago y sin límite de salas ni de público. Si usás Gemini de Google, Google te lo cobra en tu propia API key: unos US$ 0,54 por hora de charla por sala. En tu propia computadora no cuesta nada."}},{"@type":"Question","name":"¿El público necesita una app o una cuenta?","acceptedAnswer":{"@type":"Answer","text":"No. Escanean el QR de la sala y leen los subtítulos en el navegador del celular, en su idioma. Sin app, sin registro, sin cookies."}},{"@type":"Question","name":"¿Qué tan preciso y qué tan rápido es?","acceptedAnswer":{"@type":"Answer","text":"Los subtítulos suelen aparecer dos o tres segundos después de las palabras, y las traducciones de tres a cinco segundos después. Alcanza para la mayoría de las charlas, clases y reuniones, pero no es tan preciso como un subtitulador humano profesional: sumá nombres y términos técnicos al glosario, y el equipo puede corregir una palabra en vivo."}},{"@type":"Question","name":"¿Funciona sin internet?","acceptedAnswer":{"@type":"Answer","text":"Sí. La IA puede correr en una notebook en el lugar, gratis, con los celulares en el Wi-Fi local: más o menos una sala por notebook, unos segundos más atrás. O usá la nube y dejá la notebook de respaldo: toma el control sola en unos 15 segundos."}},{"@type":"Question","name":"¿Adónde va el audio?","acceptedAnswer":{"@type":"Answer","text":"En tu propia computadora, a ningún lado: el audio no sale de ella. Con Gemini, el audio de la sala va a Google para transcribirlo. Las transcripciones quedan en tu computadora o servidor, y el audio nunca se graba. Privacidad"}}]}]}</script>
-  <script>/* light by default; the ◐ button switches and remembers */ let t = 'light'; try { t = JSON.parse(localStorage.getItem('oc.theme')) || t; } catch {} document.documentElement.dataset.theme = t; document.querySelector('meta[name=theme-color]').content = t === 'dark' ? '#111014' : '#FAF8F3';</script>
+  <script>/* dark by default, like the app; the ◐ button switches and remembers */ let t = 'dark'; try { t = JSON.parse(localStorage.getItem('oc.theme')) || t; } catch {} document.documentElement.dataset.theme = t; document.querySelector('meta[name=theme-color]').content = t === 'dark' ? '#111014' : '#FAF8F3';</script>
   <link rel="stylesheet" href="/style.css" />
   <link rel="stylesheet" href="/site.css" />
 </head>
@@ -53,10 +53,9 @@
 
   <main>
     <section class="hero" id="top">
-      <div class="objs" aria-hidden="true"><img class="obj o-mic" data-depth="26" src="/art/objects/mic.webp" alt="" /><img class="obj o-ticket" data-depth="14" src="/art/objects/ticket.webp" alt="" /><img class="obj o-head" data-depth="20" src="/art/objects/headphones.webp" alt="" /><img class="obj o-badge" data-depth="18" src="/art/objects/badge.webp" alt="" /><img class="obj o-click" data-depth="30" src="/art/objects/clicker.webp" alt="" /><img class="obj o-phone" data-depth="12" src="/art/objects/phone.webp" alt="" /></div>
       <div class="hero-in">
         <p class="kicker"><svg class="oc-logo typed" viewBox="0 0 878 664" aria-hidden="true"><use class="o" href="/brand/sprite.svg#oc-o"/><use class="ln" href="/brand/sprite.svg#oc-line"/></svg>Subtítulos en vivo, open source</p>
-        <h1>Cada charla,<br>entendida por todos.</h1>
+        <h1>Cada charla,<br>entendida por <mark>todos.</mark></h1>
         <p class="lede">Subtítulos y traducción en vivo para tu evento, en cada celular de la sala. Gratis, y el público no necesita ninguna app.</p>
         <div class="cta">
           <a class="btn primary" href="https://try-opencaptions.kvza.ar/s/main">Probalo en vivo, sin instalar nada →</a>
@@ -64,30 +63,42 @@
         </div>
         <p class="note">Gratis y open source · Mac y Windows · Funciona sin internet</p>
       </div>
+      <figure class="talk reveal" id="talk" data-main="es" data-sub="orig" aria-label="Una charla real, subtitulada por OpenCaptions">
+        <div class="talk-bar" aria-hidden="true"><i></i><i></i><i></i><span class="talk-url">live.example.org/s/main</span></div>
+        <div class="talk-body">
+          <div class="talk-stage" aria-hidden="true">
+            <div class="talk-head"><span class="dot live"></span><b>Sala principal</b><span>Telesalud para clínicas rurales</span></div>
+            <div class="talk-lbl">Español</div>
+            <div class="talk-main"></div>
+            <div class="talk-lbl">Original</div>
+            <div class="talk-sub"></div>
+          </div>
+          <div class="phone talk-phone"><div class="screen">
+            <div class="top">
+              <div class="row" aria-hidden="true"><b>Sala principal</b><span class="chip live"><span class="dot live"></span> EN VIVO</span></div>
+              <div class="pills" role="group" aria-label="Subtítulos en el celular en"><button type="button" data-ch="orig" aria-pressed="false">Original</button><button type="button" data-ch="en" aria-pressed="false">English</button><button type="button" data-ch="es" aria-pressed="true">Español</button></div>
+            </div>
+            <div class="cap" aria-hidden="true"></div>
+          </div></div>
+        </div>
+        <figcaption class="talk-ctl">
+          <button type="button" class="talk-play" aria-label="Escuchar la charla con sonido (58 segundos)" data-play="Escuchar la charla con sonido (58 segundos)" data-pause="Pausar la charla"><svg viewBox="0 0 24 24" aria-hidden="true"><path class="i-play" d="M8 5.5v13a1 1 0 0 0 1.5.86l10.4-6.5a1 1 0 0 0 0-1.72L9.5 4.64A1 1 0 0 0 8 5.5z"/><path class="i-pause" d="M7 5h3.5v14H7zM13.5 5H17v14h-3.5z"/></svg></button>
+          <span class="talk-progress" aria-hidden="true"><i></i></span>
+          <span class="talk-time" aria-hidden="true">0:00 / 0:58</span>
+          <span class="talk-note">Subtítulos reales: lo que OpenCaptions escribió para esta charla, en el momento en que lo escribió. Tocá play para escucharla.</span>
+        </figcaption>
+      </figure>
     </section>
 
-    <section class="showcase">
-      <div class="wrap"><video class="art reveal hero-loop" muted loop playsinline preload="auto" poster="/art/hero.webp" aria-label="Un público siguiendo subtítulos en vivo en sus celulares mientras una oradora presenta en el escenario"><source src="/media/hero-loop.mp4" type="video/mp4" /></video></div>
-    </section>
 
     <section class="band screens" id="screens">
       <div class="wrap">
         <div class="live-grid">
           <div>
             <h2>Cada palabra, apenas se dice.</h2>
-            <p class="lede">Escaneá el QR, elegí un idioma y seguí la charla. La palabra que se está diciendo aparece resaltada, así nadie se pierde.</p>
+            <p class="lede">Escaneá el QR, elegí un idioma y seguí la charla. Cada palabra aparece apenas se dice, del tamaño que elijas, así nadie se pierde.</p>
           </div>
-          <div class="glow"><div class="phone" aria-hidden="true">
-          <div class="screen">
-            <div class="top">
-              <div class="row"><b>Escenario principal</b><span class="chip bad"><span class="dot live"></span> EN VIVO</span></div>
-              <div class="pills"><span class="">Original</span><span class="on">Español</span><span class="">English</span></div>
-            </div>
-            <div class="cap" id="cap" data-lines="[&quot;Buenos días a todos, y gracias por acompañarnos hoy.&quot;, &quot;Hoy quiero contarles cómo un equipo pequeño convirtió una idea simple en una comunidad global.&quot;, &quot;Todo empezó con una pregunta: ¿y si todas las personas de la sala pudieran seguir la charla?&quot;, &quot;Los grandes eventos los hacen los voluntarios, los oradores y un público que se involucra.&quot;]"></div>
-            <div class="orig"><b>Original</b><span id="orig-txt" data-lines="[&quot;Good morning everyone, and thank you for joining us today.&quot;, &quot;Today I want to share how a small team turned a simple idea into a global community.&quot;, &quot;It all started with one question: what if everyone in the room could follow along?&quot;, &quot;Great events are made by volunteers, speakers and an audience that cares.&quot;]"></span></div>
-          </div>
-        </div>
-</div>
+          <div class="glow"><video class="art reveal hero-loop" muted loop playsinline preload="auto" poster="/art/hero.webp" aria-label="Un público siguiendo subtítulos en vivo en sus celulares mientras una oradora presenta en el escenario"><source src="/media/hero-loop.mp4" type="video/mp4" /></video></div>
         </div>
         <figure class="stage-shot demo reveal"><div class="demo-frame"><video muted loop playsinline preload="metadata" poster="/media/demo-poster.jpg" aria-label="Una charla real subtitulada en vivo: subtítulos en español en la pantalla del escenario y en un celular del público"><source src="/media/demo.mp4" type="video/mp4" /></video><span class="live-pill" aria-hidden="true"><i></i>Grabación real</span></div><figcaption>Una charla real de 30 segundos, subtitulada en vivo en español en la pantalla del escenario y en un celular del público.</figcaption></figure>
       </div>

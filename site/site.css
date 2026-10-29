@@ -27,14 +27,19 @@ a.btn.primary { background: var(--primary-bg); border-color: var(--primary-bg); 
 .nav #theme { width: 36px; height: 36px; padding: 0; border-radius: 50%; box-shadow: none; }
 @media (max-width: 760px) { .nav .links a.hide-sm { display: none; } }
 
-/* ---- hero: a centred headline with real objects scattered on the table around it ---- */
-.hero { position: relative; min-height: min(100svh, 980px); display: grid; place-items: center; padding: 120px 24px 140px; border-top: 0; overflow: hidden; }
-.hero-in { position: relative; z-index: 2; max-width: 860px; text-align: center; display: grid; justify-items: center; }
-.hero .kicker { display: inline-flex; align-items: center; gap: 10px; font-family: var(--font-display); font-weight: 800; font-size: 17px; letter-spacing: -.01em; margin: 34px 0 18px; }
+/* ---- hero: the headline, then a real talk captioned in a product window (site.js plays site/media/talk.json) ---- */
+.hero { position: relative; display: grid; justify-items: center; gap: 52px; padding: 64px 24px 112px; border-top: 0; overflow: hidden; }
+/* Soft colour behind the window, as on a stage at night: dark theme only (lime never sits on paper). */
+[data-theme='dark'] .hero::before { content: ''; position: absolute; inset: 0; pointer-events: none;
+  background: radial-gradient(34% 30% at 18% 12%, rgba(93, 214, 194, .09), transparent 70%), radial-gradient(42% 36% at 50% 78%, rgba(212, 255, 58, .11), transparent 70%); }
+.hero-in { position: relative; z-index: 2; max-width: 900px; text-align: center; display: grid; justify-items: center; }
+.hero .kicker { display: inline-flex; align-items: center; gap: 10px; font-family: var(--font-display); font-weight: 800; font-size: 17px; letter-spacing: -.01em; margin: 0 0 18px; }
 .hero .kicker .oc-logo { width: 34px; }
-.hero h1 { font-size: clamp(46px, 7.6vw, 96px); line-height: .96; margin: 0 0 24px; letter-spacing: -.045em; }
+.hero h1 { font-size: clamp(46px, 7vw, 92px); line-height: .98; margin: 0 0 22px; letter-spacing: -.045em; }
+/* The brand's emphasis: the word on a lime highlighter, ink on lime (like a live caption's word). */
+.hero h1 mark { background: linear-gradient(transparent 14%, var(--lime) 14%, var(--lime) 92%, transparent 92%); color: var(--ink); border-radius: .12em; padding: 0 .06em; box-decoration-break: clone; -webkit-box-decoration-break: clone; }
 .hero .lede { margin: 0 auto; max-width: 640px; }
-.hero .cta { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; margin-top: 34px; }
+.hero .cta { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; margin-top: 30px; }
 .hero .note { font-size: 14px; color: var(--fg2); margin-top: 18px; }
 #start .cta { display: flex; gap: 12px; flex-wrap: wrap; margin: 0 0 12px; }
 #start .note { font-size: 14px; color: var(--fg2); margin: 0; }
@@ -42,27 +47,46 @@ a.btn.primary { background: var(--primary-bg); border-color: var(--primary-bg); 
 #start .start-intro img.art { box-shadow: var(--shadow); }
 @media (max-width: 900px) { #start .start-intro { grid-template-columns: 1fr; gap: 24px; } }
 
-/* terminal-style announcement that types itself (lime only on ink) */
 
-.objs { position: absolute; inset: 0; z-index: 1; pointer-events: none; }
-.obj { position: absolute; height: auto; filter: drop-shadow(0 22px 26px rgba(17, 16, 20, .16)); transition: transform .5s cubic-bezier(.2, .7, .2, 1); will-change: transform; opacity: 0; animation: oc-drop .9s cubic-bezier(.2, .7, .2, 1) forwards; }
-.obj.o-mic { width: 220px; left: 5%; top: 9%; --r: -14deg; animation-delay: .05s; }
-.obj.o-ticket { width: 160px; left: 18%; bottom: 4%; --r: 12deg; animation-delay: .25s; }
-.obj.o-head { width: 280px; left: 3%; top: 50%; --r: -8deg; animation-delay: .15s; }
-.obj.o-badge { width: 250px; right: 0; top: 4%; --r: 10deg; animation-delay: .1s; }
-.obj.o-click { width: 170px; right: 14%; bottom: 9%; --r: 28deg; animation-delay: .3s; }
-.obj.o-phone { width: 230px; right: -2%; top: 44%; --r: -10deg; animation-delay: .2s; }
-@keyframes oc-drop { from { opacity: 0; translate: 0 30px; scale: .96; } to { opacity: 1; translate: 0 0; scale: 1; } }
-.obj { rotate: var(--r); }
-[data-theme='dark'] .obj { filter: drop-shadow(0 22px 26px rgba(0, 0, 0, .55)) brightness(.92); }
-@media (max-width: 1180px) { .obj.o-head, .obj.o-ticket { display: none; } .obj.o-mic { width: 170px; } .obj.o-badge { width: 180px; } .obj.o-phone { width: 170px; top: 58%; } .obj.o-click { width: 130px; } }
-@media (max-width: 760px) {
-  .hero { padding: 118px 16px 96px; min-height: 0; }
-  .obj.o-mic { width: 104px; left: -26px; top: 1%; } .obj.o-badge { width: 112px; right: -30px; top: -1%; }
-  section.band { padding: 88px 0; }
-  .obj.o-phone, .obj.o-click { display: none; }
+/* The product window: a stage screen and a phone, captioned at the real timing; play adds the talk's sound. */
+.talk { position: relative; z-index: 1; width: min(1120px, 100%); margin: 0; border: 1px solid var(--line); border-radius: 24px; background: var(--bg2); box-shadow: var(--shadow-lg); overflow: hidden; }
+[data-theme='dark'] .talk { background: #151419; border-color: #2A2930; box-shadow: 0 50px 120px -40px rgba(0, 0, 0, .9); }
+.talk-bar { display: flex; align-items: center; gap: 8px; padding: 12px 16px; border-bottom: 1px solid var(--line); }
+.talk-bar i { width: 11px; height: 11px; border-radius: 50%; background: var(--line-strong); }
+.talk-url { margin: 0 auto; translate: -27px 0; padding: 5px 14px; border-radius: var(--pill); background: var(--fill); color: var(--fg2); font: 500 13px/1.2 var(--mono); }
+.talk-body { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 28px; align-items: center; padding: 28px; }
+.talk-stage { align-self: stretch; display: flex; flex-direction: column; min-height: 400px; padding: 22px 26px 24px; border-radius: 16px; background: var(--ink); color: var(--paper); border: 1px solid #2A2930; }
+.talk-head { display: flex; align-items: center; gap: 10px; margin-bottom: auto; font-size: 14px; color: #A9A6B0; }
+.talk-head b { color: var(--paper); }
+.talk-lbl { margin: 18px 0 8px; font-size: 11px; font-weight: 700; line-height: 1; letter-spacing: .14em; text-transform: uppercase; color: var(--accent); }
+.talk-main, .talk-sub { display: flex; flex-direction: column; justify-content: flex-end; overflow: hidden; }
+.talk-main { height: calc(1.25em * 4); font-size: clamp(22px, 2.5vw, 32px); font-weight: 700; line-height: 1.25; -webkit-mask-image: linear-gradient(transparent, #000 32%); mask-image: linear-gradient(transparent, #000 32%); }
+.talk-sub { height: calc(1.4em * 2); font-size: 17px; line-height: 1.4; color: #C9C6CE; }
+.talk p { margin: 0; }
+.talk-main .old { color: #8C8995; }
+.talk-phone { width: 300px; aspect-ratio: 9 / 17.5; }
+.talk-phone .pills button { min-height: 26px; padding: 3px 10px; border-radius: var(--pill); border: 1px solid var(--line-strong); background: transparent; color: var(--fg); font: 600 12px/1.2 var(--font); cursor: pointer; }
+.talk-phone .pills button[aria-pressed='true'] { background: var(--primary-bg); border-color: var(--primary-bg); color: var(--primary-fg); }
+.talk-phone .pills button:focus-visible, .talk-play:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+.talk-phone .cap { font-size: 16px; gap: 10px; }
+.talk-ctl { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; padding: 14px 20px 16px; border-top: 1px solid var(--line); }
+.talk-play { flex: none; display: grid; place-items: center; width: 44px; height: 44px; border: 0; border-radius: 50%; background: var(--primary-bg); color: var(--primary-fg); cursor: pointer; transition: transform var(--dur-fast) var(--ease); }
+.talk-play:hover { transform: scale(1.06); }
+.talk-play svg { width: 20px; height: 20px; fill: currentColor; }
+.talk-play .i-pause, .talk-play.on .i-play { display: none; }
+.talk-play.on .i-pause { display: inline; }
+.talk-progress { flex: 1 1 160px; height: 4px; border-radius: 4px; background: var(--fill-hover); overflow: hidden; }
+.talk-progress i { display: block; width: 0; height: 100%; background: var(--accent-fg); }
+.talk-time { font: 500 13px/1 var(--mono); color: var(--fg2); }
+.talk-note { flex-basis: 100%; font-size: 13px; color: var(--fg2); }
+@media (max-width: 860px) {
+  .hero { padding: 96px 16px 80px; gap: 44px; }
+  .talk-body { grid-template-columns: 1fr; padding: 16px; }
+  .talk-stage { display: none; }
+  .talk-phone { justify-self: center; width: min(320px, 100%); }
+  .talk-url { translate: none; }
 }
-@media (prefers-reduced-motion: reduce) { .obj { animation: none; opacity: 1; transition: none; } }
+@media (max-width: 760px) { section.band { padding: 88px 0; } }
 
 /* film grain over the paper */
 .grain { position: fixed; inset: -50%; z-index: 100; pointer-events: none; opacity: .07; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"); mix-blend-mode: multiply; }
@@ -132,8 +156,6 @@ footer.site .brand { color: var(--fg); font-size: 16px; margin-right: auto; }
 /* ---- illustrations: drawn on paper, framed like prints so they sit well in both themes ---- */
 img.art, video.art { display: block; width: 100%; height: auto; border-radius: 22px; border: 1px solid var(--line); background: #FAF8F3; }
 video.hero-loop { aspect-ratio: 3 / 2; object-fit: cover; }
-.showcase { padding: 0 0 88px; border-top: 0; }
-.showcase img.art { box-shadow: var(--shadow-lg); }
 /* The illustration fills the top of its card, edge to edge, instead of a framed box inside a box. */
 .col { overflow: hidden; }
 .col img.art { aspect-ratio: 4 / 3; object-fit: cover; width: calc(100% + 52px); max-width: none; margin: -26px -26px 24px; border: 0; border-bottom: 1px solid var(--line); border-radius: 0; }

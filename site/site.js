@@ -1,8 +1,8 @@
-// Landing page: theme toggle, live-caption demo in the phone, reveal on scroll. No dependencies.
+// Landing page: theme toggle, the real talk captioned in the hero, reveal on scroll. No dependencies.
 const root = document.documentElement;
 const store = { get: (k) => { try { return localStorage.getItem(k); } catch { return null; } }, set: (k, v) => { try { localStorage.setItem(k, v); } catch { /* private mode */ } } };
 
-// Theme: light by default (set in <head> before paint); the visitor's choice is stored like the app does (oc.theme, JSON).
+// Theme: dark by default, like the app (set in <head> before paint); the visitor's choice is stored like the app does (oc.theme, JSON).
 document.getElementById('theme')?.addEventListener('click', () => {
   root.dataset.theme = root.dataset.theme === 'dark' ? 'light' : 'dark';
   store.set('oc.theme', JSON.stringify(root.dataset.theme));
@@ -15,63 +15,72 @@ for (const a of document.querySelectorAll('a[hreflang]')) a.addEventListener('cl
 const nav = document.querySelector('.nav');
 addEventListener('scroll', () => nav?.classList.toggle('scrolled', scrollY > 8), { passive: true });
 
-// Live captions demo: words arrive one by one, each new word fades in (as in the app).
-const cap = document.getElementById('cap');
-const orig = document.getElementById('orig-txt');
-if (cap) {
-  const lines = JSON.parse(cap.dataset.lines);
-  const source = JSON.parse(orig.dataset.lines);
+// The real talk: what OpenCaptions wrote while captioning samples/talk-en.wav (site/media/talk.json, made by
+// scripts/site-talk.js), replayed at the moment each word arrived. It runs silently when it comes into view; play
+// starts it over with the talk's sound. With reduced motion it shows the end of the talk and waits for play.
+const talk = document.getElementById('talk');
+if (talk) {
   const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
-  let i = 1, w = 0, cur = null;
-  orig.textContent = '';
-  cap.append(Object.assign(document.createElement('p'), { className: 'old', textContent: lines[0] }));
-  const tick = () => {
-    const words = lines[i % lines.length].split(' ');
-    if (!cur) { cur = document.createElement('p'); cap.append(cur); }
-    w++;
-    const head = words.slice(0, w - 1).join(' ');
-    cur.textContent = head ? head + ' ' : '';
-    const last = words[w - 1];
-    if (w < words.length) {
-      const s = document.createElement('span');
-      s.className = 'live-word';
-      s.dataset.w = last;
-      s.textContent = last;
-      cur.append(s);
-    } else cur.append(last);
-    orig.textContent = source[i % source.length].split(' ').slice(0, Math.ceil((w / words.length) * source[i % source.length].split(' ').length)).join(' ');
-    if (w >= words.length) {
-      w = 0; i++; cur = null;
-      const ps = cap.querySelectorAll('p');
-      ps.forEach((p, k) => p.classList.toggle('old', k < ps.length - 1));
-      if (ps.length > 4) ps[0].remove();
-      setTimeout(tick, 1100);
-    } else setTimeout(tick, reduce ? 600 : 330);
+  const main = talk.querySelector('.talk-main'), sub = talk.querySelector('.talk-sub'), cap = talk.querySelector('.talk-phone .cap');
+  const play = talk.querySelector('.talk-play'), bar = talk.querySelector('.talk-progress i'), clock = talk.querySelector('.talk-time');
+  const pills = [...talk.querySelectorAll('.pills button')];
+  let phone = talk.dataset.main, data = null, audio = null, t0 = 0, raf = 0, visible = false, shown = '', last = 0;
+  const mmss = (ms) => `${Math.floor(ms / 60000)}:${String(Math.floor(ms / 1000) % 60).padStart(2, '0')}`;
+  const esc = (x) => x.replace(/[&<>]/g, (c) => `&#${c.charCodeAt(0)};`);
+  // The segments of a channel at time t: the latest text of each, in order, and whether it's finished.
+  const at = (t, ch) => {
+    const segs = new Map();
+    for (const c of data.caps) { if (c[0] > t) break; if (c[1] === ch) segs.set(c[2], { text: c[3], done: !!c[4] }); }
+    return [...segs.values()];
   };
-  tick();
+  // Older lines dimmed; the newest word of a line still being spoken fades in, as in the app.
+  const html = (segs, n, cls = '') => segs.slice(-n).map((g, i, all) => {
+    const old = i < all.length - 1 ? ' class="old"' : '';
+    const w = g.text.split(' ');
+    return `<p${old}>${g.done || old ? esc(g.text) : `${esc(w.slice(0, -1).join(' '))} <span class="live-word${cls}">${esc(w.at(-1))}</span>`}</p>`;
+  }).join('');
+  const render = (t) => {
+    last = t;
+    const key = `${data.caps.findLastIndex((c) => c[0] <= t)}|${phone}`;
+    bar.style.width = `${Math.min(100, (t / data.duration) * 100)}%`;
+    clock.textContent = `${mmss(Math.min(t, data.duration))} / ${mmss(data.duration)}`;
+    if (key === shown) return;
+    shown = key;
+    // The stage screen runs on, like a projector: one flow, the earlier sentences dimmed.
+    main.innerHTML = `<p>${html(at(t, talk.dataset.main), 3).replace(/<p( class="old")?>/g, (_, o) => `<span${o || ''}>`).replace(/<\/p>/g, '</span> ')}</p>`;
+    sub.innerHTML = html(at(t, talk.dataset.sub), 1);
+    cap.innerHTML = html(at(t, phone), 4);
+  };
+  const end = () => (data ? data.duration + 2500 : 0);
+  const first = () => data.caps[0][0] - 600; // silently, it starts just before the first words: no empty screen
+  const tick = () => {
+    raf = 0;
+    // The talk's sound ended: hold its last lines, then carry on silently.
+    if (audio?.ended) { audio = null; play.classList.remove('on'); play.setAttribute('aria-label', play.dataset.play); t0 = performance.now() - end(); }
+    let t = audio ? audio.currentTime * 1000 : performance.now() - t0;
+    if (!audio && t > end() + 2500) { t0 = performance.now() - first(); t = first(); } // silent: start over after a pause
+    render(t);
+    if (audio ? !audio.paused : visible && !reduce) raf = requestAnimationFrame(tick);
+  };
+  const run = () => { if (!raf && data) raf = requestAnimationFrame(tick); };
+  fetch('/media/talk.json').then((r) => r.json()).then((d) => { data = d; last = first(); t0 = performance.now() - last; if (reduce) render(end()); else run(); }).catch(() => {});
+  if ('IntersectionObserver' in window) new IntersectionObserver(([e]) => { visible = e.isIntersecting; if (visible && !audio) { t0 = performance.now() - last; run(); } }, { threshold: 0.2 }).observe(talk); // back in view: carry on where it was
+  pills.forEach((b) => b.addEventListener('click', () => {
+    phone = b.dataset.ch;
+    pills.forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
+    if (data) { shown = ''; render(last); }
+  }));
+  play.addEventListener('click', () => {
+    if (audio && !audio.paused) { audio.pause(); play.classList.remove('on'); play.setAttribute('aria-label', play.dataset.play); return; }
+    if (!audio) { audio = new Audio('/media/talk.m4a'); shown = ''; }
+    audio.play().then(() => { play.classList.add('on'); play.setAttribute('aria-label', play.dataset.pause); run(); }).catch(() => {});
+  });
 }
 
 const io = 'IntersectionObserver' in window && new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); } }), { rootMargin: '0px 0px -10% 0px' });
 document.querySelectorAll('.reveal').forEach((el) => (io ? io.observe(el) : el.classList.add('in')));
 
 const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
-
-// Objects on the table drift with the pointer and the scroll (depth = how far).
-const objs = [...document.querySelectorAll('.obj')];
-if (objs.length && !reduceMotion) {
-  let mx = 0, my = 0, raf = 0;
-  const apply = () => {
-    raf = 0;
-    const sy = Math.min(scrollY, 900);
-    for (const o of objs) {
-      const d = +o.dataset.depth || 15;
-      o.style.transform = `translate(${mx * d}px, ${my * d - sy * d / 60}px)`;
-    }
-  };
-  const queue = () => { raf ||= requestAnimationFrame(apply); };
-  addEventListener('pointermove', (e) => { mx = e.clientX / innerWidth - .5; my = e.clientY / innerHeight - .5; queue(); }, { passive: true });
-  addEventListener('scroll', queue, { passive: true });
-}
 
 // The statement captions itself as it scrolls through the viewport.
 const st = document.getElementById('statement');

@@ -67,7 +67,7 @@ On the website, `hero`, `offline`, `alerts` and `speaker` are also five-second s
 
 The product demo (`site/media/demo.mp4`) is not generated: `npm run demo:record` films the real stage screen and a phone while the server captions a sample talk, with the AI replayed from the end-to-end test's recording. It's composed on the band's ink with graphite device frames and no sound, so it plays like a GIF.
 
-The website's hero also uses photographic objects on a transparent background (`public/art/objects/`: microphone, badge, headphones, clicker, ticket, phone), generated the same way. Lime appears on them only on black surfaces (the badge, the phone screen).
+The website's hero is the product itself: a stage screen and a phone captioning a real talk at the moment each word arrived (`site/media/talk.json` and `talk.m4a`, made by `node scripts/site-talk.js` from the recorded AI answers of the whole sample talk, with an event glossary like an organizer's). The website is dark by default, like the app; light stays on the ◐ button.
 
 ## Diagrams in the docs
 
