@@ -35,7 +35,7 @@ Short, personal, one ask, written as you. Change the first sentence for each one
 >
 > Hola, soy Esteban Carraro. Hice OpenCaptions, un programa libre y gratuito que subtitula y traduce charlas en vivo: el público escanea un QR y lee en su celular, con el tamaño de letra que necesite, y la transcripción queda después. Es automático, no reemplaza a intérpretes de lengua de señas ni a estenotipistas.
 >
-> Les escribo porque ustedes saben mejor que nadie qué hace falta en un evento. ¿Podrían probarlo diez minutos (https://try-opencaptions.kvza.ar/s/main) y decirme qué le falta para servirle a una persona sorda? Si les sirve, también lo pueden usar gratis en sus propias actividades.
+> Les escribo porque ustedes saben mejor que nadie qué hace falta en un evento. ¿Podrían probarlo diez minutos (https://try-opencaptions.kvza.ar/s/main?lang=es) y decirme qué le falta para servirle a una persona sorda? Si les sirve, también lo pueden usar gratis en sus propias actividades.
 >
 > Gracias, Esteban
 
@@ -45,7 +45,7 @@ Short, personal, one ask, written as you. Change the first sentence for each one
 >
 > Hola, soy Esteban Carraro, autor de OpenCaptions, un programa libre que subtitula y traduce clases en vivo en el celular de cada estudiante, muestra la diapositiva traducida y deja la transcripción después. Corre en una computadora de la universidad; en una Mac puede funcionar sin internet y sin costo por hora.
 >
-> ¿Les interesaría probarlo en una materia con estudiantes sordos o de intercambio? Puedo ayudar a instalarlo. Demo en vivo: https://try-opencaptions.kvza.ar/s/main
+> ¿Les interesaría probarlo en una materia con estudiantes sordos o de intercambio? Puedo ayudar a instalarlo. Demo en vivo: https://try-opencaptions.kvza.ar/s/main?lang=es
 >
 > Saludos, Esteban
 

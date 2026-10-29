@@ -205,7 +205,7 @@ All the docs, by who you are: **[docs/README.md](docs/README.md)**.
 - **Para la organización**, un panel con el estado, la demora, el público y el costo de cada sala. Las salas funcionan solas y toman los títulos de la agenda. Para traducir podés usar Gemini u otra IA (OpenAI, OpenRouter, Groq, Mistral).
 - **Costo:** el software es gratis. Con Gemini, unos US$ 0,54 por hora de charla por sala (US$ 2,2 con voz traducida en auriculares; el silencio no se cobra). En modo local, nada: corre en tu propia computadora, no se sube audio y no se cobra por minuto.
 
-**Nuevo en la 1.0:** la diapositiva en el celular de cada persona, en su idioma; cualquier palabra explicada en palabras simples; y una pregunta respondida con todas las charlas del evento. Probalo en vivo desde el celular, sin instalar nada: [try-opencaptions.kvza.ar](https://try-opencaptions.kvza.ar/s/main).
+**Nuevo en la 1.0:** la diapositiva en el celular de cada persona, en su idioma; cualquier palabra explicada en palabras simples; y una pregunta respondida con todas las charlas del evento. Probalo en vivo desde el celular, sin instalar nada: [try-opencaptions.kvza.ar](https://try-opencaptions.kvza.ar/s/main?lang=es).
 
 **Para empezar sin terminal:**
 

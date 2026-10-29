@@ -14,7 +14,7 @@
 >
 > El público escanea un QR y lee cada charla en su idioma, en su propio celular, un segundo después de que se dice. Nuevo en 1.0: la diapositiva traducida en cada celular, tocar cualquier palabra para que te la expliquen, y una sola caja de preguntas para todas las charlas del evento.
 >
-> Unos US$ 0,54 por hora por sala con Gemini de Google, o gratis en una Mac. Probalo en tu celular: https://try-opencaptions.kvza.ar/s/main
+> Unos US$ 0,54 por hora por sala con Gemini de Google, o gratis en una Mac. Probalo en tu celular: https://try-opencaptions.kvza.ar/s/main?lang=es
 
 ## X (English, one post)
 
@@ -22,4 +22,4 @@
 
 ## X (español)
 
-> OpenCaptions 1.0: subtítulos y traducción en vivo para eventos, en cada celular de la sala. Diapositivas traducidas, cualquier palabra explicada, preguntale a todo el evento. Código abierto, ~US$0,54/hora por sala o gratis en una Mac: https://try-opencaptions.kvza.ar/s/main
+> OpenCaptions 1.0: subtítulos y traducción en vivo para eventos, en cada celular de la sala. Diapositivas traducidas, cualquier palabra explicada, preguntale a todo el evento. Código abierto, ~US$0,54/hora por sala o gratis en una Mac: https://try-opencaptions.kvza.ar/s/main?lang=es

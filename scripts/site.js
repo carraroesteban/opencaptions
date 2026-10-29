@@ -35,11 +35,11 @@ fs.rmSync(path.join(OUT, 'pages'), { recursive: true, force: true }); // sources
 const UI = {
   en: { home: '/', features: 'Features', how: 'How it works', pricing: 'Pricing', other: 'es', otherName: 'Español', theme: 'Light / dark',
     crumbs: 'Breadcrumb', more: 'More guides', faq: 'FAQ', toc: 'On this page', dl: 'Download', ctaH: 'Try it at your next event', ctaP: 'Free and open source. Download the app for Mac or Windows and the setup wizard does the rest.',
-    mac: 'Download for Mac', win: 'Download for Windows', demo: 'Try it live', license: 'Free and open source · MIT license', updated: 'Updated',
+    mac: 'Download for Mac', win: 'Download for Windows', demo: 'Try it live', try: 'https://try-opencaptions.kvza.ar/s/main', license: 'Free and open source · MIT license', updated: 'Updated',
     conduct: 'Code of conduct', security: 'Security', mit: 'MIT license' },
   es: { home: '/es/', features: 'Funciones', how: 'Cómo funciona', pricing: 'Precios', other: 'en', otherName: 'English', theme: 'Claro / oscuro',
     crumbs: 'Ruta', more: 'Más guías', faq: 'Preguntas', toc: 'En esta página', dl: 'Descargar', ctaH: 'Probalo en tu próximo evento', ctaP: 'Gratis y de código abierto. Descargá la app para Mac o Windows y el asistente hace el resto.',
-    mac: 'Descargar para Mac', win: 'Descargar para Windows', demo: 'Probalo en vivo', license: 'Gratis y de código abierto · licencia MIT', updated: 'Actualizado',
+    mac: 'Descargar para Mac', win: 'Descargar para Windows', demo: 'Probalo en vivo', try: 'https://try-opencaptions.kvza.ar/s/main?lang=es', license: 'Gratis y de código abierto · licencia MIT', updated: 'Actualizado',
     conduct: 'Código de conducta', security: 'Seguridad', mit: 'Licencia MIT' },
 };
 const DL = 'https://github.com/carraroesteban/opencaptions/releases/latest/download/';
@@ -179,7 +179,7 @@ ${body.html.split('\n').map((l) => '        ' + l).join('\n')}
           <p class="eyebrow">${t.dl}</p>
           <h2>${t.ctaH}</h2>
           <p class="lede">${t.ctaP}</p>
-          <div class="cta"><a class="btn primary" href="${DL}OpenCaptions-mac.zip">${t.mac}</a><a class="btn primary" href="${DL}OpenCaptions-windows.zip">${t.win}</a><a class="btn" href="https://try-opencaptions.kvza.ar/s/main">${t.demo}</a></div>
+          <div class="cta"><a class="btn primary" href="${DL}OpenCaptions-mac.zip">${t.mac}</a><a class="btn primary" href="${DL}OpenCaptions-windows.zip">${t.win}</a><a class="btn" href="${t.try}">${t.demo}</a></div>
         </div>
         ${picTag('start', 'start-pic')}
       </aside>

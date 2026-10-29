@@ -31,10 +31,12 @@ const { LANGUAGE_CATALOG } = await import(path.join(PUBLIC, 'languages.js'));
 const CAPTIONED = new Set(Object.keys(CORPUS[0]));
 const PAGES = ['en', 'es', 'pt']; // this page's languages, and the app's interface
 
-/** The visitor's languages in the order their browser (their system settings) prefers them: this page and the app
- *  in the first one we have, and the sample room captioned in the first one the simulated captions are written in. */
+/** The visitor's languages in the order their browser (their system settings) prefers them, after the website's own
+ *  (its Spanish pages link here with ?lang=es): this page and the app in the first one we have, and the sample room
+ *  captioned in the first one the simulated captions are written in. */
 function langsOf(req) {
-  const list = String(req.headers['accept-language'] || '').split(',').map((part, i) => {
+  const site = new URL(req.url, 'http://x').searchParams.get('lang') || '';
+  const list = `${site},${req.headers['accept-language'] || ''}`.split(',').map((part, i) => {
     const [tag, ...params] = part.trim().split(';');
     const q = Number(params.map((p) => p.trim()).find((p) => p.startsWith('q='))?.slice(2) ?? 1);
     return { lang: tag.trim().toLowerCase().split('-')[0], q: Number.isFinite(q) ? q : 0, i };
@@ -162,6 +164,7 @@ const T = {
 
 function landing(req, res, status = 200, msgKey = null) {
   const { page: lang, captions } = langsOf(req);
+  const site = /^[a-z]{2,3}$/.exec(new URL(req.url, 'http://x').searchParams.get('lang') || '')?.[0] || ''; // the website's language, kept for Start
   const t = T[lang];
   // Captioned in a language this page isn't in (a French visitor reads this in English): say so, in that language's name.
   const caps = captions !== lang ? `<p class="note">${esc(t.capsIn.replace('{lang}', LANGUAGE_CATALOG[captions] || captions))}</p>` : '';
@@ -189,7 +192,7 @@ function landing(req, res, status = 200, msgKey = null) {
   <p>${esc(t.lead)}</p>
   <p class="note">${esc(t.note)}</p>
   ${caps}
-  <form method="post" action="/_sandbox/start" onsubmit="this.querySelector('button').disabled = true">
+  <form method="post" action="/_sandbox/start${site ? `?lang=${site}` : ''}" onsubmit="this.querySelector('button').disabled = true">
     <button type="submit">${esc(t.start)}</button>
   </form>
   <p class="note">${esc(t.real)} <a href="https://opencaptions.kvza.ar">opencaptions.kvza.ar</a></p>
@@ -228,14 +231,14 @@ async function start(req, res) {
     return landing(req, res, 500, 'failed');
   }
   console.log(`copy ${id} started (${live.size}/${MAX})`);
-  res.writeHead(303, { location: '/welcome.html', // every new copy starts at the first-run choice: an event or Just for me
+  res.writeHead(303, { location: `/welcome.html?ui=${langsOf(req).page}`, // the first-run choice (an event or Just for me), in this page's language
     'set-cookie': `oc_sb=${id}; Path=/; Max-Age=${MINUTES * 60}; HttpOnly; Secure; SameSite=Lax`, 'cache-control': 'no-store' });
   res.end();
 }
 
 // ---------------------------------------------------------------- proxy to the visitor's copy
 const server = http.createServer((req, res) => {
-  if (req.url === '/_sandbox/start' && req.method === 'POST') return void start(req, res).catch((e) => { console.error(e); res.destroyed || landing(req, res, 500, 'failed'); });
+  if (req.url.split('?')[0] === '/_sandbox/start' && req.method === 'POST') return void start(req, res).catch((e) => { console.error(e); res.destroyed || landing(req, res, 500, 'failed'); });
   const id = cookieId(req);
   if (id && live.has(id)) {
     const up = http.request({ host: `oc-sb-${id}`, port: 8080, method: req.method, path: req.url, headers: { ...req.headers, 'x-forwarded-for': clientIp(req), 'x-forwarded-proto': 'https' } }, (r) => {
