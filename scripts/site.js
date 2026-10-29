@@ -34,11 +34,11 @@ fs.rmSync(path.join(OUT, 'pages'), { recursive: true, force: true }); // sources
 // ---------------------------------------------------------------- guides
 const UI = {
   en: { home: '/', features: 'Features', how: 'How it works', pricing: 'Pricing', other: 'es', otherName: 'Español', theme: 'Light / dark',
-    crumbs: 'Breadcrumb', more: 'More guides', ctaH: 'Try it at your next event', ctaP: 'Free and open source. Download the app for Mac or Windows and the setup wizard does the rest.',
+    crumbs: 'Breadcrumb', more: 'More guides', faq: 'FAQ', toc: 'On this page', dl: 'Download', ctaH: 'Try it at your next event', ctaP: 'Free and open source. Download the app for Mac or Windows and the setup wizard does the rest.',
     mac: 'Download for Mac', win: 'Download for Windows', demo: 'Try it live', license: 'Free and open source · MIT license', updated: 'Updated',
     conduct: 'Code of conduct', security: 'Security', mit: 'MIT license' },
   es: { home: '/es/', features: 'Funciones', how: 'Cómo funciona', pricing: 'Precios', other: 'en', otherName: 'English', theme: 'Claro / oscuro',
-    crumbs: 'Ruta', more: 'Más guías', ctaH: 'Probalo en tu próximo evento', ctaP: 'Gratis y de código abierto. Descargá la app para Mac o Windows y el asistente hace el resto.',
+    crumbs: 'Ruta', more: 'Más guías', faq: 'Preguntas', toc: 'En esta página', dl: 'Descargar', ctaH: 'Probalo en tu próximo evento', ctaP: 'Gratis y de código abierto. Descargá la app para Mac o Windows y el asistente hace el resto.',
     mac: 'Descargar para Mac', win: 'Descargar para Windows', demo: 'Probalo en vivo', license: 'Gratis y de código abierto · licencia MIT', updated: 'Actualizado',
     conduct: 'Código de conducta', security: 'Seguridad', mit: 'Licencia MIT' },
 };
@@ -73,6 +73,24 @@ const legalRow = (lang) => [
 const statsOn = /^[a-z0-9-]+$/.test((process.env.SITE_GOATCOUNTER || '').trim());
 const withStats = (html) => html.replace(/<!--if-stats-->([\s\S]*?)<!--\/if-stats-->/g, statsOn ? '$1' : '').replace(/<!--if-no-stats-->([\s\S]*?)<!--\/if-no-stats-->/g, statsOn ? '' : '$1');
 
+// Each guide has a picture from the home page's set (site/media/home/<image>.webp); the phones with readable text have
+// a Spanish version (<image>-es), the rest are shared.
+const MEDIA = path.join(ROOT, 'site', 'media', 'home');
+const pic = (name, lang) => [`${name}-${lang}`, name, `${name}-en`].find((n) => fs.existsSync(path.join(MEDIA, `${n}.webp`)));
+const picSize = (n) => (/^(live|slide|word|ask)/.test(n) ? [896, 1120] : n === 'screens' ? [1600, 686] : [1168, 880]);
+const picTag = (n, cls, lazy = true) => { const [w, h] = picSize(n); return `<img class="${cls}" src="/media/home/${n}.webp" alt="" width="${w}" height="${h}"${lazy ? ' loading="lazy"' : ''} />`; };
+// Sections get ids (for the page's own contents list and for links); ones that already have an id keep it.
+const slugify = (s) => text(s).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+const withIds = (html) => {
+  const toc = [];
+  const out = html.replace(/<h2(\s[^>]*)?>([\s\S]*?)<\/h2>/g, (m, attrs = '', inner) => {
+    const id = (attrs.match(/\sid="([^"]+)"/) || [])[1] || slugify(inner);
+    toc.push({ id, label: text(inner) });
+    return /\sid=/.test(attrs) ? m : `<h2 id="${id}"${attrs}>${inner}</h2>`;
+  });
+  return { html: out, toc };
+};
+
 function render(p) {
   const t = UI[p.lang], url = urlOf(p.lang, p.slug), pair = pairOf(p);
   const otherUrl = pair ? urlOf(pair.lang, pair.slug) : UI[t.other].home;
@@ -90,7 +108,9 @@ function render(p) {
     const qa = [...p.body.matchAll(/<h3[^>]*>([\s\S]*?)<\/h3>([\s\S]*?)(?=<h[23][^>]*>|$)/g)].map(([, q, a]) => ({ '@type': 'Question', name: text(q), acceptedAnswer: { '@type': 'Answer', text: text(a) } }));
     graph.push({ '@type': 'FAQPage', mainEntity: qa });
   }
-  const more = guidesOf(p.lang).filter((q) => q !== p).map((q) => `<li><a href="${urlOf(q.lang, q.slug)}">${esc(q.label)}</a></li>`).join('');
+  const more = guidesOf(p.lang).filter((q) => q !== p).map((q) => `<li><a href="${urlOf(q.lang, q.slug)}">${picTag(pic(q.image, q.lang), 'more-pic')}<span>${esc(q.label)}</span></a></li>`).join('');
+  const body = withIds(withStats(p.body).trim());
+  const toc = body.toc.length >= 3 ? `<nav class="toc" aria-label="${t.toc}"><p>${t.toc}</p><ol>${body.toc.map((h) => `<li><a href="#${h.id}">${esc(h.label)}</a></li>`).join('')}</ol></nav>` : '';
   return `<!doctype html>
 <html lang="${p.lang}">
 <head>
@@ -127,6 +147,7 @@ function render(p) {
         <a class="hide-sm" href="${t.home}#features">${t.features}</a>
         <a class="hide-sm" href="${t.home}#how">${t.how}</a>
         <a class="hide-sm" href="${t.home}#pricing">${t.pricing}</a>
+        <a class="hide-sm" href="${t.home}#faq">${t.faq}</a>
         <a class="hide-sm" href="https://github.com/carraroesteban/opencaptions">GitHub</a>
         <a class="lang" href="${otherUrl}" hreflang="${t.other}" lang="${t.other}" title="${t.otherName}">${t.other.toUpperCase()}</a>
         <button id="theme" type="button" aria-label="${t.theme}" title="${t.theme}">◐</button>
@@ -135,19 +156,35 @@ function render(p) {
   </nav>
 
   <main class="doc">
-    <article class="wrap narrow">
-      <nav class="crumbs" aria-label="${t.crumbs}"><a href="${t.home}">OpenCaptions</a> <span aria-hidden="true">›</span> <span>${esc(p.label)}</span></nav>
-      <h1>${p.h1}</h1>
-      <p class="lede">${p.lede}</p>
-      <p class="updated">${t.updated}: <time datetime="${p.updated}">${p.updated}</time></p>
-${withStats(p.body).trim().split('\n').map((l) => '      ' + l).join('\n')}
-      ${p.legal ? '' : `<aside class="doc-cta">
-        <h2>${t.ctaH}</h2>
-        <p>${t.ctaP}</p>
-        <div class="cta"><a class="btn primary" href="${DL}OpenCaptions-mac.zip">${t.mac}</a><a class="btn primary" href="${DL}OpenCaptions-windows.zip">${t.win}</a><a class="btn" href="https://try-opencaptions.kvza.ar/s/main">${t.demo}</a></div>
+    <header class="doc-hero">
+      <div class="wrap doc-hero-in">
+        <div>
+          <nav class="crumbs" aria-label="${t.crumbs}"><a href="${t.home}">OpenCaptions</a> <span aria-hidden="true">›</span> <span>${esc(p.label)}</span></nav>
+          <h1>${p.h1}</h1>
+          <p class="lede">${p.lede}</p>
+          <p class="updated">${t.updated}: <time datetime="${p.updated}">${p.updated}</time></p>
+        </div>
+        ${picTag(pic(p.image, p.lang), 'doc-pic', false)}
+      </div>
+    </header>
+    <div class="wrap doc-grid">
+      <article class="doc-body">
+${body.html.split('\n').map((l) => '        ' + l).join('\n')}
+      </article>
+      ${toc}
+    </div>
+    ${p.legal ? '' : `<div class="wrap">
+      <aside class="start-panel">
+        <div>
+          <p class="eyebrow">${t.dl}</p>
+          <h2>${t.ctaH}</h2>
+          <p class="lede">${t.ctaP}</p>
+          <div class="cta"><a class="btn primary" href="${DL}OpenCaptions-mac.zip">${t.mac}</a><a class="btn primary" href="${DL}OpenCaptions-windows.zip">${t.win}</a><a class="btn" href="https://try-opencaptions.kvza.ar/s/main">${t.demo}</a></div>
+        </div>
+        ${picTag('start', 'start-pic')}
       </aside>
-      <nav class="doc-more" aria-label="${t.more}"><h2>${t.more}</h2><ul>${more}</ul></nav>`}
-    </article>
+      <nav class="doc-more" aria-label="${t.more}"><h2>${t.more}</h2><ul>${more}</ul></nav>
+    </div>`}
   </main>
 
   <footer class="site">
