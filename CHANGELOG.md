@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented in this file. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project uses [Semantic Versioning](https://semver.org/). Before 1.0, minor versions may include breaking changes, and they are marked **Breaking**.
 
+## [Unreleased]
+
+### Changed
+
+- **A new website.** A full-screen first picture with the headline over it and the languages a phone can follow drifting underneath (a button pauses them); the phone features told as a story, one picture beside the text that changes as you scroll; a grid of photo cards and numbers; the three steps on a line that draws itself; the prices first; the questions beside their heading. Every picture is a new illustration made with Higgsfield in one dark, cinematic style, with Spanish versions of the phones for the Spanish site, and no real event's name on any screen. The recorded talk player and the 30-second demo are gone (the guides' "30-second demo" links now open the live demo you can try on your phone). On phones every section stacks, and with reduced motion nothing moves.
+
 ## [1.0.0] - 2026-10-29
 
 The first stable version. The slide on every phone in its reader's language, any word explained, the whole event answering questions, a page for every talk, a website that shows a real talk being captioned, and the first minutes made simpler. Nothing to change when updating ([upgrade notes](docs/upgrading.md#094--10)).

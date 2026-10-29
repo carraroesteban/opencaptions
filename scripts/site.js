@@ -35,11 +35,11 @@ fs.rmSync(path.join(OUT, 'pages'), { recursive: true, force: true }); // sources
 const UI = {
   en: { home: '/', features: 'Features', how: 'How it works', pricing: 'Pricing', other: 'es', otherName: 'Español', theme: 'Light / dark',
     crumbs: 'Breadcrumb', more: 'More guides', ctaH: 'Try it at your next event', ctaP: 'Free and open source. Download the app for Mac or Windows and the setup wizard does the rest.',
-    mac: 'Download for Mac', win: 'Download for Windows', demo: 'Watch the 30-second demo', license: 'Free and open source · MIT license', updated: 'Updated',
+    mac: 'Download for Mac', win: 'Download for Windows', demo: 'Try it live', license: 'Free and open source · MIT license', updated: 'Updated',
     conduct: 'Code of conduct', security: 'Security', mit: 'MIT license' },
   es: { home: '/es/', features: 'Funciones', how: 'Cómo funciona', pricing: 'Precios', other: 'en', otherName: 'English', theme: 'Claro / oscuro',
     crumbs: 'Ruta', more: 'Más guías', ctaH: 'Probalo en tu próximo evento', ctaP: 'Gratis y de código abierto. Descargá la app para Mac o Windows y el asistente hace el resto.',
-    mac: 'Descargar para Mac', win: 'Descargar para Windows', demo: 'Ver la demo de 30 segundos', license: 'Gratis y de código abierto · licencia MIT', updated: 'Actualizado',
+    mac: 'Descargar para Mac', win: 'Descargar para Windows', demo: 'Probalo en vivo', license: 'Gratis y de código abierto · licencia MIT', updated: 'Actualizado',
     conduct: 'Código de conducta', security: 'Seguridad', mit: 'Licencia MIT' },
 };
 const DL = 'https://github.com/carraroesteban/opencaptions/releases/latest/download/';
@@ -144,7 +144,7 @@ ${withStats(p.body).trim().split('\n').map((l) => '      ' + l).join('\n')}
       ${p.legal ? '' : `<aside class="doc-cta">
         <h2>${t.ctaH}</h2>
         <p>${t.ctaP}</p>
-        <div class="cta"><a class="btn primary" href="${DL}OpenCaptions-mac.zip">${t.mac}</a><a class="btn primary" href="${DL}OpenCaptions-windows.zip">${t.win}</a><a class="btn" href="${t.home}#screens">${t.demo}</a></div>
+        <div class="cta"><a class="btn primary" href="${DL}OpenCaptions-mac.zip">${t.mac}</a><a class="btn primary" href="${DL}OpenCaptions-windows.zip">${t.win}</a><a class="btn" href="https://try-opencaptions.kvza.ar/s/main">${t.demo}</a></div>
       </aside>
       <nav class="doc-more" aria-label="${t.more}"><h2>${t.more}</h2><ul>${more}</ul></nav>`}
     </article>
@@ -183,15 +183,8 @@ for (const lang of ['en', 'es']) {
 const today = new Date().toISOString().slice(0, 10);
 const alt = (en, es) => [en && `<xhtml:link rel="alternate" hreflang="en" href="${BASE}${en}" />`, es && `<xhtml:link rel="alternate" hreflang="es" href="${BASE}${es}" />`,
   en && `<xhtml:link rel="alternate" hreflang="x-default" href="${BASE}${en}" />`].filter(Boolean).map((l) => `    ${l}`).join('\n');
-const video = `    <video:video>
-      <video:thumbnail_loc>${BASE}/media/demo-poster.jpg</video:thumbnail_loc>
-      <video:title>OpenCaptions: a talk captioned live, on the stage screen and on a phone</video:title>
-      <video:description>A real 30-second talk captioned live in Spanish by OpenCaptions, the free, open-source live captioning and translation app for events.</video:description>
-      <video:content_loc>${BASE}/media/demo.mp4</video:content_loc>
-      <video:duration>34</video:duration>
-    </video:video>`;
 const entries = [
-  `  <url>\n    <loc>${BASE}/</loc>\n    <lastmod>${today}</lastmod>\n${alt('/', '/es/')}\n${video}\n  </url>`,
+  `  <url>\n    <loc>${BASE}/</loc>\n    <lastmod>${today}</lastmod>\n${alt('/', '/es/')}\n  </url>`,
   `  <url>\n    <loc>${BASE}/es/</loc>\n    <lastmod>${today}</lastmod>\n${alt('/', '/es/')}\n  </url>`,
   ...pages.map((p) => {
     const pair = pairOf(p), en = p.lang === 'en' ? p : pair, es = p.lang === 'es' ? p : pair;
@@ -199,7 +192,7 @@ const entries = [
   }),
 ];
 fs.writeFileSync(path.join(OUT, 'sitemap.xml'), `<?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml" xmlns:video="http://www.google.com/schemas/sitemap-video/1.1">
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">
 ${entries.join('\n')}
 </urlset>
 `);
@@ -236,12 +229,6 @@ for (const file of fs.readdirSync(OUT, { recursive: true }).map(String).filter((
   const p = path.join(OUT, file);
   let html = fs.readFileSync(p, 'utf8');
   if (html.includes('<link rel="stylesheet" href="/style.css" />')) html = html.replace('<link rel="stylesheet" href="/style.css" />', `${head}\n  <link rel="stylesheet" href="/style.css" />`);
-  // Sharp on high-density screens: an illustration with a 2× file (site/art/<name>@2x.webp, website only, so the
-  // app's download doesn't grow) gets a srcset, and only those screens download it.
-  html = html.replace(/<img([^>]*?) src="\/art\/([\w-]+)\.webp"([^>]*)>/g, (m, a, n, b) => (m.includes('srcset') || !fs.existsSync(path.join(OUT, 'art', `${n}@2x.webp`)) ? m
-    : `<img${a} src="/art/${n}.webp" srcset="/art/${n}.webp 1x, /art/${n}@2x.webp 2x"${b}>`));
-  // A loop's poster shows full size (and stays, with reduced motion): the 2× file when there is one.
-  html = html.replace(/poster="\/art\/([\w-]+)\.webp"/g, (m, n) => (fs.existsSync(path.join(OUT, 'art', `${n}@2x.webp`)) ? `poster="/art/${n}@2x.webp"` : m));
   html = html.replace(/<head>\n?/, (m) => `${m}  <meta http-equiv="Content-Security-Policy" content="${csp(html)}" />\n`);
   fs.writeFileSync(p, html);
 }
