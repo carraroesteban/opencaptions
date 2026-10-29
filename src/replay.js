@@ -160,6 +160,18 @@ export function replayClient(file, speed = Number(process.env.OC_REPLAY_SPEED ||
         // Exact request first; then, for a translation, the same sentence with different context; for anything else
         // (summaries, questions: their prompt holds the transcript, which differs a little between runs), an answer
         // to the same kind of request.
+        // Replayed faster, pieces the recording translated one by one ("A few years ago," + "A nurse…") can arrive
+        // joined into one sentence: answer with their recorded translations, joined the same way.
+        const stitch = (want) => {
+          const tr = rec.generate.filter((g) => g.translate != null);
+          for (let i = 0; i < tr.length; i++) {
+            for (let k = i + 1, src = tr[i].translate; k < tr.length && src.length < want.length; k++) {
+              src += ` ${tr[k].translate}`;
+              if (src === want) return { text: tr.slice(i, k + 1).map((g) => g.text).join(' '), usageMetadata: tr[k].usageMetadata };
+            }
+          }
+          return null;
+        };
         const pick = (pred) => {
           const i = rec.generate.findIndex((g, k) => !used.has(k) && pred(g));
           const j = i >= 0 ? i : rec.generate.findIndex(pred);
@@ -167,7 +179,7 @@ export function replayClient(file, speed = Number(process.env.OC_REPLAY_SPEED ||
           used.add(j);
           return rec.generate[j];
         };
-        const hit = pick((g) => g.key === key) || (tgt != null ? pick((g) => g.translate === tgt) : pick((g) => (g.kind ?? '') === requestKind(req)));
+        const hit = pick((g) => g.key === key) || (tgt != null ? pick((g) => g.translate === tgt) || stitch(tgt) : pick((g) => (g.kind ?? '') === requestKind(req)));
         if (!hit) {
           replayStats.misses.push(tgt ?? String(req.contents).slice(0, 80));
           throw Object.assign(new Error('replay: request was not recorded'), { status: 404 });

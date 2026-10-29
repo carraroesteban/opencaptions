@@ -41,7 +41,7 @@ if (!asrUp) process.exit(1);
 
 // ---- 2. stream the talk in real time ----
 console.log('\nstreaming (committed text in cyan, provisional in grey)…\n');
-const engine = new (apple ? AppleEngine : LocalEngine)({ label: 'check', target, source, vocabulary: ['Horizon Summit', 'María José Fernández', 'Hiroshi Tanaka', 'telehealth'], languages: ['es', 'en', 'pt'] });
+const engine = new (apple ? AppleEngine : LocalEngine)({ label: 'check', target, source, vocabulary: ['OpenCaptions Live', 'María José Fernández', 'Hiroshi Tanaka', 'telehealth'], languages: ['es', 'en', 'pt'] });
 let committed = '', firstText = 0, firstCommit = 0, t0 = 0, lang = null;
 const lags = [];
 const refWords = words(reference);

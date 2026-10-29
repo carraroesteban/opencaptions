@@ -1,7 +1,7 @@
 {
   "_doc": "Example glossary for a fictional event. To use it, copy it over config/glossary.json (or import the terms from Dashboard → Glossary). vocabulary: biases speech recognition (sent to the AI as custom vocabulary). replacements: deterministic fixes applied to every caption (case-insensitive, whole words). Use 'lang' to restrict a rule to one channel ('orig', 'es', 'en', ...).",
   "vocabulary": [
-    "Horizon Summit",
+    "OpenCaptions Live",
     "OpenCaptions",
     "keynote",
     "Q&A",
@@ -12,10 +12,6 @@
     "telehealth"
   ],
   "replacements": [
-    {
-      "from": "horizons summit|horizon sumit|orizon summit",
-      "to": "Horizon Summit"
-    },
     {
       "from": "open captions|open caption",
       "to": "OpenCaptions"

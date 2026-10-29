@@ -9,9 +9,9 @@ const assist = await import('../src/assist.js');
 const { parseSchedule, Schedule } = await import('../src/schedule.js');
 
 const segs = [
-  { id: 'o1', channel: 'orig', text: 'Welcome to Horizon Summit, today we talk about care at a distance.', start: 0, end: 4000, final: true },
+  { id: 'o1', channel: 'orig', text: 'Welcome to OpenCaptions Live, today we talk about care at a distance.', start: 0, end: 4000, final: true },
   { id: 'o2', channel: 'orig', text: 'We give each clinic a tablet and a short training.', start: 5000, end: 9000, final: true },
-  { id: 'e1', channel: 'es', text: 'Bienvenidos a Horizon Summit, hoy hablamos de atención a distancia.', start: 0, end: 4500, final: true },
+  { id: 'e1', channel: 'es', text: 'Bienvenidos a OpenCaptions Live, hoy hablamos de atención a distancia.', start: 0, end: 4500, final: true },
   { id: 'e2', channel: 'es', text: 'Le damos a cada clínica una tablet y una capacitación corta.', start: 5000, end: 9500, final: true },
 ];
 

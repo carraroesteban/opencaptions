@@ -193,10 +193,10 @@ test('local: transcript cleaning drops Whisper hallucinations, not real words', 
   assert.equal(asr.cleanTranscript('Hola a todos. Subtítulos realizados por la comunidad de Amara.org'), 'Hola a todos.');
   assert.equal(asr.cleanTranscript('Thanks for watching!'), '');
   assert.equal(asr.cleanTranscript('¿Preguntas? Gracias por venir.'), '¿Preguntas? Gracias por venir.');
-  assert.equal(asr.cleanTranscript('[Música] Bienvenidos (risas) a Horizon Summit ♪'), 'Bienvenidos a Horizon Summit');
+  assert.equal(asr.cleanTranscript('[Música] Bienvenidos (risas) a OpenCaptions Live ♪'), 'Bienvenidos a OpenCaptions Live');
   assert.equal(asr.cleanTranscript('no no no no no no vamos'), 'no no no vamos');
   // Real speech that only contains a stock word or phrase is kept.
-  for (const real of ['So the consumer will subscribe to the orders topic and process each event', 'nos vemos en el próximo slide', 'www.horizonsummit.org es la web', 'Nos vemos en el próximo Horizon Summit.']) {
+  for (const real of ['So the consumer will subscribe to the orders topic and process each event', 'nos vemos en el próximo slide', 'www.example.org es la web', 'Nos vemos en el próximo OpenCaptions Live.']) {
     assert.equal(asr.cleanTranscript(real), real);
   }
   assert.equal(asr.cleanTranscript('¡Suscríbete al canal! Gracias por ver el video.'), '');
@@ -223,11 +223,11 @@ async function fakeServer(handler) {
 test('local: speech client speaks whisper.cpp\'s /inference dialect', async () => {
   const srv = await fakeServer(() => ({ body: { task: 'transcribe', language: 'spanish', duration: 1, text: ' Hola a todos. Gracias por ver el video.', segments: [{ id: 0, text: 'x', no_speech_prob: 0.05 }] } }));
   config.localAsrUrl = `${srv.url}/inference`;
-  const r = await asr.transcribe(Buffer.alloc(32000), { language: null, prompt: 'Horizon Summit', final: false });
+  const r = await asr.transcribe(Buffer.alloc(32000), { language: null, prompt: 'OpenCaptions Live', final: false });
   srv.close();
   const form = srv.reqs[0].body.toString('latin1');
   assert.equal(srv.reqs[0].url, '/inference');
-  for (const [k, v] of [['language', 'auto'], ['response_format', 'verbose_json'], ['temperature_inc', '0'], ['prompt', 'Horizon Summit']]) {
+  for (const [k, v] of [['language', 'auto'], ['response_format', 'verbose_json'], ['temperature_inc', '0'], ['prompt', 'OpenCaptions Live']]) {
     assert.match(form, new RegExp(`name="${k}"\\r\\n\\r\\n${v}\\r\\n`), k);
   }
   assert.match(form, /RIFF.{4}WAVE/s, 'audio is sent as WAV');
@@ -288,11 +288,11 @@ test('local: caption translation with a local model is cleaned of labels and not
   const prev = config.engine;
   config.engine = 'local';
   try {
-    const out = await translateText({ text: 'Hi everyone, welcome.', from: 'en', to: 'es', vocabulary: ['Horizon Summit'] });
+    const out = await translateText({ text: 'Hi everyone, welcome.', from: 'en', to: 'es', vocabulary: ['OpenCaptions Live'] });
     assert.equal(out, 'Hola a todos, bienvenidos.');
     const sent = JSON.parse(srv.reqs[0].body);
     assert.match(sent.messages[0].content, /Spanish/);
-    assert.match(sent.messages[0].content, /Horizon Summit/);
+    assert.match(sent.messages[0].content, /OpenCaptions Live/);
   } finally {
     config.engine = prev;
     srv.close();
@@ -312,7 +312,7 @@ test('local: TranslateGemma gets its own prompt, as a single user message, when 
   const prev = config.engine;
   config.engine = 'local';
   try {
-    assert.equal(await translateText({ text: 'Hola a todos.', from: 'es', to: 'en', vocabulary: ['Horizon Summit'], context: ['Bienvenidos.'] }), 'Hello everyone.');
+    assert.equal(await translateText({ text: 'Hola a todos.', from: 'es', to: 'en', vocabulary: ['OpenCaptions Live'], context: ['Bienvenidos.'] }), 'Hello everyone.');
     const sent = JSON.parse(srv.reqs[0].body);
     assert.equal(sent.model, 'translategemma');
     assert.deepEqual(sent.messages, [{ role: 'user', content: translateGemmaPrompt({ text: 'Hola a todos.', from: 'es', to: 'en' }) }]);

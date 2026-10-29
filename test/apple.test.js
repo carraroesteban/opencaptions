@@ -23,7 +23,7 @@ function fakeHelper() {
 function engine(o = {}) {
   const procs = [];
   const opened = [];
-  const e = new AppleEngine({ label: 't', target: 'es', source: 'en', vocabulary: ['Horizon Summit'], ...o, listen: async (args) => { opened.push(args); const p = fakeHelper(); procs.push(p); return p; } });
+  const e = new AppleEngine({ label: 't', target: 'es', source: 'en', vocabulary: ['OpenCaptions Live'], ...o, listen: async (args) => { opened.push(args); const p = fakeHelper(); procs.push(p); return p; } });
   const got = { input: [], interim: [], errors: [], states: [] };
   e.on('input', (x) => got.input.push(x));
   e.on('interim', (x) => got.interim.push(x));
@@ -37,7 +37,7 @@ test('streams audio in, provisional and settled sentences out', async () => {
   const { e, procs, opened, got } = engine();
   e.start();
   await sleep(5);
-  assert.deepEqual(opened, [{ lang: 'en', vocabulary: ['Horizon Summit'] }]);
+  assert.deepEqual(opened, [{ lang: 'en', vocabulary: ['OpenCaptions Live'] }]);
   e.sendAudio(Buffer.alloc(3200)); // not live yet: kept, and heard once it listens (the room's first words)
   procs[0].say({ ready: 'en-US', engine: 'SpeechAnalyzer' });
   await sleep(5);
@@ -48,10 +48,10 @@ test('streams audio in, provisional and settled sentences out', async () => {
   assert.equal(procs[0].audio, 9600);
   procs[0].say({ partial: 'Welcome every' });
   procs[0].say({ partial: '' }); // nothing pending: no caption change
-  procs[0].say({ final: 'Welcome everyone to Horizon Summit.', start: 0.3, end: 2.1 });
+  procs[0].say({ final: 'Welcome everyone to OpenCaptions Live.', start: 0.3, end: 2.1 });
   await sleep(5);
   assert.deepEqual(got.interim, [{ text: 'Welcome every', lang: 'en' }]);
-  assert.deepEqual(got.input, [{ text: ' Welcome everyone to Horizon Summit.', finished: true, lang: 'en' }]);
+  assert.deepEqual(got.input, [{ text: ' Welcome everyone to OpenCaptions Live.', finished: true, lang: 'en' }]);
   e.endAudio(); // the room went quiet: settle what was heard
   assert.deepEqual(procs[0].signals, ['SIGUSR1']);
   assert.equal(e.status().finals, 1);

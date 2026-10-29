@@ -25,7 +25,7 @@ function said(frags, o = {}) {
 }
 
 test('fragments without a space between them get one (both Gemini models, the Mac and local engines)', () => {
-  assert.equal(said(['Hi everyone and welcome to Horizon Summit.', 'My name is Hiroshi Tanaka']), 'Hi everyone and welcome to Horizon Summit. My name is Hiroshi Tanaka');
+  assert.equal(said(['Hi everyone and welcome to OpenCaptions Live.', 'My name is Hiroshi Tanaka']), 'Hi everyone and welcome to OpenCaptions Live. My name is Hiroshi Tanaka');
   assert.equal(said(['conspiring with the NSA or', 'intelligence agencies']), 'conspiring with the NSA or intelligence agencies');
   assert.equal(said(['make a list of', 'all the people']), 'make a list of all the people');
   assert.equal(said(['Maybe this is AT&T', 'or Deutsche Telekom']), 'Maybe this is AT&T or Deutsche Telekom');

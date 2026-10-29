@@ -13,7 +13,7 @@ import { promisify } from 'node:util';
 const { splitLine, cutPieces, buildCues, sentences, placeTranslation, parseTime, geminiSegments, estimate, speechThreshold, MAX_CHARS } = await import('../src/recording.js');
 const { withAsrSlot } = await import('../src/local/asr.js');
 
-const SAMPLE = 'samples/talk-en.wav'; // 58 s, 16 kHz mono
+const SAMPLE = 'samples/talk-en.wav'; // 59 s, 16 kHz mono
 const PORT = 31000 + Math.floor(Math.random() * 2000);
 const base = `http://127.0.0.1:${PORT}`;
 const ADMIN = 'admin-password-for-recording-tests', CREW = 'crew-password-for-recording-tests';
@@ -22,11 +22,11 @@ let srv, dataDir, tmpDir;
 // ---------------------------------------------------------------- pieces shared by the engines
 
 test('recording: caption lines are at most two lines long and end where they read best', () => {
-  const text = 'Hi everyone and welcome to Horizon Summit. My name is Hiroshi Tanaka and I work on telehealth for rural clinics. Today I want to talk about care at a distance and why the best technology is the one patients barely notice.';
+  const text = 'Hi everyone and welcome to OpenCaptions Live. My name is Hiroshi Tanaka and I work on telehealth for rural clinics. Today I want to talk about care at a distance and why the best technology is the one patients barely notice.';
   const lines = splitLine(text);
   assert.ok(lines.every((l) => l.length <= MAX_CHARS), lines.join(' | '));
   assert.equal(lines.join(' '), text, 'no word lost or added');
-  assert.equal(lines[0], 'Hi everyone and welcome to Horizon Summit.', 'a line ends with its sentence');
+  assert.equal(lines[0], 'Hi everyone and welcome to OpenCaptions Live.', 'a line ends with its sentence');
   assert.ok(!lines.some((l) => /\s(and I|the|a)$/.test(l)), 'not on a short word that belongs with the next line');
   assert.deepEqual(splitLine('Short one.'), ['Short one.']);
   assert.deepEqual(splitLine('  '), []);
@@ -65,15 +65,15 @@ test('recording: a long segment becomes lines placed on its speech, without over
 });
 
 test('recording: a translated sentence is laid over the times of its original lines', () => {
-  const cues = [{ start: 0, end: 2000, text: 'Hi everyone and welcome to Horizon Summit,' }, { start: 2000, end: 5000, text: 'my name is Hiroshi Tanaka.' }, { start: 6000, end: 8000, text: 'Next sentence.' }];
+  const cues = [{ start: 0, end: 2000, text: 'Hi everyone and welcome to OpenCaptions Live,' }, { start: 2000, end: 5000, text: 'my name is Hiroshi Tanaka.' }, { start: 6000, end: 8000, text: 'Next sentence.' }];
   const sents = sentences(cues);
   assert.equal(sents.length, 2, 'a sentence ends with its punctuation');
-  assert.equal(sents[0].text, 'Hi everyone and welcome to Horizon Summit, my name is Hiroshi Tanaka.');
-  const out = placeTranslation(sents[0], 'Hola a todos y bienvenidos a Horizon Summit, mi nombre es Hiroshi Tanaka.');
+  assert.equal(sents[0].text, 'Hi everyone and welcome to OpenCaptions Live, my name is Hiroshi Tanaka.');
+  const out = placeTranslation(sents[0], 'Hola a todos y bienvenidos a OpenCaptions Live, mi nombre es Hiroshi Tanaka.');
   assert.equal(out.length, 2);
   assert.deepEqual(out.map((c) => [c.start, c.end]), [[0, 2000], [2000, 5000]], 'the original lines’ times');
-  assert.equal(out.map((c) => c.text).join(' '), 'Hola a todos y bienvenidos a Horizon Summit, mi nombre es Hiroshi Tanaka.');
-  assert.match(out[0].text, /Summit,$/, 'cut after the comma, where the original line ends');
+  assert.equal(out.map((c) => c.text).join(' '), 'Hola a todos y bienvenidos a OpenCaptions Live, mi nombre es Hiroshi Tanaka.');
+  assert.match(out[0].text, /Live,$/, 'cut after the comma, where the original line ends');
   assert.deepEqual(placeTranslation(sents[1], 'Siguiente frase.'), [{ start: 6000, end: 8000, text: 'Siguiente frase.' }]);
   assert.deepEqual(placeTranslation(sents[1], '  '), []);
 });
@@ -133,7 +133,7 @@ test('recording: the Gemini path end to end, with a stand-in for Gemini', async 
         const usageMetadata = { promptTokenCount: 2000, candidatesTokenCount: 300, promptTokensDetails: [{ modality: 'AUDIO', tokenCount: 1860 }] };
         if (Array.isArray(req.contents)) { // a piece of audio: subtitle lines with timestamps
           return { usageMetadata, text: JSON.stringify({ language: 'en', segments: [
-            { start: '00:00.5', end: '00:04.0', text: 'Hi everyone, and welcome to Horizon Summit.' },
+            { start: '00:00.5', end: '00:04.0', text: 'Hi everyone, and welcome to OpenCaptions Live.' },
             { start: '00:04.2', end: '00:09.0', text: 'My name is Hiroshi Tanaka, and I work on telehealth for rural clinics.' },
             { start: '00:52.0', end: '00:57.5', text: 'Thank you very much.' },
           ] }) };
@@ -164,11 +164,11 @@ test('recording: the Gemini path end to end, with a stand-in for Gemini', async 
     assert.ok(Buffer.from(part.data, 'base64').length < wav.length, 'compressed (Opus) when ffmpeg is there, inline (no Files API) for a small piece');
     assert.equal(audio.model, config.recordingModel);
     assert.equal(audio.config.responseMimeType, 'application/json');
-    assert.match(audio.contents[0].parts[1].text, /lasts 00:5[78]/, 'Gemini is told how long the clip is');
+    assert.match(audio.contents[0].parts[1].text, /lasts 00:59/, 'Gemini is told how long the clip is');
     assert.equal(requests.filter((r) => !Array.isArray(r.contents)).length, 1, 'one translation request for a few sentences (English needs none: it’s spoken)');
     const segs = recs.export(c.id, 'orig', 'json');
     const orig = segs.filter((x) => x.channel === 'orig');
-    assert.deepEqual(orig.map((x) => x.text), ['Hi everyone, and welcome to Horizon Summit.', 'My name is Hiroshi Tanaka, and I work on telehealth for rural clinics.', 'Thank you very much.']);
+    assert.deepEqual(orig.map((x) => x.text), ['Hi everyone, and welcome to OpenCaptions Live.', 'My name is Hiroshi Tanaka, and I work on telehealth for rural clinics.', 'Thank you very much.']);
     assert.ok(orig[0].start >= 300 && orig[0].start <= 700 && orig[2].start >= 51_500, 'Gemini’s times, in ms');
     const es = segs.filter((x) => x.channel === 'es');
     assert.equal(es.map((x) => x.text).join(' '), orig.map((x) => `[${promptLanguage('es')}] ${x.text}`).join(' '), 'every sentence translated, in order');
@@ -245,7 +245,7 @@ test('recording API: upload in pieces, checked with an estimate; refusals say wh
   const j = await upload(wav, 'talk-en.wav', 500_000); // four pieces
   assert.equal(j.state, 'ready');
   assert.equal(j.name, 'talk-en.wav');
-  assert.ok(Math.abs(j.durationMs - 58_050) < 100, `length ${j.durationMs}`);
+  assert.ok(Math.abs(j.durationMs - 59_307) < 100, `length ${j.durationMs}`);
   assert.equal(j.engine, 'mock');
   assert.ok(j.estimate.seconds >= 1 && j.estimate.usd === null);
   assert.equal(leftovers().length, 1, 'the file waits in one temporary folder');
@@ -287,7 +287,7 @@ test('recording: progress while it runs, done in a few seconds, then the tempora
   const { job, seen } = await finish(j.id);
   const ms = Date.now() - t0;
   assert.equal(job.state, 'done', job.error);
-  assert.ok(ms < 5000, `58 s of audio with the simulated AI in ${ms} ms`);
+  assert.ok(ms < 5000, `59 s of audio with the simulated AI in ${ms} ms`);
   const progress = seen.map((x) => x.progress);
   assert.ok(progress.every((p, i) => i === 0 || p >= progress[i - 1]), `progress never goes back: ${progress.join(' ')}`);
   assert.equal(job.progress, 1);
@@ -317,7 +317,7 @@ test('recording: the transcript is stored like a live talk’s and listed with t
   }
   const orig = segs.filter((x) => x.channel === 'orig');
   assert.ok(orig.every((x, i) => i === 0 || x.start >= orig[i - 1].end), 'original lines in order, without overlaps');
-  assert.ok(orig[orig.length - 1].end <= 58_100 + 3000, 'within the recording');
+  assert.ok(orig[orig.length - 1].end <= 59_400 + 3000, 'within the recording');
   assert.deepEqual(segs.filter((x) => x.channel === 'en').map((x) => x.text), orig.map((x) => x.text), 'spoken in English: its English captions are the original');
   const talks = await (await json('GET', '/api/stages/room-a/talks')).json();
   const listed = talks.find((x) => x.id === done.talk.id);
@@ -360,7 +360,7 @@ test('recording: cancelling a job, waiting or running, stops it and deletes its 
   long.writeUInt32LE(long.length - 8, 4);
   long.writeUInt32LE(long.length - 44, 40);
   const a = await upload(long, 'long.wav');
-  assert.ok(Math.abs(a.durationMs - 4 * 58_050) < 400);
+  assert.ok(Math.abs(a.durationMs - 4 * 59_307) < 400);
   const b = await upload(wav, 'second.wav');
   await json('POST', `/api/recordings/${a.id}/start`, { room: 'room-b', targets: ['es'] });
   const waiting = await (await json('POST', `/api/recordings/${b.id}/start`, { room: 'room-b', targets: ['es'] })).json();
@@ -384,7 +384,7 @@ test('npm run subtitle: same CLI, through the new path, without a room', async (
   try {
     const t0 = Date.now();
     const { stdout } = await promisify(execFile)(process.execPath, ['scripts/subtitle.js', SAMPLE, '--langs', 'es,pt', '--server', base, '--admin-token', ADMIN, '--out', out]);
-    assert.ok(Date.now() - t0 < 15000, 'much faster than the 58 s it lasts');
+    assert.ok(Date.now() - t0 < 15000, 'much faster than the 59 s it lasts');
     assert.deepEqual(fs.readdirSync(out).sort(), ['talk-en.es.srt', 'talk-en.es.vtt', 'talk-en.original.srt', 'talk-en.original.vtt', 'talk-en.pt.srt', 'talk-en.pt.vtt']);
     assert.match(fs.readFileSync(path.join(out, 'talk-en.pt.srt'), 'utf8'), /^1\n00:00:0\d,\d{3} --> /);
     assert.match(fs.readFileSync(path.join(out, 'talk-en.es.vtt'), 'utf8'), /^WEBVTT/);

@@ -50,4 +50,4 @@ Adapt it to your event and put it on the registration page, the event website or
 
 ## Names used in examples
 
-The example event (Horizon Summit), its speakers and its talks are fictional. Any resemblance to real events or people is unintended.
+The example event (OpenCaptions Live), its speakers and its talks are fictional. Any resemblance to real events or people is unintended.

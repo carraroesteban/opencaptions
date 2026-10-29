@@ -17,7 +17,7 @@ function fakeLive(closeWith) {
 
 test('network drops before setup do not strip the session config', async () => {
   _setClient(fakeLive({ code: 1006, reason: '' }));
-  const e = new GeminiEngine({ label: 't', target: 'es', vocabulary: ['Horizon Summit'] });
+  const e = new GeminiEngine({ label: 't', target: 'es', vocabulary: ['OpenCaptions Live'] });
   e.on('error', () => {});
   e.start();
   await sleep(1300);
@@ -27,7 +27,7 @@ test('network drops before setup do not strip the session config', async () => {
 
 test('an explicit config rejection steps down to a smaller config', async () => {
   _setClient(fakeLive({ code: 1007, reason: 'Invalid argument: customVocabulary' }));
-  const e = new GeminiEngine({ label: 't', target: 'es', vocabulary: ['Horizon Summit'] });
+  const e = new GeminiEngine({ label: 't', target: 'es', vocabulary: ['OpenCaptions Live'] });
   e.on('error', () => {});
   e.on('log', () => {});
   e.start();

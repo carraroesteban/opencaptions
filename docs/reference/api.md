@@ -127,7 +127,7 @@ Response:
 
 ```json
 {
-  "name": "Horizon Summit 2026",
+  "name": "OpenCaptions Live 2026",
   "accent": "#D4FF3A",
   "publicUrl": "https://subs.example.com",
   "languages": { "es": "Español", "en": "English", "pt": "Português" },
@@ -621,7 +621,7 @@ chars, optional `lang` ≤ 12 chars (restricts the replacement to one caption ch
 ```bash
 curl -X PUT http://localhost:8080/api/glossary \
   -H "Authorization: Bearer $ADMIN_TOKEN" -H "Content-Type: application/json" \
-  -d '{"vocabulary":["Horizon Summit","telehealth"],"replacements":[{"from":"horizons summit","to":"Horizon Summit"}]}'
+  -d '{"vocabulary":["OpenCaptions Live","telehealth"],"replacements":[{"from":"open captions","to":"OpenCaptions"}]}'
 ```
 
 ### Utilities
@@ -877,7 +877,7 @@ Server → client:
 
 ```json
 // broadcast to every connected admin socket every 1000 ms
-{ "type": "status", "engine": "gemini", "model": "gemini-3.5-live-translate-preview", "event": "Horizon Summit 2026",
+{ "type": "status", "engine": "gemini", "model": "gemini-3.5-live-translate-preview", "event": "OpenCaptions Live 2026",
   "uptimeSec": 5412, "system": { "cpuPct": 6.1, "rssMB": 132, "loopLagMs": { "p50": 0.4, "p99": 1.9, "max": 4.2 } },
   "totals": { "stages": 3, "live": 2, "sessions": 4, "viewers": 128, "costUsd": 1.84,
               "assist": { "requests": 340, "cacheHits": 210, "errors": 2, "usd": 0.04 } },

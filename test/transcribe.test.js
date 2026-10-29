@@ -47,7 +47,7 @@ test('a transcribe-only session asks for text from the transcribe model, with th
   const connects = [];
   _setClient(fakeLive(connects));
   config.transcribeModel = 'gemini-3.5-transcribe-live';
-  const e = new GeminiEngine({ label: 't', target: 'es', vocabulary: ['Horizon Summit'], languageHints: ['en'], transcribeOnly: true });
+  const e = new GeminiEngine({ label: 't', target: 'es', vocabulary: ['OpenCaptions Live'], languageHints: ['en'], transcribeOnly: true });
   const got = { input: [], interim: [], usage: [] };
   for (const k of Object.keys(got)) e.on(k, (x) => got[k].push(x));
   e.on('error', () => {});
@@ -59,7 +59,7 @@ test('a transcribe-only session asks for text from the transcribe model, with th
   const { model, cfg } = connects[0];
   assert.equal(model, 'gemini-3.5-transcribe-live');
   assert.deepEqual(cfg.responseModalities, ['TEXT']);
-  assert.deepEqual(cfg.inputAudioTranscription, { customVocabulary: ['Horizon Summit'], languageCodes: ['en'] });
+  assert.deepEqual(cfg.inputAudioTranscription, { customVocabulary: ['OpenCaptions Live'], languageCodes: ['en'] });
   for (const k of ['translationConfig', 'outputAudioTranscription', 'sessionResumption', 'contextWindowCompression']) assert.equal(cfg[k], undefined, k);
   // As Transcribe Live sends it: the room adds the space between sentences where the language uses one (test/text-joins.test.js).
   assert.deepEqual(got.input, [{ text: 'Hello everyone.', finished: true, lang: 'en' }]);

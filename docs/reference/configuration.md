@@ -286,7 +286,7 @@ Each entry in `stages` (and the body of `POST /api/stages` / `PATCH /api/stages/
 
 ```json
 {
-  "eventName": "Horizon Summit 2026",
+  "eventName": "OpenCaptions Live 2026",
   "accent": "#D4FF3A",
   "publicUrl": "",
   "publicTranscripts": "all",
@@ -322,11 +322,10 @@ Loaded from the path in `glossary`/`GLOSSARY` (default `config/glossary.json`, e
 ```json
 {
   "vocabulary": [
-    "Horizon Summit", "OpenCaptions", "keynote", "Q&A", "breakout session",
+    "OpenCaptions Live", "OpenCaptions", "keynote", "Q&A", "breakout session",
     "UNESCO", "net zero"
   ],
   "replacements": [
-    { "from": "horizons summit|horizon sumit", "to": "Horizon Summit" },
     { "from": "open captions|open caption", "to": "OpenCaptions" },
     { "from": "q and a|q n a", "to": "Q&A" },
     { "from": "tele salud|tele-salud", "to": "telesalud", "lang": "es" }

@@ -21,7 +21,7 @@ if (!config.geminiApiKey && !config.vertex) {
 }
 console.log(`model: ${config.model}\ninput: ${input} → target: ${target}\n`);
 
-const e = new GeminiEngine({ label: 'check', target, echo: true, vocabulary: ['Horizon Summit', 'María José Fernández', 'Hiroshi Tanaka', 'telehealth'] });
+const e = new GeminiEngine({ label: 'check', target, echo: true, vocabulary: ['OpenCaptions Live', 'María José Fernández', 'Hiroshi Tanaka', 'telehealth'] });
 let inText = '', outText = '', audioBytes = 0, firstIn = 0, firstOut = 0, firstInterim = 0, interims = 0, audioT0 = 0;
 const t0 = Date.now();
 const log = [];

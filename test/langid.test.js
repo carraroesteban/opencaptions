@@ -19,7 +19,7 @@ test('each language from one ordinary sentence', () => {
 test('unsure rather than wrong', () => {
   assert.equal(guessLang('Empecemos con una historia.', ROOM), null, 'Spanish or Italian: too short to tell');
   assert.equal(guessLang('Dzień dobry wszystkim i witam na naszej konferencji.', ROOM), null, 'Polish is not mistaken for English');
-  assert.equal(guessLang('Horizon Summit', ROOM), null);
+  assert.equal(guessLang('OpenCaptions Live', ROOM), null);
 });
 
 test('other scripts, and the room decides between languages that share one', () => {

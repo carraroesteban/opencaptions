@@ -18,7 +18,7 @@ import { words, bestPrefixWer } from './wer.js';
 
 // Both models: $3.50 per million input (audio) tokens, $21 per million output tokens (pricing page, 2026-10-09).
 const USD_PER_M = { in: 3.5, out: 21 };
-const VOCAB = ['Horizon Summit', 'María José Fernández', 'Hiroshi Tanaka', 'telehealth'];
+const VOCAB = ['OpenCaptions Live', 'María José Fernández', 'Hiroshi Tanaka', 'telehealth'];
 
 /** Billed tokens from a session's usageMetadata messages. Counts grow during a session and start over after a reconnect. */
 export function billedTokens(usages) {

@@ -59,13 +59,13 @@ const h = { authorization: 'Bearer t', 'content-type': 'application/json' };
 test('e2e: the audience gets live captions in the original and in translation', () => {
   const orig = finals.orig.join(' ');
   const es = finals.es.join(' ');
-  assert.match(orig, /welcome to Horizon Summit/i);
+  assert.match(orig, /thanks for coming to Open ?Captions Live/i);
   assert.match(orig, /Hiroshi Tanaka/);
-  assert.match(orig, /tablet, a good microphone/);
+  assert.match(orig, /tablet[,.] a good microphone/i);
   assert.match(es, /Hola a todos/);
   assert.match(es, /telesalud|telemedicina/);
   assert.match(es, /tableta|tablet/);
-  assert.match(finals.en.join(' '), /welcome to Horizon Summit/i, 'English is the spoken language: a passthrough of the transcript');
+  assert.match(finals.en.join(' '), /thanks for coming to Open ?Captions Live/i, 'English is the spoken language: a passthrough of the transcript');
   assert.ok(partials.orig > 0, 'provisional words arrive before each sentence is final');
   assert.ok(finals.orig.length >= 4 && finals.es.length >= 4, `sentences: ${finals.orig.length} / ${finals.es.length}`);
 });

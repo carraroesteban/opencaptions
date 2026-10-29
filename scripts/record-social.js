@@ -40,7 +40,7 @@ const app = spawn(process.execPath, [path.join(ROOT, 'src/server.js')], {
 done.push(() => app.kill());
 for (let i = 0; i < 100; i++) { try { if ((await fetch(`${base}/healthz`)).ok) break; } catch { await sleep(100); } }
 const json = { 'content-type': 'application/json' };
-for (const [method, url, body] of /** @type {[string, string, object][]} */ ([['PUT', '/api/setup', { done: true, name: 'Horizon Summit' }], ['POST', '/api/stages/main/talk', { title: TITLE }]])) {
+for (const [method, url, body] of /** @type {[string, string, object][]} */ ([['PUT', '/api/setup', { done: true, name: 'OpenCaptions Live' }], ['POST', '/api/stages/main/talk', { title: TITLE }]])) {
   const r = await fetch(base + url, { method, headers: json, body: JSON.stringify(body) });
   if (!r.ok) tty.warn(`${method} ${url}: ${r.status} ${await r.text()}`);
 }

@@ -1,4 +1,4 @@
-Hi everyone, and welcome to Horizon Summit. My name is Hiroshi Tanaka, and I work on telehealth for rural clinics.
+Hi everyone, and thanks for coming to OpenCaptions Live. My name is Hiroshi Tanaka, and I work on telehealth for rural clinics.
 Today I want to talk about care at a distance, and why the best technology is the one patients barely notice.
 Let's start with a story. A few years ago, a nurse in a small town had to drive two hours just to show a test result to a specialist.
 So we tried something different. We gave each clinic a simple tablet, a good microphone, and a short training for the whole team.

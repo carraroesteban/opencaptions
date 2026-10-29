@@ -19,7 +19,7 @@ const CHROME = [process.env.CHROME, '/Applications/Google Chrome.app/Contents/Ma
 if (!CHROME) { tty.fail('Chrome not found: set CHROME=/path/to/chrome'); process.exit(1); }
 try { execFileSync('cwebp', ['-version'], { stdio: 'ignore' }); } catch { tty.fail('cwebp not found (macOS: brew install webp)'); process.exit(1); }
 
-const TITLE = 'Telehealth for rural clinics'; // what the recorded talk (test/fixtures/talk-en.json) is about
+const TITLE = 'Telehealth for rural clinics'; // what the recorded talk (deploy/hosted/demo/talk-en.json) is about
 /** Each shot: the page, its size in CSS pixels (photographed at 2×), and what to do before the picture. */
 const SHOTS = {
   dashboard: { url: '/admin.html?dashboard&ui=en#live', width: 1080, height: 675, theme: 'dark',
@@ -48,7 +48,7 @@ const glossary = path.join(tmp, 'glossary.json');
 fs.copyFileSync(path.join(ROOT, 'test/fixtures/glossary.json'), glossary);
 const app = spawn(process.execPath, [path.join(ROOT, 'src/server.js')], {
   cwd: ROOT, stdio: 'ignore',
-  env: { ...process.env, PORT: String(appPort), HOST: '127.0.0.1', ENGINE: 'gemini', GEMINI_API_KEY: 'replay', OC_REPLAY: 'test/fixtures/talk-en.json', OC_REPLAY_SPEED: '1',
+  env: { ...process.env, PORT: String(appPort), HOST: '127.0.0.1', ENGINE: 'gemini', GEMINI_API_KEY: 'replay', OC_REPLAY: 'deploy/hosted/demo/talk-en.json', OC_REPLAY_SPEED: '1', /* the whole talk: playing 30 s never reaches its end and starts it over */
     DATA_DIR: tmp, SCHEDULE: path.join(tmp, 'schedule.json'), EVENT_CONFIG: 'test/fixtures/event.json', GLOSSARY: glossary, ADMIN_TOKEN: 'shots', INGEST_TOKEN: 'shots', PUBLIC_URL: 'https://live.example.org', TUNNEL: '', FALLBACK: '' },
 });
 done.push(() => app.kill());
