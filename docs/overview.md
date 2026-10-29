@@ -91,7 +91,7 @@ The design details are in [Architecture](architecture.md), and the reasons behin
 | Local mode on a Mac (Apple's speech recognition and translation) | Implemented, the default on Macs with Apple chips and macOS 26+; measured on a MacBook Pro M3 Pro against Whisper: about as accurate, first words sooner, about 60 times less processor time, no download. One room measured ([Local mode](local.md#apples-speech-recognition-compared-with-whisper)) |
 | Local mode (Whisper + Ollama) | Implemented, also from a button in the app (captions about a minute after the click on a MacBook Pro M3 Pro; translations about 5½ more minutes the first time, while the 3.1 GB model downloads); measured on CPUs with the bundled speech server (one room). GPU and Neural Engine backends, and several rooms per machine, not measured yet ([Local mode](local.md#measured-results)) |
 | Automated tests | About 300 tests on Linux, macOS and Windows: captions, exports, live corrections, breaks, recordings, restarts, sign-in and roles, security rules, alerts, reconnection edge cases, the assistant, the agenda, AI assistants over MCP, local mode, and an end-to-end test that replays a recorded Gemini session. Every page is checked against WCAG 2.2 AA (`npm run a11y`). `npm run local -- --check` tests local models end to end. |
-| Version | 0.9.4. Changes, and anything breaking, are listed in the [changelog](../CHANGELOG.md); [upgrade notes](upgrading.md). |
+| Version | 1.0.0. Changes, and anything breaking, are listed in the [changelog](../CHANGELOG.md); [upgrade notes](upgrading.md). |
 
 ## Roadmap
 

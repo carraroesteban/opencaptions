@@ -2,9 +2,9 @@
 
 All notable changes to this project are documented in this file. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project uses [Semantic Versioning](https://semver.org/). Before 1.0, minor versions may include breaking changes, and they are marked **Breaking**.
 
-## [Unreleased]
+## [1.0.0] - 2026-10-29
 
-Planned as **1.0.0**: the slide on every phone in its reader's language, any word explained, the whole event answering questions, a page for every talk, a public demo that runs for free, and the first minutes made simpler. Nothing to change when updating ([upgrade notes](docs/upgrading.md#094--10)).
+The first stable version. The slide on every phone in its reader's language, any word explained, the whole event answering questions, a page for every talk, a website that shows a real talk being captioned, and the first minutes made simpler. Nothing to change when updating ([upgrade notes](docs/upgrading.md#094--10)).
 
 ### Fixed
 
