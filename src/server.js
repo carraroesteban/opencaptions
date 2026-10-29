@@ -1099,7 +1099,7 @@ app.get('/auth/oidc/callback', async (req, res) => {
 
 // Just for me: call apps open on this computer, so the personal page can suggest capturing the call.
 app.get('/api/me/calls', admin, async (req, res) => {
-  if (!personal()) return res.status(404).json({ error: 'only in Just for me' });
+  if (!personal()) return res.json({ apps: [] }); // an event's server doesn't look at what runs on it (and the page needn't fail loudly)
   res.json({ apps: await openCallApps(), platform: process.platform });
 });
 

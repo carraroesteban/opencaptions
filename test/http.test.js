@@ -218,6 +218,7 @@ test('“ask the talk” is limited per browser, not per venue IP', async () => 
 test('“just for me” mode: captions and transcripts only on this computer (or signed in)', async () => {
   const setMode = (mode) => fetch(`${base}/api/setup`, { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ mode }) });
   const fromWifi = { host: `phone.example:${PORT}` }; // not "localhost": another device on the network
+  assert.deepEqual((await (await fetch(`${base}/api/me/calls`)).json()).apps, [], 'for an event, no look at the call apps');
   assert.equal((await setMode('personal')).status, 200);
   try {
     assert.equal((await (await fetch(`${base}/api/setup`)).json()).mode, 'personal');

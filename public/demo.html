@@ -56,6 +56,7 @@
     body.mic .ov { bottom: 50%; transform: translateY(50%); }
     body.mic .ov .box { background: transparent; font-size: clamp(20px, 3.6vw, 52px); }
     body.mic .ov .clip { max-height: calc(1.25em * 3); }
+    body.mic:not(.live) .ov { visibility: hidden; } /* before your microphone is on, another source's captions would sit under the invitation */
     /* The sound check's invitation: one big round button, breathing */
     .micidle { position: absolute; inset: 0; display: grid; place-content: center; justify-items: center; gap: 22px; color: #C9C6CF; font-size: clamp(16px, 1.8vw, 22px); text-align: center; padding: 20px; transition: opacity var(--dur-slow) var(--ease-out), transform var(--dur-slow) var(--ease-out); }
     .micidle.hidden { display: grid !important; opacity: 0; transform: scale(.96); pointer-events: none; }
