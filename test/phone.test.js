@@ -14,10 +14,10 @@ import { openAudio } from '../src/pull.js';
 const CHROME = [process.env.CHROME, '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome', '/Applications/Chromium.app/Contents/MacOS/Chromium',
   '/usr/bin/google-chrome', '/usr/bin/google-chrome-stable', '/usr/bin/chromium', '/usr/bin/chromium-browser', 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe'].find((p) => p && fs.existsSync(p));
 const skip = CHROME ? false : 'Chrome not found (set CHROME=/path/to/chrome)';
-const PORT = 31000 + Math.floor(Math.random() * 2000), CDP = PORT + 2000;
+const PORT = 31000 + Math.floor(Math.random() * 2000);
 const base = `http://127.0.0.1:${PORT}`;
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-let srv, chrome, ingest, audio, dataDir, profile, page;
+let srv, chrome, cdp, ingest, audio, dataDir, profile, page;
 
 const up = async (url, what) => {
   for (let i = 0; i < 150; i++) { try { if ((await fetch(url)).ok) return; } catch { /* starting */ } await sleep(100); }
@@ -26,7 +26,7 @@ const up = async (url, what) => {
 
 /** One Chrome tab over the DevTools protocol: evaluate scripts, wait for conditions. */
 async function tab() {
-  const t = await (await fetch(`http://127.0.0.1:${CDP}/json/new?about:blank`, { method: 'PUT' })).json();
+  const t = await (await fetch(`${cdp}/json/new?about:blank`, { method: 'PUT' })).json();
   const ws = new WebSocket(t.webSocketDebuggerUrl);
   await new Promise((r) => ws.once('open', r));
   let id = 0;
@@ -58,8 +58,14 @@ before(async () => {
   await new Promise((r) => ingest.once('open', r));
   audio = openAudio('samples/talk-en.wav', { realtime: true, loop: true }).on('data', (b) => ingest.readyState === 1 && ingest.send(b, { binary: true }));
   profile = fs.mkdtempSync(path.join(os.tmpdir(), 'oc-phone-chrome-'));
-  chrome = spawn(CHROME, ['--headless=new', `--remote-debugging-port=${CDP}`, `--user-data-dir=${profile}`, '--no-first-run', ...(process.env.CI ? ['--no-sandbox'] : []), 'about:blank'], { stdio: 'ignore' });
-  await up(`http://127.0.0.1:${CDP}/json/version`, 'Chrome');
+  // Port 0: Chrome takes a free port and writes it to DevToolsActivePort (a chosen one can be taken or reserved on Windows).
+  chrome = spawn(CHROME, ['--headless=new', '--remote-debugging-port=0', `--user-data-dir=${profile}`, '--no-first-run', ...(process.env.CI ? ['--no-sandbox'] : []), 'about:blank'], { stdio: 'ignore' });
+  const portFile = path.join(profile, 'DevToolsActivePort');
+  for (let i = 0; !cdp; i++) { // a first start on a busy Windows runner can take more than 15 s
+    if (chrome.exitCode !== null || i > 600) throw new Error(`Chrome didn't start (${chrome.exitCode === null ? 'no port after 60 s' : `exit code ${chrome.exitCode}`})`);
+    const port = fs.existsSync(portFile) && fs.readFileSync(portFile, 'utf8').match(/^\d+/)?.[0];
+    if (port) cdp = `http://127.0.0.1:${port}`; else await sleep(100);
+  }
   page = await tab();
   await page.send('Page.enable');
   await page.send('Page.navigate', { url: `${base}/watch.html?stage=main&lang=orig` });
