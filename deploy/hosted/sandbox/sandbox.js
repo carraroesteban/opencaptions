@@ -14,13 +14,56 @@ import crypto from 'node:crypto';
 const env = process.env;
 const IMAGE = env.IMAGE || 'ghcr.io/carraroesteban/opencaptions:latest';
 const PUBLIC_URL = env.PUBLIC_URL || '';
-const HOST_DIR = env.HOST_DIR; // this folder on the server, for the copies' event.json
+const HOST_DIR = env.HOST_DIR; // this folder on the server: the copies' sample events are in its events/ folder
 const MAX = Number(env.MAX_COPIES || 8);
 const MINUTES = Number(env.COPY_MINUTES || 60);
 const PER_IP_HOUR = Number(env.PER_IP_HOUR || 4);
 const NET = 'oc-sandbox';
 const PUBLIC = '/app/public'; // the image's own pages: the landing page uses its fonts, colours and logo
 if (!HOST_DIR) throw new Error('set HOST_DIR (docker-compose.yml does)');
+const EVENTS = '/events'; // HOST_DIR/events, writable: one sample event per language pair, written on first use
+
+// ---------------------------------------------------------------- languages
+// From the image the copies run, so they always agree: the languages the simulated captions are written in, and every
+// language's own name.
+const { CORPUS } = await import('/app/src/engines/mock.js');
+const { LANGUAGE_CATALOG } = await import(path.join(PUBLIC, 'languages.js'));
+const CAPTIONED = new Set(Object.keys(CORPUS[0]));
+const PAGES = ['en', 'es', 'pt']; // this page's languages, and the app's interface
+
+/** The visitor's languages in the order their browser (their system settings) prefers them: this page and the app
+ *  in the first one we have, and the sample room captioned in the first one the simulated captions are written in. */
+function langsOf(req) {
+  const list = String(req.headers['accept-language'] || '').split(',').map((part, i) => {
+    const [tag, ...params] = part.trim().split(';');
+    const q = Number(params.map((p) => p.trim()).find((p) => p.startsWith('q='))?.slice(2) ?? 1);
+    return { lang: tag.trim().toLowerCase().split('-')[0], q: Number.isFinite(q) ? q : 0, i };
+  }).filter((x) => /^[a-z]{2,3}$/.test(x.lang) && x.q > 0).sort((a, b) => b.q - a.q || a.i - b.i).map((x) => x.lang);
+  const page = list.find((l) => PAGES.includes(l)) || 'en';
+  return { page, captions: list.find((l) => CAPTIONED.has(l)) || page };
+}
+
+const SAMPLE = {
+  en: { event: 'Sample event', room: 'Main Stage', title: 'A sample talk' },
+  es: { event: 'Evento de ejemplo', room: 'Sala principal', title: 'Una charla de ejemplo' },
+  pt: { event: 'Evento de exemplo', room: 'Sala principal', title: 'Uma palestra de exemplo' },
+};
+/** The sample event for these languages (its file name: both codes come from the lists above, safe in a path). */
+function sampleEvent({ page, captions }) {
+  const file = `event.${page}.${captions}.json`;
+  if (fs.existsSync(path.join(EVENTS, file))) return file;
+  const n = SAMPLE[page], es = page === 'es';
+  const targets = [...new Set([captions, page, page === 'en' ? 'es' : 'en'])];
+  const event = {
+    eventName: n.event, publicUrl: '', publicTranscripts: 'all', timezone: 'UTC',
+    languages: Object.fromEntries(targets.map((l) => [l, LANGUAGE_CATALOG[l] || l])), defaultTargets: targets,
+    silenceGateSec: 30, idleCloseSec: 300,
+    stages: [{ id: 'main', name: n.room, source: es ? 'es' : 'auto', targets, title: n.title, pull: `samples/talk-${es ? 'es' : 'en'}.wav`, loop: true }],
+  };
+  fs.writeFileSync(path.join(EVENTS, `${file}.tmp`), JSON.stringify(event, null, 2));
+  fs.renameSync(path.join(EVENTS, `${file}.tmp`), path.join(EVENTS, file));
+  return file;
+}
 
 // ---------------------------------------------------------------- Docker
 function docker(method, p, body) {
@@ -56,7 +99,7 @@ async function refresh() {
   for (const [id, ends] of now) live.set(id, ends);
 }
 
-async function createCopy(id, lang) {
+async function createCopy(id, langs) {
   const name = `oc-sb-${id}`;
   ok(await docker('POST', `/containers/create?name=${name}`, {
     Image: IMAGE,
@@ -68,7 +111,7 @@ async function createCopy(id, lang) {
     ],
     HostConfig: {
       NetworkMode: NET,
-      Binds: [`${HOST_DIR}/${lang === 'es' ? 'event.es.json' : 'event.json'}:/sandbox/event.json:ro`], // the sample event in the visitor's language
+      Binds: [`${HOST_DIR}/events/${sampleEvent(langs)}:/sandbox/event.json:ro`], // the sample event in the visitor's languages
       Memory: 300 * 2 ** 20, MemorySwap: 300 * 2 ** 20, NanoCpus: 0.5e9, PidsLimit: 128,
       ReadonlyRootfs: true, Tmpfs: { '/tmp': 'size=64m', '/app/data': 'size=64m,uid=1000,gid=1000' },
       CapDrop: ['ALL'], SecurityOpt: ['no-new-privileges'], Init: true,
@@ -89,7 +132,6 @@ async function createCopy(id, lang) {
 // ---------------------------------------------------------------- pages
 const cookieId = (req) => /(?:^|;\s*)oc_sb=([a-f0-9]{16})\b/.exec(req.headers.cookie || '')?.[1] || null;
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
-const isEs = (req) => /^es\b/i.test(req.headers['accept-language'] || '');
 
 const T = {
   en: {
@@ -98,6 +140,7 @@ const T = {
     start: 'Start my copy', ended: 'Your copy ended after an hour. Start a new one any time.',
     full: 'Every copy is in use right now. Try again in a few minutes.', many: 'You started several copies in the last hour. Try again later.',
     failed: 'Your copy didn\'t start. Try again in a minute.', real: 'To caption a real event, download OpenCaptions:',
+    capsIn: 'The sample room is captioned in {lang}.',
   },
   es: {
     title: 'Probá OpenCaptions', lead: 'Tu propia copia privada, por una hora. Abrí la página de administración, cambiá lo que quieras, poné en marcha una sala o probá Solo para mí con tu micrófono.',
@@ -105,12 +148,23 @@ const T = {
     start: 'Abrir mi copia', ended: 'Tu copia terminó después de una hora. Podés abrir otra cuando quieras.',
     full: 'Todas las copias están en uso. Probá de nuevo en unos minutos.', many: 'Abriste varias copias en la última hora. Probá más tarde.',
     failed: 'Tu copia no arrancó. Probá de nuevo en un minuto.', real: 'Para subtitular un evento real, descargá OpenCaptions:',
+    capsIn: 'La sala de ejemplo tiene subtítulos en {lang}.',
+  },
+  pt: {
+    title: 'Experimente o OpenCaptions', lead: 'Sua própria cópia privada, por uma hora. Abra a página de administração, mude o que quiser, inicie uma sala ou experimente o Just for me com o seu microfone.',
+    note: 'As legendas são simuladas: aparecem frases de exemplo quando há som, então nenhuma IA é usada e nada do que você disser sai desta cópia. Ela é apagada depois de uma hora.',
+    start: 'Abrir minha cópia', ended: 'Sua cópia terminou depois de uma hora. Abra outra quando quiser.',
+    full: 'Todas as cópias estão em uso agora. Tente de novo em alguns minutos.', many: 'Você abriu várias cópias na última hora. Tente mais tarde.',
+    failed: 'Sua cópia não iniciou. Tente de novo em um minuto.', real: 'Para legendar um evento de verdade, baixe o OpenCaptions:',
+    capsIn: 'A sala de exemplo tem legendas em {lang}.',
   },
 };
 
 function landing(req, res, status = 200, msgKey = null) {
-  const lang = isEs(req) ? 'es' : 'en';
+  const { page: lang, captions } = langsOf(req);
   const t = T[lang];
+  // Captioned in a language this page isn't in (a French visitor reads this in English): say so, in that language's name.
+  const caps = captions !== lang ? `<p class="note">${esc(t.capsIn.replace('{lang}', LANGUAGE_CATALOG[captions] || captions))}</p>` : '';
   const msg = msgKey ? `<p class="msg" role="status">${esc(t[msgKey])}</p>` : '';
   res.writeHead(status, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store', 'x-frame-options': 'DENY', 'x-content-type-options': 'nosniff' });
   res.end(`<!doctype html>
@@ -134,6 +188,7 @@ function landing(req, res, status = 200, msgKey = null) {
   ${msg}
   <p>${esc(t.lead)}</p>
   <p class="note">${esc(t.note)}</p>
+  ${caps}
   <form method="post" action="/_sandbox/start" onsubmit="this.querySelector('button').disabled = true">
     <button type="submit">${esc(t.start)}</button>
   </form>
@@ -166,7 +221,7 @@ async function start(req, res) {
   if (live.size >= MAX) return landing(req, res, 503, 'full');
   starts.set(ip, [...recent, Date.now()]);
   const id = crypto.randomBytes(8).toString('hex');
-  try { await createCopy(id, isEs(req) ? 'es' : 'en'); } catch (e) {
+  try { await createCopy(id, langsOf(req)); } catch (e) {
     console.error(e.message);
     await docker('DELETE', `/containers/oc-sb-${id}?force=1`).catch(() => {});
     live.delete(id);

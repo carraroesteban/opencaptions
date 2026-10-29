@@ -23,6 +23,7 @@ services:
       TZ: "${TZ:-UTC}"
     volumes:
       - ./:/sandbox:ro
+      - ./events:/events # the sample event of each language pair, written by sandbox.js
       - /var/run/docker.sock:/var/run/docker.sock
     read_only: true
     security_opt:
