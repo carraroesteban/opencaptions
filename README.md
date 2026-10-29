@@ -1,11 +1,6 @@
 <div align="center">
 
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/images/logo-lockup-dark.png" />
-  <img src="docs/images/logo-lockup-light.png" width="420" alt="OpenCaptions" />
-</picture>
-
-### Every talk, understood by everyone.
+<img src="docs/images/hero.png" width="920" alt="OpenCaptions. Every talk, understood by everyone. An illustration of a conference: the big screen shows the live caption, and people in the audience read it on their phones in Spanish and French." />
 
 Live captions and translation for conferences, classrooms, town halls and any event with a microphone.<br>
 On every phone, on the big screen and in your livestream. Free and open source.
@@ -18,7 +13,7 @@ On every phone, on the big screen and in your livestream. Free and open source.
 
 **[Try it live on your phone](https://try-opencaptions.kvza.ar/s/main)** (nothing to install) · [Website](https://opencaptions.kvza.ar) · [Download](#quick-start) · [Features](#features) · [Pricing](#what-it-costs) · [Docs](#documentation) · [En español](#en-español)
 
-<img src="docs/images/hero.png" width="920" alt="A livestream with bilingual captions on screen, next to a phone showing live captions of the same talk in Spanish" />
+**New in 1.0:** the slide on every phone in its reader's language, any word explained in plain words, and one question answered across the whole event. [What's new](CHANGELOG.md#100---2026-10-29)
 
 </div>
 
@@ -41,7 +36,7 @@ Not running an event? Choose **Just for me** the first time you open the app, an
 | **Stage screen** | **QR poster** | **Caption style editor** |
 | ![Full-screen captions next to the stage, with a QR code](docs/images/projector.png) | ![Printable A4 poster with the room's QR code](docs/images/kit.png) | ![Style editor with a live overlay preview](docs/images/style.png) |
 
-<sub>Shown in demo mode, which uses the same interface with simulated captions.</sub>
+<sub>The real app captioning the sample talk, with the AI's answers replayed from a recording (`npm run screenshots` makes them again).</sub>
 
 ## Quick start
 
@@ -209,6 +204,8 @@ All the docs, by who you are: **[docs/README.md](docs/README.md)**.
 - **En el escenario**, una pantalla con subtítulos grandes junto al orador y un overlay para OBS o vMix, en uno o dos idiomas.
 - **Para la organización**, un panel con el estado, la demora, el público y el costo de cada sala. Las salas funcionan solas y toman los títulos de la agenda. Para traducir podés usar Gemini u otra IA (OpenAI, OpenRouter, Groq, Mistral).
 - **Costo:** el software es gratis. Con Gemini, unos US$ 0,54 por hora de charla por sala (US$ 2,2 con voz traducida en auriculares; el silencio no se cobra). En modo local, nada: corre en tu propia computadora, no se sube audio y no se cobra por minuto.
+
+**Nuevo en la 1.0:** la diapositiva en el celular de cada persona, en su idioma; cualquier palabra explicada en palabras simples; y una pregunta respondida con todas las charlas del evento. Probalo en vivo desde el celular, sin instalar nada: [try-opencaptions.kvza.ar](https://try-opencaptions.kvza.ar/s/main).
 
 **Para empezar sin terminal:**
 

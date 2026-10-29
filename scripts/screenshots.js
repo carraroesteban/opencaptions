@@ -33,6 +33,12 @@ const SHOTS = {
       document.head.append(duo);` },
   transcript: { url: '/talk.html?stage=main&lang=es', width: 1080, height: 675, theme: 'light',
     prep: `document.getElementById('q').value = 'clínicas'; document.getElementById('q').dispatchEvent(new Event('input'));` },
+  // The main room's A4 poster alone, centred, as it prints (bilingual: Spanish with English underneath).
+  kit: { url: '/kit.html?stage=main&ui=es', width: 1000, height: 760, theme: 'light',
+    prep: `const p = document.querySelector('.sheet'); p.querySelector('figcaption')?.remove(); document.body.replaceChildren(p);
+      const k = document.createElement('style');
+      k.textContent = 'body { background: #ECE9E1 !important; margin: 0; display: grid; place-items: center; min-height: 100vh; } .sheet { margin: 0; zoom: 1.28; box-shadow: 0 20px 60px -20px rgba(17,16,20,.35); }';
+      document.head.append(k);` },
 };
 const wanted = process.argv.slice(2).filter((a) => !a.startsWith('-'));
 const shots = Object.entries(SHOTS).filter(([n]) => !wanted.length || wanted.includes(n));
