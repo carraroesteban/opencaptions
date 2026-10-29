@@ -11,7 +11,7 @@ On every phone, on the big screen and in your livestream. Free and open source.
 [![Node.js ≥ 22.23.4](https://img.shields.io/badge/node-%E2%89%A5%2022.23.4-339933?logo=nodedotjs&logoColor=white)](docs/requirements.md)
 [![Docker](https://img.shields.io/badge/docker-ready-2496ED?logo=docker&logoColor=white)](#on-a-server-docker-a-vps-or-the-cloud)
 
-**[Try it live on your phone](https://try-opencaptions.kvza.ar/s/main)** (nothing to install) · [Website](https://opencaptions.kvza.ar) · [Download](#quick-start) · [Features](#features) · [Pricing](#what-it-costs) · [Docs](#documentation) · [En español](#en-español)
+**[Try it live on your phone](https://try-opencaptions.kvza.ar/s/main)** (nothing to install) · [Website](https://opencaptions.kvza.ar) · [Download](#quick-start) · [Features](#features) · [Pricing](#what-it-costs) · [Just for me](docs/personal.md) · [Docs](#documentation) · [En español](#en-español)
 
 **New in 1.0:** the slide on every phone in its reader's language, any word explained in plain words, and one question answered across the whole event. [What's new](CHANGELOG.md#100---2026-10-29)
 

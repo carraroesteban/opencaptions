@@ -166,6 +166,16 @@ section.hero::after { content: ''; position: absolute; inset: 0; z-index: -1; po
 .price-foot { font-size: 15px; color: var(--fg2); max-width: 820px; margin: 24px 0 0; }
 @media (max-width: 760px) { .plans { grid-template-columns: 1fr; } .plan-body { padding: 24px; } }
 
+/* Just for me: the same app for one person's calls and videos, text beside its picture. */
+.solo { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 64px; align-items: center; }
+.solo h2 { font-size: clamp(34px, 4.4vw, 54px); line-height: 1.02; letter-spacing: -.04em; margin: 0 0 18px; }
+.solo-points { list-style: none; margin: 28px 0 0; padding: 0; display: grid; gap: 14px; }
+.solo-points li { padding-left: 20px; border-left: 2px solid var(--accent-fg); font-size: 17px; color: var(--fg2); }
+.solo-points b { display: block; color: var(--fg); }
+.solo .cta { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 30px; }
+.solo-pic { display: block; width: 100%; height: auto; aspect-ratio: 4 / 3; object-fit: cover; border-radius: 26px; border: 1px solid var(--line); background: var(--ink); box-shadow: var(--shadow-lg); }
+@media (max-width: 900px) { .solo { grid-template-columns: 1fr; gap: 32px; } .solo-pic { order: -1; } }
+
 /* Questions: the heading stays put beside the answers. */
 .faq-grid { display: grid; grid-template-columns: minmax(0, 4fr) minmax(0, 7fr); gap: 64px; align-items: start; }
 .faq-grid .sec-head { position: sticky; top: 112px; margin: 0; }
