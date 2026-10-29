@@ -246,6 +246,12 @@ const server = http.createServer((req, res) => {
     return void req.pipe(up);
   }
   if (req.method === 'GET' && asset(req, res)) return;
+  // Browsers fetch the app's manifest without cookies, so it can't reach the visitor's copy: a generic one, not this page.
+  if (req.url === '/manifest.webmanifest') {
+    res.writeHead(200, { 'content-type': 'application/manifest+json', 'cache-control': 'public, max-age=3600' });
+    return void res.end(JSON.stringify({ name: 'OpenCaptions · Live captions', short_name: 'OpenCaptions', start_url: '/', scope: '/', display: 'standalone',
+      background_color: '#111014', theme_color: '#111014', icons: [{ src: '/brand/icon.svg', sizes: 'any', type: 'image/svg+xml' }, { src: '/brand/icon-512.png', sizes: '512x512', type: 'image/png' }] }));
+  }
   if (req.url.startsWith('/api/') || req.url === '/healthz') {
     res.writeHead(req.url === '/healthz' ? 200 : 410, { 'content-type': 'application/json' });
     return void res.end(req.url === '/healthz' ? '{"ok":true}' : '{"error":"this sandbox copy has ended: reload the page to start a new one"}');
