@@ -33,6 +33,7 @@ const SHOTS = {
       document.head.append(duo);` },
   transcript: { url: '/talk.html?stage=main&lang=es', width: 1080, height: 675, theme: 'light',
     prep: `document.getElementById('q').value = 'clínicas'; document.getElementById('q').dispatchEvent(new Event('input'));` },
+  style: { url: '/style.html?ui=en', width: 1280, height: 800, theme: 'dark', prep: '' },
   // The main room's A4 poster alone, centred, as it prints (bilingual: Spanish with English underneath).
   kit: { url: '/kit.html?stage=main&ui=es', width: 1000, height: 760, theme: 'light',
     prep: `const p = document.querySelector('.sheet'); p.querySelector('figcaption')?.remove(); document.body.replaceChildren(p);
