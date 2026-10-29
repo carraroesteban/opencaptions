@@ -288,7 +288,6 @@ body[data-gate] > :not(dialog.signin) { display: none !important; }
 .u-danger-outline { border-color: color-mix(in srgb, var(--bad) 50%, var(--line)) !important; color: var(--bad) !important; }
 .u-fixed-bottom { position: fixed !important; bottom: 20px; left: 50%; transform: translateX(-50%); width: max-content; max-width: calc(100vw - 32px); }
 .u-code-input { font-size: 24px !important; letter-spacing: .2em; }
-.u-bg-setup { background-image: url(/art/setup.webp) !important; }
 
 /* Settings → Alerts (public/alerts-ui.js): styled with the rest of the dashboard, in admin.html. */
 

@@ -66,6 +66,7 @@
     .pause.music span { font-size: 3.2vh; }
     .fs-hint { position: fixed; top: 3vh; left: 50%; transform: translateX(-50%); background: #1B1A20; border: 1px solid #2A2930; color: var(--fog); font-size: 1.8vh; padding: .8vh 1.6vh; border-radius: 99px; transition: opacity .6s; }
     .fs-hint kbd { font: inherit; font-weight: 700; color: var(--ink); background: var(--lime); border-radius: .5vh; padding: 0 .6vh; }
+    @media (pointer: coarse) { .fs-hint { display: none; } } /* no F key on a touch screen; a double tap still works */
   </style>
 </head>
 <body>

@@ -248,7 +248,7 @@ body.watch { --toast-lift: var(--bottom-h, 70px); }
 .ix-logo { height: 72px; max-width: min(100%, 360px); margin: 0 0 22px; }
 .ix-sub { margin: 0; max-width: 30em; color: var(--fg2); font-size: 18px; line-height: 1.5; }
 .ix-live { display: inline-flex; align-items: center; gap: 8px; margin: 0 0 16px; padding: 6px 14px 6px 12px; border-radius: var(--pill); background: color-mix(in srgb, var(--bad) 11%, transparent); font-size: 14px; font-weight: 700; animation: au-pop .5s var(--spring) both; }
-.ix-art { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; border-radius: 24px; border: 1px solid var(--line); background: #FAF8F3; box-shadow: var(--shadow); }
+.ix-art { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; border-radius: 24px; border: 1px solid var(--line); background: var(--ink); box-shadow: var(--shadow); }
 .ix-h { display: flex; align-items: center; gap: 10px; margin: 30px 0 12px; font-family: var(--font); font-size: 13px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--fg2); }
 .ix-h::after { content: ''; flex: 1; height: 1px; background: var(--line); }
 .ix-rooms { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 380px), 1fr)); gap: 12px; }

@@ -2,7 +2,7 @@
 
 This guide helps you choose where the OpenCaptions server runs, then install it. Before you expose it to any network, read [Security](security-guide.md).
 
-<p align="center"><img src="../public/art/organizer.webp" width="640" alt="An organizer at a desk with the production dashboard on a laptop" /></p>
+<p align="center"><img src="../public/art/organizer.webp" width="640" alt="An organizer backstage, relaxed, with every room on the dashboard" /></p>
 
 ## Choose a topology
 

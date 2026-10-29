@@ -2,7 +2,7 @@
 
 This page lists every connection OpenCaptions makes, then gives a plan for venues where part of the network is blocked.
 
-<p align="center"><img src="../public/art/offline.webp" width="640" alt="A technician relaxed next to a laptop that keeps showing captions while the Wi-Fi is down" /></p>
+<p align="center"><img src="../public/art/offline.webp" width="640" alt="A laptop at the venue turning the room's sound into captions" /></p>
 
 ## Connections
 

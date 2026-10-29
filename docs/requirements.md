@@ -2,7 +2,7 @@
 
 This page lists what OpenCaptions needs to run, per role. OpenCaptions has three roles, which can share a machine or run on separate ones:
 
-<p align="center"><img src="../public/art/setup.webp" width="640" alt="A venue setup: microphone, mixer, laptop and the screen beside the stage" /></p>
+<p align="center"><img src="../public/art/setup.webp" width="640" alt="A sound desk plugged into a laptop through a small audio interface" /></p>
 
 - **Server**: the Node.js process that talks to Gemini and serves every page and socket.
 - **Venue PC**: one per room. It takes audio from the sound desk and sends it to the server. It isn't needed when the server pulls a stream from vMix or OBS.

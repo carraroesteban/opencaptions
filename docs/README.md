@@ -2,7 +2,7 @@
 
 OpenCaptions is free, open-source software for live captions and translation at any event, from one room to many at the same time. Find yourself below and start at the top of your list.
 
-<p align="center"><img src="../public/art/hero.webp" width="640" alt="An audience following live captions on their phones while a speaker presents on stage" /></p>
+<p align="center"><img src="../public/art/hero.webp" width="640" alt="An illustration of a conference: the big screen shows the live caption, and people in the audience read it on their phones in their own language" /></p>
 
 ## Organizers: trying it out and planning an event
 

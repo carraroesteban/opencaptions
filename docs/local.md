@@ -2,7 +2,7 @@
 
 In local mode, speech recognition and translation run on your own computer, or on a machine on your network. There's no API key and no cost per hour, and the room's audio never leaves the building (unless a room [plays its sound to phones](accessibility.md#hearing-the-room-on-a-phone) and the server has a public address). It works without internet once the models are downloaded.
 
-<p align="center"><img src="../public/art/local.webp" width="640" alt="A laptop inside a small building captioning the room, with the cloud drifting away" /></p>
+<p align="center"><img src="../public/art/local.webp" width="640" alt="A laptop running the AI in a small room, without internet" /></p>
 
 Everything else stays the same: the audience page, the projector, the overlay, transcripts, the agenda and the dashboard.
 

@@ -29,9 +29,13 @@ const PORT = 19000 + Math.floor(Math.random() * 900);
 const base = `http://127.0.0.1:${PORT}`;
 const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'oc-record-'));
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+// The example event and its glossary, as the tests and the screenshots use them, so what the AI was shown (and so
+// its summaries and answers) matches what they display. The glossary is a copy: the server may write to it.
+fs.copyFileSync(path.join(ROOT, 'test/fixtures/glossary.json'), path.join(dataDir, 'glossary.json'));
 const srv = spawn(process.execPath, ['src/server.js'], {
   cwd: ROOT,
-  env: { ...process.env, PORT: String(PORT), ENGINE: 'gemini', OC_RECORD: out, DATA_DIR: dataDir, PUBLIC_URL: '', AUTH: 'auto' },
+  env: { ...process.env, PORT: String(PORT), ENGINE: 'gemini', OC_RECORD: out, DATA_DIR: dataDir, PUBLIC_URL: '', AUTH: 'auto',
+    EVENT_CONFIG: process.env.EVENT_CONFIG || 'test/fixtures/event.json', GLOSSARY: process.env.GLOSSARY || path.join(dataDir, 'glossary.json') },
   stdio: ['ignore', 'ignore', 'inherit'],
 });
 const stop = async () => { srv.kill('SIGTERM'); await new Promise((r) => srv.once('exit', r)); fs.rmSync(dataDir, { recursive: true, force: true }); };

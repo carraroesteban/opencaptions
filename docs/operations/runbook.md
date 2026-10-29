@@ -2,7 +2,7 @@
 
 This runbook takes a production team from the day before the event to the end of each day. The goal is **no dedicated operator per room**: one person watches the dashboard and acts only when an alert appears.
 
-<p align="center"><img src="../../public/art/stage.webp" width="640" alt="A speaker on stage with captions on the screen behind them" /></p>
+<p align="center"><img src="../../public/art/stage.webp" width="640" alt="A speaker on stage with captions on the screen behind them, and people in the audience reading them on their phones" /></p>
 
 A one-page version to print is the [day-of-event checklist](day-of-event.md), and a Spanish version for venue crews is in [event-day.es.md](event-day.es.md). For specific symptoms, see [Troubleshooting](troubleshooting.md).
 
