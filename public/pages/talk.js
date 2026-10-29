@@ -178,7 +178,7 @@ $('q').onkeydown = (e) => {
 // ---- live talk: append captions as they come ----
 let following = info.current && !location.hash;
 let live = null;
-const scrollEnd = () => requestAnimationFrame(() => window.scrollTo({ top: document.body.scrollHeight }));
+const scrollEnd = () => requestAnimationFrame(() => { if (following) window.scrollTo({ top: document.body.scrollHeight }); }); // they may have scrolled up since
 if (info.current) {
   $('live').classList.remove('hidden');
   $('live').href = `/watch.html?stage=${encodeURIComponent(stageId)}&lang=${encodeURIComponent(lang)}`;

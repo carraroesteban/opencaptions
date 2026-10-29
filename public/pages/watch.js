@@ -376,6 +376,7 @@ function scrollEnd() {
   if (scrollQueued) return;
   scrollQueued = requestAnimationFrame(() => {
     scrollQueued = 0;
+    if (!follow) return; // the reader scrolled up between the new words and this frame: leave them there
     const sc = $('scroll');
     const d = sc.scrollHeight - sc.clientHeight - sc.scrollTop;
     sc.scrollTop = sc.scrollHeight;
