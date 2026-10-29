@@ -162,7 +162,7 @@ cp .env.example .env
 mkdir -p data
 ```
 
-On Linux, the `data` folder must belong to the container's user (1000): if the container stops with "can't write to its data folder", run `sudo chown -R 1000:1000 data`. A named volume (as in the published-image command above) avoids this.
+On Linux, the `data` and `config` folders must belong to the container's user (1000): if the container stops with "can't write to its data folder", or the glossary or agenda can't be saved, run `sudo chown -R 1000:1000 data config`. A named volume (as in the published-image command above) avoids this.
 
 Everything in `.env` is optional: the API key can be pasted in the dashboard, and the passwords are generated on first start. For a server you'll keep, set your own:
 

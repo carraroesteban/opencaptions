@@ -41,7 +41,11 @@ export function readSecretsFile(dir) {
 }
 
 const eventPath = process.env.EVENT_CONFIG || 'config/event.json';
-const event = readJson(eventPath);
+// No config/event.json (in Docker, an empty ./config folder mounted over the image's hides it): start as the shipped
+// one does, with one room; everything else it sets is a default below. A damaged file, or a missing EVENT_CONFIG, stops.
+const event = !process.env.EVENT_CONFIG && !fs.existsSync(path.resolve(ROOT, eventPath))
+  ? { stages: [{ id: 'main', name: 'Main stage', source: 'auto', targets: ['es', 'en'] }] }
+  : readJson(eventPath);
 
 const env = process.env;
 // Agenda times like "14:30" are read in the event's time zone (Docker containers default to UTC).

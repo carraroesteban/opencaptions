@@ -137,7 +137,7 @@ function stopPull(id) {
 let initial = config.event.stages;
 // Stages edited from the dashboard are persisted in data/stages.json; they win only if newer than event.json.
 const eventFile = path.resolve(ROOT, process.env.EVENT_CONFIG || 'config/event.json');
-if (!process.env.STAGES && fs.existsSync(STAGES_FILE) && fs.statSync(STAGES_FILE).mtimeMs > fs.statSync(eventFile).mtimeMs) {
+if (!process.env.STAGES && fs.existsSync(STAGES_FILE) && fs.statSync(STAGES_FILE).mtimeMs > (fs.statSync(eventFile, { throwIfNoEntry: false })?.mtimeMs ?? 0)) {
   try { initial = JSON.parse(fs.readFileSync(STAGES_FILE, 'utf8')); } catch { /* use config */ }
 }
 fs.mkdirSync(config.dataDir, { recursive: true });
