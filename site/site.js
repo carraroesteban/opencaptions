@@ -9,6 +9,9 @@ document.getElementById('theme')?.addEventListener('click', () => {
   document.querySelector('meta[name=theme-color]')?.setAttribute('content', root.dataset.theme === 'dark' ? '#111014' : '#FAF8F3');
 });
 
+// The language links (header and footer): the home page stops sending a Spanish browser to /es/ once someone picks.
+for (const a of document.querySelectorAll('a[hreflang]')) a.addEventListener('click', () => store.set('oc.siteLang', a.hreflang));
+
 const nav = document.querySelector('.nav');
 addEventListener('scroll', () => nav?.classList.toggle('scrolled', scrollY > 8), { passive: true });
 

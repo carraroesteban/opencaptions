@@ -64,17 +64,27 @@ if (qs.get('preview') === '1') {
         draw(ch);
       });
       showPause(m.pause);
+      origBand([...(m.history.orig || []), m.partial.orig].filter(Boolean).at(-1));
       wholeLines();
     } else if (m.type === 'pause') showPause(m);
     else if (m.type === 'caption') {
       const st = states[m.channel];
       if (st?.pacer) { st.at = Date.now(); st.pacer.push(m); }
+      if (m.channel === 'orig') origBand(m);
     } else if (m.type === 'talk' || m.type === 'title') {
       $('talk').textContent = m.title || '';
       if (m.type === 'talk' && m.talk !== talkId) { talkId = m.talk; for (const ch of bands) { states[ch]?.pacer?.clear(); states[ch]?.roll?.clear(); } }
     }
   },
 });
+
+/** The Original band repeats the main one while the speaker talks its language (a Spanish talk on a Spanish screen): hidden until they switch. */
+function origBand(seg) {
+  const band = document.getElementById('b-orig');
+  if (!band || !seg?.lang || bands[0] === 'orig') return;
+  const was = band.classList.contains('hidden');
+  if (band.classList.toggle('hidden', seg.lang === bands[0]) !== was) wholeLines();
+}
 
 /** The languages a phone can read this room in, on the QR card: why scanning it is worth it. */
 function qrLangs(langs) {

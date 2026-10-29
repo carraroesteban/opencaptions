@@ -56,7 +56,7 @@ async function refresh() {
   for (const [id, ends] of now) live.set(id, ends);
 }
 
-async function createCopy(id) {
+async function createCopy(id, lang) {
   const name = `oc-sb-${id}`;
   ok(await docker('POST', `/containers/create?name=${name}`, {
     Image: IMAGE,
@@ -68,7 +68,7 @@ async function createCopy(id) {
     ],
     HostConfig: {
       NetworkMode: NET,
-      Binds: [`${HOST_DIR}/event.json:/sandbox/event.json:ro`],
+      Binds: [`${HOST_DIR}/${lang === 'es' ? 'event.es.json' : 'event.json'}:/sandbox/event.json:ro`], // the sample event in the visitor's language
       Memory: 300 * 2 ** 20, MemorySwap: 300 * 2 ** 20, NanoCpus: 0.5e9, PidsLimit: 128,
       ReadonlyRootfs: true, Tmpfs: { '/tmp': 'size=64m', '/app/data': 'size=64m,uid=1000,gid=1000' },
       CapDrop: ['ALL'], SecurityOpt: ['no-new-privileges'], Init: true,
@@ -166,7 +166,7 @@ async function start(req, res) {
   if (live.size >= MAX) return landing(req, res, 503, 'full');
   starts.set(ip, [...recent, Date.now()]);
   const id = crypto.randomBytes(8).toString('hex');
-  try { await createCopy(id); } catch (e) {
+  try { await createCopy(id, isEs(req) ? 'es' : 'en'); } catch (e) {
     console.error(e.message);
     await docker('DELETE', `/containers/oc-sb-${id}?force=1`).catch(() => {});
     live.delete(id);
