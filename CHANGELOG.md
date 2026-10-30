@@ -7,6 +7,7 @@ All notable changes to this project are documented in this file. The format foll
 ### Added
 
 - **Turn captions off, and back on, from the dashboard.** **Who makes the captions?** (the AI badge at the top, and Settings → AI) has **Turn captions off**: no AI session opens in any room, whatever sound arrives, until **Turn captions back on** (or another AI is chosen), and it stays off after a restart. The server, the rooms' computers and the phones stay connected, so a hosted server can be left running overnight without captioning an empty room.
+- **Your own tab icon and home page picture.** **Settings → Event** now takes, next to the logo, the **tab icon** every page shows in the browser's tab and bookmarks (also at `/favicon.ico`), and the **picture on the audience's home page**, in place of OpenCaptions' own. PNG, JPEG or WebP up to 2 MB, checked like the logo.
 
 ### Fixed
 

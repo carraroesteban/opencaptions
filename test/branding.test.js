@@ -1,5 +1,5 @@
-// Event branding: the organizer's logo replaces OpenCaptions' on the audience pages. Only real PNG/JPEG/WebP files
-// (judged by their bytes: an SVG from our origin could run script), up to 2 MB, admins only, and Event mode locks it.
+// Event branding: the organizer's logo, tab icon and home page picture replace OpenCaptions' own. Only real PNG/JPEG/WebP
+// files (judged by their bytes: an SVG from our origin could run script), up to 2 MB, admins only, and Event mode locks it.
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
@@ -77,5 +77,36 @@ test('DELETE removes it', async () => {
   assert.equal((await fetch(`${base}/api/event/logo`, { method: 'DELETE', headers: { authorization: 'Bearer a' } })).status, 200);
   assert.equal((await event()).logo, null);
   assert.equal((await fetch(`${base}/branding/logo`)).status, 404);
+  assert.deepEqual(fs.readdirSync(path.join(dataDir, 'branding')), []);
+});
+
+test('the tab icon goes on every page and at /favicon.ico; the home picture on the audience home page; both go back when removed', async () => {
+  const put = (kind, body) => fetch(`${base}/api/event/${kind}`, { method: 'POST', headers: { 'content-type': 'image/png', authorization: 'Bearer a' }, body });
+  const del = (kind) => fetch(`${base}/api/event/${kind}`, { method: 'DELETE', headers: { authorization: 'Bearer a' } });
+  const page = async (p) => (await fetch(base + p)).text();
+  assert.equal((await put('icon', PNG)).status, 200);
+  assert.equal((await put('cover', JPEG)).status, 200);
+  const { icon, cover, logo } = await event();
+  assert.match(icon, /^\/branding\/icon\?v=\d+$/);
+  assert.match(cover, /^\/branding\/cover\?v=\d+$/);
+  assert.equal(logo, null, 'each picture is its own');
+  for (const p of ['/', '/watch.html', '/talks.html', '/admin.html', '/admin', '/screen.html', '/kit.html', '/welcome.html', '/me.html']) {
+    const html = await page(p);
+    assert.ok(html.includes(`<link rel="icon" href="${icon}" />`), p);
+    assert.ok(html.includes(`<link rel="apple-touch-icon" href="${icon}" />`), p);
+    assert.ok(!html.includes('/brand/icon.svg" type="image/svg+xml"'), `${p}: not OpenCaptions' icon too`);
+  }
+  assert.ok((await page('/')).includes(`src="${cover}"`), 'the home page shows the event\'s picture');
+  const fav = await fetch(`${base}/favicon.ico`);
+  assert.equal(fav.headers.get('content-type'), 'image/png');
+  assert.deepEqual(Buffer.from(await fav.arrayBuffer()), PNG);
+  assert.equal((await fetch(base + cover)).headers.get('content-type'), 'image/jpeg');
+  assert.equal((await put('icon', Buffer.from('<svg xmlns="http://www.w3.org/2000/svg"/>'))).status, 415);
+  // Removed: OpenCaptions' own again.
+  await del('icon');
+  await del('cover');
+  assert.ok((await page('/admin.html')).includes('<link rel="icon" href="/brand/icon.svg" type="image/svg+xml" />'));
+  assert.ok((await page('/')).includes('src="/art/audience.webp"'));
+  assert.match((await fetch(`${base}/favicon.ico`)).headers.get('content-type'), /icon/);
   assert.deepEqual(fs.readdirSync(path.join(dataDir, 'branding')), []);
 });

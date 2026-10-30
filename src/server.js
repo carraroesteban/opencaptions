@@ -292,54 +292,72 @@ app.get('/api/event', (req, res) => {
     timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
     publicTranscripts: PUBLIC_TRANSCRIPTS,
     credit: setup.credit !== false, // "Live captions by OpenCaptions" on the audience pages (Settings → Event)
-    logo: logo ? `/branding/logo?v=${logo.v}` : null,
+    logo: brandUrl('logo'),
+    icon: brandUrl('icon'),
+    cover: brandUrl('cover'),
     stages: visibleStages().map(roomSummary),
   });
 });
 
-// ---------------- event logo (Settings › General): the audience pages show it instead of OpenCaptions' own ----------------
-// PNG, JPEG or WebP only, told apart by the file's first bytes, never by what the browser claims: an SVG served
-// from this origin could run script. One file, data/branding/logo.<ext>; its mtime goes in the URL, so a new logo
-// shows at once while phones still cache it.
+// ---------------- the event's own pictures (Settings › Event) ----------------
+// logo: on the audience pages instead of OpenCaptions'; icon: the browser tab's, on every page; cover: the picture on
+// the audience's home page. PNG, JPEG or WebP only, told apart by the file's first bytes, never by what the browser
+// claims: an SVG served from this origin could run script. One file each, data/branding/<kind>.<ext>; its mtime goes
+// in the URL, so a new one shows at once while phones still cache the old.
 const LOGO_DIR = path.join(config.dataDir, 'branding');
 const LOGO_TYPES = { png: 'image/png', jpg: 'image/jpeg', webp: 'image/webp' };
+const BRAND = { logo: 'Event logo', icon: 'Tab icon', cover: 'Audience home picture' };
 const PNG_SIG = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
 const sniffLogo = (b) => (b.subarray(0, 8).equals(PNG_SIG) ? 'png'
   : b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff ? 'jpg'
     : b.toString('latin1', 0, 4) === 'RIFF' && b.toString('latin1', 8, 12) === 'WEBP' ? 'webp' : null);
-const findLogo = () => {
+const findBrand = (kind) => {
   for (const ext of Object.keys(LOGO_TYPES)) {
-    try { return { ext, v: Math.floor(fs.statSync(path.join(LOGO_DIR, `logo.${ext}`)).mtimeMs) }; } catch { /* not this one */ }
+    try { return { ext, v: Math.floor(fs.statSync(path.join(LOGO_DIR, `${kind}.${ext}`)).mtimeMs) }; } catch { /* not this one */ }
   }
   return null;
 };
-let logo = findLogo();
-const dropLogos = (keep) => { for (const ext of Object.keys(LOGO_TYPES)) if (ext !== keep) fs.rmSync(path.join(LOGO_DIR, `logo.${ext}`), { force: true }); };
-// The body is read only once the admin is known (no buffering 2 MB for strangers).
-app.post('/api/event/logo', admin, unlocked, express.raw({ type: Object.values(LOGO_TYPES), limit: '2mb', inflate: false }), (req, res) => {
-  const ext = Buffer.isBuffer(req.body) ? sniffLogo(req.body) : null;
-  if (!ext) return res.status(415).json({ error: 'the logo must be a PNG, JPEG or WebP image' });
-  fs.mkdirSync(LOGO_DIR, { recursive: true });
-  writeFileAtomic(path.join(LOGO_DIR, `logo.${ext}`), req.body);
-  dropLogos(ext);
-  const had = !!logo;
-  logo = findLogo();
-  const change = recordChange({ kind: 'event.logo', summary: had ? 'Event logo replaced' : 'Event logo added', before: had, after: true });
-  res.json({ ok: true, logo: `/branding/logo?v=${logo.v}`, change: change.id });
+const brand = Object.fromEntries(Object.keys(BRAND).map((k) => [k, findBrand(k)]));
+const brandUrl = (kind) => (brand[kind] ? `/branding/${kind}?v=${brand[kind].v}` : null);
+const dropBrand = (kind, keep) => { for (const ext of Object.keys(LOGO_TYPES)) if (ext !== keep) fs.rmSync(path.join(LOGO_DIR, `${kind}.${ext}`), { force: true }); };
+for (const kind of Object.keys(BRAND)) {
+  // The body is read only once the admin is known (no buffering 2 MB for strangers).
+  app.post(`/api/event/${kind}`, admin, unlocked, express.raw({ type: Object.values(LOGO_TYPES), limit: '2mb', inflate: false }), (req, res) => {
+    const ext = Buffer.isBuffer(req.body) ? sniffLogo(req.body) : null;
+    if (!ext) return res.status(415).json({ error: `the ${BRAND[kind].toLowerCase()} must be a PNG, JPEG or WebP image` });
+    fs.mkdirSync(LOGO_DIR, { recursive: true });
+    writeFileAtomic(path.join(LOGO_DIR, `${kind}.${ext}`), req.body);
+    dropBrand(kind, ext);
+    const had = !!brand[kind];
+    brand[kind] = findBrand(kind);
+    const change = recordChange({ kind: `event.${kind}`, summary: `${BRAND[kind]} ${had ? 'replaced' : 'added'}`, before: had, after: true });
+    res.json({ ok: true, [kind]: brandUrl(kind), change: change.id });
+  });
+  app.delete(`/api/event/${kind}`, admin, unlocked, (req, res) => {
+    if (brand[kind]) {
+      dropBrand(kind, null);
+      brand[kind] = null;
+      recordChange({ kind: `event.${kind}`, summary: `${BRAND[kind]} removed`, before: true, after: false });
+    }
+    res.json({ ok: true, [kind]: null });
+  });
+  app.get(`/branding/${kind}`, (req, res) => {
+    if (!brand[kind]) return res.status(404).end();
+    res.set({ 'Content-Type': LOGO_TYPES[brand[kind].ext], 'X-Content-Type-Options': 'nosniff', 'Cache-Control': 'public, max-age=86400' });
+    res.sendFile(path.join(LOGO_DIR, `${kind}.${brand[kind].ext}`));
+  });
+}
+// The tab icon also where browsers look by themselves (a transcript download, an old bookmark): /favicon.ico.
+app.get('/favicon.ico', (req, res, next) => {
+  if (!brand.icon) return next();
+  res.set({ 'Content-Type': LOGO_TYPES[brand.icon.ext], 'X-Content-Type-Options': 'nosniff', 'Cache-Control': 'no-cache' });
+  res.sendFile(path.join(LOGO_DIR, `icon.${brand.icon.ext}`));
 });
-app.delete('/api/event/logo', admin, unlocked, (req, res) => {
-  if (logo) {
-    dropLogos(null);
-    logo = null;
-    recordChange({ kind: 'event.logo', summary: 'Event logo removed', before: true, after: false });
-  }
-  res.json({ ok: true, logo: null });
-});
-app.get('/branding/logo', (req, res) => {
-  if (!logo) return res.status(404).end();
-  res.set({ 'Content-Type': LOGO_TYPES[logo.ext], 'X-Content-Type-Options': 'nosniff', 'Cache-Control': 'public, max-age=86400' });
-  res.sendFile(path.join(LOGO_DIR, `logo.${logo.ext}`));
-});
+/** A page with the event's tab icon in place of OpenCaptions' (every page links the same three). */
+const withIcon = (html) => (brand.icon
+  ? html.replace(/<link rel="icon" href="\/favicon\.ico" sizes="32x32" \/>\s*<link rel="icon" href="\/brand\/icon\.svg" type="image\/svg\+xml" \/>/, () => `<link rel="icon" href="${brandUrl('icon')}" />`)
+    .replace('<link rel="apple-touch-icon" href="/apple-touch-icon.png" />', () => `<link rel="apple-touch-icon" href="${brandUrl('icon')}" />`)
+  : html);
 
 app.get('/api/status', crew, (req, res) => res.json(req.who.role === 'admin' ? snapshot() : forCrew(snapshot())));
 
@@ -1670,9 +1688,21 @@ app.get(['/', '/index', '/index.html', '/watch', '/watch.html', '/talk', '/talk.
         .replace(/<meta property="og:description" content="[^"]*"/, () => `<meta property="og:description" content="${htmlEsc(`${info.stageName} · %EVENT% · ${info.languages?.length > 1 ? 'Transcript in every language / Transcripción en cada idioma' : 'Transcript / Transcripción'}`)}"`);
     }
     if (name === 'talk.html' && !INDEX_TALKS) html = html.replace('<head>', '<head>\n  <meta name="robots" content="noindex" />');
-    res.type('html').set('Cache-Control', 'no-cache').send(html
+    if (name === 'index.html' && brand.cover) html = html.replace('src="/art/audience.webp"', () => `src="${brandUrl('cover')}"`); // the event's own picture
+    res.type('html').set('Cache-Control', 'no-cache').send(withIcon(html)
       .replaceAll('content="/brand/', `content="${origin}/brand/`)
       .replaceAll('%EVENT%', htmlEsc(eventName())));
+  } catch { next(); }
+});
+// The event's tab icon on the other pages too (only once there is one: until then they're served as they are, below).
+app.get(/^\/(admin|demo|ingest|kit|me|overlay|report|screen|style|welcome)(\.html)?$/, (req, res, next) => {
+  if (!brand.icon) return next();
+  const file = path.join(ROOT, 'public', `${req.path.slice(1).replace(/\.html$/, '')}.html`);
+  try {
+    const { mtimeMs } = fs.statSync(file);
+    let hit = pageCache.get(file);
+    if (!hit || hit.mtimeMs !== mtimeMs) pageCache.set(file, (hit = { mtimeMs, html: fs.readFileSync(file, 'utf8') }));
+    res.type('html').set('Cache-Control', 'no-cache').send(withIcon(hit.html));
   } catch { next(); }
 });
 app.use(express.static(path.join(ROOT, 'public'), {

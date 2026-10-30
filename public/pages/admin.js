@@ -124,6 +124,8 @@ const L = {
       'glossary.set': (c) => (c.undoes ? 'Glosario vuelto a como estaba' : `Glosario guardado (${c.after?.terms ?? 0} términos, ${c.after?.corrections ?? 0} correcciones)`),
       'event.rename': (c) => `Evento renombrado a «${c.after}»`,
       'event.logo': (c) => (c.after ? (c.before ? 'Logo del evento reemplazado' : 'Logo del evento agregado') : 'Logo del evento quitado'),
+      'event.icon': (c) => (c.after ? (c.before ? 'Ícono de la pestaña reemplazado' : 'Ícono de la pestaña agregado') : 'Ícono de la pestaña quitado'),
+      'event.cover': (c) => (c.after ? (c.before ? 'Imagen de la página del público reemplazada' : 'Imagen de la página del público agregada') : 'Imagen de la página del público quitada'),
       'engine.mode': (c) => `IA: ${aiLabel(c.after)}`,
       'ai.speech': (c) => `Modelo de voz: ${t.speech[c.after] || c.after}`,
       'event.lock': (c) => (c.after ? 'Modo evento activado' : 'Modo evento desactivado'),
@@ -141,6 +143,16 @@ const L = {
       upload: 'Subir el logo', replace: 'Reemplazar', saved: 'Logo guardado: ya se ve en las páginas del público', removed: 'Logo quitado',
       type: 'El logo tiene que ser una imagen PNG, JPEG o WebP (SVG no).', big: 'El logo pesa más de 2 MB: exportalo más chico.', fail: 'No se pudo subir el logo. Probá de nuevo.',
       ask: '¿Quitar el logo del evento?', askBody: 'Los celulares, la pantalla del escenario y los carteles vuelven a mostrar el logo de OpenCaptions.', ok: 'Quitar',
+    },
+    icon: {
+      upload: 'Subir el ícono', replace: 'Reemplazar', saved: 'Ícono guardado: las pestañas lo muestran al volver a abrir la página', removed: 'Ícono quitado',
+      type: 'El ícono tiene que ser una imagen PNG, JPEG o WebP (SVG no).', big: 'El ícono pesa más de 2 MB: exportalo más chico.', fail: 'No se pudo subir el ícono. Probá de nuevo.',
+      ask: '¿Quitar el ícono de la pestaña?', askBody: 'Las pestañas vuelven a mostrar el de OpenCaptions.', ok: 'Quitar',
+    },
+    cover: {
+      upload: 'Subir la imagen', replace: 'Reemplazar', saved: 'Imagen guardada: ya se ve en la página del público', removed: 'Imagen quitada',
+      type: 'La imagen tiene que ser PNG, JPEG o WebP (SVG no).', big: 'La imagen pesa más de 2 MB: exportala más chica.', fail: 'No se pudo subir la imagen. Probá de nuevo.',
+      ask: '¿Quitar la imagen de la página del público?', askBody: 'La página de inicio del público vuelve a mostrar la de OpenCaptions.', ok: 'Quitar',
     },
   },
   en: {
@@ -214,6 +226,8 @@ const L = {
       'glossary.set': (c) => (c.undoes ? 'Glossary put back' : `Glossary saved (${c.after?.terms ?? 0} terms, ${c.after?.corrections ?? 0} corrections)`),
       'event.rename': (c) => `Event renamed to “${c.after}”`,
       'event.logo': (c) => (c.after ? (c.before ? 'Event logo replaced' : 'Event logo added') : 'Event logo removed'),
+      'event.icon': (c) => (c.after ? (c.before ? 'Tab icon replaced' : 'Tab icon added') : 'Tab icon removed'),
+      'event.cover': (c) => (c.after ? (c.before ? 'Audience home picture replaced' : 'Audience home picture added') : 'Audience home picture removed'),
       'engine.mode': (c) => `AI: ${aiLabel(c.after)}`,
       'ai.speech': (c) => `Speech model: ${t.speech[c.after] || c.after}`,
       'event.lock': (c) => (c.after ? 'Event mode turned on' : 'Event mode turned off'),
@@ -231,6 +245,16 @@ const L = {
       upload: 'Upload the logo', replace: 'Replace', saved: 'Logo saved: the audience pages show it now', removed: 'Logo removed',
       type: 'The logo has to be a PNG, JPEG or WebP image (not SVG).', big: 'The logo is over 2 MB: export a smaller one.', fail: 'Couldn’t upload the logo. Try again.',
       ask: 'Remove the event logo?', askBody: 'Phones, the stage screen and the posters go back to showing the OpenCaptions logo.', ok: 'Remove',
+    },
+    icon: {
+      upload: 'Upload the icon', replace: 'Replace', saved: 'Icon saved: tabs show it when the page is opened again', removed: 'Icon removed',
+      type: 'The icon has to be a PNG, JPEG or WebP image (not SVG).', big: 'The icon is over 2 MB: export a smaller one.', fail: 'Couldn’t upload the icon. Try again.',
+      ask: 'Remove the tab icon?', askBody: 'Tabs go back to showing OpenCaptions’ icon.', ok: 'Remove',
+    },
+    cover: {
+      upload: 'Upload the picture', replace: 'Replace', saved: 'Picture saved: the audience home page shows it now', removed: 'Picture removed',
+      type: 'The picture has to be a PNG, JPEG or WebP image (not SVG).', big: 'The picture is over 2 MB: export a smaller one.', fail: 'Couldn’t upload the picture. Try again.',
+      ask: 'Remove the audience home picture?', askBody: 'The audience’s home page goes back to showing OpenCaptions’ picture.', ok: 'Remove',
     },
   },
 };
@@ -1792,7 +1816,7 @@ addEventListener('hashchange', recFromHash);
 recFromHash();
 
 // ---------- History ----------
-const KIND_ICON = { 'room.create': 'plus', 'room.update': 'gear', 'room.delete': 'x', 'agenda.set': 'calendar', 'glossary.set': 'book', 'event.rename': 'doc', 'event.logo': 'palette', 'engine.mode': 'cloud', 'ai.speech': 'cloud', 'event.lock': 'lock' };
+const KIND_ICON = { 'room.create': 'plus', 'room.update': 'gear', 'room.delete': 'x', 'agenda.set': 'calendar', 'glossary.set': 'book', 'event.rename': 'doc', 'event.logo': 'palette', 'event.icon': 'palette', 'event.cover': 'palette', 'engine.mode': 'cloud', 'ai.speech': 'cloud', 'event.lock': 'lock' };
 const UNDOABLE = new Set(['room.create', 'room.update', 'room.delete', 'agenda.set', 'glossary.set', 'event.rename', 'engine.mode', 'ai.speech']);
 async function loadHistory() {
   hist = await api('GET', '/api/history');
@@ -1928,46 +1952,49 @@ $('name-form').onsubmit = async (e) => {
   if (r.change) toast(t.renamed(name), { undo: r.change });
   ev = await (await fetch('/api/event')).json();
 };
-// Event logo: the audience pages show it instead of OpenCaptions' (the server checks the file's bytes, not just its type).
-function renderLogo() {
-  const img = $('logo-prev').querySelector('img');
-  if (ev.logo) img.src = ev.logo;
-  img.classList.toggle('hidden', !ev.logo);
-  $('logo-prev').classList.toggle('empty', !ev.logo);
-  $('logo-empty').classList.toggle('hidden', !!ev.logo);
-  $('logo-del').classList.toggle('hidden', !ev.logo);
-  $('logo-pick').lastChild.nodeValue = ev.logo ? t.logo.replace : t.logo.upload;
+// The event's pictures: the logo (audience pages), the tab icon (every page) and the audience home page's picture. The
+// server checks the file's bytes, not just its type.
+function renderLogo(kind = 'logo') {
+  const img = $(`${kind}-prev`).querySelector('img');
+  if (ev[kind]) img.src = ev[kind];
+  img.classList.toggle('hidden', !ev[kind]);
+  $(`${kind}-prev`).classList.toggle('empty', !ev[kind]);
+  $(`${kind}-empty`).classList.toggle('hidden', !!ev[kind]);
+  $(`${kind}-del`).classList.toggle('hidden', !ev[kind]);
+  $(`${kind}-pick`).lastChild.nodeValue = ev[kind] ? t[kind].replace : t[kind].upload;
 }
-// What went wrong is said in the row itself: a toast would sit behind the Settings window.
-const logoErr = (msg = '') => { $('logo-err').textContent = msg; $('logo-err').classList.toggle('hidden', !msg); };
-async function uploadLogo(file) {
-  if (!file) return;
-  if (!['image/png', 'image/jpeg', 'image/webp'].includes(file.type)) return logoErr(t.logo.type);
-  if (file.size > 2 * 1024 * 1024) return logoErr(t.logo.big);
-  const r = await fetch('/api/event/logo', { method: 'POST', headers: { 'content-type': file.type }, body: file }).catch(() => null);
-  if (r?.status === 401) return askToken();
-  if (r?.status === 423) setLocked(true);
-  if (!r?.ok) return logoErr(r?.status === 423 ? t.lockedToast : r?.status === 415 ? t.logo.type : r?.status === 413 ? t.logo.big : t.logo.fail);
-  logoErr();
-  ev = await (await fetch('/api/event')).json();
-  renderLogo();
-  toast(t.logo.saved);
+for (const kind of ['logo', 'icon', 'cover']) {
+  // What went wrong is said in the row itself: a toast would sit behind the Settings window.
+  const logoErr = (msg = '') => { $(`${kind}-err`).textContent = msg; $(`${kind}-err`).classList.toggle('hidden', !msg); };
+  const uploadLogo = async (file) => {
+    if (!file) return;
+    if (!['image/png', 'image/jpeg', 'image/webp'].includes(file.type)) return logoErr(t[kind].type);
+    if (file.size > 2 * 1024 * 1024) return logoErr(t[kind].big);
+    const r = await fetch(`/api/event/${kind}`, { method: 'POST', headers: { 'content-type': file.type }, body: file }).catch(() => null);
+    if (r?.status === 401) return askToken();
+    if (r?.status === 423) setLocked(true);
+    if (!r?.ok) return logoErr(r?.status === 423 ? t.lockedToast : r?.status === 415 ? t[kind].type : r?.status === 413 ? t[kind].big : t[kind].fail);
+    logoErr();
+    ev = await (await fetch('/api/event')).json();
+    renderLogo(kind);
+    toast(t[kind].saved);
+  };
+  $(`${kind}-pick`).onclick = () => $(`${kind}-file`).click();
+  $(`${kind}-file`).onchange = () => { uploadLogo($(`${kind}-file`).files[0]); $(`${kind}-file`).value = ''; };
+  const logoDrop = $(`${kind}-drop`);
+  logoDrop.addEventListener('dragover', (e) => { e.preventDefault(); logoDrop.classList.add('over'); }); // locked: the server says so
+  logoDrop.addEventListener('dragleave', () => logoDrop.classList.remove('over'));
+  logoDrop.addEventListener('drop', (e) => { e.preventDefault(); logoDrop.classList.remove('over'); uploadLogo(e.dataTransfer.files[0]); });
+  $(`${kind}-del`).onclick = async () => {
+    if (!(await confirmDialog({ title: t[kind].ask, body: t[kind].askBody, ok: t[kind].ok, danger: true }))) return;
+    try { await api('DELETE', `/api/event/${kind}`); } catch { return; /* toast shown */ }
+    ev = await (await fetch('/api/event')).json();
+    logoErr();
+    renderLogo(kind);
+    toast(t[kind].removed);
+  };
+  renderLogo(kind);
 }
-$('logo-pick').onclick = () => $('logo-file').click();
-$('logo-file').onchange = () => { uploadLogo($('logo-file').files[0]); $('logo-file').value = ''; };
-const logoDrop = $('logo-drop');
-logoDrop.addEventListener('dragover', (e) => { e.preventDefault(); logoDrop.classList.add('over'); }); // locked: the server says so
-logoDrop.addEventListener('dragleave', () => logoDrop.classList.remove('over'));
-logoDrop.addEventListener('drop', (e) => { e.preventDefault(); logoDrop.classList.remove('over'); uploadLogo(e.dataTransfer.files[0]); });
-$('logo-del').onclick = async () => {
-  if (!(await confirmDialog({ title: t.logo.ask, body: t.logo.askBody, ok: t.logo.ok, danger: true }))) return;
-  try { await api('DELETE', '/api/event/logo'); } catch { return; /* toast shown */ }
-  ev = await (await fetch('/api/event')).json();
-  logoErr();
-  renderLogo();
-  toast(t.logo.removed);
-};
-renderLogo();
 // Languages: any of them can be removed while no room uses it (the server says which room does), and added back.
 function renderLanguages(s) {
   const many = Object.keys(s.languages).length > 1;
