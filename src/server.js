@@ -4,6 +4,7 @@ import https from 'node:https';
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
+import net from 'node:net';
 import crypto from 'node:crypto';
 import { spawn } from 'node:child_process';
 import { openCallApps } from './call-apps.js';
@@ -1119,6 +1120,7 @@ app.get('/api/me/calls', admin, async (req, res) => {
 });
 
 app.get('/api/setup', crew, (req, res) => {
+  if (allows(req.who, 'admin')) learnAddress(req);
   res.json({
     done: !!setup.done,
     locked: !!setup.locked,
@@ -1151,7 +1153,7 @@ app.get('/api/setup', crew, (req, res) => {
     tunnel: tunnel.status(),
     tunnelTokenSaved: !!readSecret('tunnelToken'),
     tunnelMoved, // the free address is not the one the QR codes were printed with
-    publicUrlSource: configuredPublicUrl ? 'config' : tunnel.status().state === 'on' ? 'tunnel' : 'auto',
+    publicUrlSource: configuredPublicUrl ? 'config' : tunnel.status().state === 'on' ? 'tunnel' : setup.seenUrl ? 'seen' : 'auto',
     lanUrl: lanUrl(),
     port: config.port,
     publicUrl: publicUrl(req),
@@ -1798,6 +1800,23 @@ const server = tls ? https.createServer(tls, app) : http.createServer(app);
 // Public address (see /api/tunnel). PUBLIC_URL / publicUrl in event.json is what we go back to when it's off.
 const configuredPublicUrl = config.publicUrl;
 const tunnel = new Tunnel({ origin: tunnelOrigin(config.port, !!tls) });
+if (!configuredPublicUrl && setup.seenUrl) config.publicUrl = setup.seenUrl;
+/**
+ * The address an admin opened the dashboard at over HTTPS, on a domain: the organizer's own tunnel or reverse proxy
+ * (e.g. a Cloudflare Tunnel to this container). With no PUBLIC_URL and no tunnel from Settings, phones reach the
+ * server there too, so it's the public address: QR codes, links, the next start. The latest one wins.
+ */
+function learnAddress(req) {
+  if (configuredPublicUrl || tunnel.status().state !== 'off' || !req.secure) return;
+  const host = String(req.host || '').toLowerCase();
+  const name = host.replace(/:\d+$/, '');
+  if (!/^[a-z0-9.-]+(:\d+)?$/.test(host) || !name.includes('.') || net.isIP(name) || /\.(local|localhost|internal|lan|home\.arpa)$/.test(name)) return;
+  const url = `https://${host}`;
+  config.publicUrl = url;
+  if (setup.seenUrl === url) return;
+  saveSetup({ seenUrl: url });
+  console.log(`[address] phones and QR codes use ${url}, the address the dashboard was opened at`);
+}
 let lastTunnelLine = '';
 // The free address changes on every start. Remember the last one (data/setup.json) so a restart that moved it is
 // reported: on the dashboard, and by the phone alerts, which otherwise only compare within one run.
@@ -1808,7 +1827,7 @@ tunnel.on('change', (st) => {
     tunnelMoved = !!setup.tunnelUrl;
     saveSetup({ tunnelUrl: st.url });
   }
-  config.publicUrl = st.state === 'on' && st.url ? st.url : configuredPublicUrl;
+  config.publicUrl = st.state === 'on' && st.url ? st.url : configuredPublicUrl || setup.seenUrl || '';
   broadcastAdmin({ type: 'tunnel', ...st });
   const line = st.state === 'on' && st.url ? `${tty.sym.ok} Public address: ${tty.c.bold(st.url)}` : st.state === 'error' ? `${tty.sym.warn} Public address: ${st.error}` : '';
   if (line && line !== lastTunnelLine) console.log(line);

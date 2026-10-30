@@ -6,7 +6,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 /**
- * @typedef {{ id: number, at: number, kind: string, target?: string, summary: string, before?: any, after?: any, undoes?: number, undone?: boolean }} Change
+ * @typedef {{ id: number, at: number, kind: string, target?: string, summary: string, before?: any, after?: any, undoes?: number, undone?: boolean, by?: string }} Change
  */
 
 export class History {
@@ -37,7 +37,7 @@ export class History {
 
   /**
    * Record a change. `before` is what an undo puts back.
-   * @param {{ kind: string, target?: string, summary: string, before?: any, after?: any, undoes?: number }} c
+   * @param {{ kind: string, target?: string, summary: string, before?: any, after?: any, undoes?: number, by?: string }} c
    * @returns {Change}
    */
   record(c) {

@@ -198,6 +198,20 @@ For HTTPS, the dashboard's [public address](#one-click-public-address) works ins
    docker compose --profile tunnel up -d
    ```
 
+Already run a Cloudflare Tunnel (or another reverse proxy) in its own container? Put OpenCaptions on its network instead of publishing a port: in `docker-compose.yml`, remove the `ports:` lines and add
+
+```yaml
+    networks:
+      - cloudflare
+
+networks:
+  default:
+  cloudflare:
+    external: true
+```
+
+(the first two lines under the `opencaptions:` service, the rest at the end of the file; `cloudflare` is your tunnel's network). In the tunnel's public hostname, the service is `http://opencaptions:8080`. Keep `TRUST_PROXY` as it is in the file: it's what tells OpenCaptions the visitor came in over HTTPS. There's no token to paste in OpenCaptions: the first time you open the dashboard at your address (`https://subs.example.com/admin.html`), that becomes the public address, for the QR codes and links and after restarts (Settings → Public address says so). If the dashboard says it has no live connection, turn on **Network → WebSockets** for your domain in Cloudflare.
+
 Upgrade (it gets the newest release; your `.env`, `config/` and `data/` stay):
 
 ```bash

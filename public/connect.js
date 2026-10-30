@@ -79,6 +79,7 @@ const T = {
     failed: 'No se pudo crear la dirección:',
     lan: (u) => `Sin dirección pública, los celulares conectados al mismo Wi-Fi que esta computadora usan ${u}`,
     fixed: (u) => `Los QR apuntan a ${u} (configurado en el servidor).`,
+    seen: (u) => `Los celulares y los QR usan ${u}: la dirección en la que abriste este panel, con tu propio túnel o proxy. No hace falta activar nada.`, other: 'Usar otra dirección',
   },
   en: {
     // another AI for the text
@@ -149,6 +150,7 @@ const T = {
     failed: 'Couldn’t create the address:',
     lan: (u) => `Without a public address, phones on the same Wi-Fi as this computer use ${u}`,
     fixed: (u) => `QR codes point to ${u} (set on the server).`,
+    seen: (u) => `Phones and QR codes use ${u}: the address you opened this dashboard at, through your own tunnel or proxy. Nothing to turn on.`, other: 'Use another address',
   },
 };
 const t = T[LANG] || T.en;
@@ -322,6 +324,9 @@ export function tunnelPanel(el, { api, confirm = async (m) => window.confirm(m),
     if (tu.state === 'off' && setup?.publicUrlSource === 'config') {
       html = `<p class="cx-status ok u-mt0">${icon('check')}<span>${esc(t.fixed(pub))}</span></p>`;
     } else if (tu.state === 'off') {
+      // Opened through the organizer's own tunnel or proxy (src/server.js learnAddress): that's the address already.
+      const seen = setup?.publicUrlSource === 'seen';
+      if (seen) html = `<p class="cx-status ok u-mt0">${icon('check')}<span>${esc(t.seen(pub))}</span></p><details class="cx-own"><summary>${esc(t.other)}</summary>`;
       html += `<p class="cx-fine u-mt0">${esc(t.tIntro)}</p>
         <div class="cx-row"><button type="button" class="primary" data-cx="quick">${icon('cloud')}${esc(t.tStart)}</button></div>
         <p class="cx-fine">${esc(t.tNote)}</p>
@@ -334,6 +339,7 @@ export function tunnelPanel(el, { api, confirm = async (m) => window.confirm(m),
           </form>
         </details>`;
       if (setup?.lanUrl) html += `<p class="cx-fine">${esc(t.lan(setup.lanUrl))}</p>`;
+      if (seen) html += '</details>';
     } else if (tu.state === 'installing' || tu.state === 'starting') {
       html = `<p class="cx-status">${icon('cloud')}<span>${esc(tu.state === 'installing' ? t.installing : t.starting)}</span></p>`;
     } else if (tu.state === 'on' && tu.reachable !== true) {
