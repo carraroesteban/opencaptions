@@ -8,6 +8,7 @@ All notable changes to this project are documented in this file. The format foll
 
 - **Rooms made in the dashboard no longer disappear after a restart.** They were used only while `data/stages.json` was newer than `config/event.json`, so re-creating, copying or editing that file (filling an empty `config` folder in Docker, a `git pull`, renaming the event there) silently brought back its one room, and the rooms' computers, phones and the Live tab found nothing. Now the dashboard's rooms win unless the rooms written in `event.json` were edited since; then those are used and the dashboard's list is kept in `data/stages.json.bak`. A server with a missing `config/event.json` starts with the shipped room instead of restarting forever.
 - **The server's log says what happens, not only its startup** (`docker logs`, the terminal): every change made in the dashboard and who made it, sign-ins and wrong passwords, setup finished, each room's computer connecting and leaving, its AI sessions starting and closing, breaks and new talks, and every connection the server refuses with the reason (a dashboard on another address, not signed in, too many connections), at most once a minute each. The Just for me room's everyday lines stay out of it.
+- **A dashboard that can't open its live connection says so** instead of staying empty: behind a proxy that doesn't let WebSockets through (Cloudflare with **Network → WebSockets** off), a banner says what to change, and the rooms keep updating every 5 seconds meanwhile.
 
 ### Changed
 

@@ -267,14 +267,24 @@ function askToken() {
   signInScreen().then(() => location.reload());
 }
 
+// The live connection (rooms, sound levels, the log). Through a proxy that doesn't let WebSockets through it never
+// opens: then the banner says so and the rooms come from /api/status every 5 s, instead of an empty dashboard.
+let downSince = Date.now();
+const noLive = () => downSince && Date.now() - downSince > 6000;
+setInterval(() => {
+  if (!noLive() || document.hidden) return;
+  renderNet(last?.failover);
+  api('GET', '/api/status', null, { quiet: true }).then(render).catch(() => {});
+}, 5000);
 new Socket(() => wsUrl('/ws/admin', {}), {
+  open() { downSince = 0; renderNet(last?.failover); },
   message(m) {
     if (m.type === 'status') render(m);
     else if (m.type === 'log') { logs.push(m); if (logs.length > 400) logs.shift(); renderLogsSoon(); }
     else if (m.type === 'logs') { logs.splice(0, logs.length, ...m.logs); renderLogsSoon(); }
     else if (m.type === 'history') { refreshSchedule(); if (view === 'history') loadHistory(); }
   },
-  close(e) { if (e.code === 4001) askToken(); },
+  close(e) { if (e.code === 4001) askToken(); downSince ||= Date.now(); },
 });
 
 // ---------- toasts and confirmations ----------
@@ -558,10 +568,13 @@ async function updateNow(up) {
 }
 /** The internet dropped (the offline backup): a banner over the dashboard says what's captioning now. */
 function renderNet(f) {
-  if (!f) return $('netbar').classList.add('hidden');
+  if (!f && !noLive()) return $('netbar').classList.add('hidden');
   let html = '';
   let bad = false;
-  if (f.active === 'local') {
+  if (noLive()) {
+    bad = true;
+    html = `${icon('offline')}<div><b>${esc(tr('Sin conexión en vivo con el servidor'))}</b><p>${esc(tr('Las salas se actualizan cada 5 segundos, sin niveles de sonido ni registro. Si OpenCaptions está detrás de Cloudflare u otro proxy, tiene que dejar pasar WebSockets (en Cloudflare: Network → WebSockets).'))}</p></div>`;
+  } else if (f.active === 'local') {
     html = `${icon('offline')}<div><b>${esc(tr(f.mode === 'local' ? 'Usando la IA de esta computadora' : 'Sin internet: los subtítulos siguen funcionando'))}</b><p>${esc(tr(f.mode === 'auto' ? 'La IA de esta computadora genera los subtítulos. Vuelven a Gemini solos cuando la conexión se estabilice.' : 'Elegido desde el panel. Para volver a Gemini, cambiá la etiqueta de la IA.'))}</p></div>`;
   } else if (f.online === false) {
     bad = !f.localReady;

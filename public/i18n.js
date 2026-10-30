@@ -239,6 +239,8 @@ const DICTS = {
     'La IA de esta computadora genera los subtítulos. Vuelven a Gemini solos cuando la conexión se estabilice.': 'This computer’s AI is making the captions. They go back to Gemini by themselves once the connection is stable.',
     'Elegido desde el panel. Para volver a Gemini, cambiá la etiqueta de la IA.': 'Chosen from the dashboard. To go back to Gemini, change it in the AI badge.',
     'Sin conexión con la IA en la nube': 'Can’t reach the cloud AI',
+    'Sin conexión en vivo con el servidor': 'No live connection to the server',
+    'Las salas se actualizan cada 5 segundos, sin niveles de sonido ni registro. Si OpenCaptions está detrás de Cloudflare u otro proxy, tiene que dejar pasar WebSockets (en Cloudflare: Network → WebSockets).': 'Rooms update every 5 seconds, without sound levels or the log. If OpenCaptions is behind Cloudflare or another proxy, it must let WebSockets through (in Cloudflare: Network → WebSockets).',
     'Si no vuelve en unos segundos, los subtítulos pasan a esta computadora.': 'If it isn’t back in a few seconds, captions move to this computer.',
     'Hay un respaldo listo en esta computadora: elegí «Gemini, con esta computadora de respaldo» o «Esta computadora» en la etiqueta de la IA.': 'A backup is ready on this computer: choose “Gemini, with this computer as backup” or “This computer” in the AI badge.',
     'No hay respaldo en esta computadora: los subtítulos vuelven cuando vuelva la conexión.': 'No backup on this computer: captions come back when the connection does.',
