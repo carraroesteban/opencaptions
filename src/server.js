@@ -193,6 +193,7 @@ function saveSetup(patch) {
 const history = new History(path.join(config.dataDir, 'history.jsonl'));
 const clone = (v) => (v == null ? v : JSON.parse(JSON.stringify(v)));
 const recordChange = (c) => { const e = history.record({ ...c, by: actor.getStore()?.label }); // `by`: who, from src/auth.js
+  console.log(`[change] ${e.summary}${e.by ? ` (${e.by})` : ''}`);
   broadcastAdmin({ type: 'history', change: { ...e, before: undefined, after: undefined } }); return e; };
 
 // ---------------- http ----------------
@@ -939,6 +940,7 @@ app.post('/api/ingest/link/use', (req, res) => {
   }
   const name = stages.get(l.stage)?.def.name || l.stage;
   const { cookie } = createSession({ role: 'ingest', device: `Room computer · ${name}`, via: 'link', stage: l.stage }, req);
+  console.log(`[sign-in] the room computer of “${name}” (a sound link) from ${clientIp(req)}`);
   res.set('Set-Cookie', cookie).json({ ok: true, stage: l.stage });
 });
 
@@ -1031,7 +1033,7 @@ app.post('/api/auth/login', (req, res) => {
   const b = req.body || {};
   const role = roleFor(String(b.password || ''));
   const failed = (body) => (noteAuthFailure(req) ? res.status(401).json(body) : res.set('Retry-After', '600').status(429).json({ error: 'too many failed attempts: wait 10 minutes' }));
-  if (!role) return failed({ error: 'wrong password' });
+  if (!role) { console.log(`[sign-in] wrong password from ${clientIp(req)}`); return failed({ error: 'wrong password' }); }
   if (role === 'admin' && twoFactorOn()) {
     if (!b.code) return res.status(401).json({ need: 'code' });
     const ok = checkCode(twoFactorSecret(), b.code);
@@ -1040,6 +1042,7 @@ app.post('/api/auth/login', (req, res) => {
   }
   spendStartupCode(String(b.password));
   const { session, cookie } = createSession({ role, device: String(b.device || ''), via: 'password' }, req);
+  console.log(`[sign-in] ${role}${session.device ? ` (${session.device})` : ''} from ${clientIp(req)}`);
   res.set('Set-Cookie', cookie).json({ ok: true, role, device: session.device });
 });
 app.post('/api/auth/logout', (req, res) => {
@@ -1229,6 +1232,7 @@ app.put('/api/setup', admin, (req, res) => {
   const change = patch.change ?? null;
   delete patch.change;
   const modeChanged = 'mode' in patch && patch.mode !== (setup.mode === 'personal' ? 'personal' : 'event');
+  if (patch.done && !setup.done) console.log(`[setup] finished: ${patch.mode === 'personal' ? 'Just for me' : `an event, ${stages.size} room${stages.size === 1 ? '' : 's'}`}`);
   saveSetup(patch);
   // Just for me never plays a room's sound: phones listening stop now, and Listen comes back with the event.
   if (modeChanged) for (const st of stages.values()) if (st.def.roomSound) st.emit('config');
@@ -1817,6 +1821,14 @@ function startTunnel(mode, host) {
 // 256 KB is ~8 s of audio per message; clients send 100 ms (3.2 KB) chunks and tiny JSON.
 const wss = new WebSocketServer({ noServer: true, perMessageDeflate: false, maxPayload: 256 * 1024 });
 const reject = (socket, code, msg) => { socket.write(`HTTP/1.1 ${code} ${msg}\r\nConnection: close\r\n\r\n`); socket.destroy(); };
+// Why a connection was refused, in the server's log: once a minute per reason (a page retrying can't flood it).
+const WHO = { ingest: 'a room computer', view: 'a phone', admin: 'a dashboard' };
+const refusedAt = new Map();
+const refused = (kind, why) => {
+  if (Date.now() - (refusedAt.get(kind + why) || 0) < 60_000) return;
+  refusedAt.set(kind + why, Date.now());
+  console.log(`[connections] refused ${WHO[kind]}: ${why}`);
+};
 let viewerCount = 0;
 let stopping = false; // Ctrl+C: the rooms are gone, so a quick reconnect must not be told its room doesn't exist (4004)
 
@@ -1827,8 +1839,11 @@ server.on('upgrade', (req, socket, head) => {
   const kind = { '/ws/ingest': 'ingest', '/ws/view': 'view', '/ws/admin': 'admin' }[url.pathname];
   if (!kind) return socket.destroy();
   if (stopping) return reject(socket, 503, 'Service Unavailable');
-  if (!wsAllowed(req)) return reject(socket, 429, 'Too Many Requests');
-  if (kind !== 'view' && !originAllowed(req)) return reject(socket, 403, 'Forbidden');
+  if (!wsAllowed(req)) { refused(kind, `too many connections from ${clientIp(req)}`); return reject(socket, 429, 'Too Many Requests'); }
+  if (kind !== 'view' && !originAllowed(req)) {
+    refused(kind, `its page is on ${String(req.headers.origin).slice(0, 120)}, this server answers as ${String(req.headers['x-forwarded-host'] || req.headers.host).slice(0, 120)} (set PUBLIC_URL or ALLOWED_ORIGINS to the address people open)`);
+    return reject(socket, 403, 'Forbidden');
+  }
   if (kind === 'view' && viewerCount >= MAX_VIEWERS) return reject(socket, 503, 'Service Unavailable');
   if (kind === 'view' && isPrivate(url.searchParams.get('stage')) && !allows(identify(req, url), 'crew')) return reject(socket, 401, 'Unauthorized');
   // Sockets don't take a password in the URL (proxies log URLs): ingest uses a header or a ticket, the dashboard its
@@ -1839,6 +1854,7 @@ server.on('upgrade', (req, socket, head) => {
   const stage = url.searchParams.get('stage') || '';
   const ok = kind === 'ingest' ? useTicket(url.searchParams.get('ticket'), stage) || (allows(who, 'ingest') && (!roomOf(who) || roomOf(who) === stage))
     : kind === 'admin' ? allows(who, 'crew') : true;
+  if (!ok) refused(kind, kind === 'admin' ? 'not signed in (signed out, or the session expired)' : 'no valid room password or sound link');
   if (!ok && !noteAuthFailure(req)) return reject(socket, 429, 'Too Many Requests');
   wss.handleUpgrade(req, socket, head, (ws) => {
     // Protocol violations (oversized frame, invalid UTF-8…) emit 'error' on the socket: log, never crash.

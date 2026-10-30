@@ -837,7 +837,10 @@ export class Stage extends EventEmitter {
 
   log(level, msg) {
     const entry = { t: Date.now(), stage: this.id, level, msg };
+    // The server's own log (docker logs, the terminal) tells what happens too, not only the dashboard's; the personal
+    // room's everyday lines stay out of it (its talk titles and corrected captions are someone's own).
     if (level === 'warn' || level === 'error') console.log(`[${this.id}] ${level}: ${msg}`);
+    else if (level === 'info' && this.id !== 'me') console.log(`[${this.id}] ${msg}`);
     if (level !== 'debug') {
       this.logs.push(entry);
       if (this.logs.length > 100) this.logs.shift();
