@@ -113,3 +113,22 @@ export function keepAlive(key) {
     },
   };
 }
+
+/**
+ * What a room's sound level means, for the sound page: [key, tone] from the last 10 s of 100 ms levels (dB), so a pause
+ * between sentences changes nothing. Good news at once; a warning only once it has lasted the whole 10 s. Speech must
+ * reach -38 dB (the server's speech level, SPEECH_RMS 0.012) to be captioned. Worth a warning: no signal at all (under
+ * -70 dB: a muted or unplugged microphone) and a voice that never gets there (2 s of it well above the room's floor,
+ * still under -38). A quiet room with nobody speaking, or a cough in one, isn't.
+ * @param {number[]} levels  oldest first, up to 100
+ */
+export function levelHint(levels) {
+  const max = Math.max(...levels);
+  const floor = [...levels].sort((a, b) => a - b)[Math.floor(levels.length / 10)];
+  if (levels.filter((db) => db > -6).length >= 3) return ['lvLoud', 'bad'];
+  if (max >= -38) return ['lvGood', 'ok'];
+  if (levels.length < 100) return ['lvWait', ''];
+  if (max < -70) return ['lvSilent', 'warn'];
+  if (levels.filter((db) => db > floor + 12).length >= 20) return ['lvQuiet', 'warn'];
+  return ['lvWait', ''];
+}

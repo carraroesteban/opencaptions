@@ -131,7 +131,7 @@ Con las alertas en el celular configuradas, las que duran te llegan estés donde
 | **SIN SONIDO** | La computadora de la sala no está mandando sonido | Revisar el agente o que la página de sonido de la sala esté abierta (en la tarjeta: **Abrir la página de sonido**). Con «Empezar solo al abrir esta página» vuelve sola tras un reinicio. |
 | **ESPERANDO EL STREAM** | La sala espera el sonido de OBS o vMix y no llega nada | Empezar a transmitir a la dirección de la sala (en la tarjeta: **Ver la dirección**). |
 | **no llega audio** | Hay conexión pero no llega sonido | La red de la computadora; reiniciar el agente o recargar la página de sonido. |
-| **¿mic muteado?** | 60 s de señal casi nula | Fader de la consola, cable o entrada equivocada. |
+| **¿mic muteado?** | 60 s sin nada de señal (una sala en silencio no lo dispara) | Fader de la consola, cable o entrada equivocada. |
 | **reconectando IA** | La sesión de Gemini se está reconectando | Esperar ~5 s; si persiste, **Ver detalles → Reconectar IA**. El audio queda en buffer (12 s). |
 | **latencia alta** | Transcripción más de 6 s atrás | Normal unos segundos tras reconectar; si persiste, **Reconectar IA** y revisar la red del server. |
 | **traducción limitada por cuota** | Límite de Flash‑Lite | Automático (usa Live). Si es frecuente: subir de plan o `MT_PARTIAL_MS=3000`. |

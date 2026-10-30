@@ -232,7 +232,7 @@ export class Stage extends EventEmitter {
       this.lastSpeechAt = now;
       this.lowLevelSince = 0;
       if (this.gated) this.#ungate();
-    } else if (lvl < 0.002) {
+    } else if (lvl < 0.0003) { // -70 dB: a muted or unplugged microphone, not a quiet room (its noise sits above)
       this.lowLevelSince ||= now;
     } else this.lowLevelSince = 0;
 

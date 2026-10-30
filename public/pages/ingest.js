@@ -2,7 +2,7 @@
 import { qs, esc, store, wsUrl, Socket, getEvent, langLabel, takeUrlToken, ingestTicket, wakeLock, fmtClock } from '/common.js';
 import { localize, prefsControls, tr, LANG } from '/i18n.js';
 import { icon } from '/illustrations.js';
-import { openMic, openScreenAudio, keepAlive, wake } from '/capture.js';
+import { openMic, openScreenAudio, keepAlive, wake, levelHint } from '/capture.js';
 const $ = (id) => document.getElementById(id);
 const phone = matchMedia('(pointer: coarse)').matches; // a phone running the room (see the end of this file)
 
@@ -15,7 +15,7 @@ const L = {
     music: 'Enviando · suena música, subtítulos en pausa', brk: 'En pausa · las pantallas muestran la pausa', standby: 'Respaldo en espera · entra solo si la principal se corta',
     onair: 'Respaldo al aire · subtítulos en vivo', reconnecting: 'Reconectando…', stopped: 'Detenido', took: 'Detenido · otra computadora tomó esta sala',
     needkey: 'Falta el enlace de la sala o la contraseña', noroom: 'Esta sala ya no existe', fileEnded: 'La grabación terminó', inputLost: 'La entrada de audio se desconectó',
-    lvOff: 'El nivel aparece al empezar', lvSilent: 'No llega sonido: ¿está prendido el micrófono?', lvQuiet: 'Muy bajo: subí el volumen', lvGood: 'Buen nivel', lvLoud: 'Muy alto: bajalo un poco',
+    lvOff: 'El nivel aparece al empezar', lvSilent: 'No llega sonido: ¿está prendido el micrófono?', lvQuiet: 'Muy bajo: subí el volumen', lvGood: 'Buen nivel', lvLoud: 'Muy alto: bajalo un poco', lvWait: 'Escuchando: nadie habla',
     elapsed: 'Tiempo enviando',
     audH: 'El público escanea esto', battery: 'Batería baja: conectá el cargador para que no se corte el sonido de la sala.',
     slidesOn: 'Compartir diapositivas', slidesOff: 'Dejar de compartir diapositivas',
@@ -29,7 +29,7 @@ const L = {
     music: 'Sending · music playing, captions paused', brk: 'On a break · the screens show it', standby: 'Backup standing by · takes over if the main one drops',
     onair: 'Backup on air · captions live', reconnecting: 'Reconnecting…', stopped: 'Stopped', took: 'Stopped · another computer took this room',
     needkey: 'This computer needs the room link or the password', noroom: 'This room doesn’t exist anymore', fileEnded: 'The recording finished', inputLost: 'The audio input was disconnected',
-    lvOff: 'The level shows once you start', lvSilent: 'No sound: is the microphone on?', lvQuiet: 'Too quiet: turn it up', lvGood: 'Good level', lvLoud: 'Too loud: turn it down a little',
+    lvOff: 'The level shows once you start', lvSilent: 'No sound: is the microphone on?', lvQuiet: 'Too quiet: turn it up', lvGood: 'Good level', lvLoud: 'Too loud: turn it down a little', lvWait: 'Listening: nobody speaking',
     elapsed: 'Time sending',
     audH: 'The audience scans this', battery: 'Battery low: plug in the charger so the room’s sound doesn’t stop.',
     slidesOn: 'Share slides', slidesOff: 'Stop sharing slides',
@@ -264,7 +264,7 @@ $('go').onclick = () => (running ? stop() : start());
 const FLOOR = -60;
 const pctOf = (db) => Math.max(0, Math.min(100, ((db - FLOOR) / -FLOOR) * 100));
 let target = -Infinity, shown = 0, peak = 0, peakAt = 0, raf = 0;
-const recent = []; // the last 1.5 s of chunk levels, for the hint
+const recent = []; // the last 10 s of chunk levels, for the hint
 function meterLoop() {
   if (raf) return;
   const frame = () => {
@@ -281,11 +281,7 @@ function meterLoop() {
 }
 let hintKey = '';
 function showHint() {
-  let key = 'lvOff', tone = '';
-  if (running && recent.length >= 5) {
-    const max = Math.max(...recent);
-    [key, tone] = max < -58 ? ['lvSilent', 'warn'] : max < -42 ? ['lvQuiet', 'warn'] : max > -6 ? ['lvLoud', 'bad'] : ['lvGood', 'ok'];
-  }
+  const [key, tone] = running && recent.length ? levelHint(recent) : ['lvOff', ''];
   if (key === hintKey) return;
   hintKey = key;
   $('hint').textContent = L[key];
@@ -300,7 +296,7 @@ function onPcm(buf) {
   const db = 20 * Math.log10(rms || 1e-6);
   target = db;
   recent.push(db);
-  if (recent.length > 15) recent.shift();
+  if (recent.length > 100) recent.shift();
   $('db').firstChild.nodeValue = db < FLOOR ? '—' : db.toFixed(0);
   showHint();
   if (sock?.ready) sock.send(buf);
