@@ -1172,7 +1172,7 @@ app.get('/api/setup', crew, (req, res) => {
     tunnel: tunnel.status(),
     tunnelTokenSaved: !!readSecret('tunnelToken'),
     tunnelMoved, // the free address is not the one the QR codes were printed with
-    publicUrlSource: configuredPublicUrl ? 'config' : tunnel.status().state === 'on' ? 'tunnel' : setup.seenUrl ? 'seen' : 'auto',
+    ...addressInfo(),
     lanUrl: lanUrl(),
     port: config.port,
     publicUrl: publicUrl(req),
@@ -1543,6 +1543,42 @@ function useKeyChange(summary) {
 // Public HTTPS address through Cloudflare Tunnel (src/tunnel.js). While it's on, its address is the public URL
 // (QR codes, links, allowed origins); turning it off goes back to PUBLIC_URL. Locked in Event mode: stopping it
 // would cut every phone off.
+// Typed: checked first by asking that address for a one-time code only this server knows, so a typo, or a tunnel
+// that points somewhere else, isn't printed on the QR codes. Some networks can't reach their own address from inside:
+// then { force: true } saves it anyway.
+const probes = new Set();
+app.get('/api/address/probe', (req, res) => res.json({ mine: probes.has(String(req.query.n || '')) }));
+app.post('/api/address', admin, unlocked, async (req, res) => {
+  if (configuredPublicUrl) return res.status(409).json({ error: 'PUBLIC_URL is set in .env: change it there and restart', code: 'fixed' });
+  let u;
+  try { u = new URL(String(req.body?.url || '').trim().replace(/^(?!https?:\/\/)/i, 'https://')); } catch { /* below */ }
+  if (!u || !/^https?:$/.test(u.protocol) || u.username || u.password || u.search || u.hash || !['', '/'].includes(u.pathname) || !u.hostname.includes('.') && !net.isIP(u.hostname.replace(/^\[|\]$/g, ''))) {
+    return res.status(400).json({ error: 'type the address phones open, e.g. https://captions.example.com', code: 'format' });
+  }
+  let url = u.origin;
+  if (!req.body?.force) {
+    const n = crypto.randomBytes(12).toString('base64url');
+    probes.add(n);
+    // Where it answered, after redirects: an http:// address that the proxy sends to https:// is saved as https://.
+    const at = await fetch(`${url}/api/address/probe?n=${n}`, { signal: AbortSignal.timeout(8000) })
+      .then(async (r) => (/** @type {any} */ (await r.json())?.mine === true ? new URL(r.url).origin : '')).catch(() => '');
+    probes.delete(n);
+    if (!at) return res.status(400).json({ error: `OpenCaptions doesn't answer at ${url} from this server`, code: 'unreachable', url });
+    url = at;
+  }
+  saveSetup({ ownUrl: url, ownTyped: true });
+  if (tunnel.status().state === 'off') config.publicUrl = url;
+  recordChange({ kind: 'address', summary: `Public address: ${url}`, after: url });
+  res.json(addressInfo());
+});
+app.delete('/api/address', admin, unlocked, (req, res) => {
+  if (setup.ownUrl) {
+    saveSetup({ ownUrl: '', ownTyped: false });
+    if (tunnel.status().state === 'off') config.publicUrl = configuredPublicUrl;
+    recordChange({ kind: 'address', summary: 'Own public address no longer used', after: '' });
+  }
+  res.json(addressInfo());
+});
 app.post('/api/tunnel', admin, unlocked, (req, res) => {
   const mode = String(req.body?.mode || '');
   if (!['quick', 'token', 'off'].includes(mode)) return res.status(400).json({ error: 'mode must be quick|token|off' });
@@ -1844,22 +1880,33 @@ const server = tls ? https.createServer(tls, app) : http.createServer(app);
 // Public address (see /api/tunnel). PUBLIC_URL / publicUrl in event.json is what we go back to when it's off.
 const configuredPublicUrl = config.publicUrl;
 const tunnel = new Tunnel({ origin: tunnelOrigin(config.port, !!tls) });
-if (!configuredPublicUrl && setup.seenUrl) config.publicUrl = setup.seenUrl;
+// The organizer's own address (their tunnel or reverse proxy, running outside OpenCaptions: no token here): typed in
+// Settings → Public address, or learned from the dashboard (learnAddress). Below PUBLIC_URL and a tunnel from Settings.
+if (!configuredPublicUrl && setup.ownUrl) config.publicUrl = setup.ownUrl;
 /**
  * The address an admin opened the dashboard at over HTTPS, on a domain: the organizer's own tunnel or reverse proxy
- * (e.g. a Cloudflare Tunnel to this container). With no PUBLIC_URL and no tunnel from Settings, phones reach the
- * server there too, so it's the public address: QR codes, links, the next start. The latest one wins.
+ * (e.g. a Cloudflare Tunnel to this container). With no PUBLIC_URL, no tunnel from Settings and no address typed
+ * there, phones reach the server there too, so it's the public address: QR codes, links, the next start. The latest
+ * one wins.
  */
 function learnAddress(req) {
-  if (configuredPublicUrl || tunnel.status().state !== 'off' || !req.secure) return;
+  if (configuredPublicUrl || setup.ownTyped || tunnel.status().state !== 'off' || !req.secure) return;
   const host = String(req.host || '').toLowerCase();
   const name = host.replace(/:\d+$/, '');
   if (!/^[a-z0-9.-]+(:\d+)?$/.test(host) || !name.includes('.') || net.isIP(name) || /\.(local|localhost|internal|lan|home\.arpa)$/.test(name)) return;
   const url = `https://${host}`;
   config.publicUrl = url;
-  if (setup.seenUrl === url) return;
-  saveSetup({ seenUrl: url });
+  if (setup.ownUrl === url) return;
+  saveSetup({ ownUrl: url });
   console.log(`[address] phones and QR codes use ${url}, the address the dashboard was opened at`);
+}
+/** Where the public address comes from, for Settings → Public address: PUBLIC_URL, a tunnel from Settings, the own one, or none. */
+function addressInfo() {
+  return {
+    publicUrlSource: configuredPublicUrl ? 'config' : tunnel.status().state === 'on' ? 'tunnel' : setup.ownUrl ? 'own' : 'auto',
+    ownTyped: !!setup.ownTyped,
+    publicUrl: config.publicUrl,
+  };
 }
 let lastTunnelLine = '';
 // The free address changes on every start. Remember the last one (data/setup.json) so a restart that moved it is
@@ -1871,7 +1918,7 @@ tunnel.on('change', (st) => {
     tunnelMoved = !!setup.tunnelUrl;
     saveSetup({ tunnelUrl: st.url });
   }
-  config.publicUrl = st.state === 'on' && st.url ? st.url : configuredPublicUrl || setup.seenUrl || '';
+  config.publicUrl = st.state === 'on' && st.url ? st.url : configuredPublicUrl || setup.ownUrl || '';
   broadcastAdmin({ type: 'tunnel', ...st });
   const line = st.state === 'on' && st.url ? `${tty.sym.ok} Public address: ${tty.c.bold(st.url)}` : st.state === 'error' ? `${tty.sym.warn} Public address: ${st.error}` : '';
   if (line && line !== lastTunnelLine) console.log(line);

@@ -24,7 +24,7 @@ const viaTunnel = (host) => ({ host, 'x-forwarded-proto': 'https', 'x-forwarded-
 
 async function withServer(dataDir, env, fn) {
   const srv = spawn(process.execPath, ['src/server.js'], {
-    env: { ...process.env, PORT: String(PORT), HOST: '127.0.0.1', ENGINE: 'mock', DATA_DIR: dataDir, SCHEDULE: path.join(dataDir, 's.json'), GLOSSARY: path.join(dataDir, 'g.json'), ADMIN_TOKEN: 'adm', CREW_TOKEN: 'crew', INGEST_TOKEN: 'ing', PUBLIC_URL: '', GEMINI_API_KEY: '', TUNNEL: '', UPDATE_CHECK: '0', TRUST_PROXY: 'loopback', ...env },
+    env: { ...process.env, PORT: String(PORT), HOST: '127.0.0.1', ENGINE: 'mock', DATA_DIR: dataDir, SCHEDULE: path.join(dataDir, 's.json'), GLOSSARY: path.join(dataDir, 'g.json'), ADMIN_TOKEN: 'adm', CREW_TOKEN: 'crew', INGEST_TOKEN: 'ing', PUBLIC_URL: '', GEMINI_API_KEY: '', TUNNEL: '', UPDATE_CHECK: '0', TRUST_PROXY: 'loopback', AUTH: 'token', ...env },
     stdio: 'ignore',
   });
   try {
@@ -54,7 +54,7 @@ test('an admin on HTTPS through a proxy, on a domain: that address is the public
     }
     assert.equal((await get('/api/status', admin)).publicUrl, '', 'nothing learned yet');
     const s = await get('/api/setup', { ...admin, ...viaTunnel('subs.example.org') });
-    assert.equal(s.publicUrlSource, 'seen');
+    assert.equal(s.publicUrlSource, 'own');
     assert.equal(s.publicUrl, 'https://subs.example.org');
     // QR codes and links use it, whatever address a page is opened at.
     assert.equal((await get('/api/event', { host: '127.0.0.1' })).publicUrl, 'https://subs.example.org');
@@ -72,6 +72,32 @@ test('a PUBLIC_URL set on the server is never replaced by the address a page was
     const s = await get('/api/setup', { ...admin, ...viaTunnel('other.example.org') });
     assert.equal(s.publicUrlSource, 'config');
     assert.equal(s.publicUrl, 'https://captions.example.com');
+  });
+  fs.rmSync(dir, { recursive: true, force: true });
+});
+
+test('an address typed in Settings (the organizer\'s own tunnel, no token): checked against this server, kept over a learned one, and forgotten on request', async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'oc-address-'));
+  const post = (body, token = 'adm') => fetch(`${base}/api/address`, { method: 'POST', headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' }, body: JSON.stringify(body) });
+  await withServer(dir, {}, async () => {
+    assert.equal((await post({ url: 'https://captions.example.org' }, 'crew')).status, 403);
+    assert.equal((await (await post({ url: 'not an address/at all' })).json()).code, 'format');
+    // Nobody (or another server) answers there: not saved, unless the organizer insists.
+    const wrong = await post({ url: 'captions.example.invalid' });
+    assert.equal(wrong.status, 400);
+    assert.deepEqual(await wrong.json(), { error: 'OpenCaptions doesn\'t answer at https://captions.example.invalid from this server', code: 'unreachable', url: 'https://captions.example.invalid' });
+    assert.equal((await get('/api/setup', admin)).publicUrlSource, 'auto');
+    // This server answers there (its own one-time code comes back): saved.
+    const ok = await (await post({ url: `http://127.0.0.1:${PORT}/` })).json();
+    assert.equal(ok.publicUrlSource, 'own');
+    assert.equal(ok.ownTyped, true);
+    assert.equal(ok.publicUrl, `http://127.0.0.1:${PORT}`);
+    await get('/api/setup', { ...admin, ...viaTunnel('other.example.org') });
+    assert.equal((await get('/api/event', { host: '127.0.0.1' })).publicUrl, `http://127.0.0.1:${PORT}`, 'a typed address isn\'t replaced by a learned one');
+    assert.equal((await (await post({ url: 'https://captions.example.invalid', force: true })).json()).publicUrl, 'https://captions.example.invalid');
+    const off = await (await fetch(`${base}/api/address`, { method: 'DELETE', headers: admin })).json();
+    assert.equal(off.publicUrlSource, 'auto');
+    assert.equal(off.publicUrl, '');
   });
   fs.rmSync(dir, { recursive: true, force: true });
 });

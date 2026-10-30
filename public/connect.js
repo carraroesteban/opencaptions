@@ -80,6 +80,11 @@ const T = {
     lan: (u) => `Sin dirección pública, los celulares conectados al mismo Wi-Fi que esta computadora usan ${u}`,
     fixed: (u) => `Los QR apuntan a ${u} (configurado en el servidor).`,
     seen: (u) => `Los celulares y los QR usan ${u}: la dirección en la que abriste este panel, con tu propio túnel o proxy. No hace falta activar nada.`, other: 'Usar otra dirección',
+    ownTyped: (u) => `Los celulares y los QR usan ${u}, tu propia dirección.`, stopOwn: 'Dejar de usar esta dirección',
+    addrQ: '¿Tu túnel de Cloudflare o tu proxy ya funciona por su cuenta (otro contenedor, tu servidor)? Escribí su dirección: no hace falta el token.',
+    addrLabel: 'Tu dirección', addrUse: 'Usar esta dirección', addrAnyway: 'Usarla igual', addrFormat: 'Escribí la dirección que abren los celulares, por ejemplo https://subtitulos.tuevento.com',
+    addrFail: (u) => `OpenCaptions no responde en ${u} desde este servidor. Revisá que el «public hostname» del túnel apunte acá (en Docker, http://opencaptions:8080). Si este servidor no puede llegar a su propia dirección pero los celulares sí, usala igual.`,
+    tokenQ: 'O que OpenCaptions maneje el túnel por vos:',
   },
   en: {
     // another AI for the text
@@ -151,6 +156,11 @@ const T = {
     lan: (u) => `Without a public address, phones on the same Wi-Fi as this computer use ${u}`,
     fixed: (u) => `QR codes point to ${u} (set on the server).`,
     seen: (u) => `Phones and QR codes use ${u}: the address you opened this dashboard at, through your own tunnel or proxy. Nothing to turn on.`, other: 'Use another address',
+    ownTyped: (u) => `Phones and QR codes use ${u}, your own address.`, stopOwn: 'Stop using this address',
+    addrQ: 'Is your Cloudflare Tunnel or proxy already running on its own (another container, your server)? Type its address: no token needed.',
+    addrLabel: 'Your address', addrUse: 'Use this address', addrAnyway: 'Use it anyway', addrFormat: 'Type the address phones open, e.g. https://captions.yourevent.com',
+    addrFail: (u) => `OpenCaptions doesn’t answer at ${u} from this server. Check that the tunnel’s public hostname points here (in Docker, http://opencaptions:8080). If this server can’t reach its own address but phones can, use it anyway.`,
+    tokenQ: 'Or let OpenCaptions run the tunnel for you:',
   },
 };
 const t = T[LANG] || T.en;
@@ -315,6 +325,7 @@ export function tunnelPanel(el, { api, confirm = async (m) => window.confirm(m),
   let err = '';
   let lastUrl = '';
   let changed = false;
+  let addrTry = '', addrErr = ''; // the address being typed, and why it wasn't taken
   el.classList.add('connect');
   function render() {
     const tu = setup?.tunnel || { state: 'off' };
@@ -324,14 +335,21 @@ export function tunnelPanel(el, { api, confirm = async (m) => window.confirm(m),
     if (tu.state === 'off' && setup?.publicUrlSource === 'config') {
       html = `<p class="cx-status ok u-mt0">${icon('check')}<span>${esc(t.fixed(pub))}</span></p>`;
     } else if (tu.state === 'off') {
-      // Opened through the organizer's own tunnel or proxy (src/server.js learnAddress): that's the address already.
-      const seen = setup?.publicUrlSource === 'seen';
-      if (seen) html = `<p class="cx-status ok u-mt0">${icon('check')}<span>${esc(t.seen(pub))}</span></p><details class="cx-own"><summary>${esc(t.other)}</summary>`;
+      // The organizer's own tunnel or proxy, running outside OpenCaptions (src/server.js addressInfo): its address typed
+      // here, or learned when the dashboard was opened through it. Nothing to turn on, no token.
+      const own = setup?.publicUrlSource === 'own';
+      if (own) html = `<p class="cx-status ok u-mt0">${icon('check')}<span>${esc(setup.ownTyped ? t.ownTyped(pub) : t.seen(pub))}</span></p><details class="cx-own"${addrErr ? ' open' : ''}><summary>${esc(t.other)}</summary>`;
       html += `<p class="cx-fine u-mt0">${esc(t.tIntro)}</p>
         <div class="cx-row"><button type="button" class="primary" data-cx="quick">${icon('cloud')}${esc(t.tStart)}</button></div>
         <p class="cx-fine">${esc(t.tNote)}</p>
-        <details class="cx-own"><summary>${esc(t.tOwn)}</summary>
-          <p class="cx-fine">${esc(t.tOwnHelp)} <code>http://localhost:${esc(setup?.port || location.port || '8080')}</code></p>
+        <details class="cx-own"${addrErr ? ' open' : ''}><summary>${esc(t.tOwn)}</summary>
+          <p class="cx-fine">${esc(t.addrQ)}</p>
+          <form data-cx="addr" class="cx-grid">
+            <label class="field">${esc(t.addrLabel)}<input name="url" autocomplete="off" spellcheck="false" inputmode="url" placeholder="https://${esc(t.tHostPh)}" value="${esc(addrTry || (own ? pub : ''))}" /></label>
+            <div class="cx-row"><button type="submit">${esc(t.addrUse)}</button></div>
+          </form>
+          ${addrErr ? `<p class="cx-msg bad" role="alert">${esc(addrErr)}</p><div class="cx-row"><button type="button" data-cx="addr-force">${esc(t.addrAnyway)}</button></div>` : ''}
+          <p class="cx-fine">${esc(t.tokenQ)} ${esc(t.tOwnHelp)} <code>http://localhost:${esc(setup?.port || location.port || '8080')}</code></p>
           <form data-cx="own" class="cx-grid">
             <label class="field">${esc(t.tToken)}<input name="token" type="password" autocomplete="off" spellcheck="false" placeholder="${esc(setup?.tunnelTokenSaved ? t.tTokenKept : 'eyJ…')}" /></label>
             <label class="field">${esc(t.tHost)}<input name="host" autocomplete="off" spellcheck="false" placeholder="${esc(t.tHostPh)}" value="${esc(tu.host || '')}" /></label>
@@ -339,7 +357,7 @@ export function tunnelPanel(el, { api, confirm = async (m) => window.confirm(m),
           </form>
         </details>`;
       if (setup?.lanUrl) html += `<p class="cx-fine">${esc(t.lan(setup.lanUrl))}</p>`;
-      if (seen) html += '</details>';
+      if (own) html += `<div class="cx-row"><button type="button" class="cx-link" data-cx="forget">${esc(t.stopOwn)}</button></div></details>`;
     } else if (tu.state === 'installing' || tu.state === 'starting') {
       html = `<p class="cx-status">${icon('cloud')}<span>${esc(tu.state === 'installing' ? t.installing : t.starting)}</span></p>`;
     } else if (tu.state === 'on' && tu.reachable !== true) {
@@ -356,6 +374,19 @@ export function tunnelPanel(el, { api, confirm = async (m) => window.confirm(m),
     if (err) html += `<p class="cx-msg bad" role="alert">${esc(err)}</p>`;
     el.innerHTML = html;
   }
+  /** The organizer's own address: checked by the server against itself, or taken as typed (force). */
+  async function own(method, body) {
+    err = ''; addrErr = '';
+    try {
+      setup = { ...setup, ...(await api(method, '/api/address', body)) };
+      addrTry = '';
+      onChange(setup);
+    } catch (e) {
+      const b = e.body || {};
+      addrErr = b.code === 'unreachable' ? t.addrFail(b.url || addrTry) : b.code === 'format' ? t.addrFormat : e.message;
+    }
+    render();
+  }
   async function start(body) {
     err = '';
     try { const st = await api('POST', '/api/tunnel', body); setup = { ...setup, tunnel: st }; onChange(setup); } catch (e) { err = e.message; }
@@ -365,6 +396,8 @@ export function tunnelPanel(el, { api, confirm = async (m) => window.confirm(m),
     const a = /** @type {HTMLElement} */ (e.target).closest('[data-cx]')?.getAttribute('data-cx');
     const tu = setup?.tunnel || {};
     if (a === 'quick') start({ mode: 'quick' });
+    if (a === 'addr-force') own('POST', { url: addrTry, force: true });
+    if (a === 'forget') own('DELETE');
     if (a === 'retry') start({ mode: tu.mode === 'token' ? 'token' : 'quick', host: tu.host });
     if (a === 'stop' && (tu.state !== 'on' || (await confirm(t.stopAsk)))) start({ mode: 'off' });
     if (a === 'copy') {
@@ -374,6 +407,7 @@ export function tunnelPanel(el, { api, confirm = async (m) => window.confirm(m),
   el.addEventListener('submit', (e) => {
     e.preventDefault();
     const f = /** @type {HTMLFormElement} */ (e.target);
+    if (f.dataset.cx === 'addr') { addrTry = f.url.value.trim(); return own('POST', { url: addrTry }); }
     start({ mode: 'token', token: f.token.value.trim(), host: f.host.value.trim() });
   });
   return {
@@ -382,7 +416,7 @@ export function tunnelPanel(el, { api, confirm = async (m) => window.confirm(m),
       if (url && lastUrl && url !== lastUrl && s.tunnel.mode === 'quick') changed = true;
       if (url) lastUrl = url;
       if (s?.tunnel?.state === 'off') { changed = false; lastUrl = ''; }
-      const same = JSON.stringify(s?.tunnel) === JSON.stringify(setup?.tunnel) && s?.publicUrl === setup?.publicUrl;
+      const same = JSON.stringify(s?.tunnel) === JSON.stringify(setup?.tunnel) && s?.publicUrl === setup?.publicUrl && s?.publicUrlSource === setup?.publicUrlSource;
       setup = s;
       if (!same && !el.contains(document.activeElement)) render();
       else if (!el.innerHTML) render();

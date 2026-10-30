@@ -1844,7 +1844,7 @@ $('signout')?.addEventListener('click', signOut);
 const quietApi = (m, u, b) => api(m, u, b, { quiet: true });
 const askFirst = (msg) => { const i = msg.indexOf('?') + 1; return confirmDialog({ title: msg.slice(0, i) || msg, body: msg.slice(i).trim(), ok: LANG === 'es' ? 'Continuar' : 'Continue', danger: true }); };
 const keyP = keyPanel($('key-panel'), { api: quietApi, confirm: askFirst });
-const tunnelP = tunnelPanel($('tunnel-panel'), { api: quietApi, confirm: askFirst });
+const tunnelP = tunnelPanel($('tunnel-panel'), { api: quietApi, confirm: askFirst, onChange: (s) => { if (settingsSetup) settingsSetup = { ...settingsSetup, ...s }; } }); // an address set there survives the status refresh
 const textP = textApiPanel($('text-api-panel'), { api: quietApi, confirm: askFirst });
 const localP = isCrew ? null : localPanel($('local-offer'), { api: quietApi, quota: true });
 const accessP = isCrew ? null : accessPanel($('access-panel'), { api: quietApi, confirm: askFirst, toast, me });

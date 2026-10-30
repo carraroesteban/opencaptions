@@ -210,7 +210,7 @@ networks:
     external: true
 ```
 
-(the first two lines under the `opencaptions:` service, the rest at the end of the file; `cloudflare` is your tunnel's network). In the tunnel's public hostname, the service is `http://opencaptions:8080`. Keep `TRUST_PROXY` as it is in the file: it's what tells OpenCaptions the visitor came in over HTTPS. There's no token to paste in OpenCaptions: the first time you open the dashboard at your address (`https://subs.example.com/admin.html`), that becomes the public address, for the QR codes and links and after restarts (Settings → Public address says so). If the dashboard says it has no live connection, turn on **Network → WebSockets** for your domain in Cloudflare.
+(the first two lines under the `opencaptions:` service, the rest at the end of the file; `cloudflare` is your tunnel's network). In the tunnel's public hostname, the service is `http://opencaptions:8080`. Keep `TRUST_PROXY` as it is in the file: it's what tells OpenCaptions the visitor came in over HTTPS. There's no token to paste in OpenCaptions: the tunnel runs in its own container. The first time you open the dashboard at your address (`https://subs.example.com/admin.html`), that becomes the public address, for the QR codes and links and after restarts (Settings → Public address says so). Or type it yourself in **Settings → Public address → Use my own domain → Your address**: OpenCaptions checks that it answers there before using it. Cloudflare passes WebSockets by default; only if the dashboard says it has no live connection, check **Network → WebSockets** for your domain.
 
 Upgrade (it gets the newest release; your `.env`, `config/` and `data/` stay):
 

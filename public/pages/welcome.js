@@ -439,7 +439,7 @@ const localP = localPanel($('local-offer'), { api, onChange: (s) => { if (s.engi
 renderAi();
 
 // ---------- public address ----------
-const shareP = tunnelPanel($('share'), { api, onChange: (s) => { S = { ...S, tunnel: s.tunnel }; } });
+const shareP = tunnelPanel($('share'), { api, onChange: (s) => { S = { ...S, ...s }; } }); // the tunnel, or the organizer's own address
 shareP.update(S);
 // While the address is being set up, follow it (it takes a minute or two).
 setInterval(async () => {
