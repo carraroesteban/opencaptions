@@ -27,6 +27,11 @@ services:
       # - "9001-9010:9001-9010/udp"
       # RTMP listener, if a room pulls `rtmp://0.0.0.0:1935/live/<key>` (OBS/vMix "Custom" stream target).
       # - "1935:1935"
+    # Already run a Cloudflare Tunnel or a reverse proxy in another container? Remove `ports:` above, uncomment these two
+    # lines and the `networks:` block at the end, and point the tunnel at http://opencaptions:8080. The address you then
+    # open the dashboard at becomes the public one by itself (docs/deployment.md).
+    # networks:
+    #   - cloudflare
     volumes:
       - ./data:/app/data
       - ./config:/app/config
@@ -52,3 +57,8 @@ services:
       # Set TUNNEL_TOKEN in .env. (Not `${…:?}`: Compose checks that even when the tunnel profile is off.)
       TUNNEL_TOKEN: "${TUNNEL_TOKEN:-}"
     depends_on: [opencaptions]
+
+# networks:
+#   default:
+#   cloudflare:
+#     external: true   # your tunnel's network
