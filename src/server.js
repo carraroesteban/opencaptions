@@ -2175,11 +2175,15 @@ server.listen(config.port, config.host, () => {
     // A log (Docker, a cloud platform): no passwords in it. The browser there counts as another device, so hand over
     // a link that signs in once; the passwords are in Dashboard → Settings → Security and in data/secrets.json.
     const base = config.publicUrl || `http://localhost:${config.port}`;
-    if (claimState(!!setup.done) === 'open') console.log(`${tty.sym.arrow} Open ${base}/admin.html and choose the admin password (within the next hour)`);
-    else console.log(`${tty.sym.arrow} Open the dashboard (this link signs in once, within 30 minutes; restart for a new one): ${base}/admin.html?token=${startupSignIn()}`);
+    // In a container with no address yet, localhost may not even be published: the tunnel's address works too.
+    const or = process.env.OC_DOCKER && !config.publicUrl ? tty.c.gray(' (or the same page at your tunnel\'s or proxy\'s address)') : '';
+    if (claimState(!!setup.done) === 'open') console.log(`${tty.sym.arrow} Open ${base}/admin.html${or} and choose the admin password (within the next hour)`);
+    else console.log(`${tty.sym.arrow} Open the dashboard (this link signs in once, within 30 minutes; restart for a new one): ${base}/admin.html?token=${startupSignIn()}${or}`);
   }
   if (!tls && !config.publicUrl && config.host !== '127.0.0.1' && config.host !== 'localhost') {
-    console.log(`\n  ${tty.c.gray('Plain HTTP: fine on the venue Wi-Fi. For phones on any network, turn on Dashboard → Settings → Public address.')}`);
+    console.log(`\n  ${tty.c.gray(process.env.OC_DOCKER
+      ? 'Plain HTTP. Behind your own tunnel or HTTPS proxy, open the dashboard there once: that address becomes the public one. Otherwise: Dashboard → Settings → Public address.'
+      : 'Plain HTTP: fine on the venue Wi-Fi. For phones on any network, turn on Dashboard → Settings → Public address.')}`);
   }
   console.log(`  ${tty.c.gray('Press Ctrl+C to stop.')}\n`);
   // --open (the double-click starter): show the dashboard. On this computer it needs no password.
