@@ -140,6 +140,7 @@ fs.mkdirSync(config.dataDir, { recursive: true });
 // First-run setup (the dashboard's welcome wizard): what the organizer chose is kept in data/setup.json.
 const SETUP_FILE = path.join(config.dataDir, 'setup.json');
 const setup = (() => { try { return JSON.parse(fs.readFileSync(SETUP_FILE, 'utf8')); } catch { return { done: false }; } })();
+config.aiOff = !!setup.aiOff; // captions turned off from the dashboard stay off after a restart
 let initial = config.event.stages;
 // The rooms made in the dashboard (data/stages.json) win, unless the rooms written in event.json changed since the
 // dashboard last saved (someone edited them by hand): their fingerprint is saved with every change. So copying, re-creating
@@ -1421,14 +1422,26 @@ app.put('/api/ai/text', admin, async (req, res) => {
 // Which AI makes the captions (aiNow, below): one switch, the badge's and Settings → AI's: saved, so a restart keeps it.
 app.post('/api/ai/use', admin, (req, res) => {
   const use = String(req.body?.use || '');
-  if (!['cloud', 'local', 'auto'].includes(use)) return res.status(400).json({ error: 'use must be cloud|local|auto' });
+  if (!['cloud', 'local', 'auto', 'off', 'on'].includes(use)) return res.status(400).json({ error: 'use must be cloud|local|auto|off|on' });
+  // Off: no AI sessions in any room until they're turned back on, or an AI is chosen (a hosted server left running
+  // overnight). Rooms close theirs within a second (Stage#housekeeping); the server, the rooms' computers and the phones
+  // stay connected. On: as before.
+  if (use === 'off' || use === 'on') {
+    if ((use === 'off') !== config.aiOff) {
+      config.aiOff = use === 'off';
+      saveSetup({ aiOff: config.aiOff });
+      recordChange({ kind: 'ai.use', summary: config.aiOff ? 'Captions off: no AI until they are turned back on' : 'Captions back on' });
+    }
+    return res.json(aiNow());
+  }
   const hasKey = !!(config.geminiApiKey || config.vertex);
   if (use === 'local' && process.env.OC_DOCKER) return res.status(400).json(NO_LOCAL);
   if (use !== 'local' && !hasKey) return res.status(400).json({ error: 'connect a Gemini key first (Settings → AI)', code: 'no-key' });
   if (use === 'auto' && !failover) return res.status(400).json({ error: 'the offline backup needs Gemini as the main AI when OpenCaptions starts', code: 'no-backup' });
   if (use === 'auto' && process.env.OC_DOCKER) return res.status(400).json({ error: 'no offline backup on a server in Docker or the cloud: if the venue loses internet, phones lose this server too', code: 'no-backup-here' });
   const was = aiNow().use;
-  saveSetup({ ai: use });
+  if (config.aiOff) config.aiOff = false; // back on: rooms start their sessions at the next words
+  saveSetup({ ai: use, aiOff: false });
   if (use === 'local') {
     if (failover?.mode !== 'cloud') failover?.setMode('cloud'); // no switching back and forth by itself
     localMode.start(); // a backup already prepared becomes the main engine
@@ -1722,15 +1735,16 @@ function prepareBackup() { if (config.fallback !== 'local' && !process.env.OC_DO
 /**
  * Which AI makes the captions, the same answer for every page (the dashboard's badge, Settings → AI, Just for me).
  * use: the organizer's choice — 'cloud' (Gemini), 'local' (this computer: Apple's speech on a Mac, else Whisper) or
- * 'auto' (Gemini, and this computer while the internet is down); 'none' without a key and no choice yet.
- * now: what makes them at this moment — 'cloud', 'local' or 'simulated'.
+ * 'auto' (Gemini, and this computer while the internet is down), 'off' (no AI in any room until one is chosen again);
+ * 'none' without a key and no choice yet.
+ * now: what makes them at this moment — 'cloud', 'local', 'simulated' or 'off'.
  */
 function aiNow() {
   const hasKey = !!(config.geminiApiKey || config.vertex);
   const fo = failoverStatus();
   const lm = localMode.status();
-  const use = setup.localMode || (lm.state !== 'idle' && !lm.standby) ? 'local' : fo?.mode === 'auto' ? 'auto' : hasKey ? 'cloud' : 'none';
-  const now = config.engine === 'gemini' ? 'cloud' : config.engine === 'local' ? 'local' : 'simulated';
+  const use = config.aiOff ? 'off' : setup.localMode || (lm.state !== 'idle' && !lm.standby) ? 'local' : fo?.mode === 'auto' ? 'auto' : hasKey ? 'cloud' : 'none';
+  const now = config.aiOff ? 'off' : config.engine === 'gemini' ? 'cloud' : config.engine === 'local' ? 'local' : 'simulated';
   const asr = asrInfo();
   return {
     use, now,

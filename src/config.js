@@ -98,6 +98,7 @@ export const config = {
   engine,
   // The engine chosen at start. `engine` itself can change at runtime (offline backup, see src/failover.js).
   primaryEngine: engine,
+  aiOff: false, // captions turned off from the dashboard's AI switch (data/setup.json): no AI sessions in any room
   // Offline backup: 'local' = when the internet goes down, switch rooms from Gemini to the local engine
   // (Whisper + Ollama on this machine) and back when it returns. `npm run local -- --fallback` sets it up.
   fallback: (env.FALLBACK || event.fallback || '').toLowerCase(),

@@ -4,6 +4,10 @@ All notable changes to this project are documented in this file. The format foll
 
 ## [Unreleased]
 
+### Added
+
+- **Turn captions off, and back on, from the dashboard.** **Who makes the captions?** (the AI badge at the top, and Settings → AI) has **Turn captions off**: no AI session opens in any room, whatever sound arrives, until **Turn captions back on** (or another AI is chosen), and it stays off after a restart. The server, the rooms' computers and the phones stay connected, so a hosted server can be left running overnight without captioning an empty room.
+
 ### Fixed
 
 - **Rooms made in the dashboard no longer disappear after a restart.** They were used only while `data/stages.json` was newer than `config/event.json`, so re-creating, copying or editing that file (filling an empty `config` folder in Docker, a `git pull`, renaming the event there) silently brought back its one room, and the rooms' computers, phones and the Live tab found nothing. Now the dashboard's rooms win unless the rooms written in `event.json` were edited since; then those are used and the dashboard's list is kept in `data/stages.json.bak`. A server with a missing `config/event.json` starts with the shipped room instead of restarting forever.

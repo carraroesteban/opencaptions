@@ -1,6 +1,6 @@
 // The AI badge: which AI makes the captions right now, the same words on every organizer page (the dashboard's top
-// bar, Just for me), and for an admin the one switch between Gemini in the cloud, this computer, and Gemini with this
-// computer as a backup when the internet drops (POST /api/ai/use; the server's aiNow()).
+// bar, Just for me), and for an admin the one switch between Gemini in the cloud, this computer, Gemini with this
+// computer as a backup when the internet drops, and off (POST /api/ai/use; the server's aiNow()).
 import { esc } from '/common.js';
 import { LANG } from '/prefs.js';
 import { icon } from '/illustrations.js';
@@ -18,6 +18,9 @@ const T = {
     optAuto: 'Gemini, con esta computadora de respaldo', optAutoD: 'Gemini mientras haya internet; si se corta, sigue en esta computadora y vuelve sola.',
     needKey: 'Primero conectá una key de Gemini', forcedNote: 'OpenCaptions se inició en modo de prueba (--mock): los subtítulos son simulados aunque haya una key. Inicialo normalmente para usar la IA.',
     more: 'Más en Ajustes → IA', failed: 'No se pudo cambiar',
+    off: 'Subtítulos apagados', offWhere: 'sin IA', optOff: 'Apagar los subtítulos', optOn: 'Volver a prender los subtítulos',
+    optOffD: 'Sin subtítulos ni sesiones de IA hasta que los vuelvas a prender. El servidor, las computadoras de las salas y los celulares siguen conectados.',
+    optOnD: 'Como estaban: vuelven con las próximas palabras en cada sala.',
   },
   en: {
     cloud: 'Gemini', cloudWhere: 'in the cloud', local: (n) => (n === 'Apple' ? 'Apple speech' : 'Whisper'), localWhere: (apple) => (apple ? 'on this Mac' : 'on this computer'),
@@ -30,6 +33,9 @@ const T = {
     optAuto: 'Gemini, with this computer as backup', optAutoD: 'Gemini while there’s internet; if it drops, captions carry on on this computer and come back by themselves.',
     needKey: 'Connect a Gemini key first', forcedNote: 'OpenCaptions was started in test mode (--mock): captions are simulated even with a key. Start it normally to use the AI.',
     more: 'More in Settings → AI', failed: 'Couldn’t switch',
+    off: 'Captions off', offWhere: 'no AI', optOff: 'Turn captions off', optOn: 'Turn captions back on',
+    optOffD: 'No captions and no AI sessions until you turn them back on. The server, the rooms’ computers and the phones stay connected.',
+    optOnD: 'As they were: they start again with the next words in each room.',
   },
 };
 const t = T[LANG] || T.en;
@@ -37,6 +43,7 @@ let n = 0;
 
 /** What the badge says for the server's aiNow(): [icon, name, where, tone]. */
 function label(ai) {
+  if (ai.now === 'off') return ['pause', t.off, t.offWhere, 'warn'];
   if (ai.now === 'local' && ai.backup === 'on') return ['offline', t.local(ai.name), t.backupOn, 'warn'];
   if (ai.preparing) return ['refresh', t.preparing, '', ''];
   if (ai.now === 'cloud') return ['cloud', t.cloud, t.cloudWhere, 'ok'];
@@ -71,6 +78,7 @@ export function aiBadge(el, { api, settings = '', onChange = () => {} } = {}) {
       ${opt('cloud', t.optCloud, t.optCloudD, ai.hasKey, t.needKey)}
       ${ai.canLocal === false ? '' : opt('local', t.optLocal(ai.apple), t.optLocalD, true)}
       ${ai.canBackup ? opt('auto', t.optAuto, ai.backupPreparing === 'working' ? t.preparing : t.optAutoD, ai.hasKey, t.needKey) : ''}
+      <span class="ai-pop-sep" aria-hidden="true"></span>${ai.now === 'off' ? opt('on', t.optOn, t.optOnD, true) : opt('off', t.optOff, t.optOffD, true)}
       ${settings ? `<a class="ai-pop-more" href="${esc(settings)}">${esc(t.more)} →</a>` : ''}`;
   }
   pop?.addEventListener('click', async (e) => {

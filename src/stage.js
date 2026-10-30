@@ -216,8 +216,9 @@ export class Stage extends EventEmitter {
     if (config.musicGuard) this.voice.push(chunk);
     // Just for me hears a tab or a call its person chose, often played low: anything audible is worth captioning.
     const loud = lvl >= (this.id === 'me' ? 0.003 : config.speechRms);
-    // On a break or during music, sound isn't speech to caption: it doesn't wake the AI up.
-    const speech = loud && !this.brk && !this.music;
+    // On a break, during music or with captions turned off (the dashboard's AI switch), sound isn't speech to caption:
+    // it doesn't wake the AI up.
+    const speech = loud && !this.brk && !this.music && !config.aiOff;
     if (this.brk && loud && this.voice.state === 'voice') this.voiceInBreakMs += 100;
 
     if (speech) {
@@ -319,7 +320,7 @@ export class Stage extends EventEmitter {
 
   // ---------- engines ----------
   #ensureEngines() {
-    if (this.engines.size || this.destroyed) return;
+    if (this.engines.size || this.destroyed || config.aiOff) return;
     if (config.engine === 'gemini' && overBudget()) return; // the 'budget' alert says why
     if (this.idleClosed && this.talkSegments > 0) this.#newTalk('', true);
     this.idleClosed = false;
@@ -779,6 +780,7 @@ export class Stage extends EventEmitter {
       spend(usd);
     }
     if (this.engines.size && config.engine === 'gemini' && overBudget()) this.#stopEngines('the weekly AI budget is used up');
+    if (this.engines.size && config.aiOff) this.#stopEngines('captions turned off');
 
     // Stall watchdog: people are talking but a session produced nothing for a while → reconnect it.
     const primary = this.engines.get(this.sessionTargets[0]);

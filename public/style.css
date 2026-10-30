@@ -479,6 +479,7 @@ body:not(.advanced) [data-advanced] { display: none !important; }
 .ai-opt { display: grid; gap: 3px; text-align: left; padding: 10px 12px; border-radius: 12px; background: transparent; border: 1px solid transparent; font-weight: 400; }
 .ai-opt:hover:not(:disabled) { background: var(--fill); }
 .ai-opt.on { background: var(--fill); border-color: var(--line-strong); }
+.ai-pop-sep { height: 1px; margin: 4px 12px; background: var(--line); } /* Off: not one more AI */
 .ai-opt-t { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-weight: 700; font-size: 15px; }
 .ai-opt-t svg.i { color: var(--ok); }
 .ai-opt-d { font-size: 13px; color: var(--fg2); line-height: 1.45; }
