@@ -4,6 +4,10 @@ All notable changes to this project are documented in this file. The format foll
 
 ## [Unreleased]
 
+### Fixed
+
+- **Rooms made in the dashboard no longer disappear after a restart.** They were used only while `data/stages.json` was newer than `config/event.json`, so re-creating, copying or editing that file (filling an empty `config` folder in Docker, a `git pull`, renaming the event there) silently brought back its one room, and the rooms' computers, phones and the Live tab found nothing. Now the dashboard's rooms win unless the rooms written in `event.json` were edited since; then those are used and the dashboard's list is kept in `data/stages.json.bak`. A server with a missing `config/event.json` starts with the shipped room instead of restarting forever.
+
 ### Changed
 
 - **A new website.** A full-screen first picture with the headline over it and the languages a phone can follow drifting underneath (a button pauses them); the phone features told as a story, one picture beside the text that changes as you scroll; a grid of photo cards and numbers; the three steps on a line that draws itself; the prices first; the questions beside their heading. Every picture is a new illustration made with Higgsfield in one dark, cinematic style, with Spanish versions of the phones for the Spanish site, and no real event's name on any screen. The recorded talk player and the 30-second demo are gone (the guides' "30-second demo" links now open the live demo you can try on your phone). On phones every section stacks, and with reduced motion nothing moves.

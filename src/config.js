@@ -40,12 +40,16 @@ export function readSecretsFile(dir) {
   }
 }
 
+/** The room config/event.json ships with (the test keeps them the same). */
+export const SHIPPED_STAGES = [{ id: 'main', name: 'Main stage', source: 'auto', targets: ['es', 'en'] }];
 const eventPath = process.env.EVENT_CONFIG || 'config/event.json';
 // No config/event.json (in Docker, an empty ./config folder mounted over the image's hides it): start as the shipped
 // one does, with one room; everything else it sets is a default below. A damaged file, or a missing EVENT_CONFIG, stops.
 const event = !process.env.EVENT_CONFIG && !fs.existsSync(path.resolve(ROOT, eventPath))
-  ? { stages: [{ id: 'main', name: 'Main stage', source: 'auto', targets: ['es', 'en'] }] }
+  ? { stages: SHIPPED_STAGES }
   : readJson(eventPath);
+/** The rooms as written in event.json (before defaults are filled in): src/server.js tells whether someone edited them. */
+export const fileStages = event.stages || [];
 
 const env = process.env;
 // Agenda times like "14:30" are read in the event's time zone (Docker containers default to UTC).

@@ -12,7 +12,7 @@ import compression from 'compression';
 import { WebSocketServer } from 'ws';
 import QRCode from 'qrcode';
 import './preflight.js'; // first: a data folder it can't write to ends here, with the fix
-import { config, normalizeStage, ROOM_COLORS, ROOT, langName, setEngine, writeFileAtomic } from './config.js';
+import { config, normalizeStage, ROOM_COLORS, ROOT, langName, setEngine, writeFileAtomic, fileStages, SHIPPED_STAGES } from './config.js';
 import { Failover } from './failover.js';
 import { LocalMode } from './local/mode.js';
 import { checkKey, saveKey, keyInfo, looksLikeKey, readSecret, saveSecret } from './aikey.js';
@@ -61,6 +61,7 @@ const STAGES_FILE = path.join(config.dataDir, 'stages.json');
 function persistStages() {
   const defs = [...stages.values()].map((s) => s.def);
   writeFileAtomic(STAGES_FILE, JSON.stringify(defs, null, 2));
+  if (setup.roomsKey !== roomsKey) saveSetup({ roomsKey }); // what event.json's rooms were: see where the rooms load
 }
 
 /** Reject malformed room definitions coming from the API (ids end up in URLs, file names and metrics). */
@@ -134,16 +135,27 @@ function stopPull(id) {
   pulls.delete(id);
 }
 
-let initial = config.event.stages;
-// Stages edited from the dashboard are persisted in data/stages.json; they win only if newer than event.json.
-const eventFile = path.resolve(ROOT, process.env.EVENT_CONFIG || 'config/event.json');
-if (!process.env.STAGES && fs.existsSync(STAGES_FILE) && fs.statSync(STAGES_FILE).mtimeMs > (fs.statSync(eventFile, { throwIfNoEntry: false })?.mtimeMs ?? 0)) {
-  try { initial = JSON.parse(fs.readFileSync(STAGES_FILE, 'utf8')); } catch { /* use config */ }
-}
 fs.mkdirSync(config.dataDir, { recursive: true });
 // First-run setup (the dashboard's welcome wizard): what the organizer chose is kept in data/setup.json.
 const SETUP_FILE = path.join(config.dataDir, 'setup.json');
 const setup = (() => { try { return JSON.parse(fs.readFileSync(SETUP_FILE, 'utf8')); } catch { return { done: false }; } })();
+let initial = config.event.stages;
+// The rooms made in the dashboard (data/stages.json) win, unless the rooms written in event.json changed since the
+// dashboard last saved (someone edited them by hand): their fingerprint is saved with every change. So copying, re-creating
+// or touching event.json, or editing anything else in it, never hides the dashboard's rooms. Saved before fingerprints:
+// the newer file wins, but never event.json's untouched shipped room.
+const eventFile = path.resolve(ROOT, process.env.EVENT_CONFIG || 'config/event.json');
+const roomsKey = crypto.createHash('sha256').update(JSON.stringify(fileStages)).digest('base64url').slice(0, 16);
+if (!process.env.STAGES && fs.existsSync(STAGES_FILE)) {
+  const newer = fs.statSync(STAGES_FILE).mtimeMs > (fs.statSync(eventFile, { throwIfNoEntry: false })?.mtimeMs ?? 0);
+  const shipped = JSON.stringify(fileStages) === JSON.stringify(SHIPPED_STAGES);
+  if (setup.roomsKey ? setup.roomsKey === roomsKey : shipped || newer) {
+    try { initial = JSON.parse(fs.readFileSync(STAGES_FILE, 'utf8')); } catch { /* use config */ }
+  } else {
+    fs.renameSync(STAGES_FILE, `${STAGES_FILE}.bak`); // the next change would overwrite them
+    console.log(`  Rooms: the ones in ${path.relative(ROOT, eventFile)} changed, so they're used; the dashboard's are kept in ${STAGES_FILE}.bak`);
+  }
+}
 // The speech model for Gemini rooms, chosen in Settings (TRANSCRIBE_MODEL in .env fixes it, even empty or off):
 // Transcribe Live for text-mode rooms (the default, cheaper, no translated voice), or Live Translate. Read before the
 // rooms are made.

@@ -2,7 +2,7 @@
 
 OpenCaptions reads its configuration from four places, in this order of precedence (highest wins):
 
-1. **`data/stages.json`** — the room list as last saved by the production dashboard (`PATCH`/`POST`/`DELETE /api/stages/*`). The server uses it instead of `config/event.json` only when the `STAGES` environment variable is **not** set and the file is newer than `config/event.json`. Delete it (or touch `config/event.json`) to fall back to the file again.
+1. **`data/stages.json`** — the room list as last saved by the production dashboard (`PATCH`/`POST`/`DELETE /api/stages/*`). The server uses it instead of `config/event.json`'s rooms when the `STAGES` environment variable is **not** set, unless the `stages` written in `config/event.json` were edited since the dashboard last saved (each save keeps their fingerprint in `data/setup.json`). Re-creating, copying or touching `config/event.json`, or editing anything else in it, never hides the dashboard's rooms. When its `stages` were edited, those are used and the dashboard's list is kept in `data/stages.json.bak`. Delete `data/stages.json` to fall back to the file's rooms.
 2. **`STAGES` environment variable** — a compact override for the room list, handy for sharding stages across hosts. When set, it replaces `config/event.json`'s `stages` array entirely and `data/stages.json` is never consulted.
 3. **Environment variables / `.env`** — loaded with [dotenv](https://www.npmjs.com/package/dotenv) from a `.env` file in the project root (copy `.env.example` to start), then from the real process environment (which wins on conflicts). Most settings live here.
 4. **`config/event.json`** — the event's static defaults: branding, languages, per-stage rooms, and fallback values for any setting that also has an environment variable. An environment variable always overrides the matching `event.json` key.
@@ -29,7 +29,7 @@ Related docs: [Security](../security-guide.md) · [Event-day runbook](../operati
 | `CLOUDFLARED_PATH` | unset (`PATH`, then `local/bin/`, else downloaded into `local/bin/` on first use) | The `cloudflared` program used for the public address. The Docker image includes it. |
 | `HTTPS_CERT` / `HTTPS_KEY` | unset (plain HTTP) | Paths to a TLS certificate/key (e.g. from `mkcert`) to serve HTTPS directly. Both must be set together. Required for microphone capture from any host other than `localhost`, unless a TLS-terminating proxy sits in front. |
 | `TRUST_PROXY` | `loopback` | Express `trust proxy` setting — which upstream proxies' `X-Forwarded-*` headers to trust for `req.secure`/`req.ip`. Docker Compose overrides this to `uniquelocal`. |
-| `EVENT_CONFIG` | `config/event.json` | Path to the event config file (relative to the project root). Also determines which file's mtime `data/stages.json` is compared against. |
+| `EVENT_CONFIG` | `config/event.json` | Path to the event config file (relative to the project root). Also the file whose `stages` decide whether `data/stages.json` is used (see [precedence](#configuration-reference)). |
 | `DATA_DIR` | `data` | Directory for `stages.json`, `secrets.json`, and `transcripts/` (relative to the project root, or absolute). |
 | `FRESH` | unset | `1`: start from nothing, to test OpenCaptions as a first-time user. The data folder is a new temporary one, deleted when the server stops; `DATA_DIR` isn't read or touched, and `.env` still applies. Browsers that open it forget what they remembered for the old data folder (choices, tips already seen). Same as `--fresh` (`npm start -- --fresh`, `npm run local -- --fresh`). |
 
@@ -263,7 +263,7 @@ Loaded once at startup from the path in `EVENT_CONFIG` (default `config/event.js
 | `useInterim` | boolean | `true` | Overridden by `USE_INTERIM`. |
 | `vadSilenceMs` | number | `0` | Overridden by `VAD_SILENCE_MS`. |
 | `transcriptionMode` | `""` \| `"VERBATIM"` \| `"SMART"` | `""` | Overridden by `TRANSCRIPTION_MODE`. |
-| `stages` | array of stage objects | `[]` | The room list. Replaced entirely by `STAGES` when that env var is set, and superseded by `data/stages.json` once the dashboard has edited it (see [precedence](#configuration-reference) above). |
+| `stages` | array of stage objects | `[]` | The room list. Replaced entirely by `STAGES` when that env var is set, and superseded by `data/stages.json` once the dashboard has edited the rooms, until these `stages` are edited again (see [precedence](#configuration-reference) above). If `config/event.json` is missing (an empty `config` folder mounted in Docker), OpenCaptions starts with the one room it ships with and the defaults in this table. |
 
 ### Stage object
 
@@ -369,7 +369,7 @@ All under `DATA_DIR` (default `data/`), created on demand.
 
 | Path | Written by | Contents |
 |---|---|---|
-| `data/stages.json` | Every `POST`/`PATCH`/`DELETE /api/stages*` call | JSON array of the current stage definitions (same shape as `event.json`'s `stages`). Takes precedence over `config/event.json` on the next restart — see [precedence](#configuration-reference). |
+| `data/stages.json` | Every `POST`/`PATCH`/`DELETE /api/stages*` call | JSON array of the current stage definitions (same shape as `event.json`'s `stages`). Takes precedence over `config/event.json`'s rooms on the next restart, unless those were edited since — see [precedence](#configuration-reference). |
 | `data/setup.json` | The welcome wizard and the dashboard's Settings | `{ "done", "name", "locked", "tunnel", "mode", "eventDone", "languages", "removedLanguages", "updateCheck"? }`: whether first-run setup is finished, the event name (overrides `eventName` in `config/event.json`), whether Event mode is on, the public address to bring back after a restart (`{ "mode": "quick" \| "token", "host" }`), `event` or `personal` (Just for me), whether the event wizard was ever finished, the languages added to or removed from `config/event.json`'s, and `false` when **New versions** is turned off. |
 | `data/instance.json` | First startup with this data folder | `{ "id", "createdAt" }`: names this data folder. Pages read it from `GET /api/instance` and forget what the browser remembered for another one (after a fresh start, or a deleted `data/`). |
 | `data/sessions.json` | Signing in to the dashboard | Signed-in devices: `{ hash, pid, role, device, via, createdAt, lastSeen, expiresAt, ip }`. `hash` is the SHA-256 of the session cookie; the cookie itself is never stored. File mode `0600`. Delete it to sign everyone out. |
