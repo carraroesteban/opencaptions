@@ -145,7 +145,7 @@ export class CaptionTrack extends EventEmitter {
   #emit(final) {
     const c = this.cur;
     const lang = c.lang || this.channel;
-    const rawText = final ? c.raw.trim() : joinText(c.raw, this.interimText ? ' ' + this.interimText.trim() : '').trim();
+    const rawText = (final ? c.raw.trim() : joinText(c.raw, this.interimText ? ' ' + this.interimText.trim() : '').trim()).replace(GLUED, '$1 ');
     const text = this.glossary ? this.glossary.apply(rawText, this.channel, lang) : rawText;
     const seg = { id: c.id, channel: this.channel, lang, text, start: c.start, end: Math.max(c.end, c.start + 1200), final };
     if (final) {
@@ -156,6 +156,10 @@ export class CaptionTrack extends EventEmitter {
     this.emit('caption', seg);
   }
 }
+
+// Two sentences the AI glued inside one piece of text ("dibujamos.Y recién", "¿Llegamos?¡Sí!"): a word's end, then a
+// capital. Not acronyms ("EE.UU.", "S.A."), whose letter before the dot is a capital or stands alone.
+const GLUED = /(\p{Ll}{2}[.?!…])(?=[¿¡"“«]?\p{Lu})/gu;
 
 // Scripts written without spaces (Chinese, Japanese, Thai, Lao, Khmer, Burmese), as in public/smooth.js.
 const NO_SPACES = /[぀-ヿ㐀-鿿豈-﫿฀-๿຀-໿ក-៿က-႟]/;

@@ -2,8 +2,6 @@
 
 In this tutorial you run OpenCaptions on your own computer, watch simulated captions, then connect it to Gemini and caption two rooms at once. It takes about 10 minutes.
 
-<p align="center"><img src="../public/art/ob-welcome.webp" width="640" alt="An organizer opening the doors of an empty event hall, with captions on the stage screen" /></p>
-
 **You need:**
 
 - A computer running macOS, Linux or Windows.
@@ -110,7 +108,7 @@ npm run feed -- --stage room-b --input samples/talk-es.wav
 
 Room `main` receives English and shows Spanish captions. Room `room-b` receives Spanish and shows English captions. The dashboard shows both rooms, their latency and the estimated cost so far.
 
-On a room's card, tap **Host** under *Speaking*: new captions are labeled with that name on phones, in the transcript and in the caption files.
+On a room's card, click **Next talk**, give it a title and a **Speaker** (`Ana`), and click **Start the talk**: new captions are labeled with that name on phones, in the transcript and in the caption files. With an agenda, rooms name their talks and speakers by themselves.
 
 ## 6. Catch up and ask
 

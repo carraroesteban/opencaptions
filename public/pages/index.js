@@ -2,6 +2,7 @@
 import { getEvent, creditLink, t, UI, esc, langLabel, store } from '/common.js';
 import { prefsControls } from '/prefs.js';
 import { library, icon } from '/illustrations.js';
+import { lines } from '/lines.js';
 const $ = (id) => document.getElementById(id);
 $('prefs-slot').append(prefsControls({ langs: ['es', 'en', 'pt'] }));
 $('lib-illo').innerHTML = library;
@@ -65,3 +66,6 @@ async function render() {
 }
 render();
 setInterval(() => document.hidden || render(), 10000);
+
+// The home's drawn visual (unless the event put its own picture there: then it's an <img>).
+for (const cv of document.querySelectorAll('canvas.lines')) lines(cv);

@@ -25,6 +25,19 @@ Every update keeps your settings, passwords, rooms and transcripts: they live in
 - **Talk pages** open with chapters and key quotes, and preview as the talk when shared, where the transcript is public. They stay out of search engines unless `INDEX_TALKS=on`.
 - **A quiet line on the audience pages,** "Live captions by OpenCaptions · free for your event". Switch it off in **Settings → Event**.
 
+## 0.9.2 → 0.9.4
+
+**Nothing to change in your settings.**
+
+**Docker Compose, once.** Since 0.9.3 the compose file runs the published image, so `docker compose up -d` gets the newest release by itself. A compose folder from before needs the new `docker-compose.yml` once: `git pull`, then `docker compose up -d`. To keep building it yourself (`WITH_YTDLP=1`, or your own changes), use `docker compose up -d --build`.
+
+**What you'll notice:**
+
+- **A new server asks for the admin password in the browser** the first time, within an hour of starting. An install that already has a password never asks, and `ADMIN_TOKEN` in `.env` still skips it.
+- **Language and theme are two buttons** on every page: the globe for the language, and next to it Like the system, Light, Dark or High contrast.
+- **Every room has its color on every page:** the phones' list of rooms, the captions and the transcripts.
+- **Phones behind Cloudflare get a new version at once,** instead of keeping the old one for up to 4 hours.
+
 ## 0.9.1 → 0.9.2
 
 **Nothing to change in your settings.** Your `.env`, `config/` files and data folder work as they are.

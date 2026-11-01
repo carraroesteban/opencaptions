@@ -2,8 +2,6 @@
 
 > Versión en inglés y más detallada: [runbook.md](runbook.md). Seguridad: [../security-guide.md](../security-guide.md). Problemas: [troubleshooting.md](troubleshooting.md).
 
-<p align="center"><img src="../../public/art/ob-audio.webp" width="640" alt="Una prueba de sonido: micrófono, consola y una notebook con el medidor de nivel" /></p>
-
 Guía para operar OpenCaptions en cualquier evento, de una sala o de varias en paralelo (congresos, universidades, eventos corporativos y similares).
 Objetivo: **cero operadores dedicados durante las charlas**. Una persona de producción mira el panel y actúa solo si aparece una alerta.
 
@@ -30,7 +28,7 @@ Objetivo: **cero operadores dedicados durante las charlas**. Una persona de prod
 
    Se abre el panel y el asistente pregunta el nombre del evento, las salas y los idiomas, conecta Gemini con tu API key, crea la dirección pública y usa tu zona horaria para la agenda.
 2. **HTTPS** (para que los celulares de cualquier red lleguen a los subtítulos, y para usar micrófonos desde otras computadoras):
-   - **Panel → Ajustes → Dirección pública** (Cloudflare Tunnel, sin abrir puertos): un clic te da `https://xxxx.trycloudflare.com`. Esa dirección **cambia cada vez que se reinicia**: para el evento usá **tu propio dominio** (ej. `subs.tuevento.com`) con el token de un túnel creado en Cloudflare, en la misma pantalla.
+   - **Panel → Ajustes → Dirección pública** (Cloudflare Tunnel, sin abrir puertos): un clic te da `https://xxxx.trycloudflare.com`. Esa dirección **cambia cada vez que se reinicia**: para el evento usá **tu propio dominio** (ej. `subs.tuevento.com`) con el token de un túnel creado en Cloudflare, en la misma pantalla. Si tu túnel o tu proxy ya funciona por su cuenta, en **Usar mi propio dominio** escribí su dirección, sin token: OpenCaptions comprueba que se llega a él por ahí.
    - **Caddy** con dominio propio delante del server: `caddy reverse-proxy --from subs.tuevento.com --to localhost:8080`, y poné la dirección en `PUBLIC_URL`.
    - **Red local sin internet**: `mkcert` → `HTTPS_CERT=… HTTPS_KEY=… npm start` (hay que instalar la CA de mkcert en cada PC).
 
@@ -75,7 +73,7 @@ Como servicio: Linux → `deploy/opencaptions-agent@.service` (systemd, uno por 
 
 1. Conectar la salida de la consola (3.5 mm o placa USB) a la PC.
 2. Abrir en Chrome `https://<server>/ingest.html?stage=<sala>&token=<INGEST_TOKEN>`. La PC guarda la contraseña y la saca de la barra de direcciones; la conexión de audio usa un pase de un minuto, nunca la contraseña.
-   - Elegir **Entrada** (la placa), **Canal** (mono / L / R según la consola) y tildar **Auto‑iniciar**.
+   - Elegir **Entrada** (la placa), **Canal** (mono / L / R según la consola) y tildar **Empezar solo al abrir esta página**.
    - Para kiosco: `chrome --kiosk --autoplay-policy=no-user-gesture-required --use-fake-ui-for-media-stream "https://<server>/ingest.html?stage=<sala>&autostart=1"` (arranca sola tras un reinicio y acepta el permiso de micrófono).
 
 **Pantallas:**
@@ -89,7 +87,7 @@ Como servicio: Linux → `deploy/opencaptions-agent@.service` (systemd, uno por 
 Con alguien hablando al micrófono del escenario (o con `/demo.html?mode=mic&stage=<sala>` y un micrófono de mano):
 
 - [ ] El medidor de nivel se mueve con la voz, sin llegar al rojo (ajustar la ganancia).
-- [ ] En el panel la sala pasa a **EN VIVO**.
+- [ ] En el panel la sala pasa a **En vivo**.
 - [ ] Aparecen el texto original y la traducción en menos de ~5 s.
 - [ ] El proyector muestra los subtítulos y el QR se lee desde el fondo de la sala.
 - [ ] Un celular escanea el QR, elige idioma y recibe los subtítulos.
@@ -110,7 +108,7 @@ No hay que tocar nada más. El sistema:
 
 **Pausas:** tocá **Pausa** en la tarjeta de la sala (o la tecla **B** en la página de audio de la sala) para un intervalo, publicidad o lo que no haya que subtitular: las pantallas y los celulares muestran la pausa, cuándo vuelve la charla y cuál sigue. Termina con **Reanudar subtítulos**, **Siguiente charla** o cuando empieza la próxima charla de la agenda. Las pausas de la agenda (café, almuerzo: títulos sin orador, o las sesiones de servicio de Sessionize) empiezan solas cuando la sala queda en silencio, y terminan antes si alguien habla un rato. Con vMix u OBS conectados (**Integraciones → Pausas desde la mezcla de video**), pasar a una escena de pausa («Pausa», «Break», «Publicidad», «Volvemos»…) pausa los subtítulos de esa sala, y volver los reanuda.
 
-**Música:** la música de entrada, un video de un sponsor o una canción entre charlas se reconoce en unos 10 s y no se subtitula (♪ en las pantallas y el overlay, sin costo); los subtítulos vuelven apenas alguien habla. Si una charla con música de fondo se toma por música, tocá **Es una charla: subtitular igual**.
+**Música:** la música de entrada, un video de un sponsor o una canción entre charlas se reconoce en unos 10 s y no se subtitula (♪ en las pantallas y el overlay, sin costo); los subtítulos vuelven tras 3 s de una voz clara o de silencio, o tras unos 10 s en los que otros sonidos (una voz lejana o con eco) pesan más que la música. Si una charla con música de fondo se toma por música, tocá **Es una charla: subtitular igual** (en la tarjeta de la sala o en la página de audio).
 
 **Corregir un subtítulo:** **Ver detalles → Corregir subtítulos** muestra las últimas frases; corregí una y cambia al instante en todas las pantallas, los celulares y la transcripción. Si cambiaste una sola palabra (el nombre de un orador), te ofrece escribirla siempre así: se suma al glosario y se puede deshacer desde el Historial.
 
@@ -128,16 +126,19 @@ Con las alertas en el celular configuradas, las que duran te llegan estés donde
 
 | Alerta | Qué significa | Acción |
 |---|---|---|
-| **SIN SONIDO** | La computadora de la sala no está mandando sonido | Revisar el agente o que la página de sonido de la sala esté abierta (en la tarjeta: **Abrir la página de sonido**). Con «Empezar solo al abrir esta página» vuelve sola tras un reinicio. |
-| **ESPERANDO EL STREAM** | La sala espera el sonido de OBS o vMix y no llega nada | Empezar a transmitir a la dirección de la sala (en la tarjeta: **Ver la dirección**). |
+| **Todavía no llega sonido** | La computadora de la sala no está mandando sonido | Revisar el agente o que la página de sonido de la sala esté abierta (en la tarjeta: **Abrir la página de sonido**). Con «Empezar solo al abrir esta página» vuelve sola tras un reinicio. |
+| **Esperando el stream** | La sala espera el sonido de OBS o vMix y no llega nada | Empezar a transmitir a la dirección de la sala (en la tarjeta: **Ver la dirección**). |
 | **no llega audio** | Hay conexión pero no llega sonido | La red de la computadora; reiniciar el agente o recargar la página de sonido. |
-| **¿mic muteado?** | 60 s sin nada de señal (una sala en silencio no lo dispara) | Fader de la consola, cable o entrada equivocada. |
+| **¿mic muteado? (60s sin señal)** | 60 s sin nada de señal (una sala en silencio no lo dispara) | Fader de la consola, cable o entrada equivocada. |
 | **reconectando IA** | La sesión de Gemini se está reconectando | Esperar ~5 s; si persiste, **Ver detalles → Reconectar IA**. El audio queda en buffer (12 s). |
 | **latencia alta** | Transcripción más de 6 s atrás | Normal unos segundos tras reconectar; si persiste, **Reconectar IA** y revisar la red del server. |
-| **traducción limitada por cuota** | Límite de Flash‑Lite | Automático (usa Live). Si es frecuente: subir de plan o `MT_PARTIAL_MS=3000`. |
+| **traducción limitada por cuota → usando Live** | Límite de Flash‑Lite | Automático (usa Live). Si es frecuente: subir de plan o `MT_PARTIAL_MS=3000`. |
+| **la key de Gemini llegó a su límite** | Una key gratis se quedó sin cuota | Tocar la insignia de la IA y elegir esta computadora, o activar la facturación en AI Studio. |
+| **la IA está dando errores (ver el registro)** | Errores que no son de cuota (una key o un modelo equivocado, un servidor local roto): se pierden palabras o traducciones | Mirar el registro de la sala; **Reconectar IA**. |
+| **no se guardan las transcripciones (¿disco lleno?)** | Los subtítulos se ven pero no se pueden guardar | Liberar espacio ya, o la transcripción va a tener huecos. |
 | **usando el audio de respaldo** | La fuente principal se cortó o se quedó muda; está al aire el respaldo | Revisar la computadora principal, su cable y la salida de la consola. Vuelve sola tras 10 s de sonido. |
 | **hay alguien hablando durante la pausa** | Una pausa puesta a mano (o por la mezcla) mientras alguien habla | Si empezó la charla, **Reanudar subtítulos**. |
-| **MÚSICA · en pausa** | Suena música en la sala | Nada. Si es una charla, **Es una charla: subtitular igual**. |
+| **Música · en pausa** | Suena música en la sala | Nada: los subtítulos vuelven solos cuando termina. Si es una charla, **Es una charla: subtitular igual** (en la tarjeta o en la página de audio). |
 | Términos mal escritos | Nombres o siglas | **Corregir subtítulos** en la tarjeta de la sala y aceptar «escribirlo siempre así»; o Panel → Glosario → agregar una corrección. Se aplica al instante. |
 | Idioma equivocado | La charla es en otro idioma | la sala → **Ajustes** → *Idioma de la charla* → «Detectar automáticamente». |
 

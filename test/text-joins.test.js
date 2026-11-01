@@ -119,6 +119,18 @@ test('CaptionTrack keeps the spaces it is given (no word glued at a caption boun
   assert.equal(got.join(' '), 'I hear Maybe that\'s the monopoly telephone company in Syria who\'s watching every citizen in Syria and what they do on the internet. Or maybe somebody');
 });
 
+test('two sentences glued inside one fragment get their space; acronyms and file names keep their dots', () => {
+  // gemini-3.5-transcribe-live, 2026-10-31: "Escuchamos, después dibujamos.Y recién al final construimos." in one piece
+  const tr = new CaptionTrack({ channel: 'orig', clock: () => 0 });
+  const got = [], live = [];
+  tr.on('caption', (s) => (s.final ? got : live).push(s.text));
+  tr.interim('Primero escuchamos.Y');
+  tr.push('Escuchamos, después dibujamos.Y recién al final construimos. ¿Llegamos?¡Sí! Fuimos a EE.UU. con la S.A. y el archivo index.js.');
+  tr.flush();
+  assert.equal(live[0], 'Primero escuchamos. Y');
+  assert.equal(got.join(' '), 'Escuchamos, después dibujamos. Y recién al final construimos. ¿Llegamos? ¡Sí! Fuimos a EE.UU. con la S.A. y el archivo index.js.');
+});
+
 test('Transcribe Live in Japanese: the fragments join with no space, through the real engine', async () => {
   const was = { engine: config.engine, transcribeModel: config.transcribeModel };
   Object.assign(config, { engine: 'gemini', transcribeModel: 'gemini-3.5-transcribe-live' });

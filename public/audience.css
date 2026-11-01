@@ -36,7 +36,7 @@
 .au-bar .brand:has(> .ev-logo)::before { display: none; }
 .au-bar .ev-logo { height: 36px; max-width: min(200px, 50vw); }
 .au-bar > :last-child { margin-left: auto; } /* the bar's settings stay right when the home hides the brand */
-.au-eyebrow { display: inline-flex; align-items: center; gap: 8px; margin: 0 0 12px; font-size: 13px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--fg2); }
+.au-eyebrow { display: inline-flex; align-items: center; gap: 8px; margin: 0 0 12px; font-size: 13px; font-weight: 500; color: var(--fg2); }
 .au-icon-btn { display: grid; place-items: center; flex: none; width: 44px; height: 44px; padding: 0; border: 0; border-radius: 50%; background: none; box-shadow: none; color: var(--fg); text-decoration: none; transition: background-color var(--dur-fast) var(--ease-out), transform var(--dur-fast) var(--ease-out); }
 .au-icon-btn:hover { background: var(--fill); }
 .au-icon-btn:active { transform: scale(.92); }
@@ -47,7 +47,7 @@
 .au-btn:active { transform: scale(.95); }
 .au-btn svg.i { width: 20px; height: 20px; }
 .au-btn[aria-pressed='true'] { background: var(--primary-bg); color: var(--primary-fg); }
-.au-aa { font-family: var(--font-display); font-weight: 800; font-size: 18px; letter-spacing: -.01em; }
+.au-aa { font-family: var(--font-display); font-weight: 400; font-size: 18px; letter-spacing: -.01em; }
 .w-dock .prefs-btn { height: 48px; padding: 0 14px 0 12px; border-radius: 16px; font-size: 15px; } /* the globe and the theme: dock buttons like their neighbours */
 .w-dock .prefs-theme { width: 48px; padding: 0; }
 @keyframes au-pop { from { opacity: 0; transform: scale(.9); } }
@@ -57,10 +57,10 @@
 .au-set .au-row { display: grid; gap: 10px; padding: 14px 0; border-bottom: 1px solid var(--line); }
 .au-set .au-row:last-child { border-bottom: 0; }
 .au-set .au-row.inline { grid-template-columns: minmax(0, 1fr) auto; align-items: center; }
-.au-lbl { font-size: 15px; font-weight: 700; }
+.au-lbl { font-size: 15px; font-weight: 500; }
 .au-set .segmented > button { font-size: 14px; padding: 0 12px; }
 .au-stepper { display: inline-flex; align-items: center; gap: 2px; padding: 3px; border-radius: var(--pill); background: var(--fill); }
-.au-stepper button { width: 44px; height: 40px; padding: 0; border-radius: var(--pill); background: none; font-family: var(--font-display); font-weight: 800; line-height: 1; }
+.au-stepper button { width: 44px; height: 40px; padding: 0; border-radius: var(--pill); background: none; font-family: var(--font-display); font-weight: 400; line-height: 1; }
 .au-stepper button:hover { background: var(--bg2); }
 .au-stepper .a-sm { font-size: 14px; }
 .au-stepper .a-lg { font-size: 22px; }
@@ -88,7 +88,7 @@
 .as-note { display: flex; align-items: center; gap: 6px; margin-top: 14px; font-size: 12.5px; color: var(--fg2); }
 .as-note svg.i { width: 14px; height: 14px; }
 .as-chat { margin-top: 20px; }
-.as-h { display: flex; align-items: center; gap: 8px; margin: 0 0 10px; font-family: var(--font); font-size: 16px; font-weight: 700; letter-spacing: 0; }
+.as-h { display: flex; align-items: center; gap: 8px; margin: 0 0 10px; font-family: var(--font); font-size: 16px; font-weight: 500; letter-spacing: 0; }
 .as-thread { display: grid; gap: 10px; margin-bottom: 12px; }
 .as-thread:empty { display: none; }
 .as-q { justify-self: end; max-width: 85%; padding: 9px 15px; border-radius: 20px 20px 6px 20px; background: var(--primary-bg); color: var(--primary-fg); font-weight: 600; font-size: 15.5px; line-height: 1.4; animation: au-pop .3s var(--ease-out) both; transform-origin: 100% 100%; overflow-wrap: anywhere; }
@@ -116,8 +116,8 @@
 
 /* =================== watch.html: the captions on a phone =================== */
 body.watch { display: flex; flex-direction: column; height: 100dvh; overflow: hidden; --gutter: max(16px, calc((100vw - 880px) / 2)); }
-.w-head { position: relative; z-index: 3; padding: max(8px, env(safe-area-inset-top)) var(--gutter) 12px; background: var(--bg) radial-gradient(110% 120% at 20% 0, color-mix(in srgb, var(--accent) 12%, transparent), transparent 72%); }
-.w-head[class*='rc-'] { background: var(--bg) radial-gradient(110% 120% at 20% 0, color-mix(in srgb, var(--rc) 30%, transparent), transparent 72%); }
+.w-head { position: relative; z-index: 3; padding: max(8px, env(safe-area-inset-top)) var(--gutter) 12px; background: var(--bg); }
+.w-head[class*='rc-'] { background: var(--bg); }
 :root[data-theme='contrast'] .w-head { background: var(--bg); }
 .w-bar { display: flex; align-items: center; gap: 6px; min-height: 52px; }
 .w-bar .au-icon-btn { margin-left: -10px; }
@@ -142,7 +142,7 @@ body.watch { display: flex; flex-direction: column; height: 100dvh; overflow: hi
 .w-pause-ic svg.i { width: 22px; height: 22px; }
 .w-pause.music .w-pause-ic svg { animation: w-bob 1.8s ease-in-out infinite; }
 @keyframes w-bob { 50% { transform: translateY(-2px) rotate(-6deg); } }
-.w-pause b { display: block; font-family: var(--font-display); font-weight: 800; font-size: 20px; letter-spacing: -.015em; line-height: 1.15; }
+.w-pause b { display: block; font-family: var(--font-display); font-weight: 400; font-size: 20px; letter-spacing: -.015em; line-height: 1.15; }
 .w-pause > div > span { display: block; color: var(--fg2); font-size: 15px; margin-top: 2px; }
 .w-pause > div > .next { color: var(--fg); }
 .w-pause.music > span:last-child { font-size: 15px; color: var(--fg); }
@@ -173,8 +173,8 @@ body.watch { display: flex; flex-direction: column; height: 100dvh; overflow: hi
 /* Before the first words: connecting (lines to come), waiting, or the next talk */
 .w-empty { display: grid; justify-items: center; gap: 10px; max-width: 26em; margin: 0 auto; padding-top: 13vh; text-align: center; font-family: var(--font); font-size: 16px; line-height: 1.5; color: var(--fg2); animation: oc-in .5s var(--ease-out) both; }
 .w-empty .oc-logo { width: 58px; margin-bottom: 10px; }
-.w-empty .k { font-size: 12px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
-.w-empty .tt { font-family: var(--font-display); font-weight: 800; font-size: 27px; line-height: 1.12; letter-spacing: -.025em; color: var(--fg); text-wrap: balance; }
+.w-empty .k { font-size: 12px; font-weight: 500; }
+.w-empty .tt { font-family: var(--font-display); font-weight: 400; font-size: 27px; line-height: 1.12; letter-spacing: -.025em; color: var(--fg); text-wrap: balance; }
 .w-empty .when { display: inline-flex; align-items: center; gap: 7px; padding: 6px 13px; border-radius: var(--pill); background: color-mix(in srgb, var(--c-blue) 12%, transparent); color: var(--fg); font-size: 14px; font-weight: 600; }
 .w-empty .when svg.i { width: 15px; height: 15px; color: var(--c-blue); }
 .w-empty .s { margin-top: 6px; max-width: 22em; }
@@ -189,7 +189,7 @@ body.watch { display: flex; flex-direction: column; height: 100dvh; overflow: hi
 .w-bottom > * { pointer-events: auto; }
 .w-tolive {
   position: absolute; left: 50%; bottom: calc(100% + 14px); translate: -50% 0; display: inline-flex; align-items: center; gap: 8px;
-  height: 44px; padding: 0 18px; border-radius: var(--pill); background: var(--fg); color: var(--bg); font-weight: 700; box-shadow: var(--shadow-lg);
+  height: 44px; padding: 0 18px; border-radius: var(--pill); background: var(--fg); color: var(--bg); font-weight: 500; box-shadow: var(--shadow-lg);
   transition: opacity .3s var(--ease-out), translate .45s var(--ease-out);
 }
 .w-tolive:hover { background: var(--fg); opacity: .92; }
@@ -199,7 +199,7 @@ body.watch { display: flex; flex-direction: column; height: 100dvh; overflow: hi
   background: color-mix(in srgb, var(--bg2) 88%, transparent); -webkit-backdrop-filter: blur(18px) saturate(1.4); backdrop-filter: blur(18px) saturate(1.4);
   animation: oc-in .4s var(--ease-out) both;
 }
-.w-orig b { display: block; font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--fg2); margin-bottom: 3px; }
+.w-orig b { display: block; font-size: 11px; color: var(--fg2); margin-bottom: 3px; }
 /* The last two lines of the original, newest at the bottom (a column that clips its top). */
 .w-orig span { display: flex; flex-direction: column; justify-content: flex-end; height: calc(2 * 1.45em); overflow: hidden; font-size: 16px; line-height: 1.45; color: var(--translation); }
 .w-dock {
@@ -210,8 +210,8 @@ body.watch { display: flex; flex-direction: column; height: 100dvh; overflow: hi
 :root[data-theme='contrast'] .w-dock, :root[data-theme='contrast'] .w-orig { background: #000; }
 .w-ai {
   margin-left: auto; display: inline-flex; align-items: center; gap: 8px; height: 48px; padding: 0 18px; border: 0; border-radius: var(--pill);
-  background: var(--primary-bg); color: var(--primary-fg); font-size: 15.5px; font-weight: 700; white-space: nowrap;
-  box-shadow: 0 10px 24px -12px color-mix(in srgb, var(--primary-bg) 90%, transparent); animation: au-pop .45s var(--spring) both;
+  background: var(--primary-bg); color: var(--primary-fg); font-size: 15.5px; font-weight: 500; white-space: nowrap;
+  box-shadow: none; animation: au-pop .45s var(--spring) both;
 }
 .w-ai:hover { background: color-mix(in srgb, var(--primary-bg) 88%, var(--fg)); }
 /* 360 px phones (many Androids): the bar fits without cutting off its last button; a longer label shortens with "…" */
@@ -219,7 +219,7 @@ body.watch { display: flex; flex-direction: column; height: 100dvh; overflow: hi
 .w-ai .lbl { overflow: hidden; text-overflow: ellipsis; }
 @media (max-width: 380px) { .w-dock { gap: 6px; } .w-dock :is(.au-btn, .prefs-btn) { min-width: 44px; height: 44px; padding: 0 10px; } .w-dock .prefs-theme { width: 44px; padding: 0; } .w-ai { height: 44px; padding: 0 14px; font-size: 14.5px; } }
 .w-ai:active { transform: scale(.96); }
-.w-ai svg.i { width: 19px; height: 19px; color: var(--spark); animation: w-twinkle .7s var(--spring) .35s both; }
+.w-ai svg.i { width: 19px; height: 19px; color: currentColor; }
 @keyframes w-twinkle { from { opacity: 0; transform: scale(.4) rotate(-40deg); } }
 #listen .w-eq { display: none; }
 #listen[aria-pressed='true'] .w-eq { display: inline-flex; }
@@ -229,7 +229,7 @@ body.watch { display: flex; flex-direction: column; height: 100dvh; overflow: hi
 @keyframes w-eq { 0%, 100% { transform: scaleY(.3); } 50% { transform: scaleY(1); } }
 /* Phones: thumb-sized icons; "show original" and the floating window move into the Aa sheet / stay on computers. */
 @media (max-width: 480px) { #listen .lbl, #dual, #pip { display: none; } }
-@media (max-width: 340px) { #ai .lbl { display: none; } .w-ai { padding: 0 14px; } }
+@media (max-width: 340px) { .w-ai { padding: 0 14px; } }
 /* Tablets and computers: the bar floats, a capsule of glass in the middle. */
 @media (min-width: 700px) {
   .w-dock { width: max-content; max-width: calc(100vw - 32px); margin: 0 auto calc(18px + env(safe-area-inset-bottom)); padding: 7px; border: 1px solid color-mix(in srgb, var(--line-strong) 70%, transparent); border-radius: var(--pill); box-shadow: var(--shadow-lg); background: color-mix(in srgb, var(--bg2) 80%, transparent); }
@@ -247,9 +247,9 @@ body.watch { --toast-lift: var(--bottom-h, 70px); }
 .ix-hero h1 { font-size: clamp(36px, 7.4vw, 60px); line-height: 1.02; letter-spacing: -.035em; margin: 0 0 14px; }
 .ix-logo { height: 72px; max-width: min(100%, 360px); margin: 0 0 22px; }
 .ix-sub { margin: 0; max-width: 30em; color: var(--fg2); font-size: 18px; line-height: 1.5; }
-.ix-live { display: inline-flex; align-items: center; gap: 8px; margin: 0 0 16px; padding: 6px 14px 6px 12px; border-radius: var(--pill); background: color-mix(in srgb, var(--bad) 11%, transparent); font-size: 14px; font-weight: 700; animation: au-pop .5s var(--spring) both; }
-.ix-art { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; border-radius: 24px; border: 1px solid var(--line); background: var(--ink); box-shadow: var(--shadow); }
-.ix-h { display: flex; align-items: center; gap: 10px; margin: 30px 0 12px; font-family: var(--font); font-size: 13px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--fg2); }
+.ix-live { display: inline-flex; align-items: center; gap: 8px; margin: 0 0 16px; padding: 6px 14px 6px 12px; border-radius: var(--pill); background: color-mix(in srgb, var(--bad) 11%, transparent); font-size: 14px; font-weight: 500; animation: au-pop .5s var(--spring) both; }
+.ix-art { display: block; width: 100%; aspect-ratio: 4 / 3; object-fit: cover; border-radius: var(--radius-lg); border: 1px solid var(--line); background: var(--bg2); color: var(--fg); } /* 2.0: the lines (or the event's own picture) */
+.ix-h { display: flex; align-items: center; gap: 10px; margin: 30px 0 12px; font-family: var(--font); font-size: 13px; font-weight: 500; color: var(--fg2); }
 .ix-h::after { content: ''; flex: 1; height: 1px; background: var(--line); }
 .ix-rooms { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 380px), 1fr)); gap: 12px; }
 .ix-room {
@@ -262,10 +262,10 @@ body.watch { --toast-lift: var(--bottom-h, 70px); }
 .ix-room.live { box-shadow: var(--shadow); }
 /* Each room in its colour, the same as on the dashboard (server.js hueOf): a wash at the top, a swatch by its name,
    and its language buttons tinted. The captions pages keep the text itself plain. */
-.ix-room[class*='rc-'] { background-image: linear-gradient(180deg, color-mix(in srgb, var(--rc) 24%, transparent), transparent 110px); }
+.ix-room[class*='rc-'] { background-image: none; }
 .ix-room[class*='rc-'] h3 { display: flex; align-items: center; gap: 10px; }
 .ix-room[class*='rc-'] h3::before { content: ''; flex: none; width: 12px; height: 12px; border-radius: 4px; background: var(--rc); }
-.ix-room[class*='rc-'] .ix-lang:not(.mine) { background: color-mix(in srgb, var(--rc) 20%, var(--fill)); }
+.ix-room[class*='rc-'] .ix-lang:not(.mine) { background: var(--fill-hover); } /* 2.0: neutral; the room's colour is its dot */
 .ix-next svg.i { color: var(--c-blue); }
 :root[data-theme='contrast'] .ix-room[class*='rc-'] { background-image: none; }
 :root[data-theme='contrast'] .ix-room[class*='rc-'] .ix-lang:not(.mine) { background: var(--fill); }
@@ -312,7 +312,7 @@ body.watch { --toast-lift: var(--bottom-h, 70px); }
 .au-search input { width: 100%; height: 48px; padding: 0 16px 0 44px; border-radius: 14px; font-size: 16px; background: var(--bg2); }
 .tl-rooms { max-width: 100%; justify-self: start; }
 .tl-rooms > button { min-height: 36px; font-size: 14px; padding: 0 14px; flex: 0 0 auto; }
-.tl-day { position: relative; margin: 28px 0 10px; font-family: var(--font); font-size: 13px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--fg2); }
+.tl-day { position: relative; margin: 28px 0 10px; font-family: var(--font); font-size: 13px; font-weight: 500; color: var(--fg2); }
 .tl-list { display: grid; gap: 10px; }
 .tl-talk {
   display: grid; grid-template-columns: 84px minmax(0, 1fr) auto; gap: 4px 16px; align-items: start; padding: 16px 16px 16px 18px; border-radius: 20px;
@@ -321,7 +321,7 @@ body.watch { --toast-lift: var(--bottom-h, 70px); }
 }
 .tl-talk:hover { transform: translateY(-2px); box-shadow: var(--shadow); border-color: var(--line-strong); }
 .tl-talk:active { transform: scale(.99); }
-.tl-talk[class*='rc-'] { border-left: 4px solid var(--rc); } /* its room's colour, as on the list of rooms */
+.tl-talk[class*='rc-'] { border-left: 2px solid var(--rc); } /* its room's colour, as on the list of rooms */
 .tl-talk[class*='rc-'] .tl-room { display: inline-flex; align-items: center; gap: 6px; }
 .tl-talk[class*='rc-'] .tl-room::before { content: ''; width: 9px; height: 9px; border-radius: 3px; background: var(--rc); }
 .tl-when { display: grid; gap: 2px; padding-top: 2px; font-variant-numeric: tabular-nums; }
@@ -353,7 +353,7 @@ body.watch { --toast-lift: var(--bottom-h, 70px); }
 .tk-head h1 { font-size: clamp(30px, 5.4vw, 50px); line-height: 1.05; letter-spacing: -.035em; margin: 0 0 16px; }
 .tk-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; color: var(--fg2); font-size: 15px; }
 .tk-who { display: inline-flex; align-items: center; gap: 10px; color: var(--fg); font-weight: 600; }
-.tk-ini { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; background: var(--primary-bg); color: var(--primary-fg); font: 800 15px/1 var(--font-display); }
+.tk-ini { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; background: var(--primary-bg); color: var(--primary-fg); font: 400 15px/1 var(--font-display); }
 .tk-meta .sep { width: 4px; height: 4px; border-radius: 50%; background: var(--line-strong); }
 .tk-actions { display: flex; gap: 8px; margin-top: 22px; overflow-x: auto; scrollbar-width: none; padding-bottom: 2px; }
 .tk-actions::-webkit-scrollbar { display: none; }
@@ -394,7 +394,7 @@ details.dl .menu a:hover { background: var(--fill); }
 #doc .para:hover .ts, #doc .ts:focus-visible { opacity: 1; }
 #doc .ts:hover { color: var(--fg); }
 #doc p { margin: 0; }
-#doc .spk { display: block; margin-bottom: 2px; font-family: var(--font); font-size: 13px; letter-spacing: .06em; text-transform: uppercase; color: var(--fg2); }
+#doc .spk { display: block; margin-bottom: 2px; font-family: var(--font); font-size: 13px; color: var(--fg2); }
 #doc .para.flash { animation: tk-flash 1.8s var(--ease-out); }
 @keyframes tk-flash { 0% { background: color-mix(in srgb, var(--hl) 50%, transparent); box-shadow: 0 0 0 8px color-mix(in srgb, var(--hl) 50%, transparent); } 100% { background: transparent; box-shadow: 0 0 0 8px transparent; } }
 #doc .partial { color: var(--fg2); }
@@ -485,3 +485,8 @@ dialog.tk-del { max-width: min(440px, calc(100vw - 32px)); }
 /* "Live captions by OpenCaptions · free for your event" (common.js creditLink). */
 .oc-credit { display: inline-block; margin-top: 18px; font-size: 13px; color: var(--fg2); text-decoration: underline; text-decoration-color: var(--line-strong); text-underline-offset: 3px; }
 .sheet > .oc-credit { display: block; text-align: center; }
+
+/* 2.0: the phone toolbar is one family: quiet filled buttons (the outlined pill is for pages, not this bar) */
+.w-dock :is(.au-btn, .prefs-btn, .prefs-theme) { background: var(--fill-hover); border-color: transparent; }
+/* Narrow phones: the AI button shows its sparkle only; the label stays for screen readers (it is the button's name) */
+@media (max-width: 440px) { #ai .lbl { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; } #ai { padding: 0 16px; } }

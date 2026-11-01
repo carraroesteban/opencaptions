@@ -2,8 +2,6 @@
 
 OpenCaptions is open-source software (MIT license) that captions and translates talks live, at any event: one room or many at the same time. This page is the one-page summary for organizers, sponsors, judges and new contributors. For hands-on steps, start with [Getting started](getting-started.md).
 
-<p align="center"><img src="../public/art/audience.webp" width="640" alt="Three people in the audience reading captions in different languages on their phones" /></p>
-
 ## The problem
 
 At conferences, universities, public meetings and festivals, sessions often run in parallel across several rooms and in more than one language. People who don't speak the talk's language, who are deaf or hard of hearing, or who watch the stream remotely miss content.
@@ -90,7 +88,7 @@ The design details are in [Architecture](architecture.md), and the reasons behin
 | Caption a recording | Implemented; a 58-second talk takes about 20 seconds in local mode on a MacBook Pro (M3 Pro); not yet measured with Gemini ([Caption a recording](recording.md)) |
 | Local mode on a Mac (Apple's speech recognition and translation) | Implemented, the default on Macs with Apple chips and macOS 26+; measured on a MacBook Pro M3 Pro against Whisper: about as accurate, first words sooner, about 60 times less processor time, no download. One room measured ([Local mode](local.md#apples-speech-recognition-compared-with-whisper)) |
 | Local mode (Whisper + Ollama) | Implemented, also from a button in the app (captions about a minute after the click on a MacBook Pro M3 Pro; translations about 5½ more minutes the first time, while the 3.1 GB model downloads); measured on CPUs with the bundled speech server (one room). GPU and Neural Engine backends, and several rooms per machine, not measured yet ([Local mode](local.md#measured-results)) |
-| Automated tests | About 300 tests on Linux, macOS and Windows: captions, exports, live corrections, breaks, recordings, restarts, sign-in and roles, security rules, alerts, reconnection edge cases, the assistant, the agenda, AI assistants over MCP, local mode, and an end-to-end test that replays a recorded Gemini session. Every page is checked against WCAG 2.2 AA (`npm run a11y`). `npm run local -- --check` tests local models end to end. |
+| Automated tests | More than 300 tests on Linux, macOS and Windows: captions, exports, live corrections, breaks, recordings, restarts, sign-in and roles, security rules, alerts, reconnection edge cases, the assistant, the agenda, AI assistants over MCP, local mode, and an end-to-end test that replays a recorded Gemini session. Every page is checked against WCAG 2.2 AA (`npm run a11y`). `npm run local -- --check` tests local models end to end. |
 | Version | 1.0.0. Changes, and anything breaking, are listed in the [changelog](../CHANGELOG.md); [upgrade notes](upgrading.md). |
 
 ## Roadmap
@@ -100,13 +98,14 @@ The design details are in [Architecture](architecture.md), and the reasons behin
 3. **Telling voices apart** automatically, so transcripts can say who said what without an agenda.
 4. **Local mode:** closer to the cloud's delay on computers other than Macs (today about 5–10 s behind it on a laptop's processor; on a Mac, Apple's speech shows first words in about 1 s), measure several rooms per machine, and a local translated voice on computers other than Macs.
 
-## New in 0.9.2
+## New in 1.0
 
-- Every computer needs a Node.js with the October 2026 security fixes; the apps get one by themselves.
-- The Mac and Windows apps update themselves from their menu (**Check for Updates…**).
-- Original captions without glued words or stray capitals.
-- Talks over loud music are captioned instead of paused.
-- A room can list the languages its talks can be in, so automatic detection chooses only among them.
+- The slide on every phone, its text translated into the reader's language, when the room's computer shares it (**Share slides** on its audio page).
+- Tap any word in the captions to have it explained in plain words, from what the speaker said.
+- **Ask the whole event:** one question across every room and talk, answered with links to the exact moment.
+- Every talk has its own page, opening with its chapters and key quotes, ready to share.
+- One phone can run a room: its audio page shows the audience's QR code on the same screen.
+- **Try it live** in a browser, with nothing to install.
 
 Every version's changes are in the [changelog](../CHANGELOG.md).
 

@@ -2,8 +2,6 @@
 
 In local mode, speech recognition and translation run on your own computer, or on a machine on your network. There's no API key and no cost per hour, and the room's audio never leaves the building (unless a room [plays its sound to phones](accessibility.md#hearing-the-room-on-a-phone) and the server has a public address). It works without internet once the models are downloaded.
 
-<p align="center"><img src="../public/art/local.webp" width="640" alt="A laptop running the AI in a small room, without internet" /></p>
-
 Everything else stays the same: the audience page, the projector, the overlay, transcripts, the agenda and the dashboard.
 
 | | Gemini (default) | Local mode |
@@ -16,13 +14,13 @@ Everything else stays the same: the audience page, the projector, the overlay, t
 | Rooms per server | 30 tested on one laptop | About one per computer today (see [Limits](#limits)) |
 | Translated voice 🎧 | Gemini's natural voice | On a Mac with Apple's speech: the Mac's own voice reads each translated sentence, like AirPods' Live Translation. Elsewhere: the phone reads the translated captions with its own voice |
 
-Local mode is new. Use it for small events, rooms without internet, sensitive talks, or to try OpenCaptions without an account. For a multi-room conference, Gemini is still the tested option.
+Local mode has been measured with one room per computer. Use it for small events, rooms without internet, sensitive talks, or to try OpenCaptions without an account. For a multi-room conference, Gemini is still the tested option.
 
 ## Without a terminal: one button
 
 In the desktop app (or any OpenCaptions started with `npm start`), you don't need `npm run local`. Three places offer the same button:
 
-- the welcome wizard's AI step, and the **Just for me** page, when there's no Gemini key: **No key? Run it on this computer (free, slower)**;
+- the welcome wizard's AI step, and the **Just for me** page, when there's no Gemini key: **No key? Run it on this computer (free, slower)**, or **No key? Start free on this Mac** on a Mac with Apple's speech recognition;
 - the dashboard, when a free Gemini key reaches its limit: a banner, **Your free Gemini key reached its limit. Continue for free on this computer?**
 
 One click, and the server prepares everything while it keeps running, with a progress bar on the page:
@@ -106,7 +104,7 @@ This prepares the speech server and the text model exactly as `npm run local` do
 
 - **Internet goes down:** after about 15 seconds without a connection, every room switches to the local engine. Captions pause for a few seconds while the rooms restart, then continue. The dashboard shows a *No internet* banner.
 - **Internet comes back:** after a minute of stable connection, the rooms switch back to Gemini on their own.
-- **Manual control:** the AI selector in the dashboard's **Settings → AI → AI and offline backup** switches between *Automatic*, *Always in the cloud* and *Always this computer*. `POST /api/engine` with `{"mode": "auto" | "cloud" | "local"}` does the same. *Always this computer* can only be picked while the Whisper speech server and Ollama are running; a server started without `--fallback` says so there, with the command. The dashboard never starts them itself.
+- **Manual control:** the AI selector in the dashboard's **Settings → AI → AI and offline backup** switches between *Gemini, with this computer as backup*, *Always in the cloud* and *Always this computer*. `POST /api/engine` with `{"mode": "auto" | "cloud" | "local"}` does the same. *Always this computer* can only be picked while the Whisper speech server and Ollama are running; a server started without `--fallback` says so there, with the command. The dashboard never starts them itself.
 
 To set it up without the launcher, run Ollama and a speech server yourself (see [Use your own servers](#use-your-own-servers)) and set `FALLBACK=local` in `.env`, or `"fallback": "local"` in `config/event.json`.
 

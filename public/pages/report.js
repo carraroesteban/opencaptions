@@ -90,7 +90,7 @@ async function load() {
         <td class="n"><span class="len">${esc(dur(x.durationMs))}<i aria-hidden="true"><b data-w="${Math.round((x.durationMs / longest) * 100)}"></b></i></span></td><td class="n">${esc(num(x.words))}</td><td class="n">${esc(num(x.peakViewers))}</td>
         <td class="n">${esc(num(x.viewerMinutes))}</td><td class="n">${esc(money(x.costUsd))}</td></tr>`).join('')}</tbody>
     </table></div></section>`;
-  }).join('') : `<div class="empty rise"><img src="/art/report.webp" alt="" width="1200" height="900" /><p>${esc(t.none)}</p></div>`;
+  }).join('') : `<div class="empty rise"><p>${esc(t.none)}</p></div>`;
   // The length bars grow in after they're on the page (a width set in the markup would just appear).
   requestAnimationFrame(() => requestAnimationFrame(() => { for (const b of $('rooms').querySelectorAll('[data-w]')) b.style.width = `${b.dataset.w}%`; }));
   $('foot').textContent = t.foot(new Date(r.generatedAt).toLocaleString(LANG, { dateStyle: 'long', timeStyle: 'short' }));

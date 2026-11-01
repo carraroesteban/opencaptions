@@ -2,8 +2,6 @@
 
 This page lists what OpenCaptions needs to run, per role. OpenCaptions has three roles, which can share a machine or run on separate ones:
 
-<p align="center"><img src="../public/art/setup.webp" width="640" alt="A sound desk plugged into a laptop through a small audio interface" /></p>
-
 - **Server**: the Node.js process that talks to Gemini and serves every page and socket.
 - **Venue PC**: one per room. It takes audio from the sound desk and sends it to the server. It isn't needed when the server pulls a stream from vMix or OBS.
 - **Displays and audience**: projectors, the vMix/OBS overlay and phones. They only need a browser.
@@ -45,6 +43,7 @@ In [local mode](local.md), speech recognition (Whisper) and translation (an open
 | Memory | About 6 GB free with the defaults (Whisper `small`, `gemma3:4b`). 16 GB of RAM in total is comfortable. |
 | Disk | About 5 GB for the models, downloaded once into `local/models` and Ollama's folder. |
 | Software | [Ollama](https://ollama.com/download) for the text model. The speech engine installs itself on first use; WhisperKit (`brew install whisperkit-cli`) or a whisper.cpp build are optional and faster on a Mac. |
+| Mac with macOS 26+ | On an Apple chip, local mode uses Apple's own speech recognition and translation instead of Whisper: no model to download, and Ollama only for summaries and questions ([details](local.md#on-a-mac-apples-speech-recognition-and-translation)). |
 | Network | Internet only for the first download. After that, none: rooms, phones and screens only need your local network. |
 | Rooms | About one per computer today. Shard rooms across computers for more. |
 

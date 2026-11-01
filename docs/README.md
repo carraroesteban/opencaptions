@@ -2,8 +2,6 @@
 
 OpenCaptions is free, open-source software for live captions and translation at any event, from one room to many at the same time. Find yourself below and start at the top of your list.
 
-<p align="center"><img src="../public/art/hero.webp" width="640" alt="An illustration of a conference: the big screen shows the live caption, and people in the audience read it on their phones in their own language" /></p>
-
 ## Organizers: trying it out and planning an event
 
 | Page | Read it when you want to… |
@@ -34,7 +32,7 @@ OpenCaptions is free, open-source software for live captions and translation at 
 |---|---|
 | [Requirements](requirements.md) | Check operating systems, hardware, network and accounts. |
 | [Deployment](deployment.md) | Choose between a venue computer and a cloud server, then install with the app, Docker, Node.js or a system service; updates and backups. |
-| [Upgrading](upgrading.md) | Update any kind of install, and what changes in 0.9.2. |
+| [Upgrading](upgrading.md) | Update any kind of install, and what changes in each version (1.0 included). |
 | [Networking](networking.md) | Know which ports and domains are used, and what to do when the venue network blocks something. |
 | [Security guide](security-guide.md) | The threat model, who can see what, and the hardening checklist. |
 | [Local mode](local.md) | Run speech recognition and translation on your own computer: no API key, no internet, no cost per hour; and the offline backup. |

@@ -2,7 +2,7 @@
 
 ## Supported versions
 
-OpenCaptions is pre-1.0. Security fixes go to the latest release on the `main` branch.
+Security fixes go to the latest release (1.x) on the `main` branch; older releases don't get them. Please check that the problem is still there in the latest release before reporting ([how to update](../docs/upgrading.md)).
 
 ## Reporting a vulnerability
 

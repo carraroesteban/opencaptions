@@ -54,7 +54,7 @@ function render() {
   if (!list.length) {
     $('list').innerHTML = q || room
       ? `<div class="empty-state tl-none"><p>${esc(t('noResults'))}</p></div>`
-      : `<div class="empty-state tl-none"><img src="/art/empty-library.webp" alt="" width="1200" height="900" /><p>${esc(t(closed ? 'libPrivate' : 'noTalks'))}</p></div>`;
+      : `<div class="empty-state tl-none"><p>${esc(t(closed ? 'libPrivate' : 'noTalks'))}</p></div>`;
     return;
   }
   // The search, highlighted in the titles and names (matched on the raw text, each piece escaped).

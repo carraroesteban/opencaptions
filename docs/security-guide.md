@@ -128,7 +128,7 @@ Three passwords, each with its own job:
 | **Crew** (`CREW_TOKEN`) | The dashboard's live controls only: start the next talk, rename the current one, reconnect a room, stop a pull, the offline-backup switch; reading the status, transcripts and history. Never the setup, Settings or Event mode. | Volunteers and technicians |
 | **Ingest** (`INGEST_TOKEN`) | Sending a room's audio. It doesn't open the dashboard. | Room computers |
 
-Any that isn't set is generated on first start (24 random characters), stored in `data/secrets.json` (file mode 600) and printed in the startup screen.
+Any that isn't set is generated on first start (24 random characters), stored in `data/secrets.json` (file mode 600) and shown in the startup screen when the server runs in a terminal. They never go to a log (Docker, a cloud platform): there it prints a link that signs in once, and a brand-new install asks for the admin password in the browser instead, within an hour of starting.
 
 **Room links** spare room computers the ingest password. An admin makes one in the room's **Sound → Link for the computer next to the stage** (or the wizard's step 7): `https://<server>/ingest.html?stage=<room>&link=<code>`, also as a QR code. Opening it signs that one browser in with a session that can send audio and nothing else (no dashboard, no status, no setup). The code is random (144 bits), works **once**, expires after **30 minutes**, is kept only as a hash in memory (a restart voids unused ones), and leaves the address bar as soon as the page reads it. A browser that can already send audio doesn't use it up. Each link made is recorded in the History, and the session it creates is listed in **Settings → Security → Signed-in devices** as "Room computer · <room>", where it can be signed out. Like the ingest password, it isn't tied to one room. Treat an unused link like the password: send it only to the person at that computer, and make a new one if it leaked.
 
@@ -176,7 +176,7 @@ Keep password sign-in on at events unless you're sure of the venue's internet: i
 Every response includes:
 
 ```
-Content-Security-Policy: default-src 'self'; script-src 'self' https://www.youtube.com https://s.ytimg.com; script-src-attr 'none'; style-src 'self' 'sha256-…'; style-src-attr 'none'; font-src 'self' data:; img-src 'self' data: https://i.ytimg.com; media-src 'self' blob:; worker-src 'self' blob:; connect-src 'self' ws: wss:; frame-src 'self' https://www.youtube.com https://www.youtube-nocookie.com; frame-ancestors 'self'; base-uri 'none'; form-action 'self'; object-src 'none'
+Content-Security-Policy: default-src 'self'; script-src 'self'; script-src-attr 'none'; style-src 'self' 'sha256-…'; style-src-attr 'none'; font-src 'self' data:; img-src 'self' data:; media-src 'self' blob:; worker-src 'self' blob:; connect-src 'self' ws: wss:; frame-src 'self'; frame-ancestors 'self'; base-uri 'none'; form-action 'self'; object-src 'none'
 X-Content-Type-Options: nosniff
 Referrer-Policy: no-referrer
 Permissions-Policy: microphone=(self), camera=(), geolocation=(), payment=(), usb=()
@@ -186,6 +186,8 @@ X-Frame-Options: SAMEORIGIN
 Strict-Transport-Security: max-age=31536000   (only over HTTPS)
 ```
 
+Only the demo page (`/demo.html`) adds YouTube's player to `script-src`, `img-src` and `frame-src` (`https://www.youtube.com`, `https://s.ytimg.com`, `https://i.ytimg.com`, `https://www.youtube-nocookie.com`).
+
 Both scripts and styles are strict: only files from this server run or apply, plus each page's own `<style>` block, allowed by its hash (`'sha256-…'`, computed when the server starts). There are no inline scripts, event handlers or `style=""` attributes; `npm test` fails if one is added. So injected markup can neither run code nor restyle a page, for example to hide a warning or draw a fake button over a real one.
 
 To embed pages in another site, set `FRAME_ANCESTORS`, for example `'self' https://www.example.com`.
@@ -193,7 +195,7 @@ To embed pages in another site, set `FRAME_ANCESTORS`, for example `'self' https
 ## Data flow and privacy
 
 ```
-Room audio ──(WSS/TLS)──► OpenCaptions server ──(TLS)──► Google Gemini (Live Translate + Flash-Lite)
+Room audio ──(WSS/TLS)──► OpenCaptions server ──(TLS)──► Google Gemini (Transcribe Live or Live Translate, + Flash-Lite)
                                │
                                ├──► viewers / screens / overlays (WSS/TLS): caption text (+ translated voice if enabled)
                                ├──► phones listening (WSS/TLS): the room's own sound, only in rooms that have it on

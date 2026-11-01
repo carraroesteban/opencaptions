@@ -32,11 +32,11 @@ There's nothing to press. Watch the dashboard (**Tools → Floating window** kee
 
 | You see | Do |
 |---|---|
-| **No sound yet** / **Muted?** | Check the cable, the desk fader and the room computer. |
+| **No sound yet** / **mic muted? (no signal for 60 s)** | Check the cable, the desk fader and the room computer. |
 | A card turns orange: a talk is running over | Press **Start "…"** when the next speaker begins, or let it switch at the next pause. |
 | A name is misspelled | **See details → Fix captions**, and accept "always write it this way". |
 | Wrong language | The room → **Settings → Talk language → Detect automatically**. |
-| Walk-in music or a video | Nothing: it's not captioned. A talk taken for music: **It's a talk: caption anyway**. |
+| Walk-in music or a video | Nothing: it's not captioned. A talk taken for music: **It's a talk: caption anyway** (on the card or the audio page). |
 | A coffee break | **Break** on the card, or let the agenda do it. |
 | The venue's internet drops | With the offline backup, captions move to this computer by themselves. Without it, they come back when the internet does. |
 

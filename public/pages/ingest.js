@@ -238,6 +238,7 @@ function stop(key = 'stopped', again = false, tone = '') {
   running = false;
   live.set(false);
   $('brk').classList.add('hidden');
+  $('musicok').classList.add('hidden');
   $('slides').classList.add('hidden');
   stopSlides();
   sock?.close(); sock = null;
@@ -307,6 +308,9 @@ function onPcm(buf) {
 let onBreak = false;
 const toggleBreak = () => sock?.send({ type: 'break', on: !onBreak });
 $('brk').onclick = toggleBreak;
+// Music paused the room while someone talks (a talk with a soundtrack, a voice the detector can't tell): caption anyway.
+$('musicok').innerHTML = `${icon('play')}<span>${esc(tr('Es una charla: subtitular igual'))}</span>`;
+$('musicok').onclick = () => sock?.send({ type: 'music', caption: true });
 document.addEventListener('keydown', (e) => {
   if ((e.key === 'b' || e.key === 'B') && running && !e.target.closest('input, select, textarea') && !e.metaKey && !e.ctrlKey) toggleBreak();
 });
@@ -331,6 +335,7 @@ function onStatus(m) {
   else if (m.music) setState('music', 'ok');
   else if (m.gated) setState('quiet', 'ok');
   else setState(m.role === 'backup' ? 'onair' : 'live', 'live');
+  $('musicok').classList.toggle('hidden', stateKey !== 'music');
   const chips = [
     ...m.engines.map((e) => `<span class="chip ${e.state === 'live' ? 'ok' : e.state === 'idle' ? '' : 'warn'}">${esc(e.target)} · ${esc(tr(STATE[e.state] || e.state))}</span>`),
     m.latency?.asr != null ? `<span class="chip">${esc(tr(`latencia ${(m.latency.asr / 1000).toFixed(1)}s`))}</span>` : '',

@@ -151,6 +151,8 @@ export class GeminiEngine extends EventEmitter {
   async #connect() {
     const gen = ++this.gen;
     const resuming = !!this.handle;
+    this.connectAt = Date.now();
+    this.emit('debug', `connecting to ${this.transcribeOnly ? config.transcribeModel : config.model} (${resuming ? 'resuming the last session' : 'new session'}, ${this.transcribeOnly ? 'transcription only' : `speech translated to ${this.target}`}, '${LEVELS[this.level]}' setup)`);
     this.#setState(resuming ? 'resuming' : 'connecting');
     this.setupOk = false;
     // A handshake that hangs (blocked network, server never sends setupComplete) must not stall the room.
@@ -193,6 +195,7 @@ export class GeminiEngine extends EventEmitter {
     this.resumeFails = 0;
     this.backoff = 1000;
     this.stats.connectedAt = Date.now();
+    this.emit('debug', `ready in ${Date.now() - this.connectAt} ms; ${(this.buffer.length / 10).toFixed(1)} s of audio waited for it`);
     this.#setState('live');
     this.#flush();
   }
@@ -280,6 +283,7 @@ export class GeminiEngine extends EventEmitter {
     clearTimeout(this.connectTimer);
     const code = Number(e?.code) || 0;
     const reason = `${e?.code ?? ''} ${e?.reason ?? ''}`.trim();
+    this.emit('debug', `connection closed${reason ? ` (${reason})` : ''}${this.setupOk ? '' : ' before it was ready'}`);
     const transient = code === 1006 || code === 1001 || code === 1011 || code === 1013 || /429|quota|RESOURCE_EXHAUSTED|unavailable|overloaded|deadline/i.test(reason);
     if (!this.setupOk) {
       if (wasResuming) {

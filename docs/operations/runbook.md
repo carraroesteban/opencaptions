@@ -2,8 +2,6 @@
 
 This runbook takes a production team from the day before the event to the end of each day. The goal is **no dedicated operator per room**: one person watches the dashboard and acts only when an alert appears.
 
-<p align="center"><img src="../../public/art/stage.webp" width="640" alt="A speaker on stage with captions on the screen behind them, and people in the audience reading them on their phones" /></p>
-
 A one-page version to print is the [day-of-event checklist](day-of-event.md), and a Spanish version for venue crews is in [event-day.es.md](event-day.es.md). For specific symptoms, see [Troubleshooting](troubleshooting.md).
 
 ## Roles
@@ -20,7 +18,7 @@ A one-page version to print is the [day-of-event checklist](day-of-event.md), an
 
 - [ ] Start OpenCaptions (the Mac app, the Windows launcher, `npm start` or Docker) and go through the welcome wizard: event name, rooms, languages, the Gemini API key and the public address. From the terminal, `npm run setup` does the same.
 - [ ] Choose a topology and deploy the server ([Deployment](../deployment.md)).
-- [ ] Set up HTTPS: **Settings → Public address** (use your own domain for the event: a quick address changes on every restart), or your own proxy with `PUBLIC_URL` set to the final address.
+- [ ] Set up HTTPS: **Settings → Public address** (use your own domain for the event: a quick address changes on every restart). Already running your own Cloudflare Tunnel or reverse proxy? Type its address there under **Use my own domain**, no token needed (OpenCaptions checks it reaches itself there), or set `PUBLIC_URL` to the final address.
 - [ ] Note the three passwords from the startup window (admin, crew, room computers), or set your own with `ADMIN_TOKEN`, `CREW_TOKEN` and `INGEST_TOKEN` (`openssl rand -base64 24`). Store them in the team's password manager.
 - [ ] Set up **alerts on your phone**: Settings → Alerts → **ntfy app** (free, two minutes), follow the steps and press **Save and send a test**.
 - [ ] Give volunteers and technicians the **crew password** (live controls only), not the admin one. Turn on **two-factor sign-in** in Settings → Security.
@@ -97,7 +95,7 @@ tells you it happened.
 With someone speaking into the stage microphone, or with a handheld mic on `/demo.html?mode=mic&stage=<room>`:
 
 - [ ] The level meter moves with the voice without clipping. Adjust the gain.
-- [ ] On the dashboard the room is **LIVE** and the session chips are green.
+- [ ] On the dashboard the room is **Live** and the session chips are green.
 - [ ] The original text and the translation appear within about 5 seconds.
 - [ ] The projector shows captions, and the QR code scans from the back of the room.
 - [ ] A phone scanning the QR code gets captions in the chosen language.
@@ -120,7 +118,7 @@ Turn on **Event mode** (bottom of the dashboard's sidebar, or **Settings**) when
 
 **Breaks:** press **Break** on the room card (or **B** on the room's audio page) for an intermission, ads or anything that shouldn't be captioned; the screens and phones show the break, when the talk resumes and the next talk. **Resume captions**, **Next talk**, or the next talk's start in the agenda ends it. Breaks in the agenda (coffee, lunch: titles with no speaker, or Sessionize service sessions) start by themselves once the room is quiet, and end early if people speak for a while. If a break someone started by hand goes on while people are speaking, the card warns you.
 
-**Music:** walk-in music, a sponsor video or a song between talks is recognized after about 10 s and not captioned (♪ on screens and the overlay, at no cost); captions come back as soon as someone speaks. If a talk with a soundtrack is taken for music, press **It's a talk: caption anyway** on the card.
+**Music:** walk-in music, a sponsor video or a song between talks is recognized after about 10 s and not captioned (♪ on screens and the overlay, at no cost); captions come back after 3 s of a clear voice or of silence, or after about 10 s in which other sounds (a far or echoey voice) outweigh the music. If a talk with a soundtrack is taken for music, press **It's a talk: caption anyway** on the card or on the audio page.
 
 **Fixing a caption:** **See details → Fix captions** lists the latest sentences; correct one and it changes on every screen, phone and the transcript at once. If you changed a single word (a speaker's name), you're offered to always write it that way: it goes to the glossary, and can be undone from History.
 
@@ -140,14 +138,17 @@ With **alerts on your phone** set up (Settings → Alerts), the ones that last r
 |---|---|---|
 | **No sound yet** | The room isn't sending audio | Check the agent service or the room's sound page (the card's **Open the sound page**). After a reboot, autostart brings it back. |
 | **Waiting for the stream** | The room expects OBS or vMix, and nothing is streaming to it | Start streaming to the room's address (the card's **See the address**). |
-| **No audio** | Connected, but no audio packets arriving | Check the venue PC's network. Restart the agent or reload the page. |
-| **Muted?** | 60 s of near-silence | Check the desk fader, the cable and the selected input. |
-| **Reconnecting** | The Gemini session is reconnecting | Wait about 5 s. If it persists, open the room's details and press **Reconnect AI**. Audio is buffered for 12 s. |
-| **High latency** | Transcription more than 6 s behind | Normal for a few seconds after a reconnect. If it persists, press **Reconnect AI** and check the server's network. |
-| **Translation throttled** | Text translation hit a quota limit (429) | Automatic fallback is active. If frequent, raise the tier or set `MT_PARTIAL_MS=3000`. |
-| **Using the backup audio** | The main source stopped or went silent; the backup is on air | Check the main computer, its cable and the desk output. It takes back over by itself after 10 s of sound. |
-| **Someone speaking during the break** | A break set by hand (or by the vision mixer) while people speak | If the talk started, press **Resume captions**. |
-| **Music · paused** | Music detected in the room | Nothing to do. If it's actually a talk, press **It's a talk: caption anyway**. |
+| **no audio arriving** | Connected, but no audio packets arriving | Check the venue PC's network. Restart the agent or reload the page. |
+| **mic muted? (no signal for 60 s)** | A minute with no signal at all (a quiet room doesn't trigger it) | Check the desk fader, the cable and the selected input. |
+| **AI reconnecting** | The Gemini session is reconnecting | Wait about 5 s. If it persists, open the room's details and press **Reconnect AI**. Audio is buffered for 12 s. |
+| **high latency** | Transcription more than 6 s behind | Normal for a few seconds after a reconnect. If it persists, press **Reconnect AI** and check the server's network. |
+| **translation rate-limited → using Live** | Text translation hit a quota limit (429) | Automatic fallback is active. If frequent, raise the tier or set `MT_PARTIAL_MS=3000`. |
+| **the Gemini key reached its limit** | A free key ran out of quota | Click the AI badge and choose this computer, or enable billing in AI Studio ([Troubleshooting](troubleshooting.md#gemini-connection)). |
+| **the AI is returning errors (see the log)** | Errors other than quota (a wrong key or model, a broken local server): words or translations are being lost | Read the room's log; press **Reconnect AI**. |
+| **transcripts not being saved (disk full?)** | Captions still show but can't be written to disk | Free disk space now, or the transcript will have gaps. |
+| **using the backup audio** | The main source stopped or went silent; the backup is on air | Check the main computer, its cable and the desk output. It takes back over by itself after 10 s of sound. |
+| **someone is speaking during the break** | A break set by hand (or by the vision mixer) while people speak | If the talk started, press **Resume captions**. |
+| **Music · paused** | Music detected in the room | Nothing to do: captions come back by themselves when the music ends. If it's actually a talk, press **It's a talk: caption anyway** (on the card or the audio page). |
 | Misspelled names | Speaker, product or acronym | **Fix captions** on the room card, and accept "always write it this way"; or **Dashboard → Glossary** → add a replacement. It applies instantly. |
 | Wrong language | The talk isn't in the configured language | the room → **Settings → Talk language** → *Detect automatically* (switches are handled live) |
 

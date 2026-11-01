@@ -20,7 +20,7 @@ const FONTS = [
   { key: 'atkinsonnext', css: 'brand', family: 'Atkinson+Hyperlegible+Next:ital,wght@0,400..800;1,400..800', ofl: 'atkinsonhyperlegiblenext' },
   { key: 'bricolage', css: 'brand', family: 'Bricolage+Grotesque:opsz,wght@12..96,800', ofl: 'bricolagegrotesque' },
   // Caption and reading fonts (loaded on demand by loadFont() in common.js).
-  { key: 'inter', family: 'Inter:wght@400..800', ofl: 'inter' },
+  { key: 'inter', family: 'Inter:wght@300..800', ofl: 'inter' }, // also the interface font since 2.0 (tokens.css): 300 for headlines
   { key: 'atkinson', family: 'Atkinson+Hyperlegible:wght@400;700', ofl: 'atkinsonhyperlegible' },
   { key: 'lexend', family: 'Lexend:wght@400..800', ofl: 'lexend' },
   { key: 'roboto', family: 'Roboto:wght@400..800', ofl: 'roboto' },

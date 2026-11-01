@@ -10,13 +10,12 @@ OpenCaptions is released under the [MIT license](../LICENSE). Anyone may use, co
 
 | Component | What it's for | License | Notes |
 |---|---|---|---|
-| npm dependencies (`express`, `ws`, `qrcode`, `dotenv`, `@google/genai` and what they use) | The server | MIT, ISC, BSD and Apache-2.0 | All allow commercial use. `npm ls --all` lists them. |
+| npm dependencies (`express`, `ws`, `qrcode`, `dotenv`, `compression`, `proxy-addr`, `@google/genai` and what they use) | The server | MIT, ISC, BSD and Apache-2.0 | All allow commercial use. `npm ls --all` lists them. |
 | [ffmpeg](https://ffmpeg.org/legal.html), through `ffmpeg-static` (optional) | Reading streams and non-WAV files | GPL | Downloaded by `npm install` on your machine, not bundled with OpenCaptions. OpenCaptions runs it as a separate program. |
 | ffmpeg in the Docker image | Same | GPL / LGPL, from Debian | Installed from Debian's packages; their sources are at [sources.debian.org](https://sources.debian.org/src/ffmpeg/). |
 | [cloudflared](https://github.com/cloudflare/cloudflared) | The one-click public address | Apache-2.0 | Downloaded on first use, or included in the Docker image. Using Cloudflare's tunnel means accepting [Cloudflare's terms](https://www.cloudflare.com/website-terms/). |
-| Fonts: Atkinson Hyperlegible Next, Bricolage Grotesque, and the caption fonts Inter, Atkinson Hyperlegible, Lexend, Roboto, Open Sans and Montserrat | Interface and captions | SIL Open Font License 1.1 | Included in `public/fonts/`, each with its license and copyright ([list](../public/fonts/README.md)). Served by OpenCaptions itself, so pages don't contact Google. |
+| Fonts: Inter (the interface, and a caption font), Atkinson Hyperlegible Next (the default caption font), the caption fonts Atkinson Hyperlegible, Lexend, Roboto, Open Sans and Montserrat, and Bricolage Grotesque (the social video's titles) | Interface and captions | SIL Open Font License 1.1 | Included in `public/fonts/`, each with its license and copyright ([list](../public/fonts/README.md)). Served by OpenCaptions itself, so pages don't contact Google. |
 | Sample talks in `samples/` | Demos and tests | Part of this repository | Fictional scripts read by [Kokoro](https://huggingface.co/hexgrad/Kokoro-82M), an open text-to-speech model under Apache-2.0, so the recordings can be shared and used commercially. `scripts/make-samples.sh` rebuilds them. |
-| Pictures in `public/art/` and `site/media/home/` | Interface and website | Part of this repository | Generated for OpenCaptions with Higgsfield (GPT Image 2.5): invented scenes, not photographs of real people or events. |
 
 ## The AI you connect
 

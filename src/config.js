@@ -125,6 +125,8 @@ export const config = {
   fresh,
   // Stop streaming audio to the model after this many seconds of silence (saves cost between talks).
   silenceGateSec: Number(env.SILENCE_GATE_SEC ?? event.silenceGateSec ?? 30),
+  // LOG_LEVEL=debug: the server's log also tells what each room hears, what goes to the AI and what comes back.
+  logDebug: /^(debug|trace|verbose)$/i.test(env.LOG_LEVEL || ''),
   // Pause captions while a room plays music (walk-in music, videos between talks): src/voice.js. Per room: musicGuard.
   musicGuard: !/^(0|false|off|no)$/i.test(String(env.MUSIC_GUARD ?? event.musicGuard ?? 'on')),
   // The room's sound on phones (assistive listening, per room: roomSound): how many phones may listen to one room at

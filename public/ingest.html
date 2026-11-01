@@ -19,7 +19,7 @@
     .ig-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 
     .ig-title { display: grid; gap: 6px; margin-top: 18px; }
-    .ig-kicker { margin: 0; font-size: 13px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--fg2); display: flex; gap: 10px; align-items: center; }
+    .ig-kicker { margin: 0; font-size: 13px; font-weight: 500; color: var(--fg2); display: flex; gap: 10px; align-items: center; }
     .ig-kicker button { padding: 2px 10px; font-size: 12px; letter-spacing: 0; text-transform: none; border-radius: var(--pill); }
     .ig-title h1 { margin: 0; font-size: clamp(38px, 7vw, 64px); line-height: 1; letter-spacing: -.035em; overflow-wrap: anywhere; }
     .ig-state { display: flex; align-items: center; gap: 10px; min-height: 30px; font-size: 18px; font-weight: 600; }
@@ -36,13 +36,13 @@
     #alerts:empty { display: none; }
 
     /* The deck: the meter, how the level is, and the big button */
-    .deck { display: grid; gap: 18px; padding: 26px 26px 28px; border-radius: 26px; background: var(--bg2); border: 1px solid var(--line); box-shadow: var(--shadow);
+    .deck { display: grid; gap: 18px; padding: 26px 26px 28px; border-radius: var(--radius-lg); background: var(--bg2); border: 1px solid var(--line); box-shadow: none;
       transition: border-color var(--dur-slow) var(--ease-out), box-shadow var(--dur-slow) var(--ease-out); }
-    .deck.on { border-color: color-mix(in srgb, var(--bad) 40%, var(--line)); box-shadow: 0 0 0 4px color-mix(in srgb, var(--bad) 9%, transparent), var(--shadow); }
-    .deck.on.brk { border-color: color-mix(in srgb, var(--warn) 45%, var(--line)); box-shadow: 0 0 0 4px color-mix(in srgb, var(--warn) 10%, transparent), var(--shadow); }
+    .deck.on { border-color: var(--line-strong); box-shadow: none; } /* 2.0: no red glow; the state line says it's live */
+    .deck.on.brk { border-color: color-mix(in srgb, var(--warn) 45%, var(--line)); box-shadow: none; }
     .vu-top { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
     .vu-top span { font-size: 13px; font-weight: 600; color: var(--fg2); }
-    #db { font-size: 28px; font-weight: 800; letter-spacing: -.02em; font-variant-numeric: tabular-nums; min-width: 4.2ch; text-align: right; }
+    #db { font-size: 28px; font-weight: 400; letter-spacing: -.02em; font-variant-numeric: tabular-nums; min-width: 4.2ch; text-align: right; }
     #db small { font-family: var(--font); font-size: 14px; font-weight: 600; color: var(--fg2); margin-left: 3px; }
     .vu { position: relative; height: 30px; }
     /* Segments like a hardware meter: one mask over the lit bar and the dim one under it */
@@ -70,12 +70,12 @@
     #src-sum span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 34ch; }
     .ig-go { display: flex; gap: 12px; justify-content: center; align-items: center; flex-wrap: wrap; padding-top: 6px; }
     #go { min-width: min(320px, 100%); min-height: 72px; font-size: 20px; }
-    #go.stop { background: var(--bad); border-color: var(--bad); color: var(--bg); box-shadow: 0 10px 30px -10px color-mix(in srgb, var(--bad) 70%, transparent); }
-    #go.stop:hover { background: color-mix(in srgb, var(--bad) 88%, var(--fg)); }
+    #go.stop { background: var(--primary-bg); border-color: var(--primary-bg); color: var(--primary-fg); box-shadow: none; }
+    #go.stop:hover { background: color-mix(in srgb, var(--primary-bg) 88%, var(--fg)); }
     #go:disabled { opacity: .8; }
     #go .spin { width: 20px; height: 20px; border-radius: 50%; border: 2.5px solid currentColor; border-right-color: transparent; animation: ig-spin .8s linear infinite; }
     @keyframes ig-spin { to { rotate: 360deg; } }
-    #brk, #slides { min-height: 52px; padding: 0 20px; border-radius: var(--pill); animation: oc-in .35s var(--ease-out); }
+    #brk, #musicok, #slides { min-height: 52px; padding: 0 20px; border-radius: var(--pill); animation: oc-in .35s var(--ease-out); }
     #slides-note { text-align: center; margin-top: 10px; }
     .ig-aud { display: flex; align-items: center; gap: 18px; padding: 18px; }
     .ig-aud img { flex: none; width: 132px; height: 132px; border-radius: 12px; background: #fff; padding: 6px; }
@@ -86,11 +86,11 @@
     /* What's being captioned, live */
     .preview { display: grid; gap: 14px; padding: 22px 24px; }
     .pv-head { display: flex; align-items: center; justify-content: space-between; gap: 8px 12px; flex-wrap: wrap; }
-    .pv-head h2 { margin: 0; font-family: var(--font); font-size: 13px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--fg2); }
+    .pv-head h2 { margin: 0; font-family: var(--font); font-size: 13px; font-weight: 500; color: var(--fg2); }
     #engines { display: flex; gap: 6px; flex-wrap: wrap; }
     #pv { display: grid; gap: 14px; }
     .pv-line { display: grid; gap: 2px; }
-    .pv-line b { font-size: 12px; font-weight: 700; letter-spacing: .04em; color: var(--fg2); }
+    .pv-line b { font-size: 12px; font-weight: 500; letter-spacing: .04em; color: var(--fg2); }
     .pv-line p { margin: 0; font-size: 21px; line-height: 1.4; min-height: 1.4em; text-wrap: pretty; }
     .pv-line + .pv-line p { font-size: 18px; color: var(--translation); }
     .pv-line p.fresh { animation: oc-in .35s var(--ease-out); }
@@ -99,7 +99,7 @@
 
     /* Options: the rarely used settings, out of the way */
     .ig-more { border-radius: 18px; border: 1px solid var(--line); background: var(--bg2); }
-    .ig-more summary { cursor: pointer; list-style: none; display: flex; align-items: center; gap: 10px; padding: 16px 20px; font-weight: 700; border-radius: 18px; }
+    .ig-more summary { cursor: pointer; list-style: none; display: flex; align-items: center; gap: 10px; padding: 16px 20px; font-weight: 500; border-radius: 18px; }
     .ig-more summary::-webkit-details-marker { display: none; }
     .ig-more summary svg.i { color: var(--fg2); }
     .ig-more summary small { font-weight: 400; color: var(--fg2); font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
@@ -126,7 +126,7 @@
       .deck { padding: 20px 16px 20px; border-radius: 22px; }
       .preview { padding: 18px; }
       #go { width: 100%; }
-      #brk, #slides { width: 100%; }
+      #brk, #musicok, #slides { width: 100%; }
       .ig-state { font-size: 16px; }
     }
   </style>
@@ -159,6 +159,7 @@
       <div class="ig-go">
         <button id="go" class="primary hero-btn">Empezar a transcribir</button>
         <button id="brk" class="hidden" title="Pausa (intervalo, publicidad): los subtítulos se detienen y las pantallas muestran la pausa. Tecla B.">Pausa (B)</button>
+        <button id="musicok" class="hidden" title="Suena música: los subtítulos vuelven solos cuando alguien hable.">Es una charla: subtitular igual</button>
         <button id="slides" class="hidden" aria-pressed="false" data-no-i18n aria-describedby="slides-note"></button>
       </div>
       <p class="muted hint u-m0 hidden" id="slides-note" data-no-i18n aria-live="polite"></p>

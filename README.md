@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="docs/images/hero.png" width="920" alt="OpenCaptions. Every talk, understood by everyone. An illustration of a conference: the big screen shows the live caption, and people in the audience read it on their phones in Spanish and French." />
+<img src="docs/images/hero.png" width="920" alt="OpenCaptions. Every word, on every phone. Live captions for any event: a field of fine lines bends like a voice behind the headline, and a live caption in English has its Spanish translation below." />
 
 Live captions and translation for conferences, classrooms, town halls and any event with a microphone.<br>
 On every phone, on the big screen and in your livestream. Free and open source.
@@ -32,7 +32,7 @@ Not running an event? Choose **Just for me** the first time you open the app, an
 
 | Production dashboard | On the audience's phone | Transcript, search and summary |
 |---|---|---|
-| ![Dashboard with live rooms, audience, delay and cost](docs/images/dashboard.png) | ![Phone with live captions and the What did I miss? summary](docs/images/phones.png) | ![Transcript with search highlights and an AI summary](docs/images/transcript.png) |
+| ![Dashboard with live rooms, viewers, languages and what each room is saying](docs/images/dashboard.png) | ![Two phones with the same talk's live captions, one in Spanish and one in English](docs/images/phones.png) | ![Transcript with search highlights and an AI summary](docs/images/transcript.png) |
 | **Stage screen** | **QR poster** | **Caption style editor** |
 | ![Full-screen captions next to the stage, with a QR code](docs/images/projector.png) | ![Printable A4 poster with the room's QR code](docs/images/kit.png) | ![Style editor with a live overlay preview](docs/images/style.png) |
 
@@ -66,16 +66,16 @@ The apps aren't signed with a paid Apple or Microsoft certificate yet, so the fi
 
 ### Updates
 
-OpenCaptions updates itself from inside the app, like Zoom: click **Update now** on the dashboard's line when a new version is out, or choose **Check for Updates…** in the app's menu (on a Mac, the **OpenCaptions** menu; on Windows, the OpenCaptions icon in the taskbar's notification area). It shows what's new, and **Update and Restart** downloads the new version and restarts it in about a minute; your settings, rooms and transcripts stay. The dashboard also shows one quiet line when a new version is out. Nothing is installed until you click. [How updates work](docs/deployment.md#updates).
+OpenCaptions updates itself from inside the app, like Zoom: click **Update…** on the dashboard's line when a new version is out, or choose **Check for Updates…** in the app's menu (on a Mac, the **OpenCaptions** menu; on Windows, the OpenCaptions icon in the taskbar's notification area). It shows what's new, and **Update and Restart** downloads the new version and restarts it in about a minute; your settings, rooms and transcripts stay. The dashboard also shows one quiet line when a new version is out. Nothing is installed until you click. [How updates work](docs/deployment.md#updates).
 
 ### On a server: Docker, a VPS or the cloud
 
 ```bash
 docker run -d --pull always --name opencaptions --restart unless-stopped -p 127.0.0.1:8080:8080 -v opencaptions-data:/app/data -v opencaptions-config:/app/config ghcr.io/carraroesteban/opencaptions
-docker logs opencaptions | grep "Open the dashboard"
+docker logs opencaptions | grep "Open "
 ```
 
-The second command prints a link that opens the dashboard already signed in (it works once, within 30 minutes; restart the container for a new one). The wizard does the rest, API key and public address included. The passwords are in **Settings → Security**, never in the logs.
+The second command prints where to open the dashboard: the first time, a page to choose the admin password (within an hour of starting); after that, a link that signs you in (it works once, within 30 minutes; restart the container for a new one). The wizard does the rest, API key and public address included. The passwords are in **Settings → Security**, never in the logs.
 
 [![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/carraroesteban/opencaptions)
 
@@ -213,7 +213,7 @@ All the docs, by who you are: **[docs/README.md](docs/README.md)**.
 2. El asistente pregunta el nombre del evento, las salas y los idiomas, conecta Gemini con tu API key y crea una dirección pública con HTTPS en un clic.
 3. ¿Sin key, o tu key gratis se quedó sin cuota en pleno evento? Hacé clic en **Usar esta computadora (gratis, más lento)**.
 
-Para actualizar, hacé clic en **Actualizar ahora** en el panel cuando sale una versión nueva (o **Buscar actualizaciones…** en el menú de la app): se descarga y se reinicia en cerca de un minuto, sin perder ajustes ni transcripciones.
+Para actualizar, hacé clic en **Actualizar…** en el panel cuando sale una versión nueva (o **Buscar actualizaciones…** en el menú de la app): se descarga y se reinicia en cerca de un minuto, sin perder ajustes ni transcripciones.
 
 En un servidor, con Docker: el mismo comando de [arriba](#on-a-server-docker-a-vps-or-the-cloud). Guía para el día del evento: [event-day.es.md](docs/operations/event-day.es.md).
 

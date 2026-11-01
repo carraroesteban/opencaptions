@@ -19,9 +19,9 @@ const COPY = [
   ['public/tokens.css', 'tokens.css'],
   ['public/style.css', 'style.css'],
   ['public/controls.css', 'controls.css'], // style.css imports it
+  ['public/lines.js', 'lines.js'], // the wallpaper (site.js)
   ['public/brand', 'brand'],
   ['public/fonts', 'fonts'],
-  ['public/art', 'art'],
   ['public/favicon.ico', 'favicon.ico'],
   ['public/apple-touch-icon.png', 'apple-touch-icon.png'],
   ['docs/images', 'images'],
@@ -33,11 +33,11 @@ fs.rmSync(path.join(OUT, 'pages'), { recursive: true, force: true }); // sources
 
 // ---------------------------------------------------------------- guides
 const UI = {
-  en: { home: '/', features: 'Features', how: 'How it works', pricing: 'Pricing', other: 'es', otherName: 'Español', theme: 'Light / dark',
+  en: { home: '/', features: 'Audience', how: 'How it works', pricing: 'Cost', other: 'es', otherName: 'Español', theme: 'Light / dark',
     crumbs: 'Breadcrumb', more: 'More guides', faq: 'FAQ', toc: 'On this page', dl: 'Download', ctaH: 'Try it at your next event', ctaP: 'Free and open source. Download the app for Mac or Windows and the setup wizard does the rest.',
     mac: 'Download for Mac', win: 'Download for Windows', demo: 'Try it live', try: 'https://try-opencaptions.kvza.ar/s/main', license: 'Free and open source · MIT license', updated: 'Updated',
     conduct: 'Code of conduct', security: 'Security', mit: 'MIT license' },
-  es: { home: '/es/', features: 'Funciones', how: 'Cómo funciona', pricing: 'Precios', other: 'en', otherName: 'English', theme: 'Claro / oscuro',
+  es: { home: '/es/', features: 'Público', how: 'Cómo funciona', pricing: 'Costo', other: 'en', otherName: 'English', theme: 'Claro / oscuro',
     crumbs: 'Ruta', more: 'Más guías', faq: 'Preguntas', toc: 'En esta página', dl: 'Descargar', ctaH: 'Probalo en tu próximo evento', ctaP: 'Gratis y de código abierto. Descargá la app para Mac o Windows y el asistente hace el resto.',
     mac: 'Descargar para Mac', win: 'Descargar para Windows', demo: 'Probalo en vivo', try: 'https://try-opencaptions.kvza.ar/s/main?lang=es', license: 'Gratis y de código abierto · licencia MIT', updated: 'Actualizado',
     conduct: 'Código de conducta', security: 'Seguridad', mit: 'Licencia MIT' },
@@ -73,12 +73,6 @@ const legalRow = (lang) => [
 const statsOn = /^[a-z0-9-]+$/.test((process.env.SITE_GOATCOUNTER || '').trim());
 const withStats = (html) => html.replace(/<!--if-stats-->([\s\S]*?)<!--\/if-stats-->/g, statsOn ? '$1' : '').replace(/<!--if-no-stats-->([\s\S]*?)<!--\/if-no-stats-->/g, statsOn ? '' : '$1');
 
-// Each guide has a picture from the home page's set (site/media/home/<image>.webp); the phones with readable text have
-// a Spanish version (<image>-es), the rest are shared.
-const MEDIA = path.join(ROOT, 'site', 'media', 'home');
-const pic = (name, lang) => [`${name}-${lang}`, name, `${name}-en`].find((n) => fs.existsSync(path.join(MEDIA, `${n}.webp`)));
-const picSize = (n) => (/^(live|slide|word|ask)/.test(n) ? [896, 1120] : n === 'screens' ? [1600, 686] : [1168, 880]);
-const picTag = (n, cls, lazy = true) => { const [w, h] = picSize(n); return `<img class="${cls}" src="/media/home/${n}.webp" alt="" width="${w}" height="${h}"${lazy ? ' loading="lazy"' : ''} />`; };
 // Sections get ids (for the page's own contents list and for links); ones that already have an id keep it.
 const slugify = (s) => text(s).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 const withIds = (html) => {
@@ -108,7 +102,7 @@ function render(p) {
     const qa = [...p.body.matchAll(/<h3[^>]*>([\s\S]*?)<\/h3>([\s\S]*?)(?=<h[23][^>]*>|$)/g)].map(([, q, a]) => ({ '@type': 'Question', name: text(q), acceptedAnswer: { '@type': 'Answer', text: text(a) } }));
     graph.push({ '@type': 'FAQPage', mainEntity: qa });
   }
-  const more = guidesOf(p.lang).filter((q) => q !== p).map((q) => `<li><a href="${urlOf(q.lang, q.slug)}">${picTag(pic(q.image, q.lang), 'more-pic')}<span>${esc(q.label)}</span></a></li>`).join('');
+  const more = guidesOf(p.lang).filter((q) => q !== p).map((q) => `<li><a href="${urlOf(q.lang, q.slug)}"><span>${esc(q.label)}</span></a></li>`).join('');
   const body = withIds(withStats(p.body).trim());
   const toc = body.toc.length >= 3 ? `<nav class="toc" aria-label="${t.toc}"><p>${t.toc}</p><ol>${body.toc.map((h) => `<li><a href="#${h.id}">${esc(h.label)}</a></li>`).join('')}</ol></nav>` : '';
   return `<!doctype html>
@@ -118,7 +112,7 @@ function render(p) {
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <title>${esc(p.title)}</title>
   <meta name="description" content="${esc(p.description)}" />
-  <meta name="theme-color" content="#111014" />
+  <meta name="theme-color" content="#050506" />
   <link rel="canonical" href="${BASE}${url}" />
   ${alternates}
   <link rel="icon" href="/favicon.ico" sizes="32x32" />
@@ -135,7 +129,7 @@ function render(p) {
   <meta property="og:locale" content="${p.lang === 'en' ? 'en_US' : 'es_AR'}" />
   <meta name="twitter:card" content="summary_large_image" />
   <script type="application/ld+json">${JSON.stringify({ '@context': 'https://schema.org', '@graph': graph })}</script>
-  <script>let t = 'dark'; try { t = JSON.parse(localStorage.getItem('oc.theme')) || t; } catch {} document.documentElement.dataset.theme = t; document.querySelector('meta[name=theme-color]').content = t === 'dark' ? '#111014' : '#FAF8F3';</script>
+  <script>let t = null; try { t = JSON.parse(localStorage.getItem('oc.theme')); } catch {} if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t; document.querySelector('meta[name=theme-color]').content = (t || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')) === 'dark' ? '#050506' : '#FAFAF8';</script>
   <link rel="stylesheet" href="/style.css" />
   <link rel="stylesheet" href="/site.css" />
 </head>
@@ -144,9 +138,9 @@ function render(p) {
     <div class="wrap">
       <a class="brand" href="${t.home}">OpenCaptions</a>
       <div class="links">
-        <a class="hide-sm" href="${t.home}#features">${t.features}</a>
+        <a class="hide-sm" href="${t.home}#audience">${t.features}</a>
         <a class="hide-sm" href="${t.home}#how">${t.how}</a>
-        <a class="hide-sm" href="${t.home}#pricing">${t.pricing}</a>
+        <a class="hide-sm" href="${t.home}#cost">${t.pricing}</a>
         <a class="hide-sm" href="${t.home}#faq">${t.faq}</a>
         <a class="hide-sm" href="https://github.com/carraroesteban/opencaptions">GitHub</a>
         <a class="lang" href="${otherUrl}" hreflang="${t.other}" lang="${t.other}" title="${t.otherName}">${t.other.toUpperCase()}</a>
@@ -164,7 +158,6 @@ function render(p) {
           <p class="lede">${p.lede}</p>
           <p class="updated">${t.updated}: <time datetime="${p.updated}">${p.updated}</time></p>
         </div>
-        ${picTag(pic(p.image, p.lang), 'doc-pic', false)}
       </div>
     </header>
     <div class="wrap doc-grid">
@@ -181,7 +174,6 @@ ${body.html.split('\n').map((l) => '        ' + l).join('\n')}
           <p class="lede">${t.ctaP}</p>
           <div class="cta"><a class="btn primary" href="${DL}OpenCaptions-mac.zip">${t.mac}</a><a class="btn primary" href="${DL}OpenCaptions-windows.zip">${t.win}</a><a class="btn" href="${t.try}">${t.demo}</a></div>
         </div>
-        ${picTag('start', 'start-pic')}
       </aside>
       <nav class="doc-more" aria-label="${t.more}"><h2>${t.more}</h2><ul>${more}</ul></nav>
     </div>`}
@@ -196,7 +188,7 @@ ${body.html.split('\n').map((l) => '        ' + l).join('\n')}
       <span class="legal">${legalRow(p.lang)}</span>
     </div>
   </footer>
-  <script src="/site.js" defer></script>
+  <script type="module" src="/site.js"></script>
 </body>
 </html>
 `;

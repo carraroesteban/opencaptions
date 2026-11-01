@@ -9,7 +9,7 @@ This page describes how OpenCaptions is built, how data moves through it, how it
 | Run a whole multi-room conference with no operator per room | Automatic silence gating, session renewal, reconnection, watchdogs and talk splitting |
 | Keep latency close to the model's own delay | The server only relays audio. No transcoding, no queues and no database on the hot path. |
 | Predictable, low cost | One model session per room. Text translation per sentence instead of one speech session per language. Nothing is billed during silence. |
-| Easy to deploy and fork | A single Node.js process, five runtime dependencies, no build step, plain files instead of a database |
+| Easy to deploy and fork | A single Node.js process, seven runtime dependencies, no build step, plain files instead of a database |
 | Fit the existing venue setup | Audio from a sound-desk cable into a PC, or from the vMix/OBS stream. Output to projectors, phones and vMix/OBS. |
 
 ## System context
@@ -61,13 +61,14 @@ flowchart LR
 | `src/alerts.js` | Alerts on the organizers' phones (ntfy, Telegram, Slack, Discord, webhooks): when to send, once, and when it's over |
 | `src/failover.js` | The offline backup: watches the connection to Google and moves rooms between Gemini and the local engine |
 | `src/stage.js` | One room: receives audio (a main source and an optional backup that takes over by itself), detects speech, gates silence, breaks and music, owns model sessions and caption tracks, applies live corrections, measures latency and cost, raises alerts |
-| `src/voice.js` | Voice or music: how much the sound's spectral brightness moves over 2 s tells speech from music, so a room playing music between talks pauses its captions |
+| `src/voice.js` | Voice or music: how much the sound's spectral brightness moves over 2 s tells speech from music, so a room playing music between talks pauses its captions (after 10 s of it). Music ends after 3 s of a clear voice, 3 s of silence, or 10 s with more of any other sound than of music; **It's a talk: caption anyway** (on the room's audio page or its dashboard card) captions it until the next talk |
 | `src/switcher.js` | Breaks from the vision mixer: vMix (Web Controller API) or OBS (obs-websocket v5) switching to a break scene pauses that room |
 | `src/languages.js` | Every caption language's English name, for the AI's instructions ("Guarani", not "gn") |
 | `src/langid.js` | Which language a sentence is in, from its words or its script, for models that don't say (Transcribe Live): the speaker's own language is passed through instead of translated into itself |
-| `src/engines/gemini.js` | One Gemini Live Translate session: config fallbacks, session resumption, reconnect with backoff, 12 s audio buffer while reconnecting |
+| `src/engines/gemini.js` | One Gemini Live session (Transcribe Live, or Live Translate for the translated voice): config fallbacks, session resumption, reconnect with backoff, 12 s audio buffer while reconnecting |
 | `src/engines/local.js` | Local engine: cuts audio into utterances and makes Whisper stream (re-transcription about once a second, words committed when two passes agree, a final pass per utterance). See [Local mode](local.md#how-it-works). |
 | `src/local/` | Clients for the local speech server (`asr.js`: whisper.cpp and OpenAI dialects, hallucination filter, request queue) and the local text model (`llm.js`: Ollama and OpenAI dialects, priorities) |
+| `src/engines/apple.js` | Local engine on a Mac with macOS 26+: Apple's speech recognition, through the helper in `src/local/apple.swift`. See [Local mode](local.md#on-a-mac-apples-speech-recognition-and-translation). |
 | `src/engines/mock.js` | Offline engine with the same interface, for development and load tests |
 | `src/translate.js` | `SentenceTranslator`: sentence-level text translation with provisional partials, a global rate limiter, timeouts, retries and fallback to Live's own translation. In local mode it calls the local text model instead of Flash-Lite. |
 | `src/captions.js` | `CaptionTrack`: turns model fragments into partial/final caption segments with timestamps and line-length limits |

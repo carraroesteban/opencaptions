@@ -13,6 +13,6 @@ Ready-to-paste posts for the 1.0 launch, written from the code and the measured 
 
 Before posting anything:
 
-1. Deploy the public demo (`deploy/hosted/demo/README.md`) and open `https://try-opencaptions.kvza.ar/s/main` on a phone that isn't on your Wi-Fi.
-2. Publish the release with this branch's features, so the download matches the post.
+1. Deploy the public demo (`deploy/hosted/demo/README.md`) and open `https://try-opencaptions.kvza.ar/s/main` on a phone that isn't on your Wi-Fi. Today that address runs the per-visitor sandbox instead (`deploy/hosted/sandbox/`: simulated captions, not a recorded talk), so the posts' line about the demo must match whichever one is up.
+2. Check that the latest release (v1.0.0 today) has everything the posts mention, so the download matches the post.
 3. Deploy the website, so "New in 1.0" and the guides are live.

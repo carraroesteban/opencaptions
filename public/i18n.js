@@ -207,7 +207,7 @@ const DICTS = {
     "El de la pestaña del navegador y los favoritos, en todas las páginas. Cuadrado, PNG, JPEG o WebP de hasta 2 MB.": "The one on the browser tab and in bookmarks, on every page. Square, PNG, JPEG or WebP, up to 2 MB.",
     "Subir el ícono": "Upload the icon",
     "Imagen de la página del público": "Audience home picture",
-    "Va en lugar de la de OpenCaptions en la página de inicio del público. PNG, JPEG o WebP de hasta 2 MB.": "Replaces OpenCaptions’ picture on the audience’s home page. PNG, JPEG or WebP, up to 2 MB.",
+    "Va en lugar de las líneas de OpenCaptions en la página de inicio del público. PNG, JPEG o WebP de hasta 2 MB.": "Replaces OpenCaptions’ lines on the audience’s home page. PNG, JPEG or WebP, up to 2 MB.",
     "Subir la imagen": "Upload the picture",
     "Nombres y términos": "Names and terms",
     "Nombres y términos que la IA tiene que escribir bien, y correcciones que se aplican a todos los subtítulos al instante.": "Names and terms the AI has to get right, and corrections applied to every caption instantly.",

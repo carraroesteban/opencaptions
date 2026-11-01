@@ -2,7 +2,7 @@
 #
 #   cp .env.example .env            # optional settings: the API key can also be pasted in the dashboard
 #   docker compose up -d            # server on http://localhost:8080 (also how you update: it gets the newest image)
-#   docker compose logs opencaptions | grep "Open the dashboard"   # a link that signs you in
+#   docker compose logs opencaptions | grep "Open "   # first time: choose the admin password; then a link that signs you in
 #   docker compose --profile tunnel up -d   # + Cloudflare Tunnel (set TUNNEL_TOKEN in .env)
 #
 # See docs/deployment.md for the full guide.

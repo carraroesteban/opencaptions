@@ -2,8 +2,6 @@
 
 This page lists every connection OpenCaptions makes, then gives a plan for venues where part of the network is blocked.
 
-<p align="center"><img src="../public/art/offline.webp" width="640" alt="A laptop at the venue turning the room's sound into captions" /></p>
-
 ## Connections
 
 All traffic uses TLS on port 443 once HTTPS is configured. Nothing at the venue needs to accept inbound connections.
@@ -11,7 +9,7 @@ All traffic uses TLS on port 443 once HTTPS is configured. Nothing at the venue 
 | From | To | Protocol and port | Purpose |
 |---|---|---|---|
 | Venue PC (agent or browser) | OpenCaptions server | WSS 443 (`/ws/ingest`) | Room audio, 16 kHz PCM, about 260 kbps |
-| OpenCaptions server | `generativelanguage.googleapis.com` (API key) or `<region>-aiplatform.googleapis.com` (Vertex AI) | WSS/HTTPS 443 | Gemini Live Translate and Flash-Lite |
+| OpenCaptions server | `generativelanguage.googleapis.com` (API key) or `<region>-aiplatform.googleapis.com` (Vertex AI) | WSS/HTTPS 443 | Gemini Live (Transcribe Live, or Live Translate for a translated voice) and Flash-Lite |
 | Phones, projectors, vMix/OBS | OpenCaptions server | HTTPS/WSS 443 (`/ws/view`) | Pages and captions |
 | Phones listening to a room's sound | OpenCaptions server | WSS 443 (`/ws/view?audio=orig`) | The room's own sound, 16 kHz μ-law, 128 kbps per phone. Only rooms that have it on ([accessibility](accessibility.md#hearing-the-room-on-a-phone)). |
 | Production team | OpenCaptions server | HTTPS/WSS 443 (`/admin.html`, `/ws/admin`) | Dashboard |
@@ -28,7 +26,7 @@ Without TLS, the server listens on plain HTTP on `PORT` (default 8080). Use that
 
 ## Restricted venue networks
 
-Conference networks often block things. Test the exact network you'll use a day before, from a venue PC. Run `npm run check` on the server, and `node scripts/agent.js --stage <id> --file samples/talk-en.wav` from a venue PC.
+Conference networks often block things. Test the exact network you'll use a day before, from a venue PC. Run `npm run check` on the server, and `node scripts/agent.js --stage <id> --file samples/talk-en.wav --server wss://<your server> --token <INGEST_TOKEN>` from a venue PC.
 
 | Condition at the venue | Effect | What to do |
 |---|---|---|

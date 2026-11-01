@@ -22,14 +22,14 @@
     .wz-end .nav-btn { text-decoration: none; }
     .wz-prog { display: grid; gap: 6px; transition: opacity var(--dur) var(--ease-out); }
     .wz-prog[hidden] { display: grid; visibility: hidden; opacity: 0; }
-    #prog-l { font-size: 12px; font-weight: 700; color: var(--fg2); text-align: center; letter-spacing: .02em; font-variant-numeric: tabular-nums; }
+    #prog-l { font-size: 12px; font-weight: 500; color: var(--fg2); text-align: center; letter-spacing: .02em; font-variant-numeric: tabular-nums; }
     .progress { display: flex; gap: 5px; }
     .progress span { position: relative; height: 4px; flex: 1; border-radius: 4px; background: var(--line-strong); overflow: hidden; }
-    .progress span::after { content: ''; position: absolute; inset: 0; border-radius: inherit; background: linear-gradient(90deg, var(--c-blue), var(--c-violet)); transform: scaleX(0); transform-origin: left; transition: transform .5s var(--ease-out); }
+    .progress span::after { content: ''; position: absolute; inset: 0; border-radius: inherit; background: var(--fg); transform: scaleX(0); transform-origin: left; transition: transform .5s var(--ease-out); }
     .progress span.on::after { transform: none; }
 
     .wiz { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 64px; align-items: start; align-content: start; max-width: 1240px; width: 100%; margin: 0 auto; padding: 7vh 32px 64px; }
-    .kicker { font-size: 13px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--c-violet); margin: 0 0 12px; }
+    .kicker { font-size: 13px; font-weight: 500; color: var(--c-violet); margin: 0 0 12px; }
     h1 { font-size: clamp(34px, 4.4vw, 56px); line-height: 1.02; letter-spacing: -.035em; margin: 0 0 16px; }
     .lede { font-size: 18px; color: var(--fg2); margin: 0 0 28px; max-width: 520px; line-height: 1.5; }
     .lede:empty { display: none; }
@@ -67,7 +67,7 @@
     .rooms { display: grid; gap: 10px; max-width: 540px; }
     .room { display: grid; grid-template-columns: 36px minmax(0, 1fr) 44px; gap: 8px; align-items: center; }
     .room.new { animation: oc-in .35s var(--ease-out) both; }
-    .room .n { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 10px; background: color-mix(in srgb, var(--hue) 14%, transparent); color: var(--hue); font-size: 14px; font-weight: 700; font-variant-numeric: tabular-nums; }
+    .room .n { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 10px; background: color-mix(in srgb, var(--hue) 14%, transparent); color: var(--hue); font-size: 14px; font-weight: 500; font-variant-numeric: tabular-nums; }
     .room input { font-size: 17px; padding: 12px 14px; border-radius: 14px; }
     .room button { display: grid; place-items: center; width: 44px; height: 44px; padding: 0; border-radius: 12px; background: none; color: var(--fg2); }
     .room button:hover { background: var(--fill); color: var(--fg); }
@@ -76,12 +76,12 @@
     #add-room:hover { color: var(--fg); }
     .presets { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 18px; }
 
-    .q { font-weight: 700; margin: 0 0 12px; font-size: 17px; }
+    .q { font-weight: 500; margin: 0 0 12px; font-size: 17px; }
     .pills { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 28px; }
     .pill { font-size: 15px; padding: 9px 16px; cursor: pointer; transition: background-color var(--dur) var(--ease-out), color var(--dur) var(--ease-out), transform var(--dur-fast) var(--ease-out); }
     .pill:hover { background: var(--fill-hover); }
     .pill:active { transform: scale(.96); }
-    #targets .pill[aria-pressed='true']::before, #between-pills .pill[aria-pressed='true']::before { content: '✓'; font-weight: 800; }
+    #targets .pill[aria-pressed='true']::before, #between-pills .pill[aria-pressed='true']::before { content: '✓'; font-weight: 400; }
     .rowbar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin: -14px 0 24px; }
     .rowbar select { border-radius: var(--pill); padding-block: 8px; }
     .rowbar button { border-radius: var(--pill); }
@@ -99,9 +99,9 @@
     .choice:hover { border-color: var(--line-strong); transform: translateY(-4px); box-shadow: var(--shadow-lg); background: var(--bg2); }
     .choice:active { transform: translateY(-1px) scale(.985); }
     .choice:focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; }
-    .choice img { display: block; width: 100%; height: auto; aspect-ratio: 16 / 10; object-fit: cover; border-radius: 16px; background: var(--ink); margin-bottom: 12px; transition: transform .6s var(--ease-out); }
+    .choice .pict { display: block; width: 100%; height: auto; aspect-ratio: 16 / 9; color: var(--fg2); border-radius: 16px; background: var(--bg); border: 1px solid var(--line); margin-bottom: 12px; }
     .choice:hover img { transform: scale(1.02); }
-    .choice b { font-family: var(--font-display); font-size: 26px; letter-spacing: -.02em; padding: 0 8px; }
+    .choice b { font-family: var(--font-display); font-weight: 400; font-size: 26px; letter-spacing: -.02em; padding: 0 8px; }
     .choice span { font-size: 15px; color: var(--fg2); padding: 0 56px 0 8px; line-height: 1.45; }
     .choice .go { position: absolute; right: 18px; bottom: 20px; display: grid; place-items: center; width: 40px; height: 40px; padding: 0; border-radius: 50%; background: var(--fill); color: var(--fg); transition: background-color var(--dur) var(--ease-out), color var(--dur) var(--ease-out), transform .35s var(--spring); }
     .choice .go svg.i { width: 18px; height: 18px; }
@@ -109,7 +109,7 @@
     @media (max-width: 700px) {
       .choices { grid-template-columns: 1fr; gap: 12px; margin-top: 24px; }
       .choice { grid-template-columns: 92px minmax(0, 1fr); align-items: center; gap: 2px 14px; padding: 12px 56px 12px 12px; border-radius: 20px; }
-      .choice img { grid-row: span 2; aspect-ratio: 1; margin: 0; border-radius: 14px; }
+      .choice .pict { grid-row: span 2; aspect-ratio: 1; margin: 0; border-radius: 14px; }
       .choice b { font-size: 20px; align-self: end; padding: 0; }
       .choice span { font-size: 14px; align-self: start; padding: 0; }
       .choice .go { top: 50%; bottom: auto; right: 12px; translate: 0 -50%; width: 34px; height: 34px; }
@@ -172,9 +172,9 @@
     .summary span { overflow-wrap: anywhere; font-weight: 600; }
     .summary .err { grid-column: 1 / -1; margin: 0; padding: 12px 16px; border-top: 1px solid var(--line); }
 
-    /* the pictures are dark scenes (public/art): framed like the website's, filling their card */
+    /* the drawn visual (the lines, public/lines.js): framed like the website's, filling its card */
     .art { margin: 0; justify-self: center; width: 100%; position: sticky; top: 96px; view-transition-name: wz-art; }
-    .art img { display: block; width: 100%; height: auto; border-radius: 28px; border: 1px solid var(--line); background: var(--ink); box-shadow: var(--shadow-lg); }
+    .art canvas { display: block; width: 100%; aspect-ratio: 4 / 3; border-radius: var(--radius-lg); border: 1px solid var(--line); background: var(--bg2); color: var(--fg); } /* 2.0: the lines, not a picture */
     .panel { max-width: 580px; margin: 0 0 16px; }
     .panel:empty { display: none; }
     .err { color: var(--bad); font-size: 14px; margin-top: 12px; min-height: 1em; }
@@ -183,7 +183,7 @@
     @media (max-width: 900px) {
       .wiz { grid-template-columns: 1fr; gap: 20px; padding: 12px 20px 40px; }
       .art { order: -1; position: static; max-width: 520px; justify-self: start; }
-      .art img { aspect-ratio: 2 / 1; object-fit: cover; border-radius: 20px; box-shadow: var(--shadow); }
+      .art canvas { aspect-ratio: 2 / 1; }
       .wz-top { grid-template-columns: auto minmax(0, 1fr) auto; padding: 10px 16px; gap: 12px; }
       .wz-top .brand { font-size: 0; gap: 0; }
       .wz-top .brand::before { width: 30px; height: 23px; }
@@ -197,7 +197,7 @@
       .wz-top { grid-template-columns: auto minmax(0, 1fr); row-gap: 8px; }
       .wz-prog { grid-column: 1 / -1; grid-row: 2; }
       .wz-prog[hidden] { display: none; }
-      .art img { aspect-ratio: 5 / 2; }
+      .art canvas { aspect-ratio: 5 / 2; }
     }
     @media (prefers-reduced-motion: reduce) { .step.on .done-badge, .step.on.enter { animation: none; } }
   dialog .dlg-actions { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; margin-top: 18px; }
@@ -216,8 +216,8 @@
         <h1 data-t="welcomeH"></h1>
         <p class="lede" data-t="welcomeP"></p>
         <div class="choices">
-          <button type="button" class="choice" data-next><img src="/art/ob-welcome.webp" alt="" width="1200" height="900" /><b data-t="forEvent"></b><span data-t="forEventD"></span><i class="go" data-arrow></i></button>
-          <button type="button" class="choice" id="just-me"><img src="/art/just-me.webp" alt="" width="1200" height="896" /><b data-t="meBtn"></b><span data-t="meD"></span><i class="go" data-arrow></i></button>
+          <button type="button" class="choice" data-next><svg class="pict" viewBox="0 0 400 220" fill="none" stroke="currentColor" stroke-width="1.1" aria-hidden="true"><rect x="110" y="22" width="180" height="96" rx="4"/><path d="M135 74h130M135 88h90"/><path d="M200 118v18"/><g><rect x="40" y="166" width="16" height="30" rx="4"/><rect x="84" y="170" width="16" height="28" rx="4"/><rect x="128" y="166" width="16" height="30" rx="4"/><rect x="256" y="168" width="16" height="30" rx="4"/><rect x="300" y="166" width="16" height="30" rx="4"/><rect x="344" y="170" width="16" height="28" rx="4"/></g></svg><b data-t="forEvent"></b><span data-t="forEventD"></span><i class="go" data-arrow></i></button>
+          <button type="button" class="choice" id="just-me"><svg class="pict" viewBox="0 0 400 220" fill="none" stroke="currentColor" stroke-width="1.1" aria-hidden="true"><rect x="90" y="24" width="220" height="150" rx="8"/><rect x="104" y="38" width="94" height="62" rx="4"/><rect x="202" y="38" width="94" height="62" rx="4"/><circle cx="151" cy="66" r="11"/><circle cx="249" cy="66" r="11"/><rect x="126" y="116" width="148" height="36" rx="7"/><path d="M140 134h96"/><path d="M170 196h60"/></svg><b data-t="meBtn"></b><span data-t="meD"></span><i class="go" data-arrow></i></button>
         </div>
         <div class="actions"><button class="skip" data-finish data-t="skipAll"></button></div>
       </div>
@@ -296,7 +296,7 @@
       </div>
       <div class="err" id="err" role="alert"></div>
     </section>
-    <figure class="art"><img id="art" alt="" width="1200" height="900" src="/art/ob-welcome.webp" /></figure>
+    <figure class="art" aria-hidden="true"><canvas class="lines"></canvas></figure>
   </main>
 
   <dialog id="dlg-leave" aria-labelledby="lv-title"><form method="dialog">

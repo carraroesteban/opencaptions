@@ -4,7 +4,7 @@
 - **Tagline** (60 characters): `Live captions and translation for events, on every phone`
 - **Topics:** Accessibility, Open Source, Events, Artificial Intelligence
 - **Links:** the website, the live demo, GitHub
-- **Gallery** (in this order; the first is the thumbnail): `docs/images/hero.png`; the three 1.0 phones from the website (`site/media/home/slide.webp`, `word-en.webp`, `ask-en.webp`, exported as PNG); `site/media/screens/dashboard.webp`; `site/media/screens/projector.webp`; the 60-second video ([demo-video.md](demo-video.md)).
+- **Gallery** (in this order; the first is the thumbnail): `docs/images/hero.png`; `docs/images/phones.png` (two phones following the same talk in Spanish and English); `docs/images/dashboard.png`; `docs/images/projector.png`; `docs/images/transcript.png`; the 60-second video ([demo-video.md](demo-video.md)). All are screenshots of the real app (`npm run screenshots`), already PNG.
 
 **Description:**
 

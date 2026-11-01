@@ -15,7 +15,7 @@ npm run typecheck     # TypeScript checks the JSDoc types in src/ and scripts/ (
 npm run a11y          # accessibility check of every page (axe-core, WCAG 2.2 AA; needs Google Chrome)
 ```
 
-Also useful: `npm run app` (what the desktop launchers run), `npm run site` (the website at http://localhost:8081), `npm run package` (the Mac download in `dist/`) `npm run docs:images` (the diagrams) and `npm run demo:record` (the website's demo video). To add a guide to the website, add `site/pages/en/<slug>.html` and its Spanish pair in `site/pages/es/`, each starting with the JSON header the others have (title, description, `pair`…); the sitemap and the footer links update themselves. Add `"legal": true` to the header for a policy page (like the privacy policy and the accessibility statement): it goes in the footer's policy row instead of the guides. The Site workflow also reads three optional repository variables (Settings → Secrets and variables → Actions → Variables): `SITE_GOOGLE_VERIFICATION` and `SITE_BING_VERIFICATION` (the codes Google Search Console and Bing Webmaster Tools give for an HTML-tag verification) and `SITE_GOATCOUNTER` (a GoatCounter site code, for privacy-friendly visitor statistics). After each deploy it notifies Bing and other IndexNow search engines of every page in the sitemap.
+Also useful: `npm run app` (what the desktop launchers run), `npm run site` (the website at http://localhost:8081), `npm run package` (the Mac download in `dist/`), `npm run docs:images` (the diagrams), `npm run screenshots` (the README's and the website's screenshots) and `npm run demo:record` (a short video of the stage screen and a phone, `site/media/demo.mp4`). To add a guide to the website, add `site/pages/en/<slug>.html` and its Spanish pair in `site/pages/es/`, each starting with the JSON header the others have (title, description, `pair`…); the sitemap and the footer links update themselves. Add `"legal": true` to the header for a policy page (like the privacy policy and the accessibility statement): it goes in the footer's policy row instead of the guides. The Site workflow also reads three optional repository variables (Settings → Secrets and variables → Actions → Variables): `SITE_GOOGLE_VERIFICATION` and `SITE_BING_VERIFICATION` (the codes Google Search Console and Bing Webmaster Tools give for an HTML-tag verification) and `SITE_GOATCOUNTER` (a GoatCounter site code, for privacy-friendly visitor statistics). After each deploy it notifies Bing and other IndexNow search engines of every page in the sitemap.
 
 ### End-to-end test
 
@@ -27,9 +27,10 @@ When a change alters what OpenCaptions asks the model (prompts, models, the Live
 npm run record        # 30 s of samples/talk-en.wav against Gemini → test/fixtures/talk-en.json (a couple of cents)
 ```
 
-- **Node.js:** 20 or later.
+- **Node.js:** 22.23.4, 24.22.1, 26.12.1 or newer (the October 2026 security fixes; `package.json` → `engines`).
 - **Real model:** put a Gemini key in `.env` and run `npm run check`.
 - **Restarts:** restart the server after changing `src/`. Reload the browser after changing `public/`.
+- **A room misbehaving:** `LOG_LEVEL=debug` logs, per room, the music detector's measurements, each AI connection, every caption and a summary every 30 seconds.
 
 ## Project layout
 

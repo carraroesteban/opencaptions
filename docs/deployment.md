@@ -2,8 +2,6 @@
 
 This guide helps you choose where the OpenCaptions server runs, then install it. Before you expose it to any network, read [Security](security-guide.md).
 
-<p align="center"><img src="../public/art/organizer.webp" width="640" alt="An organizer backstage, relaxed, with every room on the dashboard" /></p>
-
 ## Choose a topology
 
 There are two supported layouts. Both are valid for a real event. Pick one from the decision table below.
@@ -140,7 +138,7 @@ Every push to `main` publishes `ghcr.io/carraroesteban/opencaptions` (amd64 and 
 
 ```bash
 docker run -d --pull always --name opencaptions --restart unless-stopped -p 127.0.0.1:8080:8080 -v opencaptions-data:/app/data -v opencaptions-config:/app/config ghcr.io/carraroesteban/opencaptions
-docker logs opencaptions | grep "Open the dashboard"
+docker logs opencaptions | grep "Open "
 ```
 
 The named volumes keep transcripts, settings and secrets (`opencaptions-data`) and the event, glossary and agenda files (`opencaptions-config`, filled from the image the first time) across upgrades. Pass settings with `-e`, e.g. `-e GEMINI_API_KEY=…`, or set the key in the dashboard. Containers run in UTC: the welcome wizard offers to use your time zone for the agenda, or pass `-e TZ=Europe/Madrid`. Upgrade:
@@ -244,7 +242,7 @@ To keep it running after you close the terminal:
 
 The repository has ready-made settings for three hosting platforms. Each runs the Docker image with a **persistent disk** for `data/` (settings, passwords, transcripts, and here also the glossary and agenda), HTTPS, and **never sleeps**: a server that sleeps when idle would cut the captions in the middle of a talk. That rules out free plans that sleep or have no disk.
 
-On all three, OpenCaptions finds its public address by itself (QR codes and links use it), and trusts the platform's proxy (`TRUST_PROXY=1`). Every device needs the admin password: each start prints **Open the dashboard** in the platform's logs, with a link that signs you in once, within 30 minutes (restart for a new one). The passwords themselves never go to the logs: they are in **Settings → Security**. Paste the Gemini key in the dashboard, or set `GEMINI_API_KEY` in the platform's environment.
+On all three, OpenCaptions finds its public address by itself (QR codes and links use it), and trusts the platform's proxy (`TRUST_PROXY=1`). Every device needs the admin password: each start prints a line beginning with **Open** in the platform's logs. On a new install it's the address where you choose the admin password, within an hour of starting; after that, a link that signs you in once, within 30 minutes (restart for a new one). The passwords themselves never go to the logs: they are in **Settings → Security**. Paste the Gemini key in the dashboard, or set `GEMINI_API_KEY` in the platform's environment.
 
 ### Render
 
@@ -330,13 +328,15 @@ This is topology B on Google Cloud.
 
    Then run `sudo systemctl reload caddy`.
 
-6. Open `https://subs.example.com/admin.html` and sign in with the link from `docker compose logs opencaptions | grep "Open the dashboard"` (it works once, within 30 minutes). Then turn on two-factor sign-in in **Settings → Security**.
+6. Open `https://subs.example.com/admin.html`. A new install asks you to choose the admin password there, within an hour of starting; otherwise sign in with the link from `docker compose logs opencaptions | grep "Open "` (it works once, within 30 minutes). Then turn on two-factor sign-in in **Settings → Security**.
 
 **Cloud Run and other serverless platforms** aren't recommended. OpenCaptions keeps room state in memory and holds long-lived WebSockets. Serverless platforms cap request duration and can start extra instances that don't share state. If you must use one, set minimum and maximum instances to 1 and allocate CPU always. Clients reconnect automatically when a socket is cut.
 
 ## Hosted test instances
 
-**A public demo anyone can open** (one room captioning a sample talk forever, no API key, no cost): [`deploy/hosted/demo`](../deploy/hosted/demo/README.md). It's what the website's **Try it live** button opens.
+**A public sandbox** ([`deploy/hosted/sandbox`](../deploy/hosted/sandbox/README.md)) is what the website's **Try it live** button opens: each visitor gets a private copy of OpenCaptions for an hour, with simulated captions (no AI, no cost), no sign-in and a room looping the sample talk in the visitor's language.
+
+**A public demo** ([`deploy/hosted/demo`](../deploy/hosted/demo/README.md)) is simpler: one room captioning the sample talk forever, with the AI's answers replayed from a recording; visitors are its audience. No API key, no cost.
 
 To let people try OpenCaptions with their own rooms, without installing anything, run one instance per tester on a Linux server, on your Gemini key, with a weekly spending cap each. `deploy/hosted/testers.sh` does it with Docker and Caddy:
 

@@ -68,6 +68,25 @@ test('music is detected after about ten seconds, and a voice brings captions bac
   assert.ok(back > 0 && both[back].at < 28, `voice again: ${JSON.stringify(both)}`);
 });
 
+test('a voice the windows cannot call (far, echoey: "unsure") still ends the music, a long song leaves no debt', () => {
+  // 60 s of a song, then 30 s of a voice judged 'unsure' window after window, in a room never quiet enough for 'quiet'
+  const seq = [...Array(600).fill('music'), ...Array(300).fill('unsure')];
+  const judge = VoiceDetector.judge;
+  let i = 0;
+  VoiceDetector.judge = () => seq[i++];
+  try {
+    const d = new VoiceDetector();
+    const states = [];
+    for (let k = 0; k < 19 + seq.length; k++) { // the first 19 chunks fill the 2-second window
+      const s = d.push(new Int16Array(1600));
+      if (s !== states.at(-1)?.s) states.push({ s, at: Math.max(0, k - 19) / 10 });
+    }
+    const music = states.find((x) => x.s === 'music'), after = states.find((x) => x.at > 60);
+    assert.ok(music && music.at < 11, JSON.stringify(states));
+    assert.ok(after && after.s !== 'music' && after.at <= 71, `music ends within 10 s of the voice: ${JSON.stringify(states)}`);
+  } finally { VoiceDetector.judge = judge; }
+});
+
 test('silence is quiet, not music', () => {
   const states = run(new Int16Array(16000 * 20));
   assert.deepEqual(states.map((x) => x.s), ['unknown', 'quiet']);

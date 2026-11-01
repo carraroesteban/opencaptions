@@ -2,7 +2,7 @@
 
 A real screen recording with sound: the moment that sells it is hearing a speaker and seeing the words land on a phone in another language. No music over the speaker, no generated scenes.
 
-**Record it with what's in the repo:** `npm run demo:record` films the stage screen and a phone while the server captions a sample talk; run it with the talk's audio audible, then record the phone parts below with QuickTime (iPhone mirrored) or the phone's own screen recorder.
+**Record it with what's in the repo:** `npm run demo:record` films the stage screen and a phone side by side while the server captions the 30-second sample talk (`site/media/demo.mp4`, silent: add the talk's sound, `samples/talk-en.wav`, in the editor), then record the phone parts below with QuickTime (iPhone mirrored) or the phone's own screen recorder.
 
 | Seconds | Show | Say (voice-over, or as on-screen text) |
 |---|---|---|

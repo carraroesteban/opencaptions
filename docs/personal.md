@@ -8,9 +8,9 @@ It's the same download as the event version (the [Mac app or Windows launcher](.
 
 One thing per screen, with **Back** and **Next**. Steps that are already done are skipped (a Gemini key you saved before, for example).
 
-1. **Your AI:** paste a Gemini key (*How to get one (free)* opens Google AI Studio), and it's checked right away. No key? **Run it on this computer (free)** opens the dashboard's AI settings. You can also go on without one: the captions are simulated until you connect an AI.
-2. **Your language:** the language to translate into, or *Don't translate*. It starts on the computer's language.
-3. **The sound:** **Microphone** (you, or a conversation around you), **Computer sound** (what the computer plays), or **Both** (both sides of a call: what you say and what you hear). With **Both**, use headphones: otherwise the microphone also hears the speakers, and everything is captioned twice. **Test the sound** shows a bar that moves when there's sound; the captions then use that same sound, so the browser doesn't ask twice.
+1. **Your AI:** paste a Gemini key (*How to get one (free)* opens Google AI Studio), and it's checked right away. No key? **Run it on this computer (free, slower)** (on a Mac with Apple's speech recognition: **Start free on this Mac**) sets up [local mode](local.md#without-a-terminal-one-button) right there, with a progress bar. You can also go on without one: the captions are simulated until you connect an AI.
+2. **Languages:** the language to translate into, or *Don't translate*. It starts on the computer's language.
+3. **The sound:** **Microphone** (you, or a conversation around you), **This computer** (what the computer plays), or **Both** (both sides of a call: what you say and what you hear). With **Both**, use headphones: otherwise the microphone also hears the speakers, and everything is captioned twice. **Test the sound** shows a bar that moves when there's sound; the captions then use that same sound, so the browser doesn't ask twice.
 
 **Start captions** ends the guide. From then on, OpenCaptions opens straight to your captions.
 
@@ -27,20 +27,20 @@ The captions fill the window, in big text; when translating, the original runs u
 
 **My transcripts** (top right) lists all your past ones. On a phone the bar shows icons only.
 
-### Computer sound
+### The computer's sound
 
-Your browser asks what to share:
+With **This computer**, your browser asks what to share:
 
 - **Windows (Chrome or Edge):** choose **Entire screen** and turn on **Share system audio**. Everything the computer plays is captioned: Zoom, Teams, Meet, a video, a class.
 - **Mac (Chrome or Edge):** choose the **tab** that's playing (a Meet call, a YouTube video, a web class) and leave **Share tab audio** on. Apple doesn't let browsers share the whole computer's sound; apps outside the browser (the Zoom app, for example) can't be captioned this way yet. The microphone works everywhere.
 
 The picture you share is never used, only its sound.
 
-**A call app open?** When Zoom, Microsoft Teams, Webex, FaceTime, Discord, Skype or GoTo Meeting is running, the page tells you how to caption the call: on Windows, **Both** (one click), sharing the entire screen with its sound; on a Mac, join the call in Chrome or Edge instead (Zoom, Teams and Webex work on the web) and share that tab. OpenCaptions only checks the names of the programs running on this computer, and nothing is sent anywhere. A call in a browser tab (Google Meet, for example) can't be detected: choose **Computer sound** and that tab.
+**A call app open?** When Zoom, Microsoft Teams, Webex, FaceTime, Discord, Skype or GoTo Meeting is running, the page tells you how to caption the call: on Windows, **Both** (one click), sharing the entire screen with its sound; on a Mac, join the call in Chrome or Edge instead (Zoom, Teams and Webex work on the web) and share that tab. OpenCaptions only checks the names of the programs running on this computer, and nothing is sent anywhere. A call in a browser tab (Google Meet, for example) can't be detected: choose **This computer** and that tab.
 
 ## The AI
 
-- **Gemini** (Google): the best quality and the shortest delay. Paste a key in the first step (or later in **Settings → Your AI**); it's free to create at [Google AI Studio](https://aistudio.google.com/apikey). The free tier has usage limits, and Google may use its audio to improve its products; a paid key costs about US$ 2 per hour of speech (silence isn't billed).
+- **Gemini** (Google): the best quality and the shortest delay. Paste a key in the first step (or later in **Settings → Your AI**); it's free to create at [Google AI Studio](https://aistudio.google.com/apikey). The free tier has usage limits, and Google may use its audio to improve its products; a paid key costs about US$ 0.54 per hour of speech, plus about US$ 0.4–0.6 when it translates (silence isn't billed).
 - **On your computer** ([local mode](local.md)): nothing leaves the computer and there's no cost per hour, but it needs a recent computer and a one-time install.
 
 Until one is connected, the captions are simulated, so you can see how it works.

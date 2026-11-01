@@ -22,7 +22,7 @@ Short answers, with a link to the page that has the details.
 
 **Can I run it without a terminal?** Yes: download the Mac or Windows app; the setup wizard does the rest. [Quick start](../README.md#quick-start).
 
-**How do I update it?** **Update now** on the dashboard's line when a new version is out, or **Check for Updates…** in the app's menu, like Zoom: it shows what's new and **Update and Restart** installs it in about a minute, keeping your settings and transcripts. On a server, see [Deployment → Backups and upgrades](deployment.md#backups-and-upgrades). From 0.9: [Upgrade notes](upgrading.md).
+**How do I update it?** **Update…** on the dashboard's line when a new version is out, or **Check for Updates…** in the app's menu, like Zoom: it shows what's new and **Update and restart** installs it in about a minute, keeping your settings and transcripts. On a server, see [Deployment → Backups and upgrades](deployment.md#backups-and-upgrades). From 0.9: [Upgrade notes](upgrading.md).
 
 **Do I need an operator in every room?** No. Rooms pause in silence, resume when someone speaks and follow the agenda; one person watching the dashboard is enough. [Day-of-event checklist](operations/day-of-event.md).
 
@@ -48,6 +48,6 @@ Short answers, with a link to the page that has the details.
 
 **No captions.** Follow [No captions at all](operations/troubleshooting.md#no-captions-at-all).
 
-**Words were glued together, or capitals appeared mid-sentence.** Fixed in 0.9.2; update. [Troubleshooting → Captions](operations/troubleshooting.md#captions).
+**Words were glued together, or capitals appeared mid-sentence.** Fixed, also for two sentences the AI glued together ("room.Now"); update to the newest version. [Troubleshooting → Captions](operations/troubleshooting.md#captions).
 
 **My Mac or Windows PC warns about the app.** It isn't signed with a paid certificate yet; confirm once. [Opening it the first time](first-launch.md).

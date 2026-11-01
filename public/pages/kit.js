@@ -64,7 +64,7 @@ function render() {
       <img src="/api/qr.svg?text=${encodeURIComponent(url)}" alt="QR ${esc(url)}" />
       <div class="url">${esc(url.replace(/^https?:\/\//, ''))}</div>
       <div class="langs">${langs}</div>
-      <div class="how"><img class="pict" src="/art/scan.webp" alt="" /><p class="extra">${P.extra}${bi ? `<br><span class="tr">${Q.extra.replace(/<\/?b>/g, '')}</span>` : ''}</p></div>
+      <div class="how"><svg class="pict" viewBox="0 0 120 120" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="38" y="14" width="44" height="88" rx="8"/><path d="M54 92h12"/><rect x="48" y="30" width="24" height="24" rx="2"/><path d="M48 62h24M48 70h16"/></svg><p class="extra">${P.extra}${bi ? `<br><span class="tr">${Q.extra.replace(/<\/?b>/g, '')}</span>` : ''}</p></div>
       <div class="foot"><img src="/brand/mark-ink.svg" alt="" />${P.foot}</div>
     </section></a><figcaption><b>${esc(s.name)}</b>· ${esc(url.replace(/^https?:\/\//, ''))}</figcaption></figure>`;
   }).join('');

@@ -167,7 +167,6 @@ for (const lang of langs) {
   for (const [text, share] of L.phones) phoneLabels.push({ file: await labelPng(text), share });
   const local = await png(`<div style="position:absolute;inset:0;background:var(--ink)"></div>
     <div style="position:absolute;left:70px;right:70px;top:300px;background:var(--paper);color:var(--ink);border-radius:44px;overflow:hidden;text-align:center">
-      <img src="${url('public/art/local.webp')}" style="display:block;width:100%;height:auto">
       <div style="padding:20px 40px 50px"><div style="font:800 76px/1.05 'Bricolage';letter-spacing:-.015em;margin:10px 0 34px">${esc(L.local.title)}</div>
       ${L.local.chips.map((x) => `<span class="chip">${esc(x)}</span>`).join('')}</div></div>`);
   const end = await png(`<div style="position:absolute;inset:0;background:rgba(17,16,20,.86)"></div>

@@ -106,7 +106,7 @@ test('the tab icon goes on every page and at /favicon.ico; the home picture on t
   await del('icon');
   await del('cover');
   assert.ok((await page('/admin.html')).includes('<link rel="icon" href="/brand/icon.svg" type="image/svg+xml" />'));
-  assert.ok((await page('/')).includes('src="/art/audience.webp"'));
+  assert.ok((await page('/')).includes('<canvas class="ix-art lines"'), 'without its own picture, the home shows the lines');
   assert.match((await fetch(`${base}/favicon.ico`)).headers.get('content-type'), /icon/);
   assert.deepEqual(fs.readdirSync(path.join(dataDir, 'branding')), []);
 });

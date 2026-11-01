@@ -19,7 +19,7 @@ labels: bug
 - Where it runs: venue computer / cloud server
 - Engine: Gemini / local / simulated · Translation mode: text / live / hybrid
 
-**Logs** (remove passwords, tokens and API keys)
+**Logs** (remove passwords, tokens and API keys; for a room's problem, start the server with `LOG_LEVEL=debug` first)
 
 ```
 ```

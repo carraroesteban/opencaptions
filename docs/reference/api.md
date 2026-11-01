@@ -7,9 +7,9 @@ audience/production/stage web pages, and three WebSocket endpoints that carry au
   your `PUBLIC_URL`. Set `HTTPS_CERT`/`HTTPS_KEY` (or put TLS in front) for `https://` / `wss://`.
 - **Format**: all request and response bodies are JSON (`Content-Type: application/json`), except file
   exports (`.srt`, `.vtt`, `.txt`) and the QR endpoint (SVG).
-- **Versioning**: OpenCaptions is pre-1.0 software (0.x, see `package.json`). There is no
-  `/v1` prefix and no stability guarantee yet — a route, field or WebSocket message shape can change between
-  releases. Check the project's changelog for breaking changes before upgrading a deployed server.
+- **Versioning**: this page describes OpenCaptions 1.0 (the version is in `package.json`). There is no
+  `/v1` prefix: the API is what the bundled pages and scripts use, so a route, field or WebSocket message shape can
+  still change between releases. Read the release notes on GitHub before upgrading a server that other tools call.
 
 See also: [Configuration reference](./configuration.md) for every environment variable, and
 [Security](../security-guide.md) for the full auth/threat model this page summarizes.
@@ -40,12 +40,14 @@ There are three passwords (`src/auth.js`), auto-generated and printed on first s
 
 Roles: **admin** can call everything below. **crew** can call `GET /api/status`, `GET /api/setup`, `GET /api/history`,
 `GET /api/glossary`, `GET /metrics`, `POST /api/stages/:id/talk`, `PATCH /api/stages/:id` with only `title`, `POST /api/stages/:id/restart`,
-`DELETE /api/stages/:id/pull` and `POST …/pull/stop`, `POST /api/engine`, the transcripts (one talk at a time, not `GET /api/transcripts.zip`), and `WS /ws/admin`; anything
+`POST /api/stages/:id/break` and `/music`, `GET /api/stages/:id/captions` and `PATCH …/captions/:seg`, `PATCH /api/stages/:id/talks/:talk`,
+`DELETE /api/stages/:id/pull` and `POST …/pull/stop`, `POST /api/engine`, `POST /api/alerts/snooze`, `GET /api/report` and `/api/report.csv`,
+`POST /mcp`, the transcripts (one talk at a time, not `GET /api/transcripts.zip`), and `WS /ws/admin`; anything
 else answers `403` with `{ "role": "crew" }`. Unauthenticated calls answer `401`.
 
 | Endpoint group | Who can call it |
 |---|---|
-| `GET /healthz`, `GET /api/event`, `GET /api/schedule`, `GET /api/qr.svg`, `GET /s/:id`, `GET /manifest.webmanifest`, `GET /api/auth/config`, `GET /api/auth/me`, `POST /api/auth/login`, static pages | Public — no auth |
+| `GET /healthz`, `GET /api/event`, `GET /api/instance`, `GET /api/schedule`, `GET /api/qr.svg`, `GET /s/:id`, `GET /manifest.webmanifest`, `GET /branding/*`, `GET /favicon.ico`, `GET /api/auth/config`, `GET /api/auth/me`, `POST /api/auth/login`, `POST /api/auth/claim` (first run only), static pages | Public — no auth |
 | `GET /api/talks`, `GET /api/stages/:id/talks`, `GET /api/stages/:id/talks/:talk`, `GET /api/stages/:id/export.:fmt` | Depends on `PUBLIC_TRANSCRIPTS` — see [Transcripts & exports](#transcripts--exports); crew or admin otherwise |
 | `GET /api/stages/:id/summary`, `POST /api/stages/:id/ask` | Depends on `PUBLIC_TRANSCRIPTS` — see [Audience AI](#audience-ai-summaries--ask) |
 | The live controls listed above, `GET /metrics`, `WS /ws/admin` | Crew or admin |
@@ -108,7 +110,7 @@ body is rejected before your route handler runs. WebSocket messages are capped s
 | Method & path | Auth | Notes |
 |---|---|---|
 | `GET /healthz` | Public | Liveness probe. |
-| `GET /metrics` | Admin | Prometheus text exposition. See [Prometheus metrics](#prometheus-metrics). |
+| `GET /metrics` | Crew or admin | Prometheus text exposition. See [Prometheus metrics](#prometheus-metrics). |
 
 `GET /healthz` response:
 
@@ -129,18 +131,20 @@ Response:
 ```json
 {
   "name": "OpenCaptions Live 2026",
+  "personal": false,
   "accent": "#D4FF3A",
   "publicUrl": "https://subs.example.com",
   "languages": { "es": "Español", "en": "English", "pt": "Português" },
   "audienceAi": true,
-  "publicTranscripts": "current",
   "timezone": "America/Argentina/Buenos_Aires",
+  "publicTranscripts": "current",
+  "credit": true,
   "logo": "/branding/logo?v=1792519786159",
   "icon": null,
   "cover": null,
   "stages": [
     {
-      "id": "main", "name": "Auditorio", "title": "Designing cities for everyone",
+      "id": "main", "name": "Auditorio", "hue": "green", "title": "Designing cities for everyone",
       "speaker": "Ana Pérez", "next": { "title": "Rust for Go developers", "speaker": "John Doe", "start": 1758728530441 },
       "talk": "2026-09-24T14-02-10-441Z",
       "source": "auto", "detectedLang": "en", "languages": ["orig", "en", "es"],
@@ -155,9 +159,12 @@ necessarily every language in use. `live` is `true` only when the stage has at l
 session and is not currently silence-gated. `audienceAi` mirrors `AUDIENCE_AI` (see
 [Audience AI](#audience-ai-summaries--ask)); `publicTranscripts` is the effective `PUBLIC_TRANSCRIPTS` value
 (see [Transcripts & exports](#transcripts--exports)); `timezone` is the server process's local IANA time zone
-(what `HH:MM` agenda times are parsed in — see [Schedule](#schedule)). Per stage, `talk` is the current talk's
-id and `next` is the upcoming agenda slot for that room (`{ title, speaker, start }`, from `src/schedule.js`),
-or `null` when there's no schedule or no upcoming slot.
+(what `HH:MM` agenda times are parsed in — see [Schedule](#schedule)). `personal` is `true` in Just for me;
+`credit` is `false` when **Settings → Event** turned off the "Live captions by OpenCaptions" line on the audience
+pages. Per stage, `hue` is the room's color (its `color`, or one of `green`, `sky`, `violet`, `rose`, `amber`,
+`teal`, `orange`, `slate` by its position), `talk` is the current talk's id and `next` is the upcoming agenda slot
+for that room (`{ title, speaker, start }`, from `src/schedule.js`), or `null` when there's no schedule or no
+upcoming slot.
 
 ### Room administration
 
@@ -185,6 +192,7 @@ required and immutable on create):
 | `name` | string | ≤ 80 chars. Defaults to `id`. |
 | `title` | string | ≤ 200 chars. Current talk title; on `PATCH` this renames the *current* talk (does not start a new one). |
 | `source` | string | `"auto"` (default) or a BCP-47-ish code (`^[a-z]{2,3}(-[A-Za-z0-9]{2,8})?$`) — the language the room is spoken in. |
+| `spoken` | string[] | With `source: "auto"`: up to 8 codes, the only languages the talk may be in. Empty: any language. |
 | `targets` | string[] | 1–8 language codes to translate into. Defaults to the event's `defaultTargets`. |
 | `translation` | string | `"text"` \| `"live"` \| `"hybrid"`, or omit to use the server default (`TRANSLATION_MODE`). |
 | `pull` | string | Audio source URL/path the server pulls with ffmpeg (`srt://`, `rtmp://`, `https://…`, or a file under `samples/`/`MEDIA_DIR`). Empty string stops an active pull. A live stream is reconnected whenever it drops or ends; a file (a local path, or an `http(s)` URL ending in a media extension such as `.mp3` or `.wav`) plays once unless `loop` is on: at its end the room log says `pull finished`, the room has no audio source, and `pull` goes back to `""` (saved), so a restart doesn't play it again. Validated with the same SSRF checks as the YouTube endpoint (see [Security](../security-guide.md)). |
@@ -192,6 +200,9 @@ required and immutable on create):
 | `roomSound` | boolean | `true`: phones can play the room's own sound (assistive listening, `/ws/view?audio=orig`). Default off. **Anyone with the room's address can then listen**, from anywhere. |
 | `roomSoundMax` | integer | 1–5000. How many phones may play the room's sound at once. Default `ROOM_SOUND_MAX` (100). |
 | `vocabulary` | string[] | ≤ 500 terms, biases speech recognition for this room (merged with the global glossary). |
+| `musicGuard` | boolean | `false`: caption music too (a concert, a music class). Default: `MUSIC_GUARD`. |
+| `color` | string | The room's badge color: `green`, `sky`, `violet`, `rose`, `amber`, `teal`, `orange` or `slate`. |
+| `tag` | string | ≤ 24 chars. Rooms with the same tag are grouped in the dashboard's sidebar. |
 
 Response (both endpoints): the room's [`status()`](#stage-status-object) object. Changing
 `source`/`targets`/`translation` restarts any running model sessions. `PATCH` only acts on fields that
@@ -274,7 +285,7 @@ curl -X DELETE http://localhost:8080/api/stages/main/pull -H "Authorization: Bea
 | `POST /api/alerts/test` | Admin | Sends a test message to every channel, or only to one with `{ "type": "ntfy" }` (the dashboard tests a destination right after it is set up): `{ results: [{ type, ok, error? }] }`. |
 | `POST /api/alerts/snooze` | Crew or admin | Body `{ minutes }` (0 resumes, up to 1440). |
 
-What's sent, and when (`src/alerts.js`): a room's audio source disconnected for 1 minute (only if it had one and the agenda says the room is on, or it has no agenda), connected but no sound for 1 minute, a very low level for 2 more minutes, the AI reconnecting for 1 minute, translations throttled for 2 minutes, captions over 6 s late for 3 minutes, a talk 5 minutes past the agenda, the offline backup switching, no internet and no backup for 30 s, the public address down for 30 s or a quick address changing. Each one once, plus once more when it's over. At most 20 messages per 10 minutes; the rest are summed up in one. The generic webhook gets `{ source: "opencaptions", event, room, severity, resolved, title, text, at }`.
+What's sent, and when (`src/alerts.js`): a room's audio source disconnected for 1 minute (only if it had one and the agenda says the room is on, or it has no agenda), connected but no sound for 1 minute, no signal at all (a muted or unplugged microphone, not a quiet room) for 2 more minutes after the dashboard's 1-minute **mic muted?**, the AI reconnecting for 1 minute, the AI returning errors for 1 minute, translations throttled for 2 minutes, captions over 6 s late for 3 minutes, transcripts not being saved (at once), a talk 5 minutes past the agenda, the offline backup switching, no internet and no backup for 30 s, the public address down for 30 s or a quick address changing. Each one once, plus once more when it's over. At most 20 messages per 10 minutes; the rest are summed up in one. The generic webhook gets `{ source: "opencaptions", event, room, severity, resolved, title, text, at }`.
 
 ### Integrations (connectors)
 
@@ -304,7 +315,7 @@ What each platform receives: Zoom, `POST <link>&seq=N&lang=<region>` with the ca
 | Method & path | Auth | Notes |
 |---|---|---|
 | `POST /api/stages/:id/break` | Crew | Body `{ on: true \| false, title? }`. Captions pause (no audio goes to the AI) and viewers get a `pause` message. Allowed in Event mode. Starting a new talk also ends a break. |
-| `POST /api/stages/:id/music` | Crew | Body `{ caption: true }`: the room isn't playing music (a talk with a soundtrack): caption anyway until the next talk. |
+| `POST /api/stages/:id/music` | Crew | Body `{ caption: true }`: the room isn't playing music (a talk with a soundtrack): caption anyway until the next talk (**It's a talk: caption anyway**). `{ caption: false }` lets music pause it again. |
 | `GET /api/stages/:id/captions?channel=orig&n=10` | Crew | The latest final captions of the talk in progress (≤ 50): `{ channel, talk, captions: [seg] }`. |
 | `PATCH /api/stages/:id/captions/:seg` | Crew | Body `{ channel, text }`. Corrects a caption of the talk in progress: viewers receive it again (same `id`, `final: true`, `edited: true`) and replace it; the transcript keeps the fix. `404` if it's no longer in the talk in progress. Not resent to Zoom, YouTube or Teams. |
 | `PATCH /api/stages/:id/talks/:talk/captions/:seg` | Admin | Body `{ channel, text }`. Corrects any saved transcript (appended to `captions.jsonl`; the newest text of each caption wins when read, and exports use it). |
@@ -513,7 +524,8 @@ curl -X POST http://localhost:8080/api/stages/main/ask \
 
 | Method | Path | Auth | Description |
 |---|---|---|---|
-| `GET` | `/api/auth/config` | public | What the sign-in screen offers: `{ "password": bool, "sso": "Google" \| null }` (`password: false` with `OIDC_ONLY=1`). |
+| `GET` | `/api/auth/config` | public | What the sign-in screen offers: `{ "password": bool, "sso": "Google" \| null, "claim": "open" \| "expired" \| "no" }` (`password: false` with `OIDC_ONLY=1`; `claim`: see below). |
+| `POST` | `/api/auth/claim` | public, same origin only | First run: the person who installed it chooses the admin password in the browser. Only while `claim` is `open`: the admin password was generated, never chosen, the wizard isn't finished, and the server started less than an hour ago. Body `{ "password", "device"? }` (10–200 characters). Replaces the generated admin password, signs this browser in as admin and returns `{ ok, role, device, crew }` (`crew`: the crew password). `400` for a short password, `409` once it's no longer open or with `OIDC_ONLY=1`. |
 | `GET` | `/api/auth/me` | public | Who this browser is: `{ role: "admin" \| "crew" \| null, via: "local" \| "session" \| "token" \| "off", label, session, expiresAt, twoFactor, sso }`. |
 | `POST` | `/api/auth/login` | public | Body `{ "password", "device"?: "Stage left tablet", "code"?: "123456" }`. Sets the session cookie and returns `{ ok, role, device }`. `401 { "error": "wrong password" }`; with two-factor on and no code, `401 { "need": "code" }`; wrong code, `401 { "need": "code", "error": "wrong code" }`. Failures count towards the lockout (`429`). `403` from another website's `Origin`. |
 | `POST` | `/api/auth/logout` | public | Ends this browser's session and clears the cookie. |
@@ -533,13 +545,13 @@ curl -X POST http://localhost:8080/api/stages/main/ask \
 | Method | Path | Auth | Description |
 |---|---|---|---|
 | `GET` | `/api/instance` | none | `{ "id" }`: names this server's data folder (`data/instance.json`). Pages compare it with the one the browser remembered its choices for, and forget them when it changed (a fresh start, or a deleted `data/`). |
-| `GET` | `/api/setup` | crew | First-run state for the welcome wizard: `done`, `locked`, event `name` and `named` (`false` until someone names the event), `languages` (event.json's, minus the ones removed and plus the ones added from the dashboard), `addedLanguages`, `builtInLanguages` (event.json's codes), `removedLanguages`, `mode` (`event` or `personal`: Just for me), `eventDone` (`true` once the wizard was finished for an event), `publicTranscripts` and `publicTranscriptsFixed` (`true` when `PUBLIC_TRANSCRIPTS` is set in the environment), `speechModel` (`transcribe` = Transcribe Live in `text`-mode rooms, the default; `translate` = Live Translate) and `speechModelFixed` (`true` when `TRANSCRIBE_MODEL` is set in the environment, even empty or `off`), `defaultTargets`, `stages` (`id`, `name`, `source`, `targets`, `pull`: the room's stream or file, redacted for the crew), `ffmpeg` (`true` when ffmpeg is available, so OBS or vMix can stream a room's sound in), `engine`, `primaryEngine`, `failover`, `ai` (see below), `tunnel` (see below), `tunnelTokenSaved`, `tunnelMoved` (`true` when the free address differs from the one used before the last restart, so printed QR codes are out of date), `publicUrl` (the address QR codes use for this request), `publicUrlSource` (`config` = `PUBLIC_URL` / `publicUrl`, `tunnel`, or `auto` = the address the page was opened with, or this computer's Wi-Fi address instead of `localhost`), `lanUrl` and `port`. |
+| `GET` | `/api/setup` | crew | First-run state for the welcome wizard: `done`, `locked`, event `name` and `named` (`false` until someone names the event), `timezone` (the agenda's) and `timezoneFixed` (`true` when `TZ` or `config/event.json`'s `timezone` sets it), `credit` (the audience pages' "Live captions by OpenCaptions" line), `languages` (event.json's, minus the ones removed and plus the ones added from the dashboard), `addedLanguages`, `builtInLanguages` (event.json's codes), `removedLanguages`, `mode` (`event` or `personal`: Just for me), `eventDone` (`true` once the wizard was finished for an event), `publicTranscripts` and `publicTranscriptsFixed` (`true` when `PUBLIC_TRANSCRIPTS` is set in the environment), `speechModel` (`transcribe` = Transcribe Live in `text`-mode rooms, the default; `translate` = Live Translate) and `speechModelFixed` (`true` when `TRANSCRIBE_MODEL` is set in the environment, even empty or `off`), `defaultTargets`, `stages` (`id`, `name`, `source`, `spoken`, `targets`, `pull`: the room's stream or file, redacted for the crew), `ffmpeg` (`true` when ffmpeg is available, so OBS or vMix can stream a room's sound in), `engine`, `primaryEngine`, `failover`, `ai` (see below), `aiNow` (which AI makes the captions: `use` and `now`, see `POST /api/ai/use`), `textApi` (another AI service for translations, without its key), `updateCheck` and `updateCheckFixed` (`true` when `UPDATE_CHECK=0` turns the check off), `tunnel` (see below), `tunnelTokenSaved`, `tunnelMoved` (`true` when the free address differs from the one used before the last restart, so printed QR codes are out of date), `publicUrl` (the address QR codes use for this request), `publicUrlSource` (`config` = `PUBLIC_URL` / `publicUrl`, `tunnel`, `own` = the organizer's own address, typed (`ownTyped: true`, see `POST /api/address`) or learned, or `auto` = the address the page was opened with, or this computer's Wi-Fi address instead of `localhost`), `lanUrl` and `port`. An admin who opens it over HTTPS at a domain, with no `PUBLIC_URL`, tunnel or typed address, makes that address the own one (an organizer's own tunnel or reverse proxy in front of the server). |
 | `POST` | `/api/event/logo` | admin | The event's logo, shown on the audience pages, the stage screen and the QR posters instead of OpenCaptions'. The raw image is the body, `Content-Type: image/png`, `image/jpeg` or `image/webp`, up to 2 MB (`413` over). The type is judged by the file's first bytes: anything else, SVG included, is `415`. Replaces the previous one (`data/branding/logo.<ext>`), recorded in the history (`event.logo`). `423` in Event mode. |
 | `DELETE` | `/api/event/logo` | admin | Removes the event's logo: the pages go back to OpenCaptions'. `423` in Event mode. |
 | `POST`, `DELETE` | `/api/event/icon`, `/api/event/cover` | admin | The event's tab icon (every page, `/favicon.ico`) and the audience home page's picture: the same rules as the logo (`data/branding/icon.<ext>`, `cover.<ext>`; history `event.icon`, `event.cover`). |
-| `PUT` | `/api/setup` | admin | Body `{ "name"?: string, "done"?: boolean, "mode"?: "event" \| "personal", "timezone"?: string, "languages"?: { code: name }, "removedLanguages"?: [code], "publicTranscripts"?: "current" \| "all" \| "none", "speechModel"?: "translate" \| "transcribe" }`. Renames the event (1–80 characters), marks the wizard as finished, switches between an event and Just for me, sets the agenda's time zone, replaces the languages added from the dashboard (up to 40) and the ones of `config/event.json` that aren't offered (`400` for other codes, or when no language would be left), sets who can read transcripts (`409` when `PUBLIC_TRANSCRIPTS` fixes it), and sets the speech model of Gemini rooms (`409` when `TRANSCRIBE_MODEL` fixes it): `text`-mode rooms reconnect with it at once, and captions pause a few seconds. A changed speech model is recorded in the history (`ai.speech`) and can be undone. A language a room still uses can't go: `409` with `{ "code": "language-in-use", "rooms": [names], "languages": [names] }`. Everything is validated before anything changes. Saved in `data/setup.json`; the name overrides `eventName` from `config/event.json`. All but `done` and `mode: "event"` answer `423` in Event mode (switching to Just for me would take the event offline). |
+| `PUT` | `/api/setup` | admin | Body `{ "name"?: string, "done"?: boolean, "mode"?: "event" \| "personal", "timezone"?: string, "languages"?: { code: name }, "removedLanguages"?: [code], "publicTranscripts"?: "current" \| "all" \| "none", "speechModel"?: "translate" \| "transcribe", "credit"?: boolean, "updateCheck"?: boolean }`. Renames the event (1–80 characters), marks the wizard as finished, switches between an event and Just for me, sets the agenda's time zone, replaces the languages added from the dashboard (up to 40) and the ones of `config/event.json` that aren't offered (`400` for other codes, or when no language would be left), sets who can read transcripts (`409` when `PUBLIC_TRANSCRIPTS` fixes it), shows or hides the audience pages' "Live captions by OpenCaptions" line (history `event.credit`), turns the daily check for new versions on or off (`409` when `UPDATE_CHECK=0` fixes it), and sets the speech model of Gemini rooms (`409` when `TRANSCRIBE_MODEL` fixes it): `text`-mode rooms reconnect with it at once, and captions pause a few seconds. A changed speech model is recorded in the history (`ai.speech`) and can be undone. A language a room still uses can't go: `409` with `{ "code": "language-in-use", "rooms": [names], "languages": [names] }`. Everything is validated before anything changes. Saved in `data/setup.json`; the name overrides `eventName` from `config/event.json`. In Event mode, `name`, `timezone`, the languages, `publicTranscripts`, `speechModel` and `mode: "personal"` answer `423` (switching to Just for me would take the event offline); `done`, `mode: "event"`, `credit` and `updateCheck` still work. |
 | `POST` | `/api/lock` | admin | Event mode. Body `{ "locked": true \| false }`. While locked, the setup endpoints below answer `423 Locked` with `{ "locked": true }`: creating, changing (except the current talk's `title`) and deleting rooms, `PUT /api/schedule`, `PUT /api/glossary`, renaming the event and undoing changes. Live operations keep working: `POST /api/stages/:id/talk`, `/restart`, `/youtube`, the pull controls and `POST /api/engine`. Recorded in the history. |
-| `GET` | `/api/history` | crew | `{ "locked", "changes": [...], "trash": [...] }`. `changes` are the latest setup changes, newest first: `{ id, at, kind, target, summary, before, after, undoes?, undone }` (`kind`: `room.create`, `room.update`, `room.delete`, `agenda.set`, `glossary.set`, `event.rename`, `engine.mode`, `ai.speech`, `event.lock`, `ai.key`, `tunnel`, `auth.signin`, `auth.signout`, `auth.password`, `auth.2fa`; `by` is who made it: the signed-in device's name, the work account, `this computer` or `admin password (script)`; agenda and glossary snapshots are summarized as counts). `trash` lists deleted rooms that haven't been restored: `{ id, at, room }`. |
+| `GET` | `/api/history` | crew | `{ "locked", "changes": [...], "trash": [...] }`. `changes` are the latest setup changes, newest first: `{ id, at, kind, target, summary, before, after, undoes?, undone }` (`kind`: `room.create`, `room.update`, `room.delete`, `rooms.order`, `agenda.set`, `glossary.set`, `event.rename`, `event.lock`, `event.credit`, `event.logo`, `event.icon`, `event.cover`, `event` (the admin password chosen on the first run), `transcripts.access`, `talk.rename`, `talk.delete`, `engine.mode`, `ai.key`, `ai.use`, `ai.text`, `ai.speech`, `ai.local`, `tunnel`, `address`, `alerts`, `integration.add`, `integration.remove`, `app.update`, `auth.signin`, `auth.signout`, `auth.password`, `auth.2fa`, `auth.link`; `by` is who made it: the signed-in device's name, the work account, `this computer` or `admin password (script)`; agenda and glossary snapshots are summarized as counts). `trash` lists deleted rooms that haven't been restored: `{ id, at, room }`. |
 | `POST` | `/api/history/:id/undo` | admin | Put back what that change replaced: a deleted room comes back exactly as it was, a changed room returns to its old settings, the agenda or glossary to the previous version, and so on. The undo is recorded as a new change. `409` if already undone; `423` in Event mode. |
 | `POST` | `/api/ai/key/check` | admin | Body `{ "key": "AQ.…" }`. Refuses only copy-paste slips (`code: "format"`: spaces, under 30 or over 300 characters; keys start with `AQ.` since May 2026, `AIza` before). Asks Google whether the key works, without saving it: `{ ok, code }` with `code` `ok`, `quota` (a real key with no free quota left right now, `ok: true`), `invalid`, `forbidden` (the key can't use Gemini), `offline` (Google unreachable) or `error`, plus Google's `detail`. `400 { code: "format" }` if it doesn't look like a Gemini key. |
 | `PUT` | `/api/ai/key` | admin | Body `{ "key": "AQ.…", "force"?: true }`. Checks the key (skipped with `force`, for when Google can't be reached), saves it in `data/secrets.json` and uses it right away: rooms on simulated captions switch to Gemini. Wins over `GEMINI_API_KEY`. Returns `{ ok, check, engine, key }`; `400` with the check's `code` if Google rejects it. Allowed in Event mode (a key that runs out of quota mid-event must be replaceable). Recorded in the history (`ai.key`, not undoable, without the key). |
@@ -547,7 +559,7 @@ curl -X POST http://localhost:8080/api/stages/main/ask \
 | `PUT` | `/api/ai/text` | admin | Another AI for translations, summaries and questions (any OpenAI-compatible service). Body `{ "url": "https://api.openai.com/v1", "model": string, "key"?: string }` (an empty `key` keeps the saved one). Checked with one small request, then saved; the key is never sent back. Returns `{ ok, check, textApi }`; `400` with `code` `url` or `model`, or the check's `code`, if it's refused. |
 | `DELETE` | `/api/ai/text` | admin | Back to the service in `.env` (`TEXT_API_URL`), or to Gemini. Returns `{ ok, textApi }`. |
 | `POST` | `/api/address` | admin | The organizer's own public address (their tunnel or reverse proxy, running outside OpenCaptions: no token). Body `{ "url": "https://captions.example.com", "force"?: true }`. Checked first: the server asks that address for a one-time code (`GET /api/address/probe`) and saves where it answered (after redirects); `400` `code` `unreachable` when it doesn't, `format` for something that isn't an address, `409` `fixed` with `PUBLIC_URL` set. `force` saves it unchecked. It wins over the address learned from the dashboard; `PUBLIC_URL` and a tunnel turned on in Settings win over it. History `address`. `423` in Event mode. |
-| `DELETE` | `/api/address` | admin | Stops using the own address (typed or learned): QR codes go back to the address each page is opened at. |
+| `DELETE` | `/api/address` | admin | Stops using the own address (typed or learned): QR codes go back to the address each page is opened at. `423` in Event mode. |
 | `POST` | `/api/ai/use` | admin | Which AI makes the captions, saved across restarts (the AI badge and **Settings → AI**). Body `{ "use": "cloud" \| "local" \| "auto" \| "off" \| "on" }`: Gemini, this computer, or Gemini with this computer as a backup; `off` turns captions off (no AI session in any room until `on`, or another choice, turns them back on as they were; `aiNow.use` and `aiNow.now` are then `off`). `400` with `code` `no-key` (no Gemini key for `cloud`/`auto`), `no-backup` or `no-backup-here` (`auto` without the offline backup, or in Docker), or `no-local-here` (`local` in Docker). |
 | `GET` | `/api/local` | admin | Local mode's state (setting up, ready, errors), plus `engine`, `hasKey`, `apple` (Apple's speech can be used) and `canLocal` (`false` in Docker). |
 | `POST` | `/api/local/start` | admin | Sets up and switches to captions on this computer. `400` (`no-local-here`) in Docker. Returns the same as `GET /api/local`. |
@@ -637,7 +649,7 @@ curl -X PUT http://localhost:8080/api/glossary \
 | `GET /api/qr.svg` | Public | `?text=` (≤ 500 chars, default = the server's public URL). Returns an SVG QR code, `Cache-Control: public, max-age=3600`. |
 | `GET /s/:id` | Public | Short link → `302` redirect to `/watch.html?stage=:id` (what the printed/QR-coded audience link points to). |
 | `GET /manifest.webmanifest` | Public | Web app manifest named after the event (install to home screen). Audience pages (`/`, `/watch.html`, `/talk.html`, `/talks.html`) are served with the event name and absolute `og:image` URLs filled in for link previews; the base is `PUBLIC_URL`, or the request's host when that looks like a plain hostname. |
-| static files | Public | `public/` is served at `/` (extensionless, e.g. `/watch` ≡ `/watch.html`); `samples/` is served at `/samples/` (bundled demo WAV files). |
+| static files | Public | `public/` is served at `/` (extensionless, e.g. `/watch` ≡ `/watch.html`). From `samples/`, only the two bundled test talks: `/samples/talk-en.wav` and `/samples/talk-es.wav` (recordings copied there to pull stay private). |
 | `/api/*` (unmatched) | — | `404 {"error":"not found"}`. |
 
 ## WebSocket endpoints
@@ -689,7 +701,7 @@ Client → server:
 - **Binary frames**: raw **PCM16LE, mono, 16 kHz**. The reference clients send 100 ms frames (3200 bytes).
   Frames over **64 KB** are silently dropped (not an error, not a close) — send small, regular chunks.
   Server `maxPayload` for the whole connection is 256 KB.
-- Text frames: `{"type":"break","on":true|false}` starts or ends a break for this room (the B key on the audio page). `{"type":"slide","jpeg":"<base64>"}` shares the slide on screen (a JPEG under 180 KB, at most one every 1.5 s; [Accessibility](../accessibility.md#the-slide-on-the-phone-in-your-language)). Anything else is ignored.
+- Text frames: `{"type":"break","on":true|false}` starts or ends a break for this room (the B key on the audio page). `{"type":"music","caption":true}` captions anyway while music paused the room (**It's a talk: caption anyway** on the audio page), until the next talk; `"caption":false` lets music pause it again. `{"type":"slide","jpeg":"<base64>"}` shares the slide on screen (a JPEG under 180 KB, at most one every 1.5 s; [Accessibility](../accessibility.md#the-slide-on-the-phone-in-your-language)). Anything else is ignored.
 
 Server → client, every 500 ms while connected:
 
@@ -705,7 +717,6 @@ Server → client, every 500 ms while connected:
   "sound": "voice",
   "engines": [{ "target": "es", "state": "live" }],
   "preview": { "orig": "…the last words heard…", "es": "…las últimas palabras…" },
-  "said": "The last two sentences heard, and the one in progress.",
   "alerts": [],
   "latency": { "asr": 812, "tr": { "es": 1140 } }
 }
@@ -883,7 +894,7 @@ Server → client:
 
 ```json
 // broadcast to every connected admin socket every 1000 ms
-{ "type": "status", "engine": "gemini", "model": "gemini-3.5-live-translate-preview", "event": "OpenCaptions Live 2026",
+{ "type": "status", "engine": "gemini", "model": "gemini-3.5-live-translate-preview · gemini-3.5-transcribe-live (text mode)", "event": "OpenCaptions Live 2026",
   "uptimeSec": 5412, "system": { "cpuPct": 6.1, "rssMB": 132, "loopLagMs": { "p50": 0.4, "p99": 1.9, "max": 4.2 } },
   "totals": { "stages": 3, "live": 2, "sessions": 4, "viewers": 128, "costUsd": 1.84,
               "assist": { "requests": 340, "cacheHits": 210, "errors": 2, "usd": 0.04 } },
@@ -908,6 +919,7 @@ inside every `admin` `status` broadcast:
 |---|---|---|
 | `id`, `name` | string | Room id and display name. |
 | `source` | string | `"auto"` or a pinned language code. |
+| `spoken` | string[] | With `"auto"`: the only languages the talk may be in (empty: any). |
 | `detectedLang` | string\|null | Auto-detected spoken language, once known. |
 | `targets` | string[] | Configured target languages (from the room definition). |
 | `languages` | string[] | Viewer-selectable caption channels (`"orig"` + targets). |
@@ -916,12 +928,20 @@ inside every `admin` `status` broadcast:
 | `audioLangs` | string[] | Languages with a live "Live" voice session (eligible for `?audio=` on `/ws/view`). |
 | `mt` | object | Per-target text-translation stats (request counts, quota errors, throttled state). |
 | `pull` | string | Configured audio pull URL, if any. |
+| `vocabulary` | string[] | The room's own terms. |
 | `loop` | boolean | Whether that `pull` (if it's a file) loops. |
+| `musicGuard`, `color`, `tag` | boolean, string, string | As set on the room (see the request body above). |
 | `talk` | object | `{ id, title, speaker, startedAt }` for the current talk. |
 | `nextTalk` | object\|null | `{ title, speaker, start }` — the next agenda slot for this room (`src/schedule.js`), or `null` if there's no schedule or no upcoming slot. Also surfaced as `next` on [`GET /api/event`](#event--rooms-public) and in the `/ws/view` `hello.stage`. |
-| `ingest` | object\|null | `{ kind, label, since }` for the currently attached audio source. |
+| `dueTalk` | object\|null | The agenda's talk that should have started while the previous one runs over (the card turns orange). |
+| `speaker` | string | Who's speaking, from the agenda (the first one listed). |
+| `ingest` | object\|null | `{ kind, label, since, role }` for the currently attached audio source. |
+| `backup` | object\|null | The room's backup source, `{ kind, label, since, active, … }` (`active`: on air). |
 | `level`, `peak` | number | Current/decaying-peak input RMS (0–1). |
 | `gated` | boolean | `true` while paused for silence (no audio sent to the model, no cost). |
+| `brk` | object\|null | The break in progress (`{ by, since, title, … }`, as in the viewer's `pause` message). |
+| `music`, `musicOverride` | boolean | Captions paused because music plays; the crew said "it's a talk" (until the next talk). |
+| `sound` | string | What the room sounds like to the music detector: `voice`, `music`, `quiet` or `unknown`. |
 | `lastSpeechAt`, `lastCaptionAt` | number | Epoch ms. |
 | `latency` | object | `{ asr: ms\|null, tr: { <lang>: ms } }` — smoothed speech→caption / speech→translation latency. |
 | `engines` | object[] | One per running model session: `{ target, state, level, reconnects, resumes, errors, lastError, connectedAt, stateSince, audioMs, tokens, … }`. `state` ∈ `idle`\|`connecting`\|`live`\|`reconnecting`\|`resuming`; `stateSince` (epoch ms) is when it last changed `state` (the stage's `alerts` uses it to tell a slow `connecting`/`resuming` from a fresh one). The stage's `alerts` also treat a hypothetical `error` state as reconnecting-like, but no engine currently emits it — failures instead increment `errors`/`lastError` and trigger a reconnect. |
@@ -929,7 +949,7 @@ inside every `admin` `status` broadcast:
 | `roomSound`, `roomSoundMax`, `roomSoundListeners` | boolean, number, number | Whether phones can play the room's sound, how many may at once, and how many are now. |
 | `audioMinIn` | number | Minutes of audio received so far. |
 | `costUsd`, `costLiveUsd` | number | Estimated Gemini spend (all-in / Live-session-only). |
-| `alerts` | string[] | Any of `no-ingest`, `no-audio`, `muted?`, `reconnecting`, `high-latency`, `mt-throttled`. |
+| `alerts` | string[] | Any of `no-ingest`, `no-audio` (connected, no audio for 3 s), `muted?` (no signal at all for 60 s), `reconnecting`, `ai-quota` (Gemini refuses the key: quota), `ai-errors`, `budget` (`BUDGET_USD_WEEK` used up), `high-latency`, `mt-throttled`, `not-saving`, `voice-in-break` (people speaking for 20 s during a break), `on-backup`. |
 | `preview` | object | `{ <channel>: "last text seen" }` — quick glance without subscribing. |
 | `said` | string | The original's last two sentences and the one in progress (up to 400 characters): what the dashboard's card shows. |
 
@@ -945,7 +965,7 @@ scrape_configs:
     static_configs: [{ targets: ['subs.example.com:443'] }]
     scheme: https
     authorization:
-      credentials: <ADMIN_TOKEN>
+      credentials: <CREW_TOKEN>
 ```
 
 | Metric | Labels | Meaning |
@@ -981,6 +1001,7 @@ page also accepts a global `?ui=es|en|pt` to force the UI language (persisted in
 | `/ingest.html` | The room's sound page: sends a room's sound from a computer next to the stage (microphone or sound card / another tab / a recording / a sample talk). | `stage`, `mode` (`mic`\|`tab`\|`file`\|`sample`), `autostart=1`, `link` (a room link) |
 | `/admin.html` | Production dashboard: live rooms, rooms, agenda, glossary, screens and QR, transcripts, History, Settings (Event mode, access, alerts, Gemini, public address). The crew sees the live controls only. | `dashboard` (skip the first-run redirect to the wizard). Other devices sign in. |
 | `/welcome.html` | The welcome wizard: event name, rooms, languages, the API key, the public address; a review lists every change before applying it. Admins only. | — |
+| `/me.html` | Just for me: captions whatever goes into the microphone or whatever this computer plays (a call, a video), in a big window and a floating one. In Just for me, the audience, dashboard and sound pages redirect here. | — |
 | `/report.html` | The event report ([`GET /api/report`](#event-report)), printable, with a CSV download. Crew or admin. | `day` (`YYYY-MM-DD`) |
 | `/demo.html` | Sound-check / YouTube play-along demo. | `mode` (`youtube`\|`mic`), `v` (YouTube URL), `t` (start seconds), `stage`, `lang` |
 | `/screen.html` | Full-screen projector captions with follow-on-phone QR. | `stage` (default `main`), `langs` (default `es,orig`), `lines`, `size` (vh), `qr` (`0`), `clock` (`0`), `bg`, plus [caption style params](#caption-style-params) |
@@ -1002,5 +1023,6 @@ uppercase) · `align` (`center`\|`left`) · `accent` (hex, label color).
 
 Non-page static assets also served from `public/`: `common.js`, `i18n.js` (shared client helpers and UI
 localization), `prefs.js` (page language and the language/theme switcher, without the dictionary), `pcm-worklet.js` (AudioWorklet used by `ingest.html`/`demo.html` to capture and downsample
-microphone/tab audio to 16 kHz PCM16), `illustrations.js` (line illustrations), `tokens.css` (design tokens, light +
-dark) and `style.css` (shared components). Brand assets live in `brand/` (see [docs/brand.md](../brand.md)).
+microphone/tab audio to 16 kHz PCM16), `illustrations.js` (icons and line illustrations), `lines.js` (the moving
+lines behind the home and welcome pages), `tokens.css` (design tokens: light and dark, following the device's setting
+unless the page's theme button picks one) and `style.css` (shared components). Brand assets live in `brand/` (see [docs/brand.md](../brand.md)).

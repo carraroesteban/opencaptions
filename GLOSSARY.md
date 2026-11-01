@@ -57,7 +57,7 @@ A room's audio arriving at the server, pushed from the venue.
 _Avoid_: Upload, input
 
 **Room computer**:
-The PC in a room that sends its audio, through the agent or the browser ingest page.
+The computer (or phone) in a room that sends its audio, through the agent or the browser ingest page.
 _Avoid_: Venue PC, encoder
 
 **Agent**:
@@ -76,8 +76,12 @@ _Avoid_: Primary/secondary, failover source
 Stopping a room's audio from reaching the AI while nobody speaks, so nothing is billed.
 _Avoid_: VAD, mute
 
+**Music guard**:
+Pausing a room's captions while it plays music (walk-in music, a video between talks), until someone speaks or the crew says it's a talk.
+_Avoid_: Music mode, music filter
+
 **Live / Paused / Idle**:
-A room's state: hearing speech; silent for a short while with no audio sent; silent long enough that the talk ended.
+A room's state: hearing speech; no audio sent for now (silence, music or a break); silent long enough that the talk ended.
 _Avoid_: Active, sleeping, stopped
 
 ## Captions out
@@ -105,6 +109,10 @@ _Avoid_: Interim, draft, committed
 **Provisional translation**:
 A translation of the sentence still in progress, replaced when the sentence ends.
 _Avoid_: Partial translation, preview
+
+**Slide**:
+The presentation's screen, shared by the room computer and shown on phones with its text translated.
+_Avoid_: Screen share, deck
 
 **Glossary**:
 The event's list of names and technical terms, used to recognize and spell them right in every caption.
@@ -159,7 +167,7 @@ Moving rooms to the local engine by itself when the connection to the cloud is l
 _Avoid_: Failover (in prose), fallback mode
 
 **Assistant**:
-The audience's two questions to the talk: *What did I miss?* (a summary) and *Ask the talk* (an answer quoted from the transcript).
+The audience's AI help, grounded in what was said: *What did I miss?* (a summary), *Ask the talk* (an answer quoted from the transcript), *Ask the whole event* (one question across every talk) and a word explained.
 _Avoid_: Chatbot, AI chat
 
 ## Running it
@@ -173,7 +181,7 @@ Every change to the setup, with what it replaced, who made it, and undo.
 _Avoid_: Audit log, changelog
 
 **Public address**:
-The internet address the audience's phones open, made from the organizer's computer.
+The internet address the audience's phones open: one OpenCaptions makes through a tunnel, or the organizer's own domain.
 _Avoid_: Tunnel, public URL
 
 **Event report**:

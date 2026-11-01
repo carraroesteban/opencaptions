@@ -13,7 +13,8 @@
 // changes frame to frame (flux under 0.26; speech 0.26–0.44, songs 0.19–0.30). Retested on those talks, the stream,
 // talks mixed with a song, 9 full songs and 25 GarageBand loops: no speech taken for music (the stream peaks at 5 s
 // of the 10 needed), every song found, most within 12 s; bare drums and lone instrument loops mostly are not.
-// The decision is slow and one-sided on purpose: missing a song is cheap, cutting a speaker's captions is not.
+// The decision is slow and one-sided on purpose: missing a song is cheap, cutting a speaker's captions is not. Music
+// ends after 3 s of a clear voice, 3 s of silence, or 10 s with more of anything else than of music.
 
 const FRAME = 320; // 20 ms at 16 kHz
 const WINDOW = 100; // frames: 2 s
@@ -118,7 +119,8 @@ export class VoiceFeatures {
 }
 
 /**
- * Speech/music for a room, 100 ms at a time. state: 'voice', 'music' or 'quiet' (and 'unknown' at first).
+ * Speech/music for a room, 100 ms at a time. state: 'voice', 'music' or 'quiet' ('unknown' at first, and when music
+ * drains into sound it can't call).
  * onChange(state) fires when it changes.
  */
 export class VoiceDetector {
@@ -150,13 +152,18 @@ export class VoiceDetector {
     this.f.push(pcm);
     if (!this.f.ready) return this.state;
     const v = VoiceDetector.judge((this.last = this.f.features()), this.minEnergy);
-    this.musicMs = v === 'music' ? this.musicMs + ms : v === 'voice' ? 0 : Math.max(0, this.musicMs - ms);
+    // Music builds up to the 10 s that call it and no further, and during music a voice only wears it down: so music
+    // ends once it drains, also for a voice the windows can't call (far, echoey, narrowband: 'unsure' all along, in a
+    // room never quiet enough for 'quiet'), which would otherwise stay paused for the whole talk.
+    const full = this.musicSec * 1000;
+    this.musicMs = v === 'music' ? Math.min(full, this.musicMs + ms) : v === 'voice' && this.state !== 'music' ? 0 : Math.max(0, this.musicMs - ms);
     this.voiceMs = v === 'voice' ? this.voiceMs + ms : v === 'music' ? 0 : Math.max(0, this.voiceMs - ms / 2);
     this.quietMs = v === 'quiet' ? this.quietMs + ms : 0;
     let next = this.state;
-    if (this.musicMs >= this.musicSec * 1000) next = 'music';
+    if (this.musicMs >= full) next = 'music';
     else if (this.voiceMs >= this.voiceSec * 1000) next = 'voice';
     else if (this.quietMs >= 3000) next = 'quiet';
+    else if (this.state === 'music' && !this.musicMs) next = 'unknown';
     if (next !== this.state) { this.state = next; this.onChange(next); }
     return this.state;
   }

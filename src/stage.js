@@ -12,13 +12,16 @@ import { AppleEngine } from './engines/apple.js';
 import { appleVoice } from './local/apple.js';
 import { SentenceTranslator, translateText } from './translate.js';
 import { guessLang } from './langid.js';
-import { VoiceDetector } from './voice.js';
+import { VoiceDetector, MUSIC_BELOW, VOICE_ABOVE, SWING_BELOW, FLUX_BELOW } from './voice.js';
 import { spend, overBudget } from './budget.js';
 import { SlideDeck, readSlide, slidesEnabled } from './slides.js';
 
 const PREROLL_CHUNKS = 6; // 600 ms kept while gated, so the first words aren't clipped
 const PREROLL_MUSIC = 40; // after music: telling a voice from music takes a few seconds, so keep 4 s and send them
 const EMA = (prev, v, a = 0.3) => (prev == null ? v : prev * (1 - a) + v * a);
+const dbfs = (r) => (r > 0 ? `${(20 * Math.log10(r)).toFixed(0)} dBFS` : 'no signal');
+/** What the music detector measured over the last 2 s (src/voice.js), next to the limits it judges by. */
+const heard = (f) => (f ? `brightness spread ${f.spread.toFixed(2)} (music < ${MUSIC_BELOW}, voice > ${VOICE_ABOVE}), loudness swing ${f.swing.toFixed(2)} (music < ${SWING_BELOW}), flux ${f.flux.toFixed(2)} (music < ${FLUX_BELOW}), ${dbfs(Math.sqrt(f.energy))}` : 'not measured yet');
 // Gemini paid tier per minute of streamed audio (pricing page, 2026-10-09). Live Translate: $0.0053 input +
 // $0.0315 output audio. Transcribe Live (TRANSCRIBE_MODEL): $0.005 input + $0.004 output text.
 const USD_PER_SESSION_MIN = { translate: 0.0368, transcribe: 0.009 };
@@ -68,7 +71,7 @@ export class Stage extends EventEmitter {
     this.music = false;
     this.musicOverride = false; // the crew said "it's not music" (until the next talk)
     this.voiceInBreakMs = 0;
-    this.voice = new VoiceDetector({ onChange: (s) => this.#onVoice(s) });
+    this.voice = new VoiceDetector({ onChange: (s) => { this.#debug(`sound: ${s} · ${heard(this.voice.last)}`); this.#onVoice(s); } });
     this.chunker = new Chunker((c) => this.#onChunk(c));
     this.#newTalk(def.title || '', false);
     this.tick = setInterval(() => this.#housekeeping(), 1000);
@@ -254,6 +257,7 @@ export class Stage extends EventEmitter {
     this.gated = false;
     this.musicWas = false;
     const pre = this.preroll.splice(0);
+    this.#debug(`speech at ${dbfs(this.level)} (threshold ${dbfs(config.speechRms)}) → audio to the AI again, ${(pre.length / 10).toFixed(1)} s held back sent first`);
     for (const c of pre) for (const e of this.engines.values()) e.sendAudio(c);
   }
 
@@ -358,6 +362,7 @@ export class Stage extends EventEmitter {
       });
       e.on('state', (s) => { this.log(s === 'live' ? 'info' : 'debug', `${target}: ${s}`); this.emit('engine'); });
       e.on('log', (m) => this.log('warn', `${target}: ${m}`));
+      e.on('debug', (m) => this.#debug(`${target}: ${m}`));
       e.on('heard', (l) => { this.heardLang = l; this.emit('heard', l); }); // Apple on "auto": the next session starts there
       e.on('error', (m) => this.log('error', `${target}: ${m}`));
       this.engines.set(target, e);
@@ -573,7 +578,7 @@ export class Stage extends EventEmitter {
         if (this.speaker) seg.spk = this.speaker; // who's speaking, for labels and exports (from the agenda)
         if (seg.final) this.store.append(this.id, talk.id, seg);
         if (talk !== this.talk) return; // late translation of the previous talk: stored there, not shown
-        if (seg.final) this.talkSegments++;
+        if (seg.final) { this.talkSegments++; this.#debug(`${ch === 'orig' ? `heard${seg.lang !== 'orig' ? ` (${seg.lang})` : ''}` : `→ ${ch}`}: ${seg.text}`); }
         this.lastCaptionAt = Date.now();
         this.emit('caption', seg);
       });
@@ -782,6 +787,14 @@ export class Stage extends EventEmitter {
     if (this.engines.size && config.engine === 'gemini' && overBudget()) this.#stopEngines('the weekly AI budget is used up');
     if (this.engines.size && config.aiOff) this.#stopEngines('captions turned off');
 
+    if (config.logDebug && this.ticks % 30 === 0 && (this.ingest || this.engines.size)) {
+      const ago = (t) => (t ? `${Math.round((now - t) / 1000)} s ago` : 'never');
+      const engines = [...this.engines].map(([t, e]) => `${t} ${e.state}, ${Math.round(e.stats.audioMs / 1000)} s of audio sent, last words ${ago(e.stats.lastInputAt || e.stats.lastOutputAt)}, ${e.stats.reconnects} reconnects, ${e.stats.errors} errors${e.stats.lastError ? ` (last: ${e.stats.lastError})` : ''}`);
+      const sending = this.brk ? 'paused (break)' : this.music ? 'paused (music)' : this.gated ? 'paused (quiet)' : 'sending';
+      this.#debug(`level ${dbfs(this.level)}, sound ${this.voice.state} · ${heard(this.voice.last)}; audio to the AI: ${sending}`
+        + `${this.lat.asr != null ? `, words ${(this.lat.asr / 1000).toFixed(1)} s behind` : ''}; ${engines.join('; ') || 'no AI sessions open'}`);
+    }
+
     // Stall watchdog: people are talking but a session produced nothing for a while → reconnect it.
     const primary = this.engines.get(this.sessionTargets[0]);
     if (primary?.state === 'live' && this.speechMsNoInput > 20000) {
@@ -843,12 +856,16 @@ export class Stage extends EventEmitter {
     // room's everyday lines stay out of it (its talk titles and corrected captions are someone's own).
     if (level === 'warn' || level === 'error') console.log(`[${this.id}] ${level}: ${msg}`);
     else if (level === 'info' && this.id !== 'me') console.log(`[${this.id}] ${msg}`);
+    else if (level === 'debug' && config.logDebug && this.id !== 'me') console.log(`[${this.id}] debug: ${msg}`);
     if (level !== 'debug') {
       this.logs.push(entry);
       if (this.logs.length > 100) this.logs.shift();
     }
     this.emit('log', entry);
   }
+
+  /** LOG_LEVEL=debug only: what the room hears and sends, and what the AI answers, line by line. */
+  #debug(msg) { if (config.logDebug) this.log('debug', msg); }
 
   status() {
     return {

@@ -1,16 +1,14 @@
 # Troubleshooting
 
-Find the symptom, then follow the steps in order. Server logs are printed in the window the Mac app or Windows launcher opened, the terminal, `docker compose logs -f` or `journalctl -u opencaptions -f`. The dashboard's event log shows the same messages per room.
-
-<p align="center"><img src="../../public/art/waiting.webp" width="640" alt="A calm waiting screen with the OpenCaptions logo" /></p>
+Find the symptom, then follow the steps in order. Server logs are printed in the window the Mac app or Windows launcher opened, the terminal, `docker compose logs -f` or `journalctl -u opencaptions -f`. The dashboard's event log shows the same messages per room. For more detail, set `LOG_LEVEL=debug` (in Docker: in `.env`, then `docker compose up -d`): each room then also logs what the music detector measures, each AI connection, every caption and a summary every 30 s ([Configuration](../reference/configuration.md#debugging)).
 
 ## No captions at all
 
 Check these in order; most "no captions" problems are one of the first three.
 
 1. **Is sound arriving?** On the dashboard, the room's card says **No sound yet** or **Waiting for the stream** when nothing reaches the server. Open the room's sound page (the card's **Open the sound page**) and press Start, or start the stream in OBS or vMix. See [Audio](#audio).
-2. **Is the level right?** The sound page's meter says **Good level** while someone speaks, and keeps saying it through the pauses (it judges the last 10 seconds); with nobody speaking it says **Listening: nobody speaking**. **No sound: is the microphone on?** (10 s with no signal at all) or **Too quiet: turn it up** (10 s of a voice that never gets loud enough) means the AI hears too little to caption: raise the desk's output or the computer's input, or pick another input. **Too loud** clips and garbles words.
-3. **Which AI is captioning?** The badge at the top of the dashboard says it. **Simulated captions** means no AI is connected: paste a Gemini key in **Settings → AI**, or click **Run it on this computer (free, slower)**.
+2. **Is the level right?** The sound page's meter says **Good level** while someone speaks, and keeps saying it through the pauses (it judges the last 10 seconds); with nobody speaking it says **Listening: nobody speaking**. **No sound: is the microphone on?** (10 s with no signal at all) or **Too quiet: turn it up** (10 s of a voice that never gets loud enough) means the AI hears too little to caption: raise the desk's output or the computer's input, or pick another input. **Too loud: turn it down a little** means it clips and garbles words.
+3. **Which AI is captioning?** The badge at the top of the dashboard says it. **Simulated captions** means no AI is connected: paste a Gemini key in **Settings → AI**, or click **Run it on this computer (free, slower)**. **Captions off** means someone turned them off from the badge (it stays off after a restart): click it and choose **Turn captions back on**.
 4. **Is the AI failing?** The room's log and the dashboard's alerts show Gemini errors. A free key that ran out (429, quota) stops captions until the quota resets: enable billing in AI Studio, or switch to this computer with the badge. See [Gemini connection](#gemini-connection).
 5. **Is the room on a break?** **Break**, **Music · paused** or a break from the agenda stop captions on purpose. Press **Resume captions**, or **It's a talk: caption anyway** for a talk taken for music.
 6. **Is it just one phone?** A phone that says "Reconnecting…" is on weak Wi-Fi and recovers by itself. If no phone gets captions but the dashboard shows them, check that the QR code points to the public address, not `localhost` (the QR kit warns about it).
@@ -80,6 +78,8 @@ See [Local mode → Troubleshooting](../local.md#troubleshooting) for the speech
 | Wrong words for names or acronyms | Unknown vocabulary | Add them to the glossary vocabulary and replacements |
 | Words glued together ("Summit.My name") or capitals in the middle of a sentence ("we also Think a lot") | Version 0.9.1 and earlier join the AI's fragments as they come | Fixed in 0.9.2: update. Every engine's words get one space between fragments, and a stray capital after a pause lowered, only for words the speaker already said in lowercase, so names keep theirs. If you still see it after updating, open an issue with the sentence. |
 | A talk over loud music pauses as **Music · paused** | Version 0.9.1 and earlier take a voice over music for music | Fixed in 0.9.2: update. On 0.9.1, press **It's a talk: caption anyway**. |
+| The audio page stays on **Sending · music playing, captions paused** while someone talks, after walk-in music | Version 1.0.0 and earlier: a far, echoey or phone-like voice in a room that's never quite silent doesn't sound clearly like a voice, so the music pause never ends | Fixed after 1.0.0: music ends after 3 s of a clear voice, 3 s of silence, or 10 s with more of other sounds than of music. On 1.0.0, press **It's a talk: caption anyway** on the room's card (newer versions also have it on the audio page), or turn off the room's **Pause while music plays**. |
+| Two sentences glued in one caption ("we drew it.And then") | The AI sent them in one piece of text, without the space | Fixed after 1.0.0: a sentence's end followed by a capital gets its space (acronyms such as "U.S." are left alone). |
 | Captions in the wrong language | Wrong `source` pinned | Set the room's language to `auto`: speakers can switch languages mid-talk and every caption track follows (the dashboard log shows `speaker switched language: es → en`) |
 | Phone shows "reconnecting" | Weak venue Wi-Fi | It recovers automatically. Captions need very little bandwidth. |
 
@@ -114,6 +114,8 @@ See [Local mode → Troubleshooting](../local.md#troubleshooting) for the speech
 | "Getting the address ready…" for more than two minutes | A new quick address takes a moment to exist, or the venue blocks outgoing connections | Wait a little longer; then check the network allows outgoing HTTPS (and ideally UDP 7844). |
 | "Couldn't create the address" | `cloudflared` couldn't be downloaded or couldn't connect | Check the internet. In a locked-down service, allow writing to `local/` (the systemd unit does). |
 | QR codes stopped working | The quick address changed after a restart (the dashboard and alerts say so) | Print the posters again, or use a fixed address on your own domain |
+| **Use my own domain**: "OpenCaptions doesn't answer at … from this server" | Your tunnel's public hostname or your proxy doesn't point at OpenCaptions, or this server can't reach its own address | Point the public hostname at OpenCaptions (in Docker, `http://opencaptions:8080`). If phones can open the address but the server can't, press **Use it anyway**. |
+| The dashboard says **No live connection to the server** | A proxy or tunnel in front doesn't let WebSockets through | Rooms still update every 5 s, without sound levels or the log. Allow WebSockets in the proxy (Cloudflare: **Network → WebSockets**). |
 
 ## Alerts
 

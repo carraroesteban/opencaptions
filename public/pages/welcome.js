@@ -2,6 +2,7 @@
 import { esc, store, LISTEN, listenPort, freeListenPort, serverHost, copyText, failText } from '/common.js';
 import { prefsControls, LANG } from '/prefs.js';
 import { icon } from '/illustrations.js';
+import { lines } from '/lines.js';
 import { ensureSignedIn, signInScreen } from '/signin.js';
 import { keyPanel, tunnelPanel } from '/connect.js';
 import { localPanel, localProgress } from '/local-mode.js';
@@ -222,14 +223,6 @@ async function go(next, push) {
   if (push && was && was !== step && location.hash !== hash) history.pushState(null, '', hash);
   else history.replaceState(null, '', hash);
   store.set('welcome.at', { step, t: Date.now() });
-  // The picture: swapped once it's decoded, so the crossfade never shows an empty frame
-  const img = $('art'), src = `/art/${steps[cur].dataset.art}.webp`;
-  if (!img.src.endsWith(src)) {
-    const pic = new Image();
-    pic.src = src;
-    await pic.decode().catch(() => {});
-    img.src = src;
-  }
 }
 addEventListener('popstate', () => { const k = steps.findIndex((x) => `#${x.dataset.step}` === location.hash); if (k >= 0) show(k, false); });
 // Where to start: the step in the address, else where this browser left off today (the dashboard sends an unfinished
@@ -237,8 +230,8 @@ addEventListener('popstate', () => { const k = steps.findIndex((x) => `#${x.data
 const left = store.get('welcome.at', null);
 const resume = !location.hash && left && Date.now() - left.t < 24 * 3600_000 ? `#${left.step}` : location.hash;
 const start = steps.findIndex((s) => `#${s.dataset.step}` === resume);
-// Preload the illustrations so steps switch instantly.
-for (const s of steps) new Image().src = `/art/${s.dataset.art}.webp`;
+// 2.0: one drawn visual beside every step, the lines (no pictures to swap).
+for (const cv of document.querySelectorAll('canvas.lines')) lines(cv);
 
 // The steps only collect answers; nothing on the server changes until the review step's "Apply changes".
 const save = {

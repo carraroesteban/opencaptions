@@ -681,7 +681,7 @@ function renderGrid(s) {
   if ([...grid.children].map((el) => el.dataset.id).filter(Boolean).join('\n') !== order) for (const st of s.stages) { const el = grid.querySelector(`[data-id="${CSS.escape(st.id)}"]`); if (el) grid.append(el); }
   const ids = new Set(s.stages.map((x) => x.id));
   for (const el of [...grid.children]) if (el.dataset.id && !ids.has(el.dataset.id)) el.remove();
-  if (!s.stages.length && !grid.querySelector('.empty-rooms')) grid.innerHTML = `<div class="empty-rooms rise"><img src="/art/waiting.webp" alt="" width="900" height="900" /><h3>${esc(tr('Todavía no hay salas'))}</h3><p class="muted u-m0">${esc(tr('Creá una sala por cada escenario o aula: cada una tiene su QR, su pantalla y su overlay.'))}</p><a href="#room/new"><button class="primary" tabindex="-1">${icon('plus')}${esc(tr('Nueva sala'))}</button></a></div>`;
+  if (!s.stages.length && !grid.querySelector('.empty-rooms')) grid.innerHTML = `<div class="empty-rooms rise"><h3>${esc(tr('Todavía no hay salas'))}</h3><p class="muted u-m0">${esc(tr('Creá una sala por cada escenario o aula: cada una tiene su QR, su pantalla y su overlay.'))}</p><a href="#room/new"><button class="primary" tabindex="-1">${icon('plus')}${esc(tr('Nueva sala'))}</button></a></div>`;
   if (s.stages.length) grid.querySelector('.empty-rooms')?.remove();
   for (const st of s.stages) {
     let el = grid.querySelector(`[data-id="${CSS.escape(st.id)}"]`);
@@ -951,7 +951,7 @@ function renderRooms(s) {
     box.dataset.key = key;
     const href = (st) => `#room/${encodeURIComponent(st.id)}`;
     const name = (st) => `<b><i class="dot" aria-hidden="true"></i>${esc(st.name)}<span class="sr-only" data-f="state"></span></b>`;
-    box.innerHTML = !s.stages.length ? `<div class="card empty-art rise"><img src="/art/waiting.webp" alt="" width="900" height="900" /><h3>${esc(tr('Todavía no hay salas'))}</h3><p>${esc(tr('Creá una sala por cada escenario o aula: cada una tiene su QR, su pantalla y su overlay.'))}</p></div>`
+    box.innerHTML = !s.stages.length ? `<div class="card empty-art rise"><h3>${esc(tr('Todavía no hay salas'))}</h3><p>${esc(tr('Creá una sala por cada escenario o aula: cada una tiene su QR, su pantalla y su overlay.'))}</p></div>`
       : mode === 'gallery' ? `<ul class="rooms-gallery stagger">${s.stages.map((st) => `<li><a class="card tile lift rc-${esc(st.hue)}" href="${href(st)}" data-id="${esc(st.id)}"><span class="tile-top"><span class="ini${st.color ? ` rc-${esc(st.color)}` : ''}" aria-hidden="true">${esc(initials(st.name))}</span>${name(st)}</span><span class="said" data-f="said"></span><span class="tl" data-f="langs"></span></a></li>`).join('')}</ul>`
         : `<div class="card flush"><table class="table rooms-list"><thead><tr><th>${esc(tr('Sala'))}</th><th>${esc(tr('Subtítulos'))}</th><th class="hide-sm">${esc(tr('Idiomas'))}</th><th class="hide-sm">${esc(tr('Audio'))}</th></tr></thead><tbody>${s.stages.map((st) => `<tr data-id="${esc(st.id)}"><td><a href="${href(st)}">${name(st)}</a></td><td class="muted-note" data-f="said"></td><td class="hide-sm" data-f="langs"></td><td class="hide-sm" data-f="audio"></td></tr>`).join('')}</tbody></table></div>`;
   }
@@ -1433,7 +1433,7 @@ function drawTranscripts() {
       </div>
     </div>`;
   };
-  $('tx-list').innerHTML = !txTalks.length ? `<div class="empty-art rise"><img src="/art/empty-library.webp" alt="" width="900" height="900" /><h3>${esc(t.noTalks)}</h3><p>${esc(t.tx.emptyBody)}</p></div>`
+  $('tx-list').innerHTML = !txTalks.length ? `<div class="empty-art rise"><h3>${esc(t.noTalks)}</h3><p>${esc(t.tx.emptyBody)}</p></div>`
     : !list.length ? `<p class="empty">${esc(t.tx.noMatch(q))}</p>` : list.map(row).join('');
 }
 $('dlg-confirm').addEventListener('click', (e) => { const c = e.target.closest('[data-copy]'); if (c) copy(c.dataset.copy); });

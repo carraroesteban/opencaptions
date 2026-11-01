@@ -1724,7 +1724,7 @@ app.get(['/', '/index', '/index.html', '/watch', '/watch.html', '/talk', '/talk.
         .replace(/<meta property="og:description" content="[^"]*"/, () => `<meta property="og:description" content="${htmlEsc(`${info.stageName} · %EVENT% · ${info.languages?.length > 1 ? 'Transcript in every language / Transcripción en cada idioma' : 'Transcript / Transcripción'}`)}"`);
     }
     if (name === 'talk.html' && !INDEX_TALKS) html = html.replace('<head>', '<head>\n  <meta name="robots" content="noindex" />');
-    if (name === 'index.html' && brand.cover) html = html.replace('src="/art/audience.webp"', () => `src="${brandUrl('cover')}"`); // the event's own picture
+    if (name === 'index.html' && brand.cover) html = html.replace('<canvas class="ix-art lines" aria-hidden="true"></canvas>', () => `<img class="ix-art" src="${brandUrl('cover')}" alt="" />`); // the event's own picture instead of the lines
     res.type('html').set('Cache-Control', 'no-cache').send(withIcon(html)
       .replaceAll('content="/brand/', `content="${origin}/brand/`)
       .replaceAll('%EVENT%', htmlEsc(eventName())));
@@ -1746,7 +1746,7 @@ app.use(express.static(path.join(ROOT, 'public'), {
   // Fonts and pictures don't change between releases: phones keep them a day. Code and pages carry no version in
   // their names, so they're no-cache (asked for every load, a 304 when unchanged). Not max-age=0: Cloudflare's
   // default 4-hour browser cache rewrites that one, and phones kept the old version for hours after an update.
-  setHeaders: (res, file) => res.setHeader('Cache-Control', /[\\/]public[\\/](fonts|art|brand)[\\/]/.test(file) ? 'public, max-age=86400' : 'no-cache'),
+  setHeaders: (res, file) => res.setHeader('Cache-Control', /[\\/]public[\\/](fonts|brand)[\\/]/.test(file) ? 'public, max-age=86400' : 'no-cache'),
 }));
 // Only the bundled test talks (the room page's "test talk"): recordings organizers copy into samples/ to pull stay private.
 for (const f of ['talk-en.wav', 'talk-es.wav']) app.get(`/samples/${f}`, (req, res) => res.sendFile(path.join(ROOT, 'samples', f)));
@@ -2011,12 +2011,14 @@ function onIngest(ws, url) {
   });
   ws.on('message', (data, isBinary) => {
     if (isBinary && data.length <= 64 * 1024) return st.pushAudio(Buffer.isBuffer(data) ? data : Buffer.from(data), token);
-    // The room's computer can call a break for its own room (the B key on the audio page), and send the slide on its
-    // screen when it changes (src/slides.js; base64 JPEG, under the socket's 256 KB frame limit).
+    // The room's computer can call a break for its own room (the B key on the audio page), say "it's a talk" when music
+    // paused it, and send the slide on its screen when it changes (src/slides.js; base64 JPEG, under the socket's
+    // 256 KB frame limit).
     if (!isBinary && data.length < 250_000) {
       try {
         const m = JSON.parse(data.toString());
         if (m.type === 'break') st.setBreak(!!m.on, { by: 'room' });
+        else if (m.type === 'music') st.captionMusic(m.caption !== false);
         else if (m.type === 'slide' && typeof m.jpeg === 'string') st.addSlide(Buffer.from(m.jpeg, 'base64'));
       } catch { /* not JSON: ignore */ }
     }
@@ -2194,6 +2196,7 @@ server.listen(config.port, config.host, () => {
     ['AI', ai],
   ]);
   if (config.fresh) tty.info(`Fresh start ${tty.c.gray('· nothing from earlier runs, in a temporary folder deleted when you stop · data/ is untouched')}`);
+  if (config.logDebug) tty.info(`Debug log on ${tty.c.gray('· each room: its sound, the music detector, every AI connection and caption, a summary every 30 s')}`);
   if (config.engine === 'local') {
     tty.table([['  speech', tty.c.gray(asrInfo().api === 'apple' ? asrInfo().label : asrInfo().url)], ['  text', tty.c.gray(config.localLlmOff ? (asrInfo().api === 'apple' ? 'Apple translation' : 'off') : `${llmInfo().url} · ${localModels()}`)]]);
     checkLocal().then(async ({ asr, llm }) => {

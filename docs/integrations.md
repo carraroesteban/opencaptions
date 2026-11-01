@@ -1,6 +1,6 @@
 # Integrations
 
-OpenCaptions can send a room's captions where your audience already is: a **Zoom** meeting or webinar, a **YouTube Live** stream, a **Microsoft Teams** meeting, or any system of yours through a **webhook**. It can also read your agenda from **Sessionize** or a **calendar link**. Everything is on the dashboard's **Integrations** page; no files to edit.
+OpenCaptions can send a room's captions where your audience already is: a **Zoom** meeting or webinar, a **YouTube Live** stream, a **Microsoft Teams** meeting, or any system of yours through a **webhook**. It can also read your agenda from **Sessionize** or a **calendar link**. Everything is on the dashboard's **Integrations** page (shown in **Advanced mode**, switched at the bottom of the sidebar); no files to edit.
 
 Each connector sends one room's captions in one language. To show two languages in the same Zoom meeting, add the room twice with two languages (Zoom shows the language people pick, when the meeting supports several).
 

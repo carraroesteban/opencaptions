@@ -68,7 +68,7 @@
     .selchip:hover { background: var(--fill-hover); }
     .selchip > span:not(.sr-only) { padding-left: 16px; font-size: 14px; color: var(--fg2); white-space: nowrap; }
     .selchip > svg.i { margin-left: 13px; width: 18px; height: 18px; color: var(--fg2); }
-    .selchip select { border: 0; background-color: transparent; padding: 10px 36px 10px 7px; font-size: 15px; font-weight: 700; max-width: 230px; box-shadow: none; min-width: 0; field-sizing: content; }
+    .selchip select { border: 0; background-color: transparent; padding: 10px 36px 10px 7px; font-size: 15px; font-weight: 500; max-width: 230px; box-shadow: none; min-width: 0; field-sizing: content; }
     .selchip select:focus { box-shadow: none; }
     .selchip:has(select:focus-visible) { outline: 2px solid var(--focus); outline-offset: 2px; }
     #test { color: var(--fg2); font-size: 14px; }
@@ -81,7 +81,7 @@
     /* One discreet line each: the AI notice, a call app that's open. */
     .note { margin: 0; display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 2px 8px; font-size: 14px; line-height: 1.5; color: var(--fg2); max-width: 62ch; }
     .note > svg.i { color: var(--warn); }
-    .linkish { background: none; border: 0; padding: 2px 4px; color: var(--fg); font-weight: 700; text-decoration: underline; text-underline-offset: 3px; text-decoration-thickness: 1px; }
+    .linkish { background: none; border: 0; padding: 2px 4px; color: var(--fg); font-weight: 500; text-decoration: underline; text-underline-offset: 3px; text-decoration-thickness: 1px; }
     .linkish:hover { background: none; text-decoration-thickness: 2px; }
     .call-more { flex-basis: 100%; margin-top: 4px; } /* the how, on request */
 
@@ -106,7 +106,7 @@
     #view > #status { position: absolute; z-index: 5; top: calc(66px + env(safe-area-inset-top)); left: 50%; translate: -50% 0; max-width: calc(100vw - 32px); white-space: normal; text-align: center; transition: opacity .45s var(--ease-out); }
     body.away #view > #status:not(.warn, .bad) { opacity: 0; }
     #orig { margin: 0 auto; width: 100%; padding: 10px max(28px, calc(50vw - 560px)) 0; font-size: 17px; line-height: 1.45; color: var(--translation); }
-    #orig b { color: var(--fg2); font-size: 11px; letter-spacing: .1em; text-transform: uppercase; margin-right: 10px; }
+    #orig b { color: var(--fg2); font-size: 11px; margin-right: 10px; }
     /* After a reload: the one thing to press to carry on (the browser needs a click for sound). */
     .resume { position: absolute; left: 50%; top: 42%; translate: -50% -50%; z-index: 6; min-height: 60px; padding: 0 28px; font-size: 18px; border-radius: var(--pill); box-shadow: var(--shadow-lg); animation: oc-in .4s var(--ease-out) both; }
     #to-live { position: absolute; z-index: 6; left: 50%; bottom: calc(104px + env(safe-area-inset-bottom)); translate: -50% 0; border-radius: var(--pill); background: var(--bg2); border-color: var(--line); box-shadow: var(--shadow); font-size: 14px; animation: oc-in .3s var(--ease-out) both; }
@@ -115,16 +115,16 @@
     #dock { gap: 4px; view-transition-name: morph; }
     #dock button { height: 44px; min-width: 44px; }
     #dock .ibtn { width: 44px; color: var(--fg); }
-    .rec { display: inline-flex; align-items: center; gap: 9px; padding: 0 10px 0 13px; font-size: 15px; font-weight: 700; font-variant-numeric: tabular-nums; }
+    .rec { display: inline-flex; align-items: center; gap: 9px; padding: 0 10px 0 13px; font-size: 15px; font-weight: 500; font-variant-numeric: tabular-nums; }
     .rdot { width: 10px; height: 10px; border-radius: 50%; background: var(--bad); flex: none; box-shadow: 0 0 0 calc(2px + var(--lvl, 0) * 8px) color-mix(in srgb, var(--bad) 22%, transparent); transition: box-shadow .1s linear; }
-    #stop { display: inline-flex; align-items: center; padding: 0 18px 0 15px; gap: 9px; background: var(--stop); border-color: var(--stop); color: #fff; font-weight: 700; }
+    #stop { display: inline-flex; align-items: center; padding: 0 18px 0 15px; gap: 9px; background: var(--stop); border-color: var(--stop); color: #fff; font-weight: 500; }
     #stop:hover { background: color-mix(in srgb, var(--stop) 86%, #000); }
     #stop svg { width: 14px; height: 14px; }
     #dock .selchip { background: none; }
     #dock .selchip:hover { background: var(--fill); }
     #dock .selchip select { height: 44px; padding: 0 32px 0 8px; font-weight: 600; max-width: 180px; }
     .size { display: inline-flex; }
-    .size button { font-family: var(--font-display); font-weight: 800; line-height: 1; }
+    .size button { font-family: var(--font-display); font-weight: 400; line-height: 1; }
     [data-size='-4'] { font-size: 14px; }
     [data-size='4'] { font-size: 21px; }
     #pip[aria-pressed='true'] { background: var(--primary-bg); color: var(--primary-fg); }
@@ -158,7 +158,7 @@
     .progress { display: flex; gap: 6px; margin-bottom: 26px; }
     .progress span { height: 4px; flex: 1; border-radius: 4px; background: var(--line-strong); transition: background-color .4s var(--ease-out); }
     .progress span.on { background: var(--fg); }
-    .kicker { font-size: 13px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--fg2); margin: 0 0 10px; }
+    .kicker { font-size: 13px; font-weight: 500; color: var(--fg2); margin: 0 0 10px; }
     .step { animation: oc-in .4s var(--ease-out) both; }
     .step h2 { font-size: clamp(28px, 4vw, 40px); line-height: 1.08; letter-spacing: -.03em; margin: 0 0 12px; }
     .step h2:focus { outline: none; } /* focused so screen readers start at the new step, not a control */
@@ -178,7 +178,7 @@
 
     /* Switching to events: what stays and what changes, before anything happens. */
     #dlg-events h3 { margin: 0 0 6px; }
-    #dlg-events h4 { margin: 18px 0 8px; font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--fg2); }
+    #dlg-events h4 { margin: 18px 0 8px; font-size: 12px; color: var(--fg2); }
     #dlg-events ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 8px; }
     #dlg-events li { display: grid; grid-template-columns: 18px 1fr; gap: 10px; align-items: start; font-size: 15px; line-height: 1.45; }
     #dlg-events li svg { margin-top: 3px; }
@@ -194,7 +194,7 @@
       #mine-link .lbl { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
       /* A phone: everything stacks from the bottom, Start right under the thumb (and where the dock will be). */
       #home { justify-content: flex-end; padding: 84px 16px calc(20px + env(safe-area-inset-bottom)); }
-      .tagline { order: 1; margin: 0 0 auto; padding-top: 6vh; font: 800 26px/1.2 var(--font-display); letter-spacing: -.02em; color: var(--fg); text-wrap: balance; }
+      .tagline { order: 1; margin: 0 0 auto; padding-top: 6vh; font: 400 26px/1.2 var(--font-display); letter-spacing: -.02em; color: var(--fg); text-wrap: balance; }
       #opts { order: 2; margin-top: 28px; width: 100%; }
       #home > #status { order: 3; }
       #go { order: 4; width: 100%; max-width: 380px; margin-top: 28px; }
