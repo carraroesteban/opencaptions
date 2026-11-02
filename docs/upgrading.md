@@ -12,6 +12,19 @@ Every update keeps your settings, passwords, rooms and transcripts: they live in
 | Docker Compose | `docker compose up -d` (it gets the newest release). Building it yourself: `git pull && docker compose up -d --build` |
 | The published Docker image | `docker rm -f opencaptions`, then the same `docker run --pull always …` line again |
 
+## 1.0 → 1.1
+
+**Nothing to change in your settings.** Your `.env`, `config/` files and data folder work as they are.
+
+**New settings, all optional** ([Configuration](reference/configuration.md)): `LOG_LEVEL=debug`, for when a room misbehaves (turn it off afterwards: the log then holds what was said).
+
+**What you'll notice:**
+
+- **A new look** on every page. Pages follow the device's light or dark setting; the stage screen and the livestream overlay stay dark.
+- **Rooms made in the dashboard stay after a restart.** If you edit the rooms in `config/event.json` by hand, those win, and the dashboard's list is kept in `data/stages.json.bak`.
+- **Turn captions off** in **Who makes the captions?** stops every room's AI until you turn them back on, also after a restart.
+- **Behind your own tunnel or proxy,** opening the dashboard once at its HTTPS address makes it the public address for QR codes; `PUBLIC_URL` still wins.
+
 ## 0.9.4 → 1.0
 
 **Nothing to change in your settings.** Your `.env`, `config/` files and data folder work as they are, and nothing is turned off.

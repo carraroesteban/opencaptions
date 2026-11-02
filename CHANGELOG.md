@@ -2,7 +2,9 @@
 
 All notable changes to this project are documented in this file. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project uses [Semantic Versioning](https://semver.org/). Before 1.0, minor versions could include breaking changes, and they are marked **Breaking**.
 
-## [Unreleased]
+## [1.1.0] - 2026-11-01
+
+A new look on every page and on the website, a room that no longer stays paused for music while someone talks, captions you can turn off from the dashboard, and no public address to set up behind your own tunnel or proxy. Nothing to change when updating ([upgrade notes](docs/upgrading.md#10--11)).
 
 ### Added
 
