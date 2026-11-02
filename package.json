@@ -55,9 +55,9 @@
     "screenshots": "node scripts/screenshots.js"
   },
   "dependencies": {
-    "@google/genai": "^2.30.0",
+    "@google/genai": "^2.32.0",
     "compression": "^1.8.1",
-    "dotenv": "^18.0.8",
+    "dotenv": "^18.0.9",
     "express": "^5.3.0",
     "proxy-addr": "^2.0.8",
     "qrcode": "^1.5.4",
@@ -70,7 +70,7 @@
     "@eslint/js": "10.0.1",
     "@types/node": "22.20.5",
     "axe-core": "4.14.0",
-    "eslint": "10.13.0",
+    "eslint": "10.14.0",
     "globals": "17.13.0",
     "typescript": "7.0.2"
   }
