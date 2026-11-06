@@ -2,6 +2,20 @@
 
 All notable changes to this project are documented in this file. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project uses [Semantic Versioning](https://semver.org/). Before 1.0, minor versions could include breaking changes, and they are marked **Breaking**.
 
+## [Unreleased]
+
+### Added
+
+- **The event's time zone, in Settings → Event.** Pick it from every zone there is; it wins over `TZ` and `config/event.json` (often just a container's UTC). Changing it keeps every talk at its clock time: an imported agenda is read again, a pasted one moves to the same hours in the new zone.
+- **Agenda times in the event's time zone, and yours in brackets.** The audience pages (next talk, back from a break, transcripts) and the dashboard's agenda show the event's time; someone opening them from another time zone also sees their own: "23:00 (19:00 your time)".
+- **When the audience pages open and close.** **Settings → Event → When the audience pages open** takes an opening and a closing date and time, with a message for before ("Live captions will show here when the event starts") and one for after ("Thanks for being part of it!"), each your own text or a standard one in the reader's language. Before and after, the home page shows the message (and the start time) instead of the rooms; a room's QR leads there. At the opening time the rooms show by themselves, and a phone that scanned a room's QR goes on to that room. The crew, signed in, still gets in to test.
+- **The agenda updates itself from Sessionize or a calendar.** **Agenda → Import → Update automatically** reads the link again every 10 minutes and saves what changed (talks moved, renamed or added), recorded in History like any agenda. A link that can't be read keeps the agenda as it was, and the switch says when it last checked and what went wrong.
+
+### Fixed
+
+- **Time zones browsers name differently than the server** (Asia/Kolkata, Europe/Kyiv) were refused by the setup wizard.
+- **An imported break for every room** no longer shows up in the preview as a room that doesn't exist ("*").
+
 ## [1.1.0] - 2026-11-01
 
 A new look on every page and on the website, a room that no longer stays paused for music while someone talks, captions you can turn off from the dashboard, and no public address to set up behind your own tunnel or proxy. Nothing to change when updating ([upgrade notes](docs/upgrading.md#10--11)).

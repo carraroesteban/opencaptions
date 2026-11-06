@@ -92,7 +92,9 @@ On the **Agenda** page, **Import**:
 - **Sessionize:** in Sessionize, **API / Embed**, create an endpoint that includes **All** data and copy its link (`https://sessionize.com/api/v2/…/view/All`). Service sessions (breaks, lunch, registration) become **breaks**: captions pause and the screens say when the next talk starts; a plenum one counts for every room.
 - **Calendar (.ics):** a link to a published calendar: Google Calendar's *Secret address in iCal format*, Outlook's published *ICS* link, or any `.ics` file online. Each event's **location** is the room, its **title** the talk, and a `Speaker: …` line in the description the speaker. All-day and cancelled events are left out.
 
-Rooms are matched by name (or id) to the event's rooms; talks in other rooms are listed as ignored. As with pasted agendas, you see what changes before saving, and **History** can undo it. **Import again** re-reads the same source after the program changes.
+Rooms are matched by name (or id) to the event's rooms; talks in other rooms are listed as ignored. As with pasted agendas, you see what changes before saving, and **History** can undo it. **Import again** re-reads the same source after the program changes, and **Update automatically** does it every 10 minutes: when a talk moved, changed or was added, the new agenda is saved (and recorded in **History**); a link that can't be read keeps the agenda as it was, and the switch says why.
+
+Sessionize's times are the event's (or UTC, with **Use UTC timezone** on the endpoint: both work). Times without a zone are read in the event's time zone, **Settings → Event → Event time zone**; changing it keeps every talk at its clock time.
 
 ## Breaks from vMix or OBS
 

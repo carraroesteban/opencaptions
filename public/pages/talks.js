@@ -47,7 +47,6 @@ async function load() {
   }
   render();
 }
-const hm = (d) => d.toLocaleTimeString(UI, { hour: '2-digit', minute: '2-digit' });
 function render() {
   const q = $('q').value.trim().toLowerCase();
   const list = talks.filter((x) => (!room || x.stage === room) && (!q || `${x.title} ${x.speaker} ${x.stageName}`.toLowerCase().includes(q)));
@@ -63,11 +62,11 @@ function render() {
   let day = '';
   $('list').innerHTML = list.map((x) => {
     const d = new Date(x.startedAt);
-    const dl = d.toLocaleDateString(UI, { weekday: 'long', day: 'numeric', month: 'long' });
+    const dl = d.toLocaleDateString(UI, { weekday: 'long', day: 'numeric', month: 'long', timeZone: ev.timezone }); // days and times: the event's
     const head = dl !== day ? `<h2 class="tl-day">${esc((day = dl))}</h2>` : '';
     const langs = x.channels.filter((c) => c !== 'orig').map((c) => `<span class="chip">${esc(langLabel(c, ev.languages))}</span>`).join('');
     return `${head}<a class="tl-talk${hues.has(x.stage) ? ` rc-${esc(hues.get(x.stage))}` : ''}" href="/talk.html?stage=${encodeURIComponent(x.stage)}&talk=${encodeURIComponent(x.id)}">
-      <span class="tl-when"><b>${esc(hm(d))}</b><span>${Math.max(1, Math.round(x.durationMs / 60000))} min</span></span>
+      <span class="tl-when"><b>${esc(d.toLocaleTimeString(UI, { hour: '2-digit', minute: '2-digit', timeZone: ev.timezone }))}</b><span>${Math.max(1, Math.round(x.durationMs / 60000))} min</span></span>
       <span class="tl-body">
         <h3 class="tl-title">${hl(x.title || t('untitled'))}</h3>
         <span class="tl-meta">${x.speaker ? `<b>${hl(x.speaker)}</b> · ` : ''}<span class="tl-room">${hl(x.stageName)}</span></span>

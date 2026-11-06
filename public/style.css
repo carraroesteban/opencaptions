@@ -277,6 +277,7 @@ body[data-gate] > :not(dialog.signin) { display: none !important; }
 .u-w70 { width: 70% !important; }
 .u-w85 { width: 85% !important; }
 .u-w120 { width: 120px !important; }
+.u-fit { width: 1% !important; white-space: nowrap !important; } /* a table column only as wide as its content */
 .u-h10 { height: 10px !important; }
 .u-left0 { left: 0; }
 .u-num { min-width: 3ch !important; text-align: center !important; }

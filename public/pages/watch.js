@@ -1,5 +1,5 @@
 // watch.html: page script (kept out of the HTML so the Content-Security-Policy can forbid inline scripts).
-import { creditLink, qs, t, esc, store, wsUrl, Socket, CaptionState, PcmPlayer, langLabel, wakeLock, getEvent, applyReadingPrefs, setReadingPref, pauseView, CaptionFlow, segment, pressSegment, readingItems, previewFonts } from '/common.js';
+import { creditLink, qs, t, esc, store, wsUrl, Socket, CaptionState, PcmPlayer, langLabel, wakeLock, getEvent, applyReadingPrefs, setReadingPref, pauseView, eventTime, eventClosed, CaptionFlow, segment, pressSegment, readingItems, previewFonts } from '/common.js';
 import { mountAssistant, client } from '/assist-ui.js';
 import { icon, mountIcons } from '/illustrations.js';
 import { prefsControls } from '/prefs.js';
@@ -20,6 +20,12 @@ $('doc').title = t('transcript');
 $('doc').setAttribute('aria-label', t('transcript')); // an icon-only link: screen readers need its name
 $('settings').setAttribute('aria-label', t('settings'));
 const ev = await getEvent();
+// Before the event opens or after it closes, the home page has the organizers' message (and comes back to this room
+// when it opens). The crew still gets in, to test.
+if (eventClosed(ev) && !(await fetch('/api/auth/me').then((r) => r.json()).catch(() => ({}))).role) {
+  location.replace(`/?next=${encodeURIComponent(location.pathname + location.search)}`);
+  await new Promise(() => {}); // nothing else on this page runs
+}
 for (const d of ['dlg-ai', 'dlg-set']) { const c = creditLink(ev, 'phone'); if (c) $(d).append(c); }
 // The event's own logo (Settings › General) in the header; OpenCaptions keeps a line under the waiting screen.
 if (ev.logo) Object.assign($('ev-logo'), { src: ev.logo, alt: ev.name }).classList.remove('hidden');
@@ -334,7 +340,7 @@ function renderAll() {
   const next = hello?.stage?.next;
   if (empty) {
     $('text').innerHTML = `<div class="empty w-empty">${LOGO}${next
-      ? `<span class="k">${esc(t('nextUp'))}</span><span class="tt">${esc(next.title)}</span><span class="when">${icon('clock')} ${esc(hhmm(next.start))}${next.speaker ? ` · ${esc(next.speaker)}` : ''}</span><span class="s">${esc(t('startsHere'))}</span>`
+      ? `<span class="k">${esc(t('nextUp'))}</span><span class="tt">${esc(next.title)}</span><span class="when">${icon('clock')} ${esc(eventTime(next.start, undefined, document.documentElement.lang))}${next.speaker ? ` · ${esc(next.speaker)}` : ''}</span><span class="s">${esc(t('startsHere'))}</span>`
       : `<span class="s">${esc(t('waiting'))}</span>`}${ev.logo ? `<span class="w-credit">${esc(t('captionsBy'))}</span>` : ''}</div>`;
   }
   $('text').lang = channel() !== 'orig' ? channel() : hello?.stage?.source && hello.stage.source !== 'auto' ? hello.stage.source : ''; // screen readers read captions in their language
@@ -351,7 +357,6 @@ function renderAll() {
   if (shownChannel && shownChannel !== channel() && !calm.matches) $('text').animate([{ opacity: 0, transform: 'translateY(10px)' }, { opacity: 1, transform: 'none' }], { duration: 380, easing: 'cubic-bezier(.16, 1, .3, 1)' });
   shownChannel = channel();
 }
-const hhmm = (ms) => new Date(ms).toLocaleTimeString(document.documentElement.lang, { hour: '2-digit', minute: '2-digit' });
 
 const LOGO = '<svg class="oc-logo typing" viewBox="0 0 878 664" aria-hidden="true"><use class="o" href="/brand/sprite.svg#oc-o"/><use class="ln" href="/brand/sprite.svg#oc-line"/></svg>';
 

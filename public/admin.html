@@ -664,6 +664,10 @@
             <button data-icon="eye">Ver qué cambia</button>
             <button type="button" id="import-again" class="hidden" data-icon="refresh">Importar de nuevo</button>
           </form>
+          <label class="setting sw hidden" id="auto-row">
+            <div><h3>Actualizar sola</h3><p id="auto-note" data-help>Cada 10 minutos vuelve a leer el enlace y guarda lo que cambió: charlas que se movieron, cambiaron o se sumaron.</p></div>
+            <input type="checkbox" role="switch" id="agenda-auto" aria-describedby="auto-note" />
+          </label>
         </section>
       </section>
 
@@ -815,6 +819,20 @@
           <section class="card setting">
             <div><h3>Nombre del evento</h3><p data-help>Aparece en los celulares, en la pantalla del escenario y en los carteles.</p></div>
             <form class="rowbar" id="name-form"><input id="name-in" maxlength="80" class="u-minw220" aria-label="Nombre del evento" /><button data-icon="check">Guardar</button></form>
+          </section>
+          <section class="card setting">
+            <div><h3>Zona horaria del evento</h3><p data-help>Las horas de la agenda son de esta zona. Quien entra desde otra ve también la suya, entre paréntesis.</p></div>
+            <select id="tz" aria-label="Zona horaria del evento" data-setup></select>
+          </section>
+          <section class="card">
+            <h3>Cuándo abre la página del público</h3>
+            <p data-help>Antes de abrir y después de cerrar, el público ve tu mensaje en lugar de las salas. Abre sola a la hora (de la zona del evento). Sin fechas, está siempre abierta.</p>
+            <form class="u-stack12 u-mt12" id="doors-form">
+              <div class="rowbar"><label class="field u-flex260">Abre<input type="datetime-local" id="opens-at" /></label><label class="field u-flex260">Cierra<input type="datetime-local" id="closes-at" /></label></div>
+              <label class="field">Mensaje antes de abrir<textarea id="before-text" maxlength="500" rows="2" placeholder="Acá vas a ver los subtítulos en vivo de cada sala cuando empiece el evento."></textarea></label>
+              <label class="field">Mensaje después de cerrar<textarea id="after-text" maxlength="500" rows="2" placeholder="El evento terminó. ¡Gracias por ser parte!"></textarea></label>
+              <div class="rowbar"><span class="muted-note" id="doors-note" data-no-i18n></span><span class="spacer"></span><button data-icon="check">Guardar</button></div>
+            </form>
           </section>
           <section class="card setting">
             <div><h3>Logo del evento</h3><p data-help>Va en lugar del de OpenCaptions en celulares, pantalla y carteles. PNG, JPEG o WebP de hasta 2 MB.</p></div>

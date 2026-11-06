@@ -5,7 +5,7 @@
 // Safety model: every setup change is recorded on the server and can be undone (History, and an Undo button
 // right after each change); deleted rooms go to a trash; Event mode locks the setup on the server, so nothing
 // here can delete or change the event's configuration by accident while it's live.
-import { qs, esc, store, copyText, wsUrl, Socket, langLabel, setAccent, LISTEN, listenPort, freeListenPort, serverHost, failText } from '/common.js';
+import { qs, esc, store, copyText, wsUrl, Socket, langLabel, LISTEN, listenPort, freeListenPort, serverHost, failText, getEvent, eventTime } from '/common.js';
 import { localize, prefsControls, tr, LANG } from '/i18n.js';
 import { menu, popMenu } from '/menu.js';
 import { advanced } from '/prefs.js';
@@ -35,8 +35,7 @@ localize(); // the page behind the sign-in screen, in the right language
 const me = await ensureSignedIn();
 const isCrew = me.role === 'crew';
 document.body.classList.toggle('role-crew', isCrew); // the crew sees the live controls only
-let ev = await (await fetch('/api/event')).json();
-setAccent(ev.accent);
+let ev = await getEvent();
 let last = null;
 let locked = false;
 const logs = [];
@@ -79,6 +78,8 @@ const L = {
     speechHint: { translate: 'Cada sala también puede ofrecer la voz traducida, y cuesta unas cuatro veces más. Elegilo solo si alguien la necesita.', transcribe: 'Para cuando nadie necesita la voz traducida. Si el orador cambia de idioma en medio de la charla, los subtítulos lo manejan peor.' },
     speechAsk: '¿Cambiar el modelo de voz?', speechAskBody: (n) => `Hay ${n} ${n === 1 ? 'sala' : 'salas'} en vivo: los subtítulos se pausan unos segundos mientras se reconectan.`, speechOk: 'Cambiar el modelo',
     agendaNone: 'Todavía no hay agenda. Pegala abajo.', agendaPreview: (a, r, k) => `${a} ${a === 1 ? 'charla nueva' : 'charlas nuevas'} · ${r} ${r === 1 ? 'se quita' : 'se quitan'} · ${k} ${k === 1 ? 'sigue igual' : 'siguen igual'}`, agendaUnknown: (l) => `Salas que no existen: ${l}`, agendaSkipped: (n, l) => `${n} ${n === 1 ? 'fila' : 'filas'} de otras salas ${n === 1 ? 'se ignora' : 'se ignoran'} (${l})`,
+    tzSaved: (z) => `Zona horaria: ${z}. Cada charla de la agenda conserva su hora.`, doorsNote: (z) => `Horas de ${z}.`, autoOn: 'La agenda se actualiza sola cada 10 minutos.', autoOff: 'La agenda ya no se actualiza sola.',
+    autoChecked: (hm, changed) => `Revisada a las ${hm}${changed ? ': había cambios y se guardaron.' : '.'}`, autoFail: (hm, e) => `No se pudo leer a las ${hm} (${e}); la agenda sigue como estaba.`,
     agendaSave: 'Reemplazar la agenda', agendaSame: 'Es igual a la agenda actual: no hay nada que cambiar.', agendaSaved: (n) => `Agenda guardada: ${n} charlas.`, more: (n) => `y ${n} más`,
     glossSaved: (t, c) => `Glosario guardado: ${t} términos, ${c} correcciones.`, unsaved: 'Cambios sin guardar', anyLang: 'Todos',
     renamed: (n) => `El evento ahora se llama «${n}».`,
@@ -181,6 +182,8 @@ const L = {
     speechHint: { translate: 'Each room can also offer the translated voice, and it costs about four times more. Pick it only if someone needs it.', transcribe: 'For when nobody needs the translated voice. Speakers who switch language mid-talk get less clever captions.' },
     speechAsk: 'Change the speech model?', speechAskBody: (n) => `${n} ${n === 1 ? 'room is' : 'rooms are'} live: captions pause for a few seconds while they reconnect.`, speechOk: 'Change the model',
     agendaNone: 'No agenda yet. Paste it below.', agendaPreview: (a, r, k) => `${a} new ${a === 1 ? 'talk' : 'talks'} · ${r} removed · ${k} unchanged`, agendaUnknown: (l) => `Rooms that don’t exist: ${l}`, agendaSkipped: (n, l) => `${n} ${n === 1 ? 'row' : 'rows'} for other rooms ${n === 1 ? 'is' : 'are'} ignored (${l})`,
+    tzSaved: (z) => `Time zone: ${z}. Every talk in the agenda keeps its time.`, doorsNote: (z) => `Times in ${z}.`, autoOn: 'The agenda now updates itself every 10 minutes.', autoOff: 'The agenda no longer updates itself.',
+    autoChecked: (hm, changed) => `Checked at ${hm}${changed ? ': there were changes, and they were saved.' : '.'}`, autoFail: (hm, e) => `Couldn’t read it at ${hm} (${e}); the agenda stays as it was.`,
     agendaSave: 'Replace the agenda', agendaSame: 'It’s the same as the current agenda: nothing to change.', agendaSaved: (n) => `Agenda saved: ${n} talks.`, more: (n) => `and ${n} more`,
     glossSaved: (t, c) => `Glossary saved: ${t} terms, ${c} corrections.`, unsaved: 'Unsaved changes', anyLang: 'All',
     renamed: (n) => `The event is now called “${n}”.`,
@@ -306,7 +309,7 @@ new Socket(() => wsUrl('/ws/admin', {}), {
     if (m.type === 'status') render(m);
     else if (m.type === 'log') { logs.push(m); if (logs.length > 400) logs.shift(); renderLogsSoon(); }
     else if (m.type === 'logs') { logs.splice(0, logs.length, ...m.logs); renderLogsSoon(); }
-    else if (m.type === 'history') { refreshSchedule(); if (view === 'history') loadHistory(); }
+    else if (m.type === 'history') { refreshSchedule(); if (view === 'history') loadHistory(); if (view === 'agenda' && m.change?.kind === 'agenda.set') loadAgenda(); } // also saved by itself (auto-update, a new time zone)
   },
   close(e) { if (e.code === 4001) askToken(); downSince ||= Date.now(); },
 });
@@ -462,6 +465,7 @@ const ago = (ms) => { if (!ms) return '—'; const s = Math.round((Date.now() - 
 const sec = (ms) => (ms == null ? '—' : (ms / 1000).toFixed(1) + 's');
 const hm = (ms) => new Date(ms).toLocaleTimeString(LANG, { hour: '2-digit', minute: '2-digit' });
 const when = (ms) => new Date(ms).toLocaleString(LANG, { weekday: 'short', hour: '2-digit', minute: '2-digit' });
+const agendaWhen = (ms) => eventTime(ms, { weekday: 'short', hour: '2-digit', minute: '2-digit' }, LANG); // the event's time zone
 const langsOf = (st) => `${st.source === 'auto' || !st.source ? 'auto' : st.source} → ${(st.targets || []).filter((x) => x !== st.source).join(', ') || '—'}`;
 const stateChip = (s) => {
   if (s.brk) return `<span class="chip warn">${icon('pause')} ${esc(tr('Pausa'))}${s.brk.by === 'agenda' ? ` · ${esc(tr('agenda'))}` : s.brk.by === 'switcher' ? ' · vMix/OBS' : s.brk.by === 'room' ? ` · ${esc(tr('desde la sala'))}` : ''}</span>`;
@@ -746,7 +750,7 @@ function renderGrid(s) {
     el.classList.toggle('over', !!due);
     el.classList.toggle('brk', !!st.brk);
     f('next').classList.toggle('over', !!due);
-    f('next').textContent = due ? t.over(Math.max(1, Math.round((Date.now() - due.start) / 60000)), due.title) : st.nextTalk ? t.next(st.nextTalk.title, hm(st.nextTalk.start)) : '';
+    f('next').textContent = due ? t.over(Math.max(1, Math.round((Date.now() - due.start) / 60000)), due.title) : st.nextTalk ? t.next(st.nextTalk.title, eventTime(st.nextTalk.start, undefined, LANG)) : '';
     const dueBtn = el.querySelector('[data-a="due"]');
     dueBtn.classList.toggle('hidden', !due);
     if (due) dueBtn.textContent = t.startDue(due.title.length > 28 ? due.title.slice(0, 27) + '…' : due.title);
@@ -1068,7 +1072,7 @@ fe.onsubmit = async (e) => {
   const r = editing ? await api('PATCH', `/api/stages/${editing.id}`, body) : await api('POST', '/api/stages', { id: fe.id.value, ...body });
   if (r.change) toast(editing ? t.changedRoom(body.name) : t.created(body.name), { undo: r.change });
   else if (editing) toast(t.saved, { ms: 2000 });
-  ev = await (await fetch('/api/event')).json();
+  ev = await getEvent();
   formRoom = null; // fill it again from what the server kept
   if (editing) go(); else location.hash = `#room/${encodeURIComponent(fe.id.value)}`;
 };
@@ -1090,7 +1094,7 @@ async function loadAgenda() {
   // Breaks (coffee, lunch…): captions pause and screens show the break and the next talk.
   const brkTag = (e) => (e.break ? ` <span class="chip warn">${icon('pause')} ${esc(tr('pausa'))}</span>` : '');
   $('agenda-current').innerHTML = list.length
-    ? Object.entries(byRoom).map(([room, es]) => `<section class="card flush"><table class="table"><thead><tr><th colspan="3">${esc(names[room] || room)}</th></tr></thead><tbody>${es.map((e) => `<tr><td class="u-w120">${esc(when(e.start))}</td><td><b>${esc(e.title)}</b>${brkTag(e)}</td><td class="hide-sm muted-note">${esc(e.speaker || '')}</td></tr>`).join('')}</tbody></table></section>`).join('')
+    ? Object.entries(byRoom).map(([room, es]) => `<section class="card flush"><table class="table"><thead><tr><th colspan="3">${esc(names[room] || room)}</th></tr></thead><tbody>${es.map((e) => `<tr><td class="u-fit">${esc(agendaWhen(e.start))}</td><td><b>${esc(e.title)}</b>${brkTag(e)}</td><td class="hide-sm muted-note">${esc(e.speaker || '')}</td></tr>`).join('')}</tbody></table></section>`).join('')
     : `<p class="muted-note">${esc(t.agendaNone)}</p>`;
   $('agenda-h').textContent = tr(list.length ? 'Reemplazar la agenda' : 'Cargar la agenda'); // nothing to replace yet
   $('agenda-diff').classList.add('hidden');
@@ -1106,7 +1110,7 @@ async function previewAgenda(preview, commit) {
   const oldK = new Set(cur.map(key)), newK = new Set(r.entries.map(key));
   const added = r.entries.filter((e) => !oldK.has(key(e))), removed = cur.filter((e) => !newK.has(key(e)));
   const kept = r.entries.length - added.length;
-  const line = (e, cls, sign) => `<div class="${cls}">${sign} ${esc(when(e.start))} · ${esc(e.title)} <span class="muted-note">(${esc(e.stage)})</span></div>`;
+  const line = (e, cls, sign) => `<div class="${cls}">${sign} ${esc(agendaWhen(e.start))} · ${esc(e.title)} <span class="muted-note">(${esc(e.stage)})</span></div>`;
   const lines = [...added.map((e) => line(e, 'add', '+')), ...removed.map((e) => line(e, 'del', '−'))];
   const same = !added.length && !removed.length;
   $('agenda-diff').innerHTML = `<div class="diff">
@@ -1142,8 +1146,21 @@ $('import-again').onclick = () => previewAgenda(() => api('POST', '/api/schedule
 async function loadImportSource() {
   const src = await api('GET', '/api/schedule/source', null, { quiet: true }).catch(() => null);
   $('import-again').classList.toggle('hidden', !src);
-  if (src) $('import-again').title = `${src.source === 'sessionize' ? 'Sessionize' : tr('Calendario')} · ${src.label}`;
+  $('auto-row').classList.toggle('hidden', !src);
+  if (!src) return;
+  $('import-again').title = `${src.source === 'sessionize' ? 'Sessionize' : tr('Calendario')} · ${src.label}`;
+  $('agenda-auto').checked = src.auto;
+  autoNote(src);
 }
+// Auto-update: the switch says when the link was last read, and what went wrong if it couldn't be.
+const autoNote = (r) => { $('auto-note').textContent = `${tr('Cada 10 minutos vuelve a leer el enlace y guarda lo que cambió: charlas que se movieron, cambiaron o se sumaron.')}${r.auto && r.checkedAt ? ` ${r.error ? t.autoFail(hm(r.checkedAt), r.error) : t.autoChecked(hm(r.checkedAt), r.changed)}` : ''}`; };
+$('agenda-auto').onchange = async (e) => {
+  try {
+    const r = await api('PUT', '/api/schedule/auto', { on: e.target.checked });
+    toast(r.auto ? t.autoOn : t.autoOff);
+    if (r.changed) { await refreshSchedule(); loadAgenda(); } else autoNote(r);
+  } catch { e.target.checked = !e.target.checked; }
+};
 
 // ---------- Integrations: captions into Zoom, YouTube Live, Teams, webhooks (src/integrations.js); breaks from vMix /
 // OBS (src/switcher.js). What's connected comes first, one row each with its state and a ⋯ menu; then a gallery.
@@ -1357,7 +1374,7 @@ function copyRow(label, url, open = true) {
   return `<div class="crow"><span class="crow-l">${esc(label)}<span class="crow-v">${esc(url)}</span></span><span class="crow-b"><button type="button" data-copy="${esc(url)}" aria-label="${esc(`${t.copy}: ${label}`)}">${esc(t.copy)}</button>${open ? `<a href="${esc(url)}" target="_blank" aria-label="${esc(`${t.open}: ${label}`)}"><button type="button" tabindex="-1">${esc(t.open)}</button></a>` : ''}</span></div>`;
 }
 async function loadRoom(id) {
-  ev = await (await fetch('/api/event')).json();
+  ev = await getEvent();
   const st = ev.stages.find((s) => s.id === id);
   if (!st) { $('screens-links').innerHTML = ''; return; }
   const o = origin(), aud = `${o}/s/${st.id}`, qr = `/api/qr.svg?text=${encodeURIComponent(aud)}`;
@@ -1388,7 +1405,7 @@ $('tools-menu').addEventListener('click', (e) => { if (e.target.closest('a, butt
 
 // ---------- Transcripts ----------
 async function loadTranscripts() {
-  ev = await (await fetch('/api/event')).json();
+  ev = await getEvent();
   const sel = $('tx-room');
   const cur = txRoom || sel.value;
   sel.innerHTML = ev.stages.map((s) => `<option value="${esc(s.id)}">${esc(s.name)}</option>`).join('');
@@ -1816,7 +1833,7 @@ addEventListener('hashchange', recFromHash);
 recFromHash();
 
 // ---------- History ----------
-const KIND_ICON = { 'room.create': 'plus', 'room.update': 'gear', 'room.delete': 'x', 'agenda.set': 'calendar', 'glossary.set': 'book', 'event.rename': 'doc', 'event.logo': 'palette', 'event.icon': 'palette', 'event.cover': 'palette', 'engine.mode': 'cloud', 'ai.speech': 'cloud', 'event.lock': 'lock' };
+const KIND_ICON = { 'room.create': 'plus', 'room.update': 'gear', 'room.delete': 'x', 'agenda.set': 'calendar', 'glossary.set': 'book', 'event.rename': 'doc', 'event.timezone': 'clock', 'event.logo': 'palette', 'event.icon': 'palette', 'event.cover': 'palette', 'engine.mode': 'cloud', 'ai.speech': 'cloud', 'event.lock': 'lock' };
 const UNDOABLE = new Set(['room.create', 'room.update', 'room.delete', 'agenda.set', 'glossary.set', 'event.rename', 'engine.mode', 'ai.speech']);
 async function loadHistory() {
   hist = await api('GET', '/api/history');
@@ -1916,6 +1933,10 @@ async function loadSettings() {
   renderLanguages(s);
   $('tx-access').value = s.publicTranscripts;
   $('credit').checked = s.credit !== false;
+  renderZone(s);
+  if (!$('doors-form').contains(document.activeElement)) {
+    $('opens-at').value = s.opensAt; $('closes-at').value = s.closesAt; $('before-text').value = s.beforeText; $('after-text').value = s.afterText;
+  }
   if (s.publicTranscriptsFixed) $('tx-access-note').textContent = tr('Lo fija PUBLIC_TRANSCRIPTS en el archivo .env.');
   if (document.activeElement !== $('name-in')) $('name-in').value = s.named === false ? '' : s.name; // unnamed: empty, not the fallback
   $('name-in').placeholder = LANG === 'es' ? 'Ej: Semana del Diseño 2026' : 'e.g. City Design Week 2026';
@@ -1950,7 +1971,7 @@ $('name-form').onsubmit = async (e) => {
   if (!name) return;
   const r = await api('PUT', '/api/setup', { name });
   if (r.change) toast(t.renamed(name), { undo: r.change });
-  ev = await (await fetch('/api/event')).json();
+  ev = await getEvent();
 };
 // The event's pictures: the logo (audience pages), the tab icon (every page) and the audience home page's picture. The
 // server checks the file's bytes, not just its type.
@@ -1975,7 +1996,7 @@ for (const kind of ['logo', 'icon', 'cover']) {
     if (r?.status === 423) setLocked(true);
     if (!r?.ok) return logoErr(r?.status === 423 ? t.lockedToast : r?.status === 415 ? t[kind].type : r?.status === 413 ? t[kind].big : t[kind].fail);
     logoErr();
-    ev = await (await fetch('/api/event')).json();
+    ev = await getEvent();
     renderLogo(kind);
     toast(t[kind].saved);
   };
@@ -1988,7 +2009,7 @@ for (const kind of ['logo', 'icon', 'cover']) {
   $(`${kind}-del`).onclick = async () => {
     if (!(await confirmDialog({ title: t[kind].ask, body: t[kind].askBody, ok: t[kind].ok, danger: true }))) return;
     try { await api('DELETE', `/api/event/${kind}`); } catch { return; /* toast shown */ }
-    ev = await (await fetch('/api/event')).json();
+    ev = await getEvent();
     logoErr();
     renderLogo(kind);
     toast(t[kind].removed);
@@ -2009,7 +2030,7 @@ async function saveLanguages(body) {
     toast(b.code === 'language-in-use' ? t.langInUse(b.rooms, b.languages) : tr(e.message), { error: true });
     return;
   }
-  ev = await (await fetch('/api/event')).json();
+  ev = await getEvent();
   await loadSettings();
 }
 $('lang-form').onsubmit = async (e) => {
@@ -2027,6 +2048,32 @@ $('langs-list').onclick = async (e) => {
   if (c in (settingsSetup.addedLanguages || {})) { const rest = { ...settingsSetup.addedLanguages }; delete rest[c]; body.languages = rest; }
   if ((settingsSetup.builtInLanguages || []).includes(c)) body.removedLanguages = [...(settingsSetup.removedLanguages || []), c];
   await saveLanguages(body);
+};
+// The event's time zone: every zone this browser knows, with its offset now ("America/Mexico City · GMT-06:00").
+function renderZone(s) {
+  const off = (z) => { try { return new Intl.DateTimeFormat('en', { timeZone: z, timeZoneName: 'longOffset' }).formatToParts().find((p) => p.type === 'timeZoneName').value; } catch { return ''; } };
+  const zones = Intl.supportedValuesOf?.('timeZone') || [];
+  if (!$('tz').options.length || $('tz').dataset.cur !== s.timezone) {
+    $('tz').innerHTML = [...new Set([s.timezone, ...zones])].map((z) => `<option value="${esc(z)}">${esc(`${z.replace(/_/g, ' ')} · ${off(z)}`)}</option>`).join('');
+    $('tz').dataset.cur = $('tz').value = s.timezone;
+  }
+  $('doors-note').textContent = t.doorsNote(s.timezone.replace(/_/g, ' '));
+}
+$('tz').onchange = async () => {
+  try {
+    await api('PUT', '/api/setup', { timezone: $('tz').value });
+    ev = await getEvent();
+    toast(t.tzSaved($('tz').value.replace(/_/g, ' ')));
+  } catch { /* toast shown */ }
+  await loadSettings();
+};
+$('doors-form').onsubmit = async (e) => {
+  e.preventDefault();
+  try {
+    await api('PUT', '/api/setup', { opensAt: $('opens-at').value, closesAt: $('closes-at').value, beforeText: $('before-text').value, afterText: $('after-text').value });
+    toast(tr('Guardado'));
+  } catch { /* toast shown */ }
+  await loadSettings();
 };
 $('credit').onchange = async () => {
   try { await api('PUT', '/api/setup', { credit: $('credit').checked }); toast(tr('Guardado')); } catch { /* toast shown */ }

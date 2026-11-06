@@ -32,7 +32,7 @@ import { Zip, ZipTooLarge, safeName } from './zip.js';
 import { Recordings, mountRecordings } from './recording.js';
 import { Integrations } from './integrations.js';
 import { Switchers } from './switcher.js';
-import { fromSessionize, fromIcs } from './agenda-import.js';
+import { fromSessionize, fromIcs, fromWall, zoneOffset } from './agenda-import.js';
 import { PullSource, ffmpegBin } from './pull.js';
 import { muLaw } from './audio.js';
 import { systemStats } from './system.js';
@@ -182,10 +182,16 @@ if (setup.name) Object.assign(config.event, { name: setup.name, named: true });
 const baseLanguages = { ...config.event.languages };
 const offeredLanguages = (added = {}, removed = []) => ({ ...Object.fromEntries(Object.entries(baseLanguages).filter(([c]) => !removed.includes(c))), ...added });
 config.event.languages = offeredLanguages(setup.languages, setup.removedLanguages);
-// The agenda's time zone, as the wizard read it from the organizer's browser (TZ or event.json's timezone win).
+// The event's time zone: what the agenda's times mean. Chosen in Settings → Event (or by the wizard from the organizer's
+// browser), it wins over TZ and event.json's timezone, which are often just a container's UTC.
 const tzFixed = !!process.env.TZ;
-if (setup.timezone && !tzFixed) process.env.TZ = setup.timezone;
-const zoneOk = (z) => { try { return !!z && new Intl.DateTimeFormat('en', { timeZone: z }).resolvedOptions().timeZone === z; } catch { return false; } };
+if (setup.timezone) process.env.TZ = setup.timezone;
+const eventZone = () => Intl.DateTimeFormat().resolvedOptions().timeZone;
+// A zone's name as Node spells it (browsers say Asia/Kolkata, Node Asia/Calcutta), or null if it isn't one.
+const zoneName = (z) => { try { return z && z.length <= 64 ? new Intl.DateTimeFormat('en', { timeZone: z }).resolvedOptions().timeZone : null; } catch { return null; } };
+// When the audience pages open and close (Settings → Event): "2026-11-12T09:00" in the event's time zone, or ''.
+const WALL_RE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/;
+const wallMs = (w) => (w ? Date.parse(w) : null); // no offset: local, i.e. the event's time zone
 function saveSetup(patch) {
   Object.assign(setup, patch, { updatedAt: new Date().toISOString() });
   writeFileAtomic(SETUP_FILE, JSON.stringify(setup, null, 2));
@@ -289,7 +295,9 @@ app.get('/api/event', (req, res) => {
     publicUrl: publicUrl(req),
     languages: config.event.languages,
     audienceAi: audienceAiEnabled,
-    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+    timezone: eventZone(),
+    // Before opensAt and after closesAt the audience pages show the organizers' message instead of the rooms.
+    opensAt: wallMs(setup.opensAt), closesAt: wallMs(setup.closesAt), beforeText: setup.beforeText || '', afterText: setup.afterText || '',
     publicTranscripts: PUBLIC_TRANSCRIPTS,
     credit: setup.credit !== false, // "Live captions by OpenCaptions" on the audience pages (Settings → Event)
     logo: brandUrl('logo'),
@@ -1145,8 +1153,9 @@ app.get('/api/setup', crew, (req, res) => {
     locked: !!setup.locked,
     name: config.event.name,
     named: config.event.named,
-    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone, // what the agenda's HH:MM times mean
+    timezone: eventZone(), // what the agenda's HH:MM times mean
     timezoneFixed: tzFixed,
+    opensAt: setup.opensAt || '', closesAt: setup.closesAt || '', beforeText: setup.beforeText || '', afterText: setup.afterText || '',
     languages: config.event.languages,
     mode: setup.mode === 'personal' ? 'personal' : 'event',
     eventDone: !!setup.eventDone,
@@ -1184,7 +1193,12 @@ app.put('/api/setup', admin, (req, res) => {
   // Check everything before changing anything: a bad time zone must not leave a half-applied rename.
   const name = String(b.name || '').trim().slice(0, 80);
   if ('name' in b && !name) return res.status(400).json({ error: 'name required' });
-  if ('timezone' in b && !zoneOk(String(b.timezone || ''))) return res.status(400).json({ error: 'unknown time zone' });
+  const zone = 'timezone' in b ? zoneName(String(b.timezone || '')) : null;
+  if ('timezone' in b && !zone) return res.status(400).json({ error: 'unknown time zone' });
+  for (const k of ['opensAt', 'closesAt']) if (k in b && b[k] !== '' && !(WALL_RE.test(String(b[k])) && Number.isFinite(Date.parse(b[k])))) return res.status(400).json({ error: `${k}: YYYY-MM-DDTHH:MM, or empty` });
+  const opens = 'opensAt' in b ? b.opensAt : setup.opensAt, closes = 'closesAt' in b ? b.closesAt : setup.closesAt;
+  if (opens && closes && Date.parse(closes) <= Date.parse(opens)) return res.status(400).json({ error: 'the audience pages must close after they open' });
+  for (const k of ['beforeText', 'afterText']) if (k in b && (typeof b[k] !== 'string' || b[k].length > 500)) return res.status(400).json({ error: `${k}: up to 500 characters` });
   if ('publicTranscripts' in b && !TRANSCRIPT_MODES.includes(b.publicTranscripts)) return res.status(400).json({ error: 'publicTranscripts: current, all or none' });
   if ('publicTranscripts' in b && transcriptsFixed) return res.status(409).json({ error: 'PUBLIC_TRANSCRIPTS is set in .env: change it there and restart' });
   if ('speechModel' in b && !['translate', 'transcribe'].includes(b.speechModel)) return res.status(400).json({ error: 'speechModel: translate or transcribe' });
@@ -1229,11 +1243,13 @@ app.put('/api/setup', admin, (req, res) => {
   }
   if ('mode' in b) patch.mode = b.mode === 'personal' ? 'personal' : 'event'; // "just for me" or an event
   if (b.done && b.mode === 'event') patch.eventDone = true; // the wizard was finished for an event at least once
-  if ('timezone' in b) {
-    const tz = String(b.timezone || '');
-    patch.timezone = tz;
-    if (!tzFixed) process.env.TZ = tz; // Node reads TZ again on the next date
+  if (zone && zone !== eventZone()) {
+    const before = eventZone();
+    patch.timezone = process.env.TZ = zone; // Node reads TZ again on the next date
+    recordChange({ kind: 'event.timezone', summary: `Event time zone: ${zone}`, before, after: zone });
+    reanchorAgenda(before, zone);
   }
+  for (const k of ['opensAt', 'closesAt', 'beforeText', 'afterText']) if (k in b) patch[k] = String(b[k]).trim();
   if (added) patch.languages = added;
   if (removed) patch.removedLanguages = removed;
   if (added || removed) config.event.languages = offeredLanguages(added ?? setup.languages, removed ?? setup.removedLanguages);
@@ -1598,14 +1614,14 @@ app.post('/api/tunnel', admin, unlocked, (req, res) => {
 
 app.get('/api/schedule', (req, res) => res.json(schedule.entries.map((e) => ({ ...e, startIso: new Date(e.start).toISOString() }))));
 /** Save (or with dryRun just preview) an agenda: pasted CSV, entries, or rows from an import. */
-function saveAgenda(input, { dryRun = false, byName = false } = {}) {
+function saveAgenda(input, { dryRun = false, byName = false, summary = 'Agenda saved' } = {}) {
   // Pasted text and imports are matched to the rooms that exist (by id or name); rows for other rooms are skipped.
   const rooms = byName ? [...stages.values()].map((s) => ({ id: s.id, name: s.def.name })) : undefined;
   const before = schedule.entries.map((e) => ({ ...e }));
   const entries = /** @type {any} */ (dryRun ? parseSchedule(input, new Date(), { rooms }) : schedule.set(input, { rooms }));
-  const unknown = [...new Set(entries.map((e) => e.stage))].filter((id) => !stages.has(id));
+  const unknown = [...new Set(entries.map((e) => e.stage))].filter((id) => id !== '*' && !stages.has(id)); // '*': a break in every room
   const skipped = entries.skipped || [];
-  const change = dryRun ? null : recordChange({ kind: 'agenda.set', summary: `Agenda saved (${before.length} → ${entries.length} talks)`, before, after: entries.map((e) => ({ ...e })) });
+  const change = dryRun ? null : recordChange({ kind: 'agenda.set', summary: `${summary} (${before.length} → ${entries.length} talks)`, before, after: entries.map((e) => ({ ...e })) });
   return { ok: true, change: change?.id ?? null, count: entries.length, unknownRooms: unknown, skipped: { count: skipped.length, rooms: [...new Set(skipped.map((x) => x.room))].slice(0, 20) },
     ...(dryRun ? { entries: entries.map((e) => ({ ...e, startIso: new Date(e.start).toISOString() })) } : {}) };
 }
@@ -1618,16 +1634,55 @@ app.put('/api/schedule', admin, unlocked, (req, res) => {
 // Import from Sessionize or a calendar link (src/agenda-import.js). The source is remembered for "Import again"; it's
 // kept with the secrets because a calendar's private address (Google's "secret address in iCal format") is one.
 app.get('/api/schedule/source', admin, (req, res) => {
-  let src = null;
-  try { src = JSON.parse(readSecret('agendaSource') || 'null'); } catch { /* none */ }
-  res.json(src ? { source: src.source, label: src.source === 'sessionize' ? src.ref : (() => { try { return new URL(src.ref.replace(/^webcal:/i, 'https:')).host; } catch { return ''; } })() } : null);
+  const src = agendaSource();
+  res.json(src ? { source: src.source, label: src.source === 'sessionize' ? src.ref : (() => { try { return new URL(src.ref.replace(/^webcal:/i, 'https:')).host; } catch { return ''; } })(),
+    auto: !!setup.agendaAuto, ...agendaAuto } : null);
+});
+const agendaSource = () => { try { return JSON.parse(readSecret('agendaSource') || 'null'); } catch { return null; } };
+const fetchAgenda = (src) => (src.source === 'sessionize' ? fromSessionize(src.ref) : fromIcs(src.ref));
+const agendaKey = (list) => JSON.stringify(list.map((e) => [e.stage, e.start, e.title, e.speaker || '', !!e.break]));
+// Auto-update (the Agenda's switch): every 10 minutes the saved Sessionize or calendar link is read again, and saved
+// only when a talk moved, changed or appeared. A failed read keeps the agenda as it is and says why on the dashboard.
+const agendaAuto = { checkedAt: 0, error: '' };
+async function refreshAgenda(why = 'Agenda updated from') {
+  const src = agendaSource();
+  if (!src) return null;
+  try {
+    const rows = await fetchAgenda(src);
+    if (!rows.length) throw new Error('no talks with a start time were found there');
+    const rooms = [...stages.values()].map((x) => ({ id: x.id, name: x.def.name }));
+    const changed = agendaKey(parseSchedule(rows, new Date(), { rooms })) !== agendaKey(schedule.entries);
+    if (changed) saveAgenda(rows, { byName: true, summary: `${why} ${src.source === 'sessionize' ? 'Sessionize' : 'the calendar'}` });
+    Object.assign(agendaAuto, { checkedAt: Date.now(), error: '' });
+    return changed;
+  } catch (e) {
+    Object.assign(agendaAuto, { checkedAt: Date.now(), error: e.message });
+    console.warn(`[agenda] couldn't read ${src.source} again: ${e.message}`);
+    return null;
+  }
+}
+setInterval(() => { if (setup.agendaAuto) refreshAgenda(); }, Number(process.env.AGENDA_REFRESH_MS || 600_000)).unref();
+// A new time zone keeps each talk at the clock time it had: read the imported agenda again (its times may carry their
+// own zone), or move every pasted talk to the same hour in the new zone.
+function reanchorAgenda(from, to) {
+  if (!schedule.entries.length) return;
+  if (agendaSource()) { refreshAgenda('Agenda read again in the new time zone from'); return; }
+  try {
+    saveAgenda(schedule.entries.map((e) => ({ ...e, start: fromWall(e.start + zoneOffset(e.start, from), to) })), { summary: `Agenda moved to ${to}` });
+  } catch (e) { console.warn('[agenda] not moved to the new time zone:', e.message); }
+}
+app.put('/api/schedule/auto', admin, async (req, res) => {
+  if (!agendaSource()) return res.status(409).json({ error: 'import the agenda from Sessionize or a calendar first' });
+  saveSetup({ agendaAuto: !!req.body?.on });
+  const changed = setup.agendaAuto ? await refreshAgenda() : null; // turned on: check now, not in 10 minutes
+  res.json({ ok: true, auto: !!setup.agendaAuto, changed, ...agendaAuto });
 });
 app.post('/api/schedule/import', admin, unlocked, async (req, res) => {
   try {
     let { source, ref } = req.body || {};
-    if (req.body?.again) ({ source, ref } = JSON.parse(readSecret('agendaSource') || '{}'));
+    if (req.body?.again) ({ source, ref } = agendaSource() || {});
     if (!['sessionize', 'ics'].includes(source)) return res.status(400).json({ error: 'source: sessionize or ics' });
-    const rows = source === 'sessionize' ? await fromSessionize(ref) : await fromIcs(ref);
+    const rows = await fetchAgenda({ source, ref });
     if (!rows.length) return res.status(400).json({ error: 'no talks with a start time were found there' });
     const out = saveAgenda(rows, { dryRun: !!req.query.dryRun, byName: true });
     if (!req.query.dryRun) saveSecret('agendaSource', JSON.stringify({ source, ref: String(ref) }));

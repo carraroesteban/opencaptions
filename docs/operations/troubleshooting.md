@@ -90,7 +90,7 @@ See [Local mode → Troubleshooting](../local.md#troubleshooting) for the speech
 | *What did I miss?* shows "Highlights from the transcript" instead of an AI summary | Mock mode, `AUDIENCE_AI=off`, or the model call failed (quota, network) | Check the server log and Gemini billing; it retries on the next request (summaries are cached for up to 2 min while live) |
 | "Lots of questions right now" | Per-client or global question limit | Normal under load; raise `ASK_RPM` / `ASK_PER_CLIENT_PER_MIN` if your budget allows |
 | Summary says there isn't enough yet | Fewer than a few sentences transcribed | Wait a minute |
-| Agenda titles never appear, or appear hours off | Times read in the wrong time zone (Docker runs in UTC), or room names in the CSV don't match | Reopen the welcome wizard (**Settings**): its review offers your browser's time zone. Or set `TZ`. The agenda preview lists rooms it doesn't recognize. |
+| Agenda titles never appear, or appear hours off | Times read in the wrong time zone (Docker runs in UTC), or room names in the CSV don't match | Pick the event's zone in **Settings → Event → Event time zone** (it wins over `TZ`; every talk keeps its clock time). The agenda preview lists rooms it doesn't recognize. |
 | The next talk's title doesn't switch | The room hasn't been quiet yet (the previous speaker is still talking) | The room card turns orange and offers **Start "…"**; or it switches at the next 30 s pause |
 | Transcript library is empty for the audience | Only the talk in progress is public (the default) | **Settings → Event → Transcripts for the audience → Every talk**, once the speakers agree (or `PUBLIC_TRANSCRIPTS=all`) |
 

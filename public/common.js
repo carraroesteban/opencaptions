@@ -44,6 +44,7 @@ const T = {
     txPrivate: 'Esta transcripción no es pública', txPrivateBody: 'Los organizadores no la publicaron. Si sos del equipo, abrila desde Transcripciones en el panel de producción.',
     txFail: 'No se pudo abrir la transcripción', txFailBody: 'Revisá la conexión y probá de nuevo.', libPrivate: 'Las transcripciones de este evento no son públicas.',
     // audience redesign
+    yourTime: 'tu hora', soonDefault: 'Acá vas a ver los subtítulos en vivo de cada sala cuando empiece el evento.', opensOn: 'Empieza el {when}', afterDefault: 'El evento terminó. ¡Gracias por ser parte!',
     homeHint: 'Subtítulos y traducción en vivo de cada sala, en tu idioma.', roomsLive1: '1 sala en vivo', roomsLiveN: '{n} salas en vivo', otherRooms: 'Más salas', readIn: 'Leer en', noResults: 'Ninguna charla coincide con la búsqueda.',
     smaller: 'Texto más chico', bigger: 'Texto más grande', lhTight: 'Compacto', lhNormal: 'Normal', lhLoose: 'Amplio', send: 'Enviar',
     askSuggest1: '¿Cuáles son las ideas principales hasta ahora?', askSuggest2: '¿Qué dijo recién?', noSound: 'Sin sonido', captionsBy: 'Subtítulos por OpenCaptions',
@@ -71,6 +72,7 @@ const T = {
     txPrivate: 'This transcript isn’t public', txPrivateBody: 'The organizers haven’t published it. If you’re on the team, open it from Transcripts in the production dashboard.',
     txFail: 'Couldn’t open the transcript', txFailBody: 'Check the connection and try again.', libPrivate: 'This event’s transcripts aren’t public.',
     // audience redesign
+    yourTime: 'your time', soonDefault: 'Live captions for every room will show here when the event starts.', opensOn: 'Starts {when}', afterDefault: 'The event has ended. Thanks for being part of it!',
     homeHint: 'Live captions and translation for every room, in your language.', roomsLive1: '1 room live', roomsLiveN: '{n} rooms live', otherRooms: 'More rooms', readIn: 'Read in', noResults: 'No talks match your search.',
     smaller: 'Smaller text', bigger: 'Larger text', lhTight: 'Compact', lhNormal: 'Normal', lhLoose: 'Relaxed', send: 'Send',
     askSuggest1: 'What are the main ideas so far?', askSuggest2: 'What was just said?', noSound: 'No sound yet', captionsBy: 'Captions by OpenCaptions',
@@ -98,6 +100,7 @@ const T = {
     txPrivate: 'Esta transcrição não é pública', txPrivateBody: 'Os organizadores não a publicaram. Se você é da equipe, abra em Transcrições no painel de produção.',
     txFail: 'Não foi possível abrir a transcrição', txFailBody: 'Verifique a conexão e tente de novo.', libPrivate: 'As transcrições deste evento não são públicas.',
     // audience redesign
+    yourTime: 'seu horário', soonDefault: 'As legendas ao vivo de cada sala vão aparecer aqui quando o evento começar.', opensOn: 'Começa em {when}', afterDefault: 'O evento terminou. Obrigado por fazer parte!',
     homeHint: 'Legendas e tradução ao vivo de cada sala, no seu idioma.', roomsLive1: '1 sala ao vivo', roomsLiveN: '{n} salas ao vivo', otherRooms: 'Mais salas', readIn: 'Ler em', noResults: 'Nenhuma palestra corresponde à busca.',
     smaller: 'Texto menor', bigger: 'Texto maior', lhTight: 'Compacto', lhNormal: 'Normal', lhLoose: 'Amplo', send: 'Enviar',
     askSuggest1: 'Quais são as ideias principais até agora?', askSuggest2: 'O que acabou de ser dito?', noSound: 'Sem som', captionsBy: 'Legendas por OpenCaptions',
@@ -112,7 +115,7 @@ export const failText = (r, j) => j?.error || (r.status < 500 && r.statusText) |
  * { kind: 'break'|'music', title, back: 'Back at 11:30', next: 'Next talk: Title · Speaker' }
  */
 export function pauseView(p) {
-  const hm = (ms) => new Date(ms).toLocaleTimeString(UI, { hour: '2-digit', minute: '2-digit' });
+  const hm = (ms) => eventTime(ms);
   if (p?.brk) {
     const next = p.brk.next;
     const back = next?.start || p.brk.until;
@@ -149,7 +152,27 @@ export async function getEvent() {
   const r = await fetch('/api/event');
   const ev = await r.json();
   setAccent(ev.accent);
+  try { eventZone = new Intl.DateTimeFormat('en', { timeZone: ev.timezone }).resolvedOptions().timeZone; } catch { eventZone = undefined; }
   return ev;
+}
+
+let eventZone; // the event's time zone, from getEvent(): agenda times are the event's
+/** "10:30" in the event's time zone, and the reader's own in brackets when it's another: "10:30 (07:30 your time)". */
+export function eventTime(ms, opts = { hour: '2-digit', minute: '2-digit' }, lang = UI) {
+  const at = (timeZone) => new Date(ms).toLocaleString(lang, { ...opts, timeZone });
+  const ev = at(eventZone), mine = at(undefined);
+  if (ev === mine) return ev;
+  // The same day for the reader: their time alone, not the date twice.
+  const sameDay = new Date(ms).toLocaleDateString('en', { timeZone: eventZone }) === new Date(ms).toLocaleDateString('en');
+  return `${ev} (${sameDay ? new Date(ms).toLocaleTimeString(lang, { hour: '2-digit', minute: '2-digit' }) : mine} ${(T[lang] || T.en).yourTime})`;
+}
+
+/** Before the event opens or after it closes (Settings → Event): { text, when } for the audience, or null while open. */
+export function eventClosed(ev, now = Date.now()) {
+  if (ev.personal) return null;
+  if (ev.opensAt && now < ev.opensAt) return { before: true, text: ev.beforeText || t('soonDefault'), when: t('opensOn').replace('{when}', eventTime(ev.opensAt, { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })) };
+  if (ev.closesAt && now >= ev.closesAt) return { before: false, text: ev.afterText || t('afterDefault'), when: '' };
+  return null;
 }
 
 /** Event accent colour → --accent, plus ink or paper on top of it (--on-accent) so text on it stays readable. */

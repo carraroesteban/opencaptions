@@ -35,7 +35,7 @@ export function fromSessionizeData(data) {
     .filter((s) => s.startsAt && (s.isServiceSession || !s.isPlenumSession))
     .map((s) => ({
       stage: s.isServiceSession && s.isPlenumSession ? '*' : rooms.get(String(s.roomId)) || s.room || '',
-      start: s.startsAt, // local event time, "2026-10-05T09:30:00"
+      start: s.startsAt, // the event's time, "2026-10-05T09:30:00", or UTC with "Use UTC timezone": "…T12:30:00Z"
       title: s.title,
       speaker: s.isServiceSession ? '' : (s.speakers || []).map((x) => (typeof x === 'object' ? x.name || people.get(String(x.id)) : people.get(String(x)))).filter(Boolean).join(', '),
       ...(s.isServiceSession ? { break: true } : {}),
@@ -53,10 +53,17 @@ export async function fromSessionize(idOrUrl) {
 
 // ---------- iCalendar (RFC 5545), just what agendas need ----------
 /** Offset (ms) of a time zone at a moment, e.g. Europe/Madrid in summer → +2 h. */
-function zoneOffset(ms, tz) {
+export function zoneOffset(ms, tz) {
   const name = new Intl.DateTimeFormat('en-US', { timeZone: tz, timeZoneName: 'longOffset' }).formatToParts(new Date(ms)).find((p) => p.type === 'timeZoneName')?.value || 'GMT';
   const m = /GMT([+-])(\d{2}):?(\d{2})?/.exec(name);
   return m ? (m[1] === '-' ? -1 : 1) * (Number(m[2]) * 60 + Number(m[3] || 0)) * 60_000 : 0;
+}
+
+/** A wall-clock time (its digits read as UTC ms) in a time zone → the real moment. Twice, for DST edges. */
+export function fromWall(wall, tz) {
+  let t = wall - zoneOffset(wall, tz);
+  t = wall - zoneOffset(t, tz);
+  return t;
 }
 
 /** DTSTART value + parameters → epoch ms, or NaN (all-day events have no time: skipped). */
@@ -67,7 +74,7 @@ export function icsTime(value, params = {}) {
   const wall = Date.UTC(y, mo - 1, d, h, mi, s);
   if (m[7]) return wall; // UTC
   if (params.TZID) {
-    try { let t = wall - zoneOffset(wall, params.TZID); t = wall - zoneOffset(t, params.TZID); return t; } catch { /* unknown zone: floating */ }
+    try { return fromWall(wall, params.TZID); } catch { /* unknown zone: floating */ }
   }
   return new Date(y, mo - 1, d, h, mi, s).getTime(); // "floating": the server's (the event's) time zone
 }

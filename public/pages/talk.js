@@ -1,5 +1,5 @@
 // talk.html: page script (kept out of the HTML so the Content-Security-Policy can forbid inline scripts).
-import { creditLink, qs, t, UI, esc, store, wsUrl, Socket, langLabel, getEvent, applyReadingPrefs, setReadingPref, fmtClock, liveHtml, endsSentence, copyText, segment, readingItems, previewFonts } from '/common.js';
+import { creditLink, qs, t, esc, store, wsUrl, Socket, langLabel, getEvent, applyReadingPrefs, setReadingPref, fmtClock, liveHtml, endsSentence, copyText, segment, readingItems, previewFonts, eventTime } from '/common.js';
 import { mountAssistant } from '/assist-ui.js';
 import { icon, mountIcons } from '/illustrations.js';
 import { prefsControls } from '/prefs.js';
@@ -68,7 +68,7 @@ document.title = `${title} · ${info.stageName} · ${ev.name}`;
 $('title').textContent = title;
 const started = new Date(info.startedAt);
 // Where and when above the title; who and how long under it (a talk with nothing said yet has no length).
-$('eyebrow').textContent = `${info.stageName} · ${started.toLocaleDateString(UI, { weekday: 'short', day: 'numeric', month: 'short' })} · ${started.toLocaleTimeString(UI, { hour: '2-digit', minute: '2-digit' })}`;
+$('eyebrow').textContent = `${info.stageName} · ${eventTime(started, { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}`;
 $('meta').innerHTML = [
   info.speaker ? `<span class="tk-who"><span class="tk-ini" aria-hidden="true">${esc([...info.speaker.trim()][0] || '')}</span>${esc(info.speaker)}</span>` : '',
   info.segments ? `<span>${Math.max(1, Math.round(info.durationMs / 60000))} min</span>` : '',
