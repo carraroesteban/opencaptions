@@ -1934,6 +1934,9 @@ async function loadSettings() {
   $('tx-access').value = s.publicTranscripts;
   $('credit').checked = s.credit !== false;
   renderZone(s);
+  const af = $('agenda-force');
+  if (![...af.options].some((o) => Number(o.value) === s.agendaForceMin)) af.add(new Option(`${s.agendaForceMin} min`, String(s.agendaForceMin))); // set in .env or event.json
+  af.value = String(s.agendaForceMin);
   if (!$('doors-form').contains(document.activeElement)) {
     $('opens-at').value = s.opensAt; $('closes-at').value = s.closesAt; $('before-text').value = s.beforeText; $('after-text').value = s.afterText;
   }
@@ -1943,6 +1946,7 @@ async function loadSettings() {
   if (last?.system) $('sys').textContent = t.sys(last.system, fmtDur(last.uptimeSec));
   setLocked(!!s.locked);
   if (s.publicTranscriptsFixed) $('tx-access').disabled = true;
+  if (s.agendaForceFixed) $('agenda-force').disabled = true;
   renderSpeech(s);
   textP.update(s);
   $('upd-check').checked = !!s.updateCheck;
@@ -2065,6 +2069,10 @@ $('tz').onchange = async () => {
     ev = await getEvent();
     toast(t.tzSaved($('tz').value.replace(/_/g, ' ')));
   } catch { /* toast shown */ }
+  await loadSettings();
+};
+$('agenda-force').onchange = async () => {
+  try { await api('PUT', '/api/setup', { agendaForceMin: Number($('agenda-force').value) }); toast(tr('Guardado')); } catch { /* toast shown */ }
   await loadSettings();
 };
 $('doors-form').onsubmit = async (e) => {

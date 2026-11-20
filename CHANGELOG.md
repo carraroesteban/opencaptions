@@ -14,6 +14,8 @@ All notable changes to this project are documented in this file. The format foll
 
 ### Fixed
 
+- **Back-to-back talks now switch on their own.** A room used to move on to the agenda's next talk only after 30 s of silence, and gave up after 45 minutes. When speakers and the host handed over without a break, the room stayed on the first talk. Now, once the next talk's start time has passed, the room switches at the first 2-second pause. With no pause, it switches anyway after 5 minutes (**Settings → Event → Moving on to the next talk**: 2, 5, 10 or 15 minutes, or never without a pause; `AGENDA_FORCE_MIN` and `AGENDA_PAUSE_SEC` in `.env`).
+
 - **Time zones browsers name differently than the server** (Asia/Kolkata, Europe/Kyiv) were refused by the setup wizard.
 - **An imported break for every room** no longer shows up in the preview as a room that doesn't exist ("*").
 

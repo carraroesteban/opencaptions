@@ -824,6 +824,12 @@
             <div><h3>Zona horaria del evento</h3><p data-help>Las horas de la agenda son de esta zona. Quien entra desde otra ve también la suya, entre paréntesis.</p></div>
             <select id="tz" aria-label="Zona horaria del evento" data-setup></select>
           </section>
+          <section class="card setting">
+            <div><h3>Pasar a la próxima charla</h3><p data-help>Cuando empieza la hora de la próxima charla en la agenda, la sala cambia en la primera pausa. Si nadie hace una pausa, cambia igual a los minutos que elijas.</p></div>
+            <select id="agenda-force" aria-label="Pasar a la próxima charla" data-setup>
+              <option value="2">A los 2 minutos</option><option value="5">A los 5 minutos</option><option value="10">A los 10 minutos</option><option value="15">A los 15 minutos</option><option value="0">Nunca sin una pausa</option>
+            </select>
+          </section>
           <section class="card">
             <h3>Cuándo abre la página del público</h3>
             <p data-help>Antes de abrir y después de cerrar, el público ve tu mensaje en lugar de las salas. Abre sola a la hora (de la zona del evento). Sin fechas, está siempre abierta.</p>

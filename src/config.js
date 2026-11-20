@@ -125,6 +125,11 @@ export const config = {
   fresh,
   // Stop streaming audio to the model after this many seconds of silence (saves cost between talks).
   silenceGateSec: Number(env.SILENCE_GATE_SEC ?? event.silenceGateSec ?? 30),
+  // The agenda's next talk: once its start time has passed, the room switches at the first pause this long (seconds)…
+  agendaPauseSec: Number(env.AGENDA_PAUSE_SEC ?? event.agendaPauseSec ?? 2),
+  // …or, with no pause, this many minutes after its start time anyway (0 = never: the crew presses "New talk").
+  // Settings → Event changes it (data/setup.json) unless AGENDA_FORCE_MIN is set.
+  agendaForceMin: Number(env.AGENDA_FORCE_MIN ?? event.agendaForceMin ?? 5),
   // LOG_LEVEL=debug: the server's log also tells what each room hears, what goes to the AI and what comes back.
   logDebug: /^(debug|trace|verbose)$/i.test(env.LOG_LEVEL || ''),
   // Pause captions while a room plays music (walk-in music, videos between talks): src/voice.js. Per room: musicGuard.

@@ -189,6 +189,9 @@ if (setup.timezone) process.env.TZ = setup.timezone;
 const eventZone = () => Intl.DateTimeFormat().resolvedOptions().timeZone;
 // A zone's name as Node spells it (browsers say Asia/Kolkata, Node Asia/Calcutta), or null if it isn't one.
 const zoneName = (z) => { try { return z && z.length <= 64 ? new Intl.DateTimeFormat('en', { timeZone: z }).resolvedOptions().timeZone : null; } catch { return null; } };
+// When a room moves on to the agenda's next talk with no pause (Settings → Event): minutes after its start, 0 = never.
+const agendaForceFixed = process.env.AGENDA_FORCE_MIN != null && process.env.AGENDA_FORCE_MIN !== '';
+if (!agendaForceFixed && Number.isFinite(setup.agendaForceMin)) config.agendaForceMin = setup.agendaForceMin;
 // When the audience pages open and close (Settings → Event): "2026-11-12T09:00" in the event's time zone, or ''.
 const WALL_RE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/;
 const wallMs = (w) => (w ? Date.parse(w) : null); // no offset: local, i.e. the event's time zone
@@ -1155,6 +1158,8 @@ app.get('/api/setup', crew, (req, res) => {
     named: config.event.named,
     timezone: eventZone(), // what the agenda's HH:MM times mean
     timezoneFixed: tzFixed,
+    agendaForceMin: config.agendaForceMin,
+    agendaForceFixed,
     opensAt: setup.opensAt || '', closesAt: setup.closesAt || '', beforeText: setup.beforeText || '', afterText: setup.afterText || '',
     languages: config.event.languages,
     mode: setup.mode === 'personal' ? 'personal' : 'event',
@@ -1201,6 +1206,8 @@ app.put('/api/setup', admin, (req, res) => {
   for (const k of ['beforeText', 'afterText']) if (k in b && (typeof b[k] !== 'string' || b[k].length > 500)) return res.status(400).json({ error: `${k}: up to 500 characters` });
   if ('publicTranscripts' in b && !TRANSCRIPT_MODES.includes(b.publicTranscripts)) return res.status(400).json({ error: 'publicTranscripts: current, all or none' });
   if ('publicTranscripts' in b && transcriptsFixed) return res.status(409).json({ error: 'PUBLIC_TRANSCRIPTS is set in .env: change it there and restart' });
+  if ('agendaForceMin' in b && !(Number.isInteger(b.agendaForceMin) && b.agendaForceMin >= 0 && b.agendaForceMin <= 60)) return res.status(400).json({ error: 'agendaForceMin: whole minutes, 0 to 60 (0 = never)' });
+  if ('agendaForceMin' in b && agendaForceFixed) return res.status(409).json({ error: 'AGENDA_FORCE_MIN is set in .env: change it there and restart' });
   if ('speechModel' in b && !['translate', 'transcribe'].includes(b.speechModel)) return res.status(400).json({ error: 'speechModel: translate or transcribe' });
   if ('speechModel' in b && transcribeFixed) return res.status(409).json({ error: 'TRANSCRIBE_MODEL is set in .env: change it there and restart' });
   if ('updateCheck' in b && !updateCheckEnv) return res.status(409).json({ error: 'UPDATE_CHECK=0 is set in .env: change it there and restart' });
@@ -1250,6 +1257,11 @@ app.put('/api/setup', admin, (req, res) => {
     reanchorAgenda(before, zone);
   }
   for (const k of ['opensAt', 'closesAt', 'beforeText', 'afterText']) if (k in b) patch[k] = String(b[k]).trim();
+  if ('agendaForceMin' in b && b.agendaForceMin !== config.agendaForceMin) {
+    const before = config.agendaForceMin;
+    patch.agendaForceMin = config.agendaForceMin = b.agendaForceMin;
+    patch.change = recordChange({ kind: 'event.agendaForce', summary: b.agendaForceMin ? `Rooms move on to the next talk at most ${b.agendaForceMin} min after its start` : 'Rooms never move on to the next talk without a pause', before, after: b.agendaForceMin }).id;
+  }
   if (added) patch.languages = added;
   if (removed) patch.removedLanguages = removed;
   if (added || removed) config.event.languages = offeredLanguages(added ?? setup.languages, removed ?? setup.removedLanguages);

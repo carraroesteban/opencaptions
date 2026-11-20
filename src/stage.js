@@ -713,7 +713,8 @@ export class Stage extends EventEmitter {
 
   /**
    * Name talks from the agenda. The first words of a slot get its title; when a new slot starts while the
-   * previous talk is still running, we wait for a pause (silence gate) so an overrunning talk isn't split.
+   * previous talk is still running, the room switches at the first short pause (agendaPauseSec), or at the latest
+   * agendaForceMin minutes after the slot's start (0 = never force: the crew presses "New talk").
    */
   #applySchedule(now) {
     if (!this.schedule) return;
@@ -740,10 +741,21 @@ export class Stage extends EventEmitter {
       this.setTitle(current.title, current.speaker, { manual: false });
       this.scheduleKey = key;
       this.log('info', `agenda: talk is "${current.title}"`);
-    } else if ((this.gated || !this.engines.size) && now - current.start < 45 * 60_000) {
+    } else {
+      // The previous talk is still on when the next one's slot starts. Speakers and hosts often hand over with no
+      // silence at all, so we don't wait for the room to go quiet: we switch at the first short pause, and when the
+      // pauses never come (a host talking straight through), at the agenda's deadline anyway.
+      const late = now - current.start;
+      const quiet = this.gated || !this.engines.size ? Infinity : now - this.lastSpeechAt;
+      const forceMs = config.agendaForceMin > 0 ? config.agendaForceMin * 60_000 : Infinity;
+      let why = null;
+      if (quiet >= config.agendaPauseSec * 1000 && (late < 45 * 60_000 || late >= forceMs)) why = 'at a pause';
+      else if (late >= forceMs && (quiet >= 700 || late >= forceMs + 30_000)) why = `${config.agendaForceMin} min after its start time`;
+      if (!why) return;
       this.#newTalk(current.title, true, current.speaker);
       this.scheduleKey = key;
-      this.log('info', `agenda: new talk "${current.title}"`);
+      this.dueTalk = null;
+      this.log('info', `agenda: new talk "${current.title}" (${why})`);
     }
   }
 
@@ -776,7 +788,8 @@ export class Stage extends EventEmitter {
   #housekeeping() {
     const now = Date.now();
     this.#failover(now);
-    if (this.ticks++ % 15 === 0) this.#applySchedule(now);
+    // Every 15 s, or every second while a talk is due: a short pause between speakers is enough to switch.
+    if (this.ticks++ % 15 === 0 || this.dueTalk) this.#applySchedule(now);
     this.#countTalk(now);
     // Cost: every open Gemini session is billed for streamed audio (input + generated output); simulated captions are free.
     if (this.engines.size && !this.gated && config.engine === 'gemini') {
