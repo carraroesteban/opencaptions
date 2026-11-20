@@ -1024,7 +1024,9 @@ Shared by `/overlay.html` and `/screen.html` (`applyCaptionStyle()` in `common.j
 `font` (`atkinsonnext` (default)\|`system`\|`inter`\|`atkinson`\|`lexend`\|`roboto`\|`opensans`\|`montserrat`\|`mono`) · `weight`
 (400–800, default 700) · `color` (hex, text color) · `box` (hex, box/outline color) · `alpha` (0–100, box opacity) ·
 `style` (`box`\|`outline`\|`shadow`\|`none`) · `edge` (hex, outline/shadow edge color) · `upper` (`1` for
-uppercase) · `align` (`center`\|`left`) · `accent` (hex, label color).
+uppercase) · `align` (`center`\|`left`) · `accent` (hex, label color) · `starwars` (`1`: Star Wars mode, the opening
+crawl's yellow text leaning back into the distance, with a starfield on `/screen.html`; wins over `color`, `style`,
+`box`, `alpha` and the screen's `bg`).
 
 Non-page static assets also served from `public/`: `common.js`, `i18n.js` (shared client helpers and UI
 localization), `prefs.js` (page language and the language/theme switcher, without the dictionary), `pcm-worklet.js` (AudioWorklet used by `ingest.html`/`demo.html` to capture and downsample

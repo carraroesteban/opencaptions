@@ -206,7 +206,7 @@ function asset(req, res) {
   const file = path.join(PUBLIC, p);
   if (!fs.existsSync(file) || !fs.statSync(file).isFile()) return false;
   const type = { '.css': 'text/css', '.svg': 'image/svg+xml', '.png': 'image/png', '.woff2': 'font/woff2' }[path.extname(p)] || 'application/octet-stream';
-  res.writeHead(200, { 'content-type': type, 'cache-control': 'public, max-age=3600' });
+  res.writeHead(200, { 'content-type': type, 'cache-control': 'no-store' }); // like the app's own files: the copies load these same URLs, a cached copy would outlive an update
   fs.createReadStream(file).pipe(res);
   return true;
 }

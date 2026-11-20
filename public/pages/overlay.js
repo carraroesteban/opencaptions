@@ -1,5 +1,5 @@
 // overlay.html: page script (kept out of the HTML so the Content-Security-Policy can forbid inline scripts).
-import { qs, wsUrl, Socket, CaptionState, applyCaptionStyle, previewStream, toColor } from '/common.js';
+import { qs, wsUrl, Socket, CaptionState, applyCaptionStyle, previewStream, toColor, isStarWars, STARWARS_YELLOW } from '/common.js';
 import { Pacer, RollUp } from '/smooth.js';
 const root = document.documentElement.style;
 const p = (k, d) => qs.get(k) ?? d;
@@ -12,7 +12,7 @@ root.setProperty('--ov-bg', toColor(p('bg', 'transparent')));
 // line slides sideways with every word). &align=center still centres it.
 const style = applyCaptionStyle(qs, { align: 'left' });
 root.setProperty('--wfrac', Number(p('width', 78)) / 100);
-const capRgb = (toColor(p('color', 'ffffff')).match(/\d+/g) || [255, 255, 255]).slice(0, 3).map(Number);
+const capRgb = (toColor(isStarWars(qs) ? STARWARS_YELLOW : p('color', 'ffffff')).match(/\d+/g) || [255, 255, 255]).slice(0, 3).map(Number);
 root.setProperty('--cap-color2', (capRgb[0] * 299 + capRgb[1] * 587 + capRgb[2] * 114) / 1000 > 140 ? 'var(--fog)' : 'var(--graphite)');
 const box = document.getElementById('box');
 box.classList.toggle('boxed', style === 'box');

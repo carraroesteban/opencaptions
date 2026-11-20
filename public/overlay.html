@@ -18,6 +18,7 @@
       Bilingual: &also=en (or orig) adds a smaller second line in another language for mixed-language streams
       Style:   &font=atkinsonnext|inter|atkinson|lexend|roboto|opensans|montserrat|mono|system &weight=700 &color=ffffff
                &style=box|outline|shadow|none &box=000000 &alpha=78 &edge=000000 &upper=1 &align=left|center
+      Star Wars mode: &starwars=1 (yellow text leaning back into the distance, as in the opening crawl; wins over color and style)
       Design it visually at /style.html
     */
     :root { color-scheme: normal !important; } /* never let a light/dark scheme paint a backdrop: the overlay must stay transparent */
@@ -46,6 +47,12 @@
     .box.music #note { display: block; }
     .box.music .clip, .box.music .clip2 { display: none; }
     .hidden { display: none !important; }
+    /* Star Wars mode (&starwars=1): the opening crawl. Centred, justified yellow text on a plane tilted away from the
+       viewer, the oldest line fading out at the top as it recedes. No box (common.js turns it off). */
+    .starwars .wrap.left { justify-content: center; padding-left: 4vw; }
+    .starwars .box { width: var(--width, 78%); text-align: justify; transform: perspective(380px) rotateX(30deg); transform-origin: 50% 100%; }
+    .starwars .clip { -webkit-mask-image: linear-gradient(to bottom, transparent, #000 35%); mask-image: linear-gradient(to bottom, transparent, #000 35%); }
+    .starwars .clip2 { text-align: center; }
     /* The page's heading is for screen readers only: it must never appear on the stream (style.css isn't loaded here). */
     .sr-only { position: absolute !important; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
   </style>

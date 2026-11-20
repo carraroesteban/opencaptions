@@ -1,5 +1,5 @@
 // screen.html: page script (kept out of the HTML so the Content-Security-Policy can forbid inline scripts).
-import { qs, t, esc, wsUrl, Socket, getEvent, langLabel, applyCaptionStyle, previewStream, toColor, wakeLock, pauseView } from '/common.js';
+import { qs, t, esc, wsUrl, Socket, getEvent, langLabel, applyCaptionStyle, previewStream, toColor, wakeLock, pauseView, isStarWars } from '/common.js';
 import { Pacer, RollUp } from '/smooth.js';
 wakeLock(); // projector PCs must not blank mid-talk
 const $ = (id) => document.getElementById(id);
@@ -20,8 +20,9 @@ if (qs.get('preview') !== '1' && !document.fullscreenElement) {
 }
 if (qs.get('size')) document.documentElement.style.setProperty('--main', qs.get('size') + 'vh');
 applyCaptionStyle(qs, { style: 'none', align: 'left' });
-if (qs.get('bg')) document.documentElement.style.setProperty('--screen-bg', toColor(qs.get('bg')));
+if (qs.get('bg') && !isStarWars(qs)) document.documentElement.style.setProperty('--screen-bg', toColor(qs.get('bg'))); // Star Wars mode: space, always
 if (qs.get('clock') === '0') $('clock').classList.add('hidden');
+if (isStarWars(qs)) starfield();
 $('powered').textContent = ev.credit === false ? t('poweredBy') : `${t('poweredBy')} · opencaptions.kvza.ar`;
 if (ev.logo) Object.assign($('ev-logo'), { src: ev.logo, alt: ev.name }).classList.remove('hidden'); // OpenCaptions stays as the credit at the bottom
 $('follow').textContent = t('followOnPhone');
@@ -134,3 +135,27 @@ function wholeLines() {
   clip.style.height = `${Math.floor(h / lh) * lh}px`;
 }
 addEventListener('resize', wholeLines);
+
+/** Star Wars mode: stars behind everything, scattered at random (always the same sky), redrawn sharp at any size. */
+function starfield() {
+  const c = Object.assign(document.createElement('canvas'), { className: 'stars' });
+  c.setAttribute('aria-hidden', 'true');
+  document.body.prepend(c);
+  const draw = () => {
+    const dpr = devicePixelRatio || 1, w = innerWidth, h = innerHeight;
+    c.width = Math.round(w * dpr); c.height = Math.round(h * dpr);
+    const g = c.getContext('2d');
+    if (!g) return;
+    g.scale(dpr, dpr);
+    g.fillStyle = '#fff';
+    let seed = 20260520; // a fixed seed: the sky doesn't jump on every resize
+    const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+    for (let i = Math.round((w * h) / 2600); i > 0; i--) {
+      const x = rnd() * w, y = rnd() * h, r = rnd() < 0.92 ? 0.7 : 1.3;
+      g.globalAlpha = 0.3 + rnd() * 0.7;
+      g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2); g.fill();
+    }
+  };
+  draw();
+  addEventListener('resize', draw);
+}

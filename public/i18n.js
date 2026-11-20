@@ -338,6 +338,7 @@ const DICTS = {
     'URL para usar en el evento': 'URL to use at the event', '✓ Copiada': '✓ Copied', 'TV clásico': 'Classic TV', 'Alto contraste': 'High contrast',
     'vMix: Add Input → Web Browser → 1920×1080 → pegá la URL. OBS: Fuente → Navegador → 1920×1080.': 'vMix: Add Input → Web Browser → 1920×1080 → paste the URL. OBS: Source → Browser → 1920×1080.',
     'Abrila en el navegador de la PC conectada al proyector y tocá F (o doble clic) para pantalla completa.': 'Open it in the browser of the computer connected to the projector and press F (or double-click) for full screen.', 'Auto (llenar pantalla)': 'Auto (fill the screen)',
+    'Modo Star Wars': 'Star Wars mode', 'Texto amarillo que se aleja en perspectiva, como la intro de las películas.': 'Yellow text leaning back into the distance, like the movies’ opening crawl.',
     'Segunda línea (bilingüe)': 'Second line (bilingual)', 'Ninguna': 'None', 'Automático': 'Automatic', 'Motor de IA local': 'Local AI engine', 'Desde Swapcard, Sessionize o una planilla:': 'From Swapcard, Sessionize or a spreadsheet:', 'Todas las salas en una ventana siempre visible, encima de OBS o vMix': 'Every room in an always-on-top window, over OBS or vMix',
     'Conectar la IA en la nube': 'Connect the cloud AI',
     'Crear las salas': 'Create the rooms',

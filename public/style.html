@@ -23,6 +23,7 @@
     .controls > div > b, .controls > b { font-family: var(--font-display); font-weight: 400; letter-spacing: -.01em; }
     .controls .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
     .controls input[type=color] { width: 100%; height: 36px; padding: 2px; }
+    .controls input[type=color]:disabled { opacity: .45; cursor: default; } /* Star Wars mode picks the colors */
     .controls input[type=range] { width: 100%; }
     .presets { display: flex; gap: 6px; flex-wrap: wrap; }
     .presets button { font-size: 13px; padding: 6px 10px; }
@@ -33,6 +34,9 @@
     .out { display: flex; gap: 6px; } .out input { flex: 1; font-family: var(--mono); font-size: 12px; }
     .val { float: right; color: var(--fg); font-variant-numeric: tabular-nums; }
     .only-overlay, .only-screen { display: contents; }
+    .swrow { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 16px; align-items: center; padding: 12px 0; border-block: 1px solid var(--line); cursor: pointer; }
+    .swrow b { display: block; font-size: 14px; font-weight: 600; }
+    .swrow small { display: block; margin-top: 2px; font-size: 12.5px; line-height: 1.4; color: var(--fg2); }
     body.t-screen .only-overlay, body.t-overlay .only-screen { display: none; }
   </style>
 </head>
@@ -49,6 +53,7 @@
     <h1 class="sr-only">Estilo de subtítulos</h1>
     <section class="card controls">
       <div><b>Presets</b><div class="presets u-mt6" id="presets"></div></div>
+      <label class="swrow"><span><b id="sw-l">Modo Star Wars</b><small id="sw-d">Texto amarillo que se aleja en perspectiva, como la intro de las películas.</small></span><input type="checkbox" role="switch" id="starwars" aria-labelledby="sw-l" aria-describedby="sw-d" /></label>
       <div class="grid2">
         <label class="field">Sala<select id="stage"></select></label>
         <label class="field">Idioma<select id="lang"></select></label>

@@ -580,20 +580,25 @@ export function loadFont(key) {
 /**
  * Apply caption style params (from the URL) as CSS variables on :root.
  * font, weight, color (text), box (box color), alpha (box opacity 0-100), style (box|outline|shadow|none),
- * upper (1), align (center|left), accent (label color).
+ * upper (1), align (center|left), accent (label color), starwars (1: Star Wars mode).
+ * Returns the style in effect ('none' in Star Wars mode).
  */
 export function applyCaptionStyle(p, d = {}) {
   const get = (k) => p.get(k) ?? d[k];
   const root = document.documentElement.style;
+  // Star Wars mode (&starwars=1): the opening crawl's yellow, no box or edge, the text leaning back into the distance
+  // (each page's CSS under html.starwars does the tilt). It wins over color and style.
+  const starwars = isStarWars(p);
+  document.documentElement.classList.toggle('starwars', starwars);
   root.setProperty('--cap-font', loadFont(get('font') || 'atkinsonnext'));
   root.setProperty('--cap-weight', get('weight') || 700);
-  root.setProperty('--cap-color', toColor(get('color') || 'ffffff'));
+  root.setProperty('--cap-color', starwars ? STARWARS_YELLOW : toColor(get('color') || 'ffffff'));
   const alpha = get('alpha') != null ? Number(get('alpha')) / 100 : undefined;
   root.setProperty('--cap-box', toColor(get('box') || '000000', alpha ?? 0.78));
   root.setProperty('--cap-transform', get('upper') === '1' ? 'uppercase' : 'none');
   root.setProperty('--cap-align', get('align') || 'center');
   if (get('accent')) setAccent(toColor(get('accent')));
-  const style = get('style') || 'box';
+  const style = starwars ? 'none' : get('style') || 'box';
   const edge = toColor(get('edge') || '000000');
   root.setProperty('--cap-shadow', style === 'outline'
     ? `0 0 3px ${edge}, 0 0 3px ${edge}, 2px 2px 2px ${edge}, -2px -2px 2px ${edge}, 2px -2px 2px ${edge}, -2px 2px 2px ${edge}`
@@ -601,6 +606,11 @@ export function applyCaptionStyle(p, d = {}) {
   root.setProperty('--cap-box-on', style === 'box' ? '1' : '0');
   return style;
 }
+
+/** The opening crawl's yellow (Star Wars mode). */
+export const STARWARS_YELLOW = '#ffe81f';
+/** Star Wars mode asked for in these caption style params (&starwars=1). */
+export const isStarWars = (p) => p.get('starwars') === '1';
 
 /** Fake caption stream for style previews (no server needed). */
 export function previewStream(onText, lang = 'es') {

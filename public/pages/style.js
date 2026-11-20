@@ -12,8 +12,8 @@ const ev = await getEvent();
 let target = store.get('style.target', 'overlay');
 
 const DEFAULTS = {
-  overlay: { font: 'atkinsonnext', size: 46, weight: 700, lines: 2, align: 'left', color: '#ffffff', style: 'box', box: '#000000', alpha: 78, upper: false, pos: 'bottom', width: 78, bgmode: 'transparent', also: '' },
-  screen: { font: 'atkinsonnext', size: 6.4, weight: 700, lines: 0, align: 'left', color: '#ffffff', style: 'none', box: '#000000', alpha: 0, upper: false, sbg: '#111014', accent: (ev.accent || '#d4ff3a').toLowerCase(), orig: true, qr: true },
+  overlay: { font: 'atkinsonnext', size: 46, weight: 700, lines: 2, align: 'left', color: '#ffffff', style: 'box', box: '#000000', alpha: 78, upper: false, pos: 'bottom', width: 78, bgmode: 'transparent', also: '', starwars: false },
+  screen: { font: 'atkinsonnext', size: 6.4, weight: 700, lines: 0, align: 'left', color: '#ffffff', style: 'none', box: '#000000', alpha: 0, upper: false, sbg: '#111014', accent: (ev.accent || '#d4ff3a').toLowerCase(), orig: true, qr: true, starwars: false },
 };
 const PRESETS = {
   'OpenCaptions': { font: 'atkinsonnext', weight: 700, color: '#faf8f3', style: 'box', box: '#111014', alpha: 88, upper: false, align: 'left', accent: '#d4ff3a', sbg: '#111014' },
@@ -34,7 +34,9 @@ function fillLangs() {
 }
 fillLangs();
 
-const ids = ['font', 'size', 'weight', 'lines', 'align', 'color', 'style', 'box', 'alpha', 'upper', 'pos', 'width', 'bgmode', 'also', 'sbg', 'accent', 'orig', 'qr'];
+const ids = ['font', 'size', 'weight', 'lines', 'align', 'color', 'style', 'box', 'alpha', 'upper', 'pos', 'width', 'bgmode', 'also', 'sbg', 'accent', 'orig', 'qr', 'starwars'];
+// Star Wars mode sets the text color, the effect and the screen's background itself: those controls rest while it's on.
+const STARWARS_SETS = ['color', 'style', 'box', 'alpha', 'sbg'];
 const read = () => Object.fromEntries(ids.map((k) => [k, $(k).type === 'checkbox' ? $(k).checked : $(k).value]));
 function write(v) { for (const [k, x] of Object.entries(v)) if ($(k)) { if ($(k).type === 'checkbox') $(k).checked = !!x; else $(k).value = x; } }
 function setTarget(t) {
@@ -61,14 +63,16 @@ function params(v, preview) {
   const add = (k, val, def) => { if (String(val) !== String(def)) p.set(k, val); };
   add('font', v.font, 'atkinsonnext'); add('size', v.size, d.size); add('weight', v.weight, 700); add('lines', v.lines, d.lines);
   add('align', v.align, 'left');
-  add('color', hex(v.color), 'ffffff'); add('style', v.style, target === 'overlay' ? 'box' : 'none');
-  add('box', hex(v.box), '000000'); add('alpha', v.alpha, 78); if (v.upper) p.set('upper', '1');
+  if (v.starwars) p.set('starwars', '1'); // the page ignores color, style, box and the screen's bg then: left out of the URL
+  else { add('color', hex(v.color), 'ffffff'); add('style', v.style, target === 'overlay' ? 'box' : 'none'); add('box', hex(v.box), '000000'); add('alpha', v.alpha, 78); }
+  if (v.upper) p.set('upper', '1');
   if (target === 'overlay') {
     add('pos', v.pos, 'bottom'); add('width', v.width, 78);
     if (v.bgmode !== 'transparent') p.set('bg', v.bgmode);
     if (v.also && v.also !== $('lang').value) p.set('also', v.also);
   } else {
-    add('bg', hex(v.sbg), '111014'); add('accent', hex(v.accent), hex(ev.accent || '#d4ff3a'));
+    if (!v.starwars) add('bg', hex(v.sbg), '111014');
+    add('accent', hex(v.accent), hex(ev.accent || '#d4ff3a'));
     if (!v.qr) p.set('qr', '0');
   }
   if (preview) p.set('preview', '1');
@@ -87,6 +91,7 @@ function update() {
   $('hint').textContent = target === 'overlay'
     ? 'vMix: Add Input → Web Browser → 1920×1080 → pegá la URL. OBS: Fuente → Navegador → 1920×1080.'
     : 'Abrila en el navegador de la PC conectada al proyector y tocá F (o doble clic) para pantalla completa.';
+  for (const k of STARWARS_SETS) $(k).disabled = v.starwars;
   $('bgimg').style.display = target === 'overlay' && v.bgmode === 'transparent' ? '' : 'none';
   clearTimeout(t);
   t = setTimeout(() => { $('frame').src = `/${page}?${params(v, true)}`; }, 250);
@@ -94,6 +99,8 @@ function update() {
 function fit() { $('frame').style.transform = `scale(${$('stagebox').clientWidth / 1920})`; }
 new ResizeObserver(fit).observe($('stagebox'));
 
+// Turning Star Wars mode on in the overlay: at least 4 lines, so there's a crawl to see (2 lines barely lean back).
+$('starwars').addEventListener('change', () => { if (target === 'overlay' && $('starwars').checked && Number($('lines').value) < 4) { $('lines').value = 4; update(); } });
 document.querySelector('.controls').addEventListener('input', update);
 $('stage').onchange = () => { fillLangs(); update(); };
 $('presets').onclick = (e) => { const b = e.target.closest('[data-preset]'); if (!b) return; write({ ...DEFAULTS[target], ...PRESETS[b.dataset.preset] }); update(); };
